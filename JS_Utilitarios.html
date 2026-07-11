@@ -1,0 +1,688 @@
+<script>
+// ==========================================
+// JS_Utilitarios.html
+// Helpers, navegação, delegação de eventos
+// ==========================================
+var state = { tasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [], ferias: [] };
+var cacheIdx = {};  // índices pré-computados para acesso O(1)
+var currentTab  = 'kanban';
+var itemExcluir = null, tipoPdfAtual = null, entregaCtx = null, planoRevCtx = null;
+var currentActivities = [];
+var statusChartInst = null, memberChartInst = null, priorityChartInst = null, memberConcluidoChartInst = null;
+
+const TIPOS_EVIDENCIA = ['Relatório Técnico','Formulário / Check-list','Planilha de Controle','Ata de Reunião','Lista de Presença','Certificado','POP / Instrução de Trabalho','Registro Fotográfico','Print de Tela (SEI)','Termo de Recebimento','Outros'];
+const CORES_STATUS = {
+  'Vigente':['#dcfce7','#166534'], 'Concluído':['#dcfce7','#166534'], 'Entregue':['#dcfce7','#166534'],
+  'Próximo da Revisão':['#fef9c3','#854d0e'], 'Em Andamento':['#fef9c3','#854d0e'], 'Pendente':['#fef9c3','#854d0e'],
+  'Vencido':['#fee2e2','#991b1b'], 'Atrasado':['#fee2e2','#991b1b'],
+  'Em Elaboração':['#ede9fe','#5b21b6'],
+  'Obsoleto':['#f1f5f9','#475569'], 'Arquivado':['#f1f5f9','#475569'],
+  'Crítico':['#fee2e2','#991b1b'], 'Alto':['#ffedd5','#7c2d12'], 'Médio':['#fef9c3','#713f12'], 'Baixo':['#dcfce7','#14532d'],
+  'Alta':['#fee2e2','#991b1b'], 'Media':['#fef9c3','#713f12'], 'Baixa':['#dcfce7','#14532d']
+};
+const ICON = {
+  edit: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>',
+  rev:  '<svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
+  del:  '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  archive: '<svg viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>',
+  history: '<svg viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>'
+};
+
+function $id(id) { return document.getElementById(id); }
+function esc(s) { return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+function fmtBr(d) { if (!d || !String(d).includes('-')) return d || '-'; const p = String(d).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d; }
+function badge(st) { const c = CORES_STATUS[st] || ['#f1f5f9','#475569']; return `<span class="status-badge" style="background:${c[0]};color:${c[1]};">${esc(st)}</span>`; }
+function linkA(url, txt, cor) { return url && url !== '-' ? `<a href="${esc(url)}" target="_blank" style="color:${cor||'#2563eb'};font-weight:600;text-decoration:none;">${txt}</a>` : '-'; }
+function iconBtn(cls, acao, title, attrs) { return `<button type="button" class="btn-icon ${cls}" title="${title}" data-acao="${acao}" ${attrs||''}>${ICON[cls] || ICON.del}</button>`; }
+function msgTabela(tbodyId, cols, txt, err) { $id(tbodyId).innerHTML = `<tr><td colspan="${cols}" class="${err?'msg-error':'msg-empty'}">${txt}</td></tr>`; }
+function feedbackBtn(btn, ok, orig, cb) { btn.disabled=false; btn.innerText=ok; setTimeout(()=>{ btn.innerText=orig; if(cb) cb(); }, 1400); }
+function falha(btn, orig, statusEl) {
+  return function(e) {
+    if(btn){btn.disabled=false; btn.innerText=orig;}
+    const msg='Erro de comunicação: '+(e&&e.message?e.message:String(e));
+    if(statusEl){statusEl.innerText=msg; statusEl.style.color='#dc2626';}
+    else showAlerta(msg);
+  };
+}
+
+// Alertas e confirmações
+function showAlerta(msg) { $id('alerta-msg').innerText=msg; abrirModal('modal-alerta'); }
+function showConfirm(msg, cb) { $id('confirm-msg').innerText=msg; itemExcluir=cb; abrirModal('modal-confirmar'); }
+
+// Modais
+function abrirModal(id) { $id(id).classList.add('open'); }
+function fecharModal(id) { const el=$id(id); if(el) el.classList.remove('open'); }
+
+// Dropdowns de unidade (opts pré-gerados para não refazer a cada chamada)
+function gerarOptsUnidades(comTodas) {
+  let html = '<option value="" disabled selected>Selecione...</option>';
+  const ordenadas = [...state.units].sort((a, b) => a.unidade.localeCompare(b.unidade, 'pt-BR', { sensitivity: 'base' }));
+  ordenadas.forEach(u => { const v=`${esc(u.sigla)} - ${esc(u.unidade)}`; html+=`<option value="${v}">${v}</option>`; });
+  if (comTodas) html += '<option value="Todas as Subcomissões">Todas as Subcomissões</option>';
+  return html;
+}
+function optsUnidFiltro() {
+  let h='<option value="">Todas as Unidades</option>';
+  const ordenadas = [...state.units].sort((a, b) => a.unidade.localeCompare(b.unidade, 'pt-BR', { sensitivity: 'base' }));
+  ordenadas.forEach(u=>{ const v=`${esc(u.sigla)} - ${esc(u.unidade)}`; h+=`<option value="${v}">${v}</option>`; });
+  return h;
+}
+function sincronizarSelectsUnidade() {
+  const resps = [['d-resp',false],['r-resp',true],['p-who',true],['ed-resp',false],['er-resp',true],['rr-resp',true],['ep-who',true]];
+  resps.forEach(([id, comTodas]) => { const el=$id(id); if(!el) return; const v=el.value; el.innerHTML=gerarOptsUnidades(comTodas); if(v) el.value=v; });
+  const filtros = ['f-doc-unidade','f-rev-unidade','f-acomp-unidade'];
+  filtros.forEach(id => { const el=$id(id); if(!el) return; const v=el.value; el.innerHTML=optsUnidFiltro(); if(v) el.value=v; });
+}
+
+// Checklists de evidência
+function montarChecklists() {
+  ['ent-tipos','ee-tipos'].forEach(id => {
+    $id(id).innerHTML = TIPOS_EVIDENCIA.map((t,i) =>
+      `<div class="chk-item"><input type="checkbox" id="chk_${id}_${i}" value="${esc(t)}"><label for="chk_${id}_${i}">${esc(t)}</label></div>`
+    ).join('');
+  });
+}
+function lerChecklist(id) { return Array.from($id(id).querySelectorAll('input:checked')).map(c=>c.value).join(', '); }
+function marcarChecklist(id, val) { const s=val||''; $id(id).querySelectorAll('input').forEach(c=>{ c.checked=s.includes(c.value); }); }
+
+// ==========================================
+// CARREGAMENTO SOB DEMANDA (lazy) do "resto" do sistema
+// (Unidades, Documentos, Riscos, Planos, Entregas). Só dispara na
+// primeira vez que o usuário visita uma dessas abas — nunca é buscado
+// automaticamente. Depois de carregado uma vez, fica em cache no
+// `state` e não busca de novo (até uma ação de escrita chamar
+// recarregarResto(), disparada após qualquer ação de escrita no SGQ).
+// ==========================================
+var restoDataLoaded = false;
+var restoDataLoading = false;
+var restoDataFilaCallbacks = [];
+
+function garantirRestoData(callback) {
+  if (restoDataLoaded) { callback(); return; }
+  restoDataFilaCallbacks.push(callback);
+  if (restoDataLoading) return; // já tem uma busca em andamento, só entra na fila
+
+  restoDataLoading = true;
+  google.script.run
+    .withFailureHandler(function(e) {
+      // Sem isso, uma falha do servidor deixava a tela travada em
+      // "A carregar..." para sempre, sem nenhum aviso do que houve.
+      restoDataLoading = false;
+      restoDataFilaCallbacks = [];
+      showAlerta('Falha ao carregar dados do sistema: ' + (e.message || String(e)) + '. Tente trocar de aba novamente.');
+    })
+    .withSuccessHandler(function(resto) {
+      try {
+        state.units = resto.units;
+        state.docs = resto.docs;
+        state.risks = resto.risks;
+        state.plans = resto.plans;
+        state.deliveries = resto.deliveries;
+        sincronizarSelectsUnidade();
+      } catch (err) {
+        // Um erro aqui não pode travar o carregamento para sempre —
+        // registra no console e segue em frente com o que já temos.
+        console.error('Erro ao processar dados do SGQ:', err);
+      }
+      restoDataLoaded = true;
+      restoDataLoading = false;
+      var fila = restoDataFilaCallbacks; restoDataFilaCallbacks = [];
+      fila.forEach(function(cb) {
+        try { cb(); } catch (err) {
+          console.error('Erro ao renderizar aba após carregar dados:', err);
+          showAlerta('Erro ao exibir os dados: ' + (err.message || String(err)));
+        }
+      });
+    }).getRestoData();
+}
+
+// ==========================================
+// NAVEGAÇÃO
+// ==========================================
+function mudarTab(tab, botao) {
+  currentTab = tab;
+  document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+  if(botao) botao.classList.add('active');
+  const view = $id('view-' + tab.replace(/-/g,'_').replace(/_/g, '-'));
+  if(view) view.classList.add('active');
+
+  atualizarTopBar();
+  const SGQ_TABS = ['unidades','doc-lista','doc-revisoes','risco-matriz','plano-acomp'];
+
+  const rotinas = {
+    'kanban': ()=>renderTasks(),
+    'archived': ()=>renderArquivados(),
+    'members': ()=>renderMembers(),
+    'dashboard': ()=>setTimeout(renderDashboard, 50),
+    'escala': ()=>renderEscala(),
+    'unidades': ()=>renderUnidades(),
+    'doc-lista': ()=>renderDocumentos('mestra'),
+    'doc-revisoes': ()=>renderDocumentos('revisoes'),
+    'risco-matriz': ()=>renderMatriz(),
+    'plano-acomp': ()=>renderAcompanhamento()
+  };
+
+  if (tab === 'logs')   { carregarLogs();   return; }
+  if (tab === 'ferias') { carregarFerias(); return; }
+
+  // Mostra "A carregar..." nas tabelas das abas do SGQ enquanto os dados
+  // não chegam (só na primeira visita — depois fica em cache)
+  const MSG_TABELA_POR_ABA = {
+    'unidades': ['lista-unidades', 4], 'doc-lista': ['lista-mestra', 12],
+    'doc-revisoes': ['lista-revisoes', 10], 'risco-matriz': ['lista-riscos', 12],
+    'plano-acomp': ['lista-acomp', 11]
+  };
+
+  if (SGQ_TABS.indexOf(tab) !== -1) {
+    if (!restoDataLoaded && MSG_TABELA_POR_ABA[tab]) {
+      msgTabela(MSG_TABELA_POR_ABA[tab][0], MSG_TABELA_POR_ABA[tab][1], 'A carregar...');
+    }
+    garantirRestoData(function() { if (rotinas[tab]) rotinas[tab](); });
+  } else if (rotinas[tab]) {
+    rotinas[tab]();
+  }
+}
+
+// Mapa de títulos por aba
+var TAB_TITULOS = {
+  'kanban':       'Quadro Kanban',
+  'archived':     'Cartões Arquivados',
+  'members':      'Membros da Equipe',
+  'dashboard':    'Dashboard de Indicadores',
+  'unidades':     'Unidades e Subcomissões',
+  'doc-lista':    'Lista Mestra de Documentos',
+  'doc-revisoes': 'Histórico de Revisões',
+  'risco-matriz': 'Matriz de Risco',
+  'plano-acomp':  'Plano de Ação',
+  'escala':       'Escala Semanal',
+  'ferias':       'Férias e Ausências',
+  'logs':         'Log de Alterações'
+};
+
+function atualizarTopBar() {
+  const tabTitle = $id('page-tab-title');
+  if (tabTitle) tabTitle.innerText = TAB_TITULOS[currentTab] || '';
+
+  // Esconde todos os blocos de controles do cabeçalho e mostra só o da aba atual
+  document.querySelectorAll('.hdr-tab-controls').forEach(el => el.classList.remove('active'));
+  const bloco = $id('hdr-' + currentTab);
+  if (bloco) bloco.classList.add('active');
+
+  if (currentTab === 'kanban') {
+    sincronizarDropdownMembros();
+    const selKanban = $id('memberFilterSelect');
+    if (selKanban && !selKanban.dataset.bound) {
+      selKanban.addEventListener('change', renderTasks);
+      selKanban.dataset.bound = '1';
+    }
+  }
+}
+
+// ==========================================
+// DELEGAÇÃO DE EVENTOS
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+  montarChecklists();
+
+  // Inicia com todos os grupos da sidebar FECHADOS
+  document.querySelectorAll('.nav-group-title').forEach(function(btn) {
+    btn.classList.remove('open');
+    var submenu = document.getElementById(btn.dataset.group);
+    if (submenu) submenu.classList.remove('open');
+  });
+  document.querySelectorAll('.menu-item').forEach(function(b) { b.classList.remove('active'); });
+
+  // Abre o módulo de Tarefas e activa o Kanban IMEDIATAMENTE — não espera
+  // nenhum dado do servidor. As colunas aparecem na hora; os cartões
+  // preenchem assim que a etapa 1 (abaixo) retornar.
+  var btnGrupo  = document.querySelector('[data-group="g-tarefas"]');
+  var btnKanban = document.querySelector('[data-tab="kanban"]');
+  if (btnGrupo) {
+    btnGrupo.classList.add('open');
+    var sub = document.getElementById('g-tarefas');
+    if (sub) sub.classList.add('open');
+  }
+  if (btnKanban) mudarTab('kanban', btnKanban);
+
+  // Único carregamento automático: só Tarefas + Membros (Kanban).
+  // O resto do sistema (Unidades, Documentos, Riscos, Planos, Entregas)
+  // só é buscado quando o usuário efetivamente clica numa dessas abas —
+  // ver garantirRestoData() em mudarTab().
+  google.script.run
+    .withFailureHandler(function(e) { showAlerta('Falha ao carregar dados: ' + (e.message||String(e))); })
+    .withSuccessHandler(function(data) {
+      state.tasks = data.tasks;
+      state.members = data.members;
+      renderTasks();
+      sincronizarDropdownMembros();
+    }).getKanbanData();
+});
+
+document.addEventListener('click', function(e) {
+  // Fechar modal ao clicar no overlay
+  if (e.target.classList.contains('modal-overlay')) { fecharModal(e.target.id); return; }
+  if (e.target.dataset.close) { fecharModal(e.target.dataset.close); return; }
+
+  // Grupos de menu retrátil
+  const grpBtn = e.target.closest('.nav-group-title');
+  if (grpBtn) {
+    const id = grpBtn.dataset.group;
+    grpBtn.classList.toggle('open');
+    $id(id).classList.toggle('open');
+    return;
+  }
+
+  // Itens de menu
+  const menuItem = e.target.closest('.menu-item');
+  if (menuItem && menuItem.dataset.tab) { mudarTab(menuItem.dataset.tab, menuItem); return; }
+
+  // Botões com data-acao
+  const alvo = e.target.closest('[data-acao]');
+  if (!alvo) {
+    // Fechar dropdown de assignees se clicar fora
+    if (!e.target.closest('.custom-select-wrapper')) {
+      const dd = $id('taskAssigneesContainer'); if(dd) dd.classList.remove('show');
+    }
+    return;
+  }
+  const acao = alvo.dataset.acao;
+  const idx  = alvo.dataset.idx !== undefined ? parseInt(alvo.dataset.idx,10) : null;
+  const ctx  = { risco: alvo.dataset.risco, unidade: alvo.dataset.unidade, what: alvo.dataset.what };
+
+  const acoes = {
+    // Kanban
+    'add-card'        : () => abrirModalTarefa(alvo.dataset.status),
+    'edit-card'       : () => abrirEditarTarefa(state.tasks[idx]),
+    'save-task'       : () => salvarTarefa(),
+    'delete-task'     : () => confirmarExcluirTarefa(),
+    'restore-task'    : () => restaurarTarefa(alvo.dataset.id),
+    'add-comment'     : () => adicionarComentario(),
+    'toggle-assignees': () => { $id('taskAssigneesContainer').classList.toggle('show'); },
+    'novo-membro'     : () => abrirModalMembro(),
+    'edit-membro'     : () => abrirEditarMembro(state.members[idx]),
+    'del-membro'      : () => showConfirm('Excluir este membro?', () => excluirMembro(state.members[idx].id)),
+    'save-member'     : () => salvarMembro(),
+    // Pessoas — Escala
+    'edit-escala'     : () => abrirModalEscala(state.members[idx]),
+    // Pessoas — Férias
+    'nova-ferias'     : () => abrirModalFerias(null),
+    'edit-ferias'     : () => { const m=feriasCache.find(x=>x.membroId===alvo.dataset.membroId); if(m) abrirModalFerias(m); },
+    'del-ferias'      : () => showConfirm('Limpar todos os afastamentos de ' + (feriasCache.find(x=>x.membroId===alvo.dataset.membroId)||{membroNome:''}).membroNome + '?', () => excluirFeriasLocal(alvo.dataset.membroId)),
+    'download-pdf'    : () => gerarPdfLocal('dashboard'),
+    // Unidades
+    'nova-unidade'    : () => abrirModalUnidade(),
+    'edit-unidade'    : () => abrirEditarUnidade(state.units[idx]),
+    'del-unidade'     : () => showConfirm(`Excluir a unidade "${state.units[idx].sigla}"?`, () => excluirUnidade(state.units[idx].id)),
+    'confirmar-unidade': () => confirmarUnidade(),
+    // Documentos
+    'salvar-doc'      : () => salvarDocumento(),
+    'edit-doc'        : () => abrirEditarDoc(idx),
+    'rev-doc'         : () => abrirRevisaoDoc(idx),
+    'del-doc'         : () => { const d=state.docs[idx]; showConfirm(`Excluir "${d.codigo}"?`, ()=>excluirDoc(d.idRow, d.codigo)); },
+    'confirmar-doc'   : () => confirmarEdicaoDoc(),
+    'publicar-doc'    : () => publicarRevisaoDoc(),
+    // Riscos
+    'salvar-risco'    : () => salvarRisco(),
+    'edit-risco'      : () => abrirEditarRisco(idx),
+    'rev-risco'       : () => abrirRevisaoRisco(idx),
+    'del-risco'       : () => { const r=state.risks[idx]; showConfirm(`Excluir R${r.id}?`, ()=>excluirRisco(r.id)); },
+    'confirmar-risco' : () => confirmarEdicaoRisco(),
+    'publicar-risco'  : () => publicarRevisaoRisco(),
+    // Planos
+    'salvar-plano'    : () => salvarPlano(),
+    'edit-plano'      : () => abrirEditarPlano(idx),
+    'arquivar-plano'  : () => abrirRevisaoPlano(idx),
+    'nova-rev-plano'  : () => abrirModalNovaRevisaoPlano(idx),
+    'historico-plano' : () => abrirHistoricoPlano(alvo.dataset.risco),
+    'acomp-entregas'  : () => abrirModalAcompEntregas(idx),
+    'del-plano'       : () => { const p=state.plans[idx]; showConfirm(`Excluir plano de ${p.riscoVinculado}?`, ()=>excluirPlano(p.riscoVinculado)); },
+    'confirmar-plano' : () => confirmarEdicaoPlano(),
+    'confirmar-rev-plano': () => confirmarRevisaoPlano(),
+    'confirmar-nova-rev-plano': () => confirmarNovaRevisaoPlano(),
+    // Entregas
+    'reg-entrega'     : () => abrirModalEntrega(ctx),
+    'edit-entrega'    : () => abrirEditarEntrega(ctx),
+    'del-entrega'     : () => showConfirm(`Excluir entrega de "${ctx.unidade}"?`, ()=>excluirEntrega(ctx.risco, ctx.unidade)),
+    'confirmar-entrega': () => salvarEntrega(),
+    'confirmar-entrega-editar': () => atualizarEntrega(),
+    // PDF e e-mail
+    'pdf-matriz'      : () => gerarPdfLocal('matriz'),
+    'email-matriz'    : () => abrirModalEmail('matriz'),
+    'pdf-acomp'       : () => gerarPdfLocal('acomp'),
+    'enviar-pdf'      : () => dispararEnvioPdf(),
+    // Confirmações
+    'confirmar-excluir': () => { if(itemExcluir){ fecharModal('modal-confirmar'); itemExcluir(); itemExcluir=null; } },
+    'fechar-alerta'   : () => fecharModal('modal-alerta')
+  };
+  if (acoes[acao]) acoes[acao]();
+});
+
+// Botões com ID fixo (não estão no sistema de data-acao para não poluir o HTML)
+document.addEventListener('click', function(e) {
+  if(e.target.id === 'btn-confirmar-unidade') confirmarUnidade();
+  if(e.target.id === 'btn-salvar-doc') salvarDocumento();
+  if(e.target.id === 'btn-confirmar-doc') confirmarEdicaoDoc();
+  if(e.target.id === 'btn-publicar-doc') publicarRevisaoDoc();
+  if(e.target.id === 'btn-salvar-risco') salvarRisco();
+  if(e.target.id === 'btn-confirmar-risco') confirmarEdicaoRisco();
+  if(e.target.id === 'btn-publicar-risco') publicarRevisaoRisco();
+  if(e.target.id === 'btn-salvar-plano') salvarPlano();
+  if(e.target.id === 'btn-confirmar-plano') confirmarEdicaoPlano();
+  if(e.target.id === 'btn-confirmar-rev-plano') confirmarRevisaoPlano();
+  if(e.target.id === 'btn-confirmar-nova-rev-plano') confirmarNovaRevisaoPlano();
+  if(e.target.id === 'btn-salvar-acomp-entregas') salvarAcompEntregas();
+  if(e.target.id === 'btn-confirmar-entrega') salvarEntrega();
+  if(e.target.id === 'btn-confirmar-entrega-editar') atualizarEntrega();
+  if(e.target.id === 'btn-confirmar-excluir') { if(itemExcluir){ fecharModal('modal-confirmar'); itemExcluir(); itemExcluir=null; } }
+  if(e.target.id === 'btn-fechar-alerta') fecharModal('modal-alerta');
+  if(e.target.id === 'btn-novo-membro') abrirModalMembro();
+  if(e.target.id === 'btn-nova-unidade') abrirModalUnidade();
+  if(e.target.id === 'btn-novo-plano') abrirModalNovoPlano();
+  if(e.target.id === 'btn-novo-doc') abrirModalNovoDocumento();
+  if(e.target.id === 'btn-pdf-archived') gerarPdfLocal('archived');
+  if(e.target.id === 'btn-email-archived') abrirModalEmail('archived');
+  if(e.target.id === 'btn-mapear-risco') abrirModalMapearRisco();
+  if(e.target.id === 'btn-download-pdf') gerarPdfLocal('dashboard');
+  if(e.target.id === 'btn-email-dashboard') abrirModalEmail('dashboard');
+  if(e.target.id === 'btn-save-task') salvarTarefa();
+  if(e.target.id === 'btn-delete-task') confirmarExcluirTarefa();
+  if(e.target.id === 'btn-archive-task') confirmarArquivarTarefa();
+  if(e.target.id === 'btn-add-comment') adicionarComentario();
+  if(e.target.id === 'btn-save-member') salvarMembro();
+  if(e.target.id === 'btn-pdf-matriz') gerarPdfLocal('matriz');
+  if(e.target.id === 'btn-email-matriz') abrirModalEmail('matriz');
+  if(e.target.id === 'btn-pdf-acomp') gerarPdfLocal('acomp');
+  if(e.target.id === 'btn-email-acomp') abrirModalEmail('acomp');
+  if(e.target.id === 'btn-atualizar-logs')       carregarLogs();
+  if(e.target.id === 'btn-nova-ferias')          abrirModalFerias(null);
+  if(e.target.id === 'btn-confirmar-escala')     confirmarEscala();
+  if(e.target.id === 'btn-confirmar-ferias')     confirmarFerias();
+  if(e.target.id === 'btn-enviar-pdf') dispararEnvioPdf();
+  if(e.target.id === 'assignee-display') $id('taskAssigneesContainer').classList.toggle('show');
+  // Botões add-card (têm data-add-card)
+  if(e.target.dataset.addCard) abrirModalTarefa(e.target.dataset.addCard);
+});
+
+// Delegação de drop nas colunas do Kanban
+document.querySelectorAll('.list-cards').forEach(el => {
+  el.addEventListener('dragover', e => e.preventDefault());
+  el.addEventListener('drop', function(e) { e.preventDefault(); drop(e, this.dataset.status); });
+});
+
+// Change handlers
+document.addEventListener('change', function(e) {
+  const id = e.target.id;
+  if (id === 'dashMemberFilter') renderDashboard();
+  if (id === 'f-doc-unidade' || id === 'f-doc-tipo' || id === 'f-doc-status') renderDocumentos('mestra');
+  if (id === 'f-rev-unidade') renderDocumentos('revisoes');
+  if (id === 'f-acomp-unidade' || id === 'f-acomp-status') renderAcompanhamento();
+  if (id === 'f-archived-membro') renderArquivados();
+  if (id === 'f-log-acao') renderLogs();
+  if (id === 'ent-status') $id('ent-evidencias').style.display = e.target.value === 'Sim' ? 'block' : 'none';
+  if (id === 'ee-status') $id('ee-evidencias').style.display = e.target.value === 'Sim' ? 'block' : 'none';
+});
+
+document.addEventListener('input', function(e) {
+  if (e.target.id === 'f-log-busca') renderLogs();
+});
+
+// ==========================================
+// PDF
+// ==========================================
+const CFG_PDF = {
+  'dashboard': { area: 'view-dashboard', header: 'pdf-header-dashboard', file: 'Dashboard_Tarefas_SGQ.pdf',      title: 'Dashboard de Indicadores de Tarefas', ori: 'landscape', pagebreak: ['css','avoid-all'], winW: null },
+  'archived' : { area: 'view-archived',  header: 'pdf-header-archived',   file: 'Cartoes_Arquivados_SGQ.pdf',     title: 'Cartões Arquivados',                  ori: 'portrait',  pagebreak: ['css','avoid-all'], winW: null },
+  'matriz'   : { area: 'area-matriz',    header: 'pdf-header-matriz',     file: 'Matriz_Risco_SGQ.pdf',           title: 'Matriz de Risco',                     ori: 'landscape', pagebreak: 'css',              winW: 1240 },
+  'acomp'    : { area: 'area-acomp',     header: 'pdf-header-acomp',      file: 'Acompanhamento_Acoes_SGQ.pdf',   title: 'Acompanhamento de Ações',             ori: 'landscape', pagebreak: ['css','avoid-all'], winW: null }
+};
+
+// Gera PDF a partir do elemento REAL da tela (não um clone), depois de
+// remover temporariamente qualquer limite de altura/overflow ao redor
+// dele e esconder sidebar/topo. É a técnica mais confiável testada —
+// captura exatamente o que está desenhado, sem cortes. Tudo é
+// restaurado ao estado original em seguida (efeito visual muito
+// rápido, imperceptível na prática).
+function gerarPdfLocal(tipo) {
+  // Matriz e Acompanhamento dependem dos dados do SGQ (carregados sob
+  // demanda). Se o usuário clicar em "Baixar PDF" antes desses dados
+  // terminarem de chegar, o PDF sai com "A carregar..." nas tabelas —
+  // por isso esperamos a confirmação de que já estão prontos.
+  if (tipo === 'matriz' || tipo === 'acomp') {
+    garantirRestoData(function() { _gerarPdfLocalReal(tipo); });
+  } else {
+    _gerarPdfLocalReal(tipo);
+  }
+}
+
+function _gerarPdfLocalReal(tipo) {
+  if (typeof html2pdf === 'undefined') { showAlerta('Biblioteca PDF não carregou. Recarregue a página e tente novamente.'); return; }
+  const cfg  = CFG_PDF[tipo];
+  const area = $id(cfg.area);
+  const btnMap = { dashboard: 'btn-download-pdf', archived: 'btn-pdf-archived', matriz: 'btn-pdf-matriz', acomp: 'btn-pdf-acomp' };
+  const btn  = $id(btnMap[tipo]);
+  if (btn) { btn.innerText = 'A gerar...'; btn.disabled = true; }
+
+  // 1. Canvas → img estático (Chart.js)
+  const canvasTemp = [];
+  area.querySelectorAll('canvas').forEach(function(c) {
+    if (!c.id) return;
+    try {
+      const img = document.createElement('img');
+      img.src = c.toDataURL('image/png');
+      img.style.cssText = 'width:100%;height:auto;display:block;';
+      c.parentNode.insertBefore(img, c);
+      c.style.display = 'none';
+      canvasTemp.push({ canvas: c, img: img });
+    } catch(e) {}
+  });
+
+  // 2. Cabeçalho institucional visível
+  $id(cfg.header).style.display = 'block';
+
+  // 3. Esconde sidebar/topo/filtros
+  const escondidos = [];
+  document.querySelectorAll('.sidebar, .top-header, .page-header, .no-print').forEach(function(el) {
+    if (el.style.display !== 'none') { escondidos.push(el); el.style.display = 'none'; }
+  });
+
+  // 4. Temporariamente ajusta o elemento original em vez de clonar
+  const originalWidth = area.style.width;
+  const originalMaxWidth = area.style.maxWidth;
+  const originalPosition = area.style.position;
+  const originalLeft = area.style.left;
+  const originalTop = area.style.top;
+  const originalMargin = area.style.margin;
+  const originalTransform = area.style.transform;
+  
+  const pdfW = cfg.winW || (cfg.ori === 'landscape' ? 1060 : 794);
+  area.style.width = pdfW + 'px';
+  area.style.maxWidth = 'none';
+  area.style.position = 'absolute';
+  area.style.left = '0';
+  area.style.top = '0';
+  area.style.margin = '0';
+  area.style.transform = 'none';
+
+  // Salva o scroll para não gerar gap em branco
+  const sx = window.scrollX, sy = window.scrollY;
+  window.scrollTo(0, 0);
+
+  function restaurar() {
+    area.style.width = originalWidth;
+    area.style.maxWidth = originalMaxWidth;
+    area.style.position = originalPosition;
+    area.style.left = originalLeft;
+    area.style.top = originalTop;
+    area.style.margin = originalMargin;
+    area.style.transform = originalTransform;
+    window.scrollTo(sx, sy);
+    
+    escondidos.forEach(function(elx) { elx.style.display = ''; });
+    $id(cfg.header).style.display = 'none';
+    canvasTemp.forEach(function(o) { o.canvas.style.display = ''; if (o.img.parentNode) o.img.parentNode.removeChild(o.img); });
+    [statusChartInst, priorityChartInst, memberChartInst, memberConcluidoChartInst].forEach(function(c) { if (c) c.resize(); });
+    if (btn) { btn.innerText = 'Baixar PDF'; btn.disabled = false; }
+  }
+
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      const opts = {
+        margin: 10,
+        filename: cfg.file,
+        image: { type: 'jpeg', quality: 0.90 },
+        html2canvas: { scale: 1.5, scrollY: 0, scrollX: 0, windowWidth: pdfW, useCORS: true, allowTaint: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: cfg.ori },
+        pagebreak: { mode: cfg.pagebreak || ['css', 'avoid-all'] }
+      };
+
+      html2pdf().set(opts).from(area).save()
+        .then(restaurar)
+        .catch(function(err) { restaurar(); showAlerta('Erro ao gerar PDF: ' + String(err)); });
+    });
+  });
+}
+
+function abrirModalEmail(tipo) { tipoPdfAtual = tipo; $id('pdf-email-dest').value = ''; abrirModal('modal-pdf-email'); }
+
+function dispararEnvioPdf() {
+  const email = ($id('pdf-email-dest').value||'').trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAlerta('Informe um e-mail válido.'); return; }
+  const btn = $id('btn-enviar-pdf');
+  if (btn) { btn.innerText = 'A gerar PDF...'; btn.disabled = true; }
+  if (tipoPdfAtual === 'matriz' || tipoPdfAtual === 'acomp') {
+    garantirRestoData(function() { _dispararEnvioPdfReal(email); });
+  } else {
+    _dispararEnvioPdfReal(email);
+  }
+}
+
+function _dispararEnvioPdfReal(email) {
+  const btn = $id('btn-enviar-pdf');
+  const cfg = CFG_PDF[tipoPdfAtual];
+  const area = $id(cfg.area);
+  btn.innerText = 'A gerar PDF...'; btn.disabled = true;
+
+  const canvasTemp = [];
+  area.querySelectorAll('canvas').forEach(function(c) {
+    if (!c.id) return;
+    try {
+      const img = document.createElement('img');
+      img.src = c.toDataURL('image/png');
+      img.style.cssText = 'width:100%;height:auto;display:block;';
+      c.parentNode.insertBefore(img, c);
+      c.style.display = 'none';
+      canvasTemp.push({ canvas: c, img: img });
+    } catch(e) {}
+  });
+
+  $id(cfg.header).style.display = 'block';
+
+  const escondidos = [];
+  document.querySelectorAll('.sidebar, .top-header, .page-header, .no-print').forEach(function(el) {
+    if (el.style.display !== 'none') { escondidos.push(el); el.style.display = 'none'; }
+  });
+
+  const pdfW = cfg.winW || (cfg.ori === 'landscape' ? 1060 : 794);
+  const originalWidth = area.style.width;
+  const originalMaxWidth = area.style.maxWidth;
+  const originalPosition = area.style.position;
+  const originalLeft = area.style.left;
+  const originalTop = area.style.top;
+  const originalMargin = area.style.margin;
+  const originalTransform = area.style.transform;
+  
+  area.style.width = pdfW + 'px';
+  area.style.maxWidth = 'none';
+  area.style.position = 'absolute';
+  area.style.left = '0';
+  area.style.top = '0';
+  area.style.margin = '0';
+  area.style.transform = 'none';
+
+  const sx = window.scrollX, sy = window.scrollY;
+  window.scrollTo(0, 0);
+
+  function limpar() {
+    area.style.width = originalWidth;
+    area.style.maxWidth = originalMaxWidth;
+    area.style.position = originalPosition;
+    area.style.left = originalLeft;
+    area.style.top = originalTop;
+    area.style.margin = originalMargin;
+    area.style.transform = originalTransform;
+    window.scrollTo(sx, sy);
+    
+    escondidos.forEach(function(elx) { elx.style.display = ''; });
+    $id(cfg.header).style.display = 'none';
+    canvasTemp.forEach(function(o) { o.canvas.style.display = ''; if (o.img.parentNode) o.img.parentNode.removeChild(o.img); });
+    [statusChartInst, priorityChartInst, memberChartInst, memberConcluidoChartInst].forEach(function(c) { if (c) c.resize(); });
+  }
+
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      const opts = { margin:10, filename:cfg.file, image:{type:'jpeg',quality:0.90},
+        html2canvas:{ scale:1.5, scrollY: 0, scrollX: 0, windowWidth: pdfW, useCORS:true, allowTaint:true, logging:false },
+        jsPDF:{unit:'mm',format:'a4',orientation:cfg.ori},
+        pagebreak: { mode: cfg.pagebreak || ['css', 'avoid-all'] } };
+
+      html2pdf().set(opts).from(area).outputPdf('datauristring').then(function(uri) {
+        limpar();
+        btn.innerText = 'A enviar...';
+        google.script.run.withSuccessHandler(function(r) {
+          if (r.sucesso) feedbackBtn(btn,'✅ Enviado!','📨 Enviar PDF',function(){ fecharModal('modal-pdf-email'); });
+          else { btn.innerText='📨 Enviar PDF'; btn.disabled=false; showAlerta(r.mensagem); }
+        }).withFailureHandler(falha(btn,'📨 Enviar PDF',null)).enviarPdfPorEmail(email, uri, cfg.file, cfg.title);
+      }).catch(function(e) {
+        limpar();
+        btn.innerText='📨 Enviar PDF'; btn.disabled=false; showAlerta('Erro: '+String(e));
+      });
+    });
+  });
+}
+
+// ==========================================
+// LOG DE ALTERAÇÕES (auditoria)
+// Nunca fica em cache — busca sempre que a aba é visitada, já que é
+// uma trilha de auditoria e precisa refletir o estado mais recente.
+// ==========================================
+var logsCache = [];
+
+function carregarLogs() {
+  msgTabela('lista-logs', 5, 'A carregar...');
+  google.script.run
+    .withFailureHandler(function(e) { msgTabela('lista-logs', 5, 'Falha ao carregar: ' + (e.message || String(e)), true); })
+    .withSuccessHandler(function(logs) {
+      logsCache = logs || [];
+      const selAcao = $id('f-log-acao');
+      if (selAcao) {
+        const v = selAcao.value;
+        const acoesUnicas = Array.from(new Set(logsCache.map(l => l.acao))).sort();
+        selAcao.innerHTML = '<option value="">Todas</option>' + acoesUnicas.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+        if (v) selAcao.value = v;
+      }
+      renderLogs();
+    }).buscarLogs();
+}
+
+function renderLogs() {
+  const fAcao = ($id('f-log-acao') || {value:''}).value;
+  const fBusca = (($id('f-log-busca') || {value:''}).value || '').toLowerCase().trim();
+
+  let filtrados = logsCache;
+  if (fAcao) filtrados = filtrados.filter(l => l.acao === fAcao);
+  if (fBusca) filtrados = filtrados.filter(l =>
+    (l.referencia || '').toLowerCase().includes(fBusca) || (l.detalhes || '').toLowerCase().includes(fBusca)
+  );
+
+  if (!filtrados.length) { msgTabela('lista-logs', 5, 'Nenhum registro encontrado.'); return; }
+
+  $id('lista-logs').innerHTML = filtrados.map(l => `<tr>
+    <td style="white-space:nowrap; font-size:12px; color:#64748b;">${esc(l.dataHora)}</td>
+    <td style="font-size:12px;">${esc(l.usuario)}</td>
+    <td><span class="status-badge" style="background:#eef2f7; color:#334155;">${esc(l.acao)}</span></td>
+    <td style="font-weight:600; color:#2563eb;">${esc(l.referencia)}</td>
+    <td style="font-size:12.5px;">${esc(l.detalhes)}</td>
+  </tr>`).join('');
+}
+</script>

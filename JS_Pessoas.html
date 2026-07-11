@@ -1,0 +1,631 @@
+<script>
+// ==========================================
+// MÓDULO 6 — GESTÃO DE PESSOAS
+// ==========================================
+
+var DIAS_SEMANA = ['Segunda','Terça','Quarta','Quinta','Sexta'];
+var DIAS_ABREV  = ['Seg','Ter','Qua','Qui','Sex'];
+
+function diaParaId(d) {
+  return d.toLowerCase().replace(/ç/g,'c').replace(/[áâ]/g,'a').replace(/ã/g,'a');
+}
+
+// ─── ESCALA SEMANAL ────────────────────────────────────────────────────────────
+
+function renderEscala() {
+  renderEscalaGrid(state.members);
+  var tbody = $id('lista-escala');
+  if (!tbody) return;
+  if (!state.members.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="msg-empty">Nenhum membro cadastrado.</td></tr>';
+    return;
+  }
+  var ordenados = state.members.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||'','pt-BR',{sensitivity:'base'}); });
+  tbody.innerHTML = ordenados.map(function(m) {
+    var origIdx = state.members.indexOf(m);
+    var dias = Array.isArray(m.diasSemana) ? m.diasSemana : [];
+    var pres = m.diaPresencial || '';
+    var presList = pres ? pres.split(', ') : [];
+    var dayTds = DIAS_SEMANA.map(function(d) {
+      var ativo      = dias.indexOf(d) !== -1;
+      var presencial = presList.indexOf(d) !== -1;
+      if (!ativo) return '<td style="text-align:center;"><span class="escala-vazio">—</span></td>';
+      var horInfo = (m.horarios && m.horarios[d]) ? m.horarios[d] : '';
+      var icon = presencial
+        ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
+        : '✓';
+      return '<td style="text-align:center;">' +
+        '<div style="display:flex; flex-direction:column; align-items:center; gap:2px;">' +
+        '<span class="escala-check' + (presencial ? ' presencial' : '') + '" title="' + esc(d) + (presencial ? ' (presencial)' : '') + '">' + icon + '</span>' +
+        (horInfo ? '<span style="font-size:9.5px;color:#64748b;font-weight:normal;white-space:nowrap;">' + esc(horInfo) + '</span>' : '') +
+        '</div>' +
+        '</td>';
+    }).join('');
+    return '<tr>' +
+      '<td><div style="display:flex;align-items:center;gap:10px;">' +
+        '<div class="member-avatar">' + esc(m.name.charAt(0)) + '</div>' +
+        '<div><div style="font-weight:600;font-size:13px;">' + esc(m.name) + '</div>' +
+        '<div style="font-size:11px;color:#64748b;">' + esc(m.role) + '</div></div>' +
+      '</div></td>' +
+      dayTds +
+      '<td style="text-align:center;">' +
+        (presList.length > 0
+          ? presList.map(function(p){ return '<span class="tag-badge" style="background:#2563eb;font-size:11px;margin-right:2px;display:inline-block;margin-bottom:2px;">' + esc(p.substring(0,3)) + '</span>'; }).join('')
+          : '<span style="color:#94a3b8;font-size:12px;">—</span>') +
+      '</td>' +
+      '<td><div class="cell-actions" style="justify-content:center;">' +
+        iconBtn('edit','edit-escala','Editar Escala','data-idx="' + origIdx + '"') +
+      '</div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderEscalaGrid(members) {
+  var grid = $id('escala-grid');
+  if (!grid) return;
+  var hoje = new Date();
+  var diaSemanaHoje = hoje.getDay(); // 0=Dom … 5=Sex
+  var mapDia = { 'Segunda':1,'Terça':2,'Quarta':3,'Quinta':4,'Sexta':5 };
+  grid.innerHTML = DIAS_SEMANA.map(function(dia, idx) {
+    var numDia    = mapDia[dia];
+    var ehHoje    = diaSemanaHoje === numDia;
+    var presenciais = members.filter(function(m){ return m.diaPresencial && m.diaPresencial.split(', ').indexOf(dia) !== -1; });
+    var trabalhando = members.filter(function(m){ return Array.isArray(m.diasSemana) && m.diasSemana.indexOf(dia) !== -1; });
+    return '<div class="escala-col' + (ehHoje ? ' today' : '') + '">' +
+      '<div class="escala-col-title">' + DIAS_ABREV[idx] + (ehHoje ? ' <span class="today-dot">●</span>' : '') + '</div>' +
+      '<div class="escala-col-count">' + trabalhando.length + ' trabalha' + (trabalhando.length !== 1 ? 'm' : '') + '</div>' +
+      (presenciais.length
+        ? '<div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">' + presenciais.map(function(m){ return '<div class="escala-member-pill">' + esc(m.name.split(' ')[0]) + '</div>'; }).join('') + '</div>'
+        : '<div class="escala-empty-day">Ninguém presencial</div>') +
+    '</div>';
+  }).join('');
+}
+
+function abrirModalEscala(m) {
+  $id('ee-membro-nome').innerText = m.name + ' — ' + m.role;
+  $id('ee-membro-id').value = m.id;
+  var dias = Array.isArray(m.diasSemana) ? m.diasSemana : [];
+  var presList = m.diaPresencial ? m.diaPresencial.split(', ') : [];
+  var horarios = m.horarios || {};
+  DIAS_SEMANA.forEach(function(d) {
+    var idDia = diaParaId(d);
+    var cb = $id('ee-dia-' + idDia);
+    var inp = $id('ee-hora-' + idDia);
+    if (cb) {
+      cb.checked = dias.indexOf(d) !== -1;
+      if (inp) {
+        inp.value = horarios[d] || '';
+        inp.disabled = !cb.checked;
+      }
+    }
+  });
+  document.querySelectorAll('[name="ee-presencial"]').forEach(function(cb) {
+    cb.checked = presList.indexOf(cb.value) !== -1;
+  });
+  abrirModal('modal-escala');
+}
+
+function confirmarEscala() {
+  var btn = $id('btn-confirmar-escala');
+  var membroId = $id('ee-membro-id').value;
+  var diasSelecionados = DIAS_SEMANA.filter(function(d) {
+    var cb = $id('ee-dia-' + diaParaId(d));
+    return cb && cb.checked;
+  });
+  var horarios = {};
+  diasSelecionados.forEach(function(d) {
+    var inp = $id('ee-hora-' + diaParaId(d));
+    if (inp && inp.value.trim()) {
+      horarios[d] = inp.value.trim();
+    }
+  });
+  
+  var presList = [];
+  document.querySelectorAll('[name="ee-presencial"]:checked').forEach(function(cb) {
+    presList.push(cb.value);
+  });
+  var diaPresencial = presList.join(', ');
+  
+  for (var i = 0; i < presList.length; i++) {
+    if (diasSelecionados.indexOf(presList[i]) === -1)
+      return showAlerta('O dia presencial deve ser trabalhado ("' + presList[i] + '" é inválido).');
+  }
+
+  btn.disabled = true; btn.innerText = 'A guardar...';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r.sucesso) {
+        var m = state.members.find(function(x){ return String(x.id) === String(membroId); });
+        if (m) {
+          m.diasSemana = diasSelecionados;
+          m.diaPresencial = diaPresencial;
+          m.horarios = horarios;
+        }
+        feedbackBtn(btn,'✅ Salvo!','Confirmar',function(){ fecharModal('modal-escala'); renderEscala(); });
+      } else { btn.disabled = false; btn.innerText = 'Confirmar'; showAlerta(r.mensagem); }
+    })
+    .withFailureHandler(falha(btn,'Confirmar',null))
+    .salvarEscala({ membroId: membroId, diasSemana: diasSelecionados, diaPresencial: diaPresencial, horarios: horarios });
+}
+
+// ─── FÉRIAS / AFASTAMENTOS ────────────────────────────────────────────────────────
+
+var feriasCache = [];
+var feriasFiltersInitialized = false;
+
+function carregarFerias() {
+  if (!feriasFiltersInitialized) {
+    feriasFiltersInitialized = true;
+    var el = $id('f-ferias-membro');
+    if (el) el.addEventListener('change', function(){ renderFerias(feriasCache); });
+    
+    var modalMembroSel = $id('ef-membro');
+    if (modalMembroSel) {
+      modalMembroSel.addEventListener('change', function() {
+        onMembroAfastamentoChange(this.value);
+      });
+    }
+    preencherDropdownMembrosFerias();
+  }
+
+  // Pre-loaded from getKanbanData -> state.members! No network necessary.
+  var mData = (state.members || []).map(function(m) {
+    return {
+      membroId: m.id || '',
+      membroNome: m.name || 'Sem Nome',
+      membroRole: m.role || '',
+      afastamentos: m.afastamentos || { ferias: [], abonosFixos: [], abonoAniv: null, licenca: null }
+    };
+  });
+
+  feriasCache = mData;
+  renderFerias(mData);
+}
+
+function preencherDropdownMembrosFerias() {
+  var sel = $id('f-ferias-membro');
+  if (!sel) return;
+  var ops = '<option value="">Todos os membros</option>' +
+    state.members.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||'','pt-BR',{sensitivity:'base'}); })
+      .map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>'; }).join('');
+  sel.innerHTML = ops;
+}
+
+
+
+function parseDataStr(s) {
+  if (!s) return null;
+  var p = s.split('-');
+  if (p.length !== 3) return null;
+  var d = new Date(+p[0], +p[1]-1, +p[2]);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function renderFerias(data) {
+  var tbody = $id('lista-ferias');
+  if (!tbody) return;
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  // KPIs
+  var emFerias = 0, proximas = 0, esteAno = 0;
+  var anoAtual = hoje.getFullYear();
+  
+  data.forEach(function(m) {
+    var afs = m.afastamentos || {};
+    var list = [];
+    if (afs.ferias) {
+      afs.ferias.forEach(function(f){ if(f && f.inicio && f.fim) list.push(f); });
+    }
+    if (afs.abonosFixos && Array.isArray(afs.abonosFixos)) {
+      afs.abonosFixos.forEach(function(d){ if(d) list.push({inicio: d, fim: d}); });
+    }
+    if (afs.abonoAniv && afs.abonoAniv.inicio && afs.abonoAniv.fim) list.push(afs.abonoAniv);
+    if (afs.licenca && afs.licenca.inicio && afs.licenca.fim) list.push(afs.licenca);
+    
+    var isAfastadoAgora = false;
+    var hasProximo = false;
+    var hasEsteAno = false;
+
+    list.forEach(function(p) {
+      var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim);
+      if (ini && fim) {
+        if (ini <= hoje && fim >= hoje) isAfastadoAgora = true;
+        if (ini > hoje && (ini - hoje) / 86400000 <= 30) hasProximo = true;
+        if (ini.getFullYear() === anoAtual || fim.getFullYear() === anoAtual) hasEsteAno = true;
+      }
+    });
+
+    if (isAfastadoAgora) emFerias++;
+    if (hasProximo) proximas++;
+    if (hasEsteAno) esteAno++;
+  });
+  
+  var setKpi = function(id, v) { var el = $id(id); if (el) el.innerText = v; };
+  setKpi('kpi-f-agora', emFerias);
+  setKpi('kpi-f-prox',  proximas);
+  setKpi('kpi-f-ano',   esteAno);
+
+  // Filtros
+  var fM  = ($id('f-ferias-membro') || {value:''}).value;
+  
+  var filtrado = data.filter(function(m) {
+    if (fM && String(m.membroId) !== fM) return false;
+    return true;
+  });
+
+  filtrado.sort(function(a,b){ return a.membroNome.localeCompare(b.membroNome,'pt-BR',{sensitivity:'base'}); });
+
+  if (!filtrado.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="msg-empty">Nenhum registro encontrado.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtrado.map(function(m) {
+    var afs = m.afastamentos || {};
+
+    var fmtDM = function(isoStr) {
+      if (!isoStr) return '';
+      var p = isoStr.split('-');
+      return p.length === 3 ? p[2] + '/' + p[1] : isoStr;
+    };
+    // Férias Períodos 1, 2, 3
+    var getHtmlFerias = function(p) {
+      if (!p || !p.inicio || !p.fim) return '<span style="color:#94a3b8;font-size:12px;">—</span>';
+      var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim);
+      var dias = (ini && fim) ? Math.floor((fim - ini) / 86400000) + 1 : null;
+      var agora = ini && fim && ini <= hoje && fim >= hoje;
+      return '<span style="display:inline-block; margin-right:4px; margin-bottom:4px; margin-top:4px; font-size:11.5px; white-space:nowrap;' + (agora ? 'background:#dcfce7; border: 1px solid #86efac; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#15803d;' : 'color:#334155; padding: 2px 0px;') + '">' +
+        fmtDM(p.inicio) + ' a ' + fmtDM(p.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + dias + 'd)</span>' +
+        '</span>';
+    };
+    
+    var htmlF1 = '<span style="color:#94a3b8;font-size:12px;">—</span>';
+    var htmlF2 = '<span style="color:#94a3b8;font-size:12px;">—</span>';
+    var htmlF3 = '<span style="color:#94a3b8;font-size:12px;">—</span>';
+    
+    if (afs.ferias && Array.isArray(afs.ferias)) {
+      if (afs.ferias[0]) htmlF1 = getHtmlFerias(afs.ferias[0]);
+      if (afs.ferias[1]) htmlF2 = getHtmlFerias(afs.ferias[1]);
+      if (afs.ferias[2]) htmlF3 = getHtmlFerias(afs.ferias[2]);
+    }
+    // Abonos (5 datas fixas)
+    var htmlAbono = '';
+    if (afs.abonosFixos && afs.abonosFixos.length > 0) {
+      var tagsData = afs.abonosFixos.map(function(d) {
+        var dt = parseDataStr(d);
+        var agora = dt && dt.getTime() === hoje.getTime();
+        return '<span style="display:inline-block; font-size:11px;' + (agora ? 'background:#fef9c3; border: 1px solid #fef08a; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#854d0e;' : 'background:#f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 6px; color:#475569;') + '">' + fmtDM(d) + '</span>';
+      });
+      htmlAbono = '<div style="display:flex; flex-wrap:nowrap; gap:4px; align-items:center;">' + tagsData.join('') + '</div>';
+    } else {
+      htmlAbono = '<span style="color:#94a3b8;font-size:12px;">—</span>';
+    }
+    
+    // Abono Aniversário
+    var htmlAbonoAniv = '';
+    if (afs.abonoAniv && afs.abonoAniv.inicio) {
+      var dt = parseDataStr(afs.abonoAniv.inicio);
+      var agora = dt && dt.getTime() === hoje.getTime();
+      htmlAbonoAniv = '<span style="display:inline-block; font-size:11.5px; margin-top:4px; white-space:nowrap;' + (agora ? 'background:#d1fae5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#047857;' : 'color:#334155; padding: 2px 0px;') + '">' +
+        fmtDM(afs.abonoAniv.inicio) +
+        '</span>';
+    } else {
+      htmlAbonoAniv = '<span style="color:#94a3b8;font-size:12px;">—</span>';
+    }
+
+    // Licença
+    var htmlLicenca = '';
+    if (afs.licenca && afs.licenca.inicio && afs.licenca.fim) {
+      var ini = parseDataStr(afs.licenca.inicio), fim = parseDataStr(afs.licenca.fim);
+      var dias = (ini && fim) ? Math.floor((fim - ini) / 86400000) + 1 : null;
+      var agora = ini && fim && ini <= hoje && fim >= hoje;
+      htmlLicenca = '<span style="display:inline-block; font-size:11.5px; margin-top:4px; white-space:nowrap;' + (agora ? 'background:#f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#6b21a8;' : 'color:#334155; padding: 2px 0px;') + '">' +
+        fmtDM(afs.licenca.inicio) + ' a ' + fmtDM(afs.licenca.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + dias + 'd)</span>' +
+        '</span>';
+    } else {
+      htmlLicenca = '<span style="color:#94a3b8;font-size:12px;">—</span>';
+    }
+
+    var cargo = m.membroRole || '';
+    
+    // Check if any of the absences is active today to highlight the row
+    var isQualquerAtivo = false;
+    if (afs.ferias) {
+      afs.ferias.forEach(function(p) {
+        if (p && p.inicio && p.fim) {
+          var i = parseDataStr(p.inicio), f = parseDataStr(p.fim);
+          if (i <= hoje && f >= hoje) isQualquerAtivo = true;
+        }
+      });
+    }
+    if (afs.abonosFixos) {
+      afs.abonosFixos.forEach(function(d) {
+        var dt = parseDataStr(d);
+        if (dt && dt.getTime() === hoje.getTime()) isQualquerAtivo = true;
+      });
+    }
+    [[afs.abonoAniv], [afs.licenca]].forEach(function(categ) {
+      categ.forEach(function(p) {
+        if (p && p.inicio && p.fim) {
+          var i = parseDataStr(p.inicio), f = parseDataStr(p.fim);
+          if (i <= hoje && f >= hoje) isQualquerAtivo = true;
+        }
+      });
+    });
+
+    return '<tr' + (isQualquerAtivo ? ' style="background:#f8fafc;"' : '') + '>' +
+      '<td><div style="display:flex;align-items:center;gap:10px;">' +
+        '<div class="member-avatar">' + esc(m.membroNome.charAt(0)) + '</div>' +
+        '<div><div style="font-weight:600;font-size:13px;">' + esc(m.membroNome) + '</div>' +
+        '<div style="font-size:11px;color:#64748b;">' + esc(cargo) + '</div></div>' +
+      '</div></td>' +
+      '<td>' + htmlF1 + '</td>' +
+      '<td>' + htmlF2 + '</td>' +
+      '<td>' + htmlF3 + '</td>' +
+      '<td>' + htmlAbono + '</td>' +
+      '<td>' + htmlAbonoAniv + '</td>' +
+      '<td>' + htmlLicenca + '</td>' +
+      '<td><div class="cell-actions" style="justify-content:center;">' +
+        iconBtn('edit','edit-ferias','Editar',  'data-membro-id="' + esc(m.membroId) + '"') +
+        iconBtn('del', 'del-ferias', 'Limpar Tudo', 'data-membro-id="' + esc(m.membroId) + '"') +
+      '</div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function abrirModalFerias(mObj) {
+  var sel = $id('ef-membro');
+  sel.innerHTML = '<option value="" disabled selected>Selecione um membro...</option>' +
+    state.members.slice()
+      .sort(function(a,b){ return a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'}); })
+      .map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>'; })
+      .join('');
+      
+  sel.disabled = false;
+  
+  if (mObj) {
+    sel.value = mObj.membroId;
+    sel.disabled = true; // Disable select on edit to map to that member specifically
+    $id('modal-ferias-title').innerText = 'Editar Afastamentos';
+    fillModalWithData(mObj.afastamentos);
+  } else {
+    sel.value = '';
+    $id('modal-ferias-title').innerText = 'Registrar Afastamentos';
+    clearModalAfastamentos();
+  }
+  abrirModal('modal-ferias');
+}
+
+function clearModalAfastamentos() {
+  $id('ef-ferias-ini1').value = '';
+  $id('ef-ferias-fim1').value = '';
+  $id('ef-ferias-ini2').value = '';
+  $id('ef-ferias-fim2').value = '';
+  $id('ef-ferias-ini3').value = '';
+  $id('ef-ferias-fim3').value = '';
+  
+  $id('ef-abono1').value = '';
+  $id('ef-abono2').value = '';
+  $id('ef-abono3').value = '';
+  $id('ef-abono4').value = '';
+  $id('ef-abono5').value = '';
+  
+  $id('ef-abono-niver').value = '';
+  
+  $id('ef-licenca-ini').value = '';
+  $id('ef-licenca-fim').value = '';
+}
+
+function fillModalWithData(afs) {
+  clearModalAfastamentos();
+  if (!afs) return;
+  
+  // vacations
+  if (afs.ferias && Array.isArray(afs.ferias)) {
+    if (afs.ferias[0]) {
+      $id('ef-ferias-ini1').value = afs.ferias[0].inicio || '';
+      $id('ef-ferias-fim1').value = afs.ferias[0].fim || '';
+    }
+    if (afs.ferias[1]) {
+      $id('ef-ferias-ini2').value = afs.ferias[1].inicio || '';
+      $id('ef-ferias-fim2').value = afs.ferias[1].fim || '';
+    }
+    if (afs.ferias[2]) {
+      $id('ef-ferias-ini3').value = afs.ferias[2].inicio || '';
+      $id('ef-ferias-fim3').value = afs.ferias[2].fim || '';
+    }
+  }
+  
+  // abonos 1 to 5
+  if (afs.abonosFixos && Array.isArray(afs.abonosFixos)) {
+    for (var i = 0; i < 5; i++) {
+       if (afs.abonosFixos[i]) {
+         $id('ef-abono' + (i+1)).value = afs.abonosFixos[i] || '';
+       }
+    }
+  }
+  
+  // aniversario
+  if (afs.abonoAniv) {
+    // We parse it back into the field. Since it has inicio and fim same, just use inicio
+    $id('ef-abono-niver').value = afs.abonoAniv.inicio || '';
+  }
+
+  // licenca
+  if (afs.licenca) {
+    $id('ef-licenca-ini').value = afs.licenca.inicio || '';
+    $id('ef-licenca-fim').value = afs.licenca.fim || '';
+  }
+}
+
+function onMembroAfastamentoChange(membroId) {
+  if (!membroId) {
+    clearModalAfastamentos();
+    return;
+  }
+  var mObj = feriasCache.find(function(x){ return String(x.membroId) === String(membroId); });
+  if (mObj) {
+    fillModalWithData(mObj.afastamentos);
+  } else {
+    clearModalAfastamentos();
+  }
+}
+
+function confirmarFerias() {
+  var btn = $id('btn-confirmar-ferias');
+  var selMembro = $id('ef-membro');
+  var membroId  = selMembro.value;
+  if (!membroId)
+    return showAlerta('Por favor, selecione um membro.');
+
+  var ferias = [];
+  for (var i = 1; i <= 3; i++) {
+    var iniVal = $id('ef-ferias-ini' + i).value;
+    var fimVal = $id('ef-ferias-fim' + i).value;
+    if (iniVal && fimVal) {
+      if (iniVal > fimVal) {
+        return showAlerta('Nas férias (Período ' + i + '), a data de início deve ser anterior ao fim.');
+      }
+      ferias.push({ inicio: iniVal, fim: fimVal });
+    } else if (iniVal || fimVal) {
+      return showAlerta('Nas férias (Período ' + i + '), preencha ambas as datas de início e fim.');
+    }
+  }
+
+  var abonos = [];
+  for (var i = 1; i <= 5; i++) {
+    var dtVal = $id('ef-abono' + i).value;
+    if (dtVal) abonos.push(dtVal);
+  }
+
+  var abonoAniversario = $id('ef-abono-niver').value;
+
+  var licenca = null;
+  var licencaIni = $id('ef-licenca-ini').value;
+  var licencaFim = $id('ef-licenca-fim').value;
+  if (licencaIni && licencaFim) {
+    if (licencaIni > licencaFim) return showAlerta('Na licença, a data de início deve ser anterior ao fim.');
+    licenca = { inicio: licencaIni, fim: licencaFim };
+  } else if (licencaIni || licencaFim) {
+    return showAlerta('Na licença, preencha ambas as datas de início e fim.');
+  }
+
+  var dados = {
+    membroId: membroId,
+    ferias: ferias,
+    abonos: abonos,
+    abonoAniversario: abonoAniversario,
+    licenca: licenca
+  };
+
+  btn.disabled = true; btn.innerText = 'A guardar...';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r.sucesso) {
+        feedbackBtn(btn,'✅ Salvo!','Confirmar',function(){ fecharModal('modal-ferias'); carregarFerias(); });
+      } else { btn.disabled = false; btn.innerText = 'Confirmar'; showAlerta(r.mensagem); }
+    })
+    .withFailureHandler(falha(btn,'Confirmar',null))
+    .salvarFerias(dados);
+}
+
+function excluirFeriasLocal(membroId) {
+  google.script.run
+    .withSuccessHandler(function(r) { if (r.sucesso) carregarFerias(); else showAlerta(r.mensagem); })
+    .withFailureHandler(function(e){ showAlerta(String(e)); })
+    .excluirFerias(membroId);
+}
+
+// ==========================================
+// ARQUIVAMENTO E HISTÓRICO
+// ==========================================
+var historicoFeriasCache = [];
+
+function carregarHistoricoFerias() {
+  $id('lista-ferias-hist').innerHTML = '<tr><td colspan="8" class="msg-empty">A carregar Histórico...</td></tr>';
+  google.script.run
+    .withFailureHandler(function(e){ showAlerta('Erro ao carregar histórico: ' + String(e)); })
+    .withSuccessHandler(function(logs) {
+      historicoFeriasCache = logs || [];
+      renderHistoricoFerias();
+    })
+    .getHistoricoAfastamentos();
+}
+
+function renderHistoricoFerias() {
+  var tbody = $id('lista-ferias-hist');
+  var dts = historicoFeriasCache.slice();
+  
+  // Sorting: Ano Descending, Membro Ascending
+  dts.sort(function(a, b) {
+    if (b.ano !== a.ano) return String(b.ano).localeCompare(String(a.ano));
+    return a.nome.localeCompare(b.nome, 'pt-BR', {sensitivity: 'base'});
+  });
+
+  if (!dts.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="msg-empty">Nenhum registro no histórico.</td></tr>';
+    return;
+  }
+
+  var fmtDMY = function(isoStr) {
+    if (!isoStr) return '';
+    var p = isoStr.split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : isoStr;
+  };
+
+  var processPer = function(txt) {
+    if (!txt) return '<span style="color:#94a3b8;font-size:12px;">—</span>';
+    return '<span style="display:inline-block; font-size:11px; color:#475569; padding:2px 0;">' + txt.split(' a ').map(fmtDMY).join(' a ') + '</span>';
+  };
+
+  tbody.innerHTML = dts.map(function(r) {
+    var absHTML = (r.abonos ? r.abonos.split(',').map(function(dt){
+      return '<span style="display:inline-block; margin-right:2px; font-size:11px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:1px 4px; color:#475569;">' + fmtDMY(dt.trim()) + '</span>';
+    }).join(' ') : '<span style="color:#94a3b8;font-size:12px;">—</span>');
+
+    return '<tr>' +
+      '<td style="font-weight:600; color:#334155;">' + esc(r.ano) + '</td>' +
+      '<td><div style="font-weight:600;font-size:13px;">' + esc(r.nome) + '</div><div style="font-size:11px;color:#64748b;">' + esc(r.cargo) + '</div></td>' +
+      '<td>' + processPer(r.f1) + '</td>' +
+      '<td>' + processPer(r.f2) + '</td>' +
+      '<td>' + processPer(r.f3) + '</td>' +
+      '<td>' + absHTML + '</td>' +
+      '<td>' + (r.niver ? '<span style="display:inline-block;font-size:11px;color:#475569;">' + fmtDMY(r.niver) + '</span>' : '<span style="color:#94a3b8;font-size:12px;">—</span>') + '</td>' +
+      '<td>' + processPer(r.licenca) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// Event Listeners for frontend UI
+document.addEventListener('DOMContentLoaded', function() {
+
+
+  document.body.addEventListener('click', function(e) {
+    if (e.target.closest('.arquivar-membro')) {
+      var btn = e.target.closest('.arquivar-membro');
+      var id = btn.getAttribute('data-membro-id');
+      var nome = btn.getAttribute('data-membro-nome');
+      if (confirm('Deseja arquivar todos os afastamentos ativos de ' + nome + ' para o histórico e limpar a planilha principal?')) {
+        btn.disabled = true;
+        google.script.run
+          .withSuccessHandler(function(r) {
+            btn.disabled = false;
+            if (r.sucesso) {
+              historicoFeriasCache = []; // force reload
+              showAlerta('✅ Afastamentos de ' + nome + ' arquivados com sucesso!');
+              var mem = state.members.find(function(x){ return String(x.id) === String(id); });
+              if (mem && mem.afastamentos) {
+                mem.afastamentos = { ferias: [], abonosFixos: [], abonoAniv: null, licenca: null };
+              }
+              carregarFerias(); 
+            } else { showAlerta(r.mensagem); }
+          })
+          .withFailureHandler(function(err){ btn.disabled = false; showAlerta('Erro: '+err); })
+          .arquivarAfastamentosGeral(new Date().getFullYear(), id);
+      }
+    }
+  });
+});
+</script>
+
+

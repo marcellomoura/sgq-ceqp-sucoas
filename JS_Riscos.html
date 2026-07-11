@@ -1,0 +1,473 @@
+<script>
+// ==========================================
+// MÓDULO 4 — RISCOS
+// ==========================================
+function renderMatriz() {
+  msgTabela('lista-riscos', 12, 'A carregar...');
+  for (let p=1;p<=5;p++) for(let i=1;i<=5;i++) { const el=$id(`cell-${p}-${i}`); if(el) el.innerHTML=''; }
+
+  state.risks.forEach((r, idx) => {
+    const cel = $id(`cell-${r.probabilidade}-${r.impacto}`);
+    if (cel) {
+      if (!cel.querySelector('.badge-cluster')) cel.innerHTML = '<div class="badge-cluster"></div>';
+      const b = document.createElement('span');
+      b.className = 'risk-badge'; b.textContent = 'R' + r.id; b.title = r.nome;
+      cel.querySelector('.badge-cluster').appendChild(b);
+    }
+  });
+
+  if (!state.risks.length) { msgTabela('lista-riscos', 12, 'Nenhum risco vigente mapeado.'); return; }
+  $id('lista-riscos').innerHTML = state.risks.map((r, i) => `<tr>
+    <td style="text-align:center;font-weight:700;color:#2563eb;">R${r.id}</td>
+    <td>${esc(r.macroetapa)}</td><td><span style="display:inline-block; font-weight:600; color:#1e293b; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; background:#f8fafc;">${esc(r.nome)}</span></td><td>${esc(r.causa)}</td>
+    <td>${esc(r.consequencia)}</td><td>${esc(r.categoria)}</td>
+    <td style="text-align:center;font-weight:700;">${r.probabilidade * r.impacto}</td>
+    <td style="text-align:center;">${badge(r.nivel)}</td>
+    <td>${esc(r.tipoTratamento)}</td><td>${esc(r.responsavel)}</td><td>${esc(r.planoAcao)}</td>
+    <td class="no-print"><div class="cell-actions" style="justify-content:center;">${iconBtn('edit','edit-risco','Editar',`data-idx="${i}"`)}${iconBtn('rev','rev-risco','Revisar',`data-idx="${i}"`)}${iconBtn('del','del-risco','Excluir',`data-idx="${i}"`)} </div></td>
+  </tr>`).join('');
+}
+
+function abrirModalMapearRisco() {
+  try {
+    ['r-macro','r-cat','r-nome','r-causa','r-conseq','r-trat','r-resp'].forEach(id => { const el = $id(id); if (el) el.value = ''; });
+    if ($id('r-prob')) $id('r-prob').value = '1';
+    if ($id('r-imp')) $id('r-imp').value = '1';
+    sincronizarSelectsUnidade();
+    abrirModal('modal-risco-novo');
+  } catch (err) {
+    console.error('Erro ao abrir modal de mapear risco:', err);
+    showAlerta('Não foi possível abrir o formulário: ' + (err.message || String(err)));
+  }
+}
+
+function salvarRisco() {
+  const btn = $id('btn-salvar-risco');
+  const dados = {
+    macroetapa: $id('r-macro').value, categoria: $id('r-cat').value,
+    nomeRisco: ($id('r-nome').value||'').trim(), causa: ($id('r-causa').value||'').trim(),
+    consequencia: ($id('r-conseq').value||'').trim(),
+    probabilidade: Number($id('r-prob').value), impacto: Number($id('r-imp').value),
+    tipoTratamento: $id('r-trat').value, responsavel: $id('r-resp').value
+  };
+  if (!dados.macroetapa || !dados.categoria || !dados.nomeRisco || !dados.causa || !dados.consequencia || !dados.tipoTratamento || !dados.responsavel) return showAlerta('Preencha todos os campos do risco.');
+  btn.disabled = true; btn.innerText = 'A guardar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn,'✅ Mapeado!','Salvar Risco',()=>{ fecharModal('modal-risco-novo'); recarregarResto(renderMatriz); });
+    else { btn.disabled=false; btn.innerText='Salvar Risco'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Salvar Risco',null)).salvarRisco(dados);
+}
+
+function abrirEditarRisco(idx) {
+  const r = state.risks[idx]; if(!r) return;
+  $id('er-id').value = r.id; $id('label-risco-editar').innerText = `Risco: R${r.id} — ${r.nome}`;
+  $id('er-macro').value = r.macroetapa; $id('er-cat').value = r.categoria;
+  $id('er-nome').value = r.nome; $id('er-causa').value = r.causa; $id('er-conseq').value = r.consequencia;
+  $id('er-prob').value = r.probabilidade; $id('er-imp').value = r.impacto;
+  $id('er-trat').value = r.tipoTratamento;
+  $id('er-resp').innerHTML = gerarOptsUnidades(true); $id('er-resp').value = r.responsavel;
+  abrirModal('modal-risco-editar');
+}
+function confirmarEdicaoRisco() {
+  const btn = $id('btn-confirmar-risco');
+  const dados = {
+    id: $id('er-id').value, macroetapa: $id('er-macro').value, categoria: $id('er-cat').value,
+    nome: $id('er-nome').value.trim(), causa: $id('er-causa').value.trim(), consequencia: $id('er-conseq').value.trim(),
+    probabilidade: Number($id('er-prob').value), impacto: Number($id('er-imp').value),
+    tipoTratamento: $id('er-trat').value, responsavel: $id('er-resp').value
+  };
+  if (!dados.nome || !dados.causa || !dados.consequencia) return showAlerta('Preencha os campos obrigatórios.');
+  btn.disabled = true; btn.innerText = 'A atualizar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-risco-editar'); recarregarResto(renderMatriz); });
+    else { btn.disabled=false; btn.innerText='Confirmar'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarRisco(dados);
+}
+
+function abrirRevisaoRisco(idx) {
+  const r = state.risks[idx]; if(!r) return;
+  $id('rr-id').value = r.id; $id('label-risco-revisao').innerText = `Risco: R${r.id} — ${r.nome}`;
+  $id('rr-data').value = new Date().toISOString().slice(0,10);
+  $id('rr-prob').value = r.probabilidade; $id('rr-imp').value = r.impacto;
+  $id('rr-trat').value = r.tipoTratamento;
+  $id('rr-resp').innerHTML = gerarOptsUnidades(true); $id('rr-resp').value = r.responsavel;
+  $id('rr-motivo').value = '';
+  abrirModal('modal-risco-revisao');
+}
+function publicarRevisaoRisco() {
+  const btn = $id('btn-publicar-risco');
+  const dados = {
+    id: $id('rr-id').value, data: $id('rr-data').value,
+    probabilidade: Number($id('rr-prob').value), impacto: Number($id('rr-imp').value),
+    tipoTratamento: $id('rr-trat').value, responsavel: $id('rr-resp').value,
+    motivo: $id('rr-motivo').value.trim()
+  };
+  if (!dados.motivo) return showAlerta('Informe a justificativa da revisão.');
+  btn.disabled = true; btn.innerText = 'A publicar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn,'✅ Publicado!','Publicar Revisão',()=>{ fecharModal('modal-risco-revisao'); recarregarResto(renderMatriz); });
+    else { btn.disabled=false; btn.innerText='Publicar Revisão'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Publicar Revisão',null)).salvarRevisaoRisco(dados);
+}
+function excluirRisco(id) {
+  google.script.run.withSuccessHandler(() => recarregarResto(renderMatriz))
+    .withFailureHandler(e => showAlerta(String(e))).excluirRisco(id);
+}
+
+// ==========================================
+// MÓDULO 4 — PLANOS DE AÇÃO (5W2H)
+// ==========================================
+function carregarRiscosLivres() {
+  const sel = $id('p-risco');
+  sel.innerHTML = '<option value="">A carregar riscos sem plano...</option>';
+  const idsComPlano = new Set(state.plans.map(p => p.riscoVinculado));
+  const livres = state.risks.filter(r => !idsComPlano.has('R' + r.id));
+  if (!livres.length) { sel.innerHTML = '<option value="">Nenhum risco sem plano de ação.</option>'; return; }
+  sel.innerHTML = '<option value="" disabled selected>Selecione o risco...</option>' +
+    livres.map(r => `<option value="R${r.id} - ${esc(r.nome)}">R${r.id} — ${esc(r.nome)}</option>`).join('');
+}
+
+function abrirModalNovoPlano() {
+  try {
+    ['p-risco','p-what','p-why','p-where','p-when','p-how','p-who'].forEach(id => { const el = $id(id); if (el) el.value = ''; });
+    const howmuch = $id('p-howmuch'); if (howmuch) howmuch.value = 'Sem custos';
+    sincronizarSelectsUnidade();
+    carregarRiscosLivres();
+    abrirModal('modal-plano-novo');
+  } catch (err) {
+    console.error('Erro ao abrir modal de novo plano:', err);
+    showAlerta('Não foi possível abrir o formulário de novo plano: ' + (err.message || String(err)));
+  }
+}
+
+function salvarPlano() {
+  const btn = $id('btn-salvar-plano');
+  const dados = {
+    riscoVinculado: $id('p-risco').value, what: ($id('p-what').value||'').trim(),
+    why: ($id('p-why').value||'').trim(), who: $id('p-who').value,
+    where: ($id('p-where').value||'').trim(), whenPrevisto: $id('p-when').value,
+    whenFinalizado: '', how: ($id('p-how').value||'').trim(),
+    howMuch: ($id('p-howmuch').value||'').trim()
+  };
+  if (!dados.riscoVinculado || !dados.what || !dados.why || !dados.who || !dados.where || !dados.whenPrevisto || !dados.how) return showAlerta('Preencha todos os campos do plano.');
+  btn.disabled = true; btn.innerText = 'A guardar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn,'✅ Registrado!','Salvar Plano de Ação',()=>{ fecharModal('modal-plano-novo'); recarregarResto(renderAcompanhamento); });
+    else { btn.disabled=false; btn.innerText='Salvar Plano de Ação'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Salvar Plano de Ação',null)).salvarPlano(dados);
+}
+
+function renderAcompanhamento() {
+  const ativos = state.plans.filter(p => p.status !== 'Arquivado');
+  $id('kpi-p-conc').innerText = ativos.filter(p=>p.status==='Concluído').length;
+  $id('kpi-p-and').innerText  = ativos.filter(p=>p.status==='Em Andamento').length;
+  $id('kpi-p-atr').innerText  = ativos.filter(p=>p.status==='Atrasado').length;
+
+  const fU = ($id('f-acomp-unidade')||{value:''}).value;
+  const fS = ($id('f-acomp-status') ||{value:''}).value;
+  const filtrados = ativos.filter(p => (!fU || p.who === fU) && (!fS || p.status === fS));
+  if (!filtrados.length) { msgTabela('lista-acomp', 12, 'Nenhum plano encontrado.'); return; }
+
+  $id('lista-acomp').innerHTML = filtrados.map((p, i) => {
+    const oi = state.plans.findIndex(x => x.riscoVinculado === p.riscoVinculado);
+    return `<tr>
+      <td style="font-weight:700;color:#2563eb;">${esc(p.riscoVinculado)}</td>
+      <td>${esc(p.what)}</td><td>${esc(p.why)}</td><td>${esc(p.who)}</td>
+      <td>${esc(p.where)}</td><td>${fmtBr(p.whenPrevisto)}</td><td>${fmtBr(p.whenFinalizado)}</td>
+      <td>${esc(p.how)}</td><td>${esc(p.howMuch)}</td>
+      <td style="text-align:center;">${badge(p.status)}</td>
+      <td class="no-print"><div class="cell-actions" style="justify-content:center;">${iconBtn('edit','edit-plano','Editar',`data-idx="${oi}"`)}${iconBtn('history','acomp-entregas','Acompanhamento',`data-idx="${oi}"`)}${iconBtn('archive','arquivar-plano','Arquivar',`data-idx="${oi}"`)}${iconBtn('del','del-plano','Excluir',`data-idx="${oi}"`)}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirEditarPlano(idx) {
+  const p = state.plans[idx]; if(!p) return;
+  $id('ep-risco').value = p.riscoVinculado; $id('label-plano-editar').innerText = `Risco: ${p.riscoVinculado}`;
+  $id('ep-what').value = p.what === '-' ? '' : p.what; $id('ep-why').value = p.why === '-' ? '' : p.why;
+  $id('ep-who').innerHTML = gerarOptsUnidades(true); $id('ep-who').value = p.who;
+  $id('ep-where').value = p.where === '-' ? '' : p.where;
+  $id('ep-when').value = p.whenPrevisto; $id('ep-fin').value = p.whenFinalizado;
+  $id('ep-how').value = p.how === '-' ? '' : p.how; $id('ep-cost').value = p.howMuch === '-' ? '' : p.howMuch;
+  $id('ep-cancel').value = p.cancelamento === '-' ? '' : p.cancelamento;
+  abrirModal('modal-plano-editar');
+}
+function confirmarEdicaoPlano() {
+  const btn = $id('btn-confirmar-plano');
+  const dados = {
+    riscoVinculado: $id('ep-risco').value, what: $id('ep-what').value.trim(),
+    why: $id('ep-why').value.trim(), who: $id('ep-who').value,
+    where: $id('ep-where').value.trim(), whenPrevisto: $id('ep-when').value,
+    whenFinalizado: $id('ep-fin').value, how: $id('ep-how').value.trim(),
+    howMuch: $id('ep-cost').value.trim(), cancelamento: $id('ep-cancel').value.trim()
+  };
+  if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios.');
+  btn.disabled = true; btn.innerText = 'A atualizar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-plano-editar'); recarregarResto(renderAcompanhamento); });
+    else { btn.disabled=false; btn.innerText='Confirmar'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarPlano(dados);
+}
+
+function abrirRevisaoPlano(idx) {
+  planoRevCtx = state.plans[idx]; if(!planoRevCtx) return;
+  $id('rev-plano-risco').innerText = planoRevCtx.riscoVinculado;
+  $id('rev-plano-what').innerText  = planoRevCtx.what;
+  $id('rev-plano-motivo').value = '';
+  abrirModal('modal-plano-revisao');
+}
+function confirmarRevisaoPlano() {
+  const btn = $id('btn-confirmar-rev-plano');
+  const motivo = $id('rev-plano-motivo').value.trim();
+  if (!motivo) return showAlerta('Informe a justificativa.');
+  const p = planoRevCtx;
+  const dados = { riscoVinculado: p.riscoVinculado, what: p.what, why: p.why, who: p.who, where: p.where, whenPrevisto: p.whenPrevisto, whenFinalizado: p.whenFinalizado, how: p.how, howMuch: p.howMuch, cancelamento: motivo };
+  btn.disabled = true; btn.innerText = 'A arquivar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn,'✅ Arquivado!','Arquivar',()=>{ fecharModal('modal-plano-revisao'); recarregarResto(renderAcompanhamento); });
+    else { btn.disabled=false; btn.innerText='Arquivar'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Arquivar',null)).atualizarPlano(dados);
+}
+function excluirPlano(riscoVinculado) {
+  google.script.run.withSuccessHandler(() => recarregarResto(renderAcompanhamento))
+    .withFailureHandler(e => showAlerta(String(e))).excluirPlano(riscoVinculado);
+}
+
+// ==========================================
+// MÓDULO 4 — CONTROLE DE ENTREGAS
+// ==========================================
+function renderEntregas() {
+  const fU = ($id('f-ent-unidade')||{value:''}).value;
+  const fS = ($id('f-ent-status') ||{value:''}).value;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  let html = '';
+
+  state.plans.filter(p => p.status !== 'Arquivado').forEach(plano => {
+    const global = (plano.who||'').toUpperCase().includes('TODAS');
+    const cobradas = global ? state.units.map(u => `${u.sigla} - ${u.unidade}`) : [plano.who];
+    let linhasPlano = '';
+
+    cobradas.forEach(unidade => {
+      if (fU && unidade !== fU) return;
+      const ent = state.deliveries.find(e => e.riscoVinculado === plano.riscoVinculado && e.unidade === unidade);
+      let status = 'Pendente';
+      if (ent && ent.entregue === 'Sim') status = 'Entregue';
+      else if (plano.whenPrevisto) {
+        const p = plano.whenPrevisto.split('-');
+        if (p.length === 3 && new Date(+p[0],+p[1]-1,+p[2]) < hoje) status = 'Atrasado';
+      }
+      if (fS && status !== fS) return;
+      const attrs = `data-risco="${esc(plano.riscoVinculado)}" data-unidade="${esc(unidade)}" data-what="${esc(plano.what)}"`;
+      const botoes = ent
+        ? `${iconBtn('edit','edit-entrega','Editar',attrs)}${iconBtn('del','del-entrega','Excluir',attrs)}`
+        : `<button class="btn btn-sm primary" data-acao="reg-entrega" ${attrs}>Registrar</button>`;
+      linhasPlano += `<tr>
+        <td>${esc(unidade)}</td>
+        <td style="text-align:center;">${ent ? fmtBr(ent.dataEntrega) : '-'}</td>
+        <td style="text-align:center;font-size:12px;">${ent ? esc(ent.processoSei) : '-'}</td>
+        <td style="text-align:center;">${badge(status)}</td>
+        <td><div class="cell-actions" style="justify-content:center;">${botoes}</div></td>
+      </tr>`;
+    });
+
+    if (linhasPlano) {
+      html += `<tr class="group-row"><td colspan="5">${esc(plano.riscoVinculado)} — ${esc(plano.what)} · Prazo: ${fmtBr(plano.whenPrevisto)}</td></tr>` + linhasPlano;
+    }
+  });
+
+  $id('lista-entregas').innerHTML = html || '<tr><td colspan="5" class="msg-empty">Nenhum plano pendente encontrado.</td></tr>';
+}
+
+function abrirModalEntrega(ctx) {
+  entregaCtx = ctx;
+  $id('ent-risco-hidden').value = ctx.risco; $id('ent-unidade-hidden').value = ctx.unidade;
+  $id('ent-risco').innerText = ctx.risco; $id('ent-what').innerText = ctx.what; $id('ent-unidade').innerText = ctx.unidade;
+  $id('ent-status').value = ''; $id('ent-evidencias').style.display = 'none';
+  $id('ent-data').value = ''; $id('ent-sei').value = ''; $id('ent-obs').value = '';
+  marcarChecklist('ent-tipos', '');
+  abrirModal('modal-entrega');
+}
+function salvarEntrega() {
+  const btn = $id('btn-confirmar-entrega');
+  const entregue = $id('ent-status').value;
+  if (!entregue) return showAlerta('Selecione o status da entrega.');
+  if (entregue === 'Sim' && !$id('ent-data').value) return showAlerta('Informe a data da entrega.');
+  const dados = {
+    riscoVinculado: $id('ent-risco-hidden').value, unidade: $id('ent-unidade-hidden').value,
+    entregue: entregue, dataEntrega: entregue === 'Sim' ? $id('ent-data').value : '',
+    tipoDoc: entregue === 'Sim' ? lerChecklist('ent-tipos') : '',
+    processoSei: entregue === 'Sim' ? $id('ent-sei').value.trim() : '',
+    justificativa: $id('ent-obs').value.trim()
+  };
+  btn.disabled = true; btn.innerText = 'A gravar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn,'✅ Gravado!','Confirmar e Gravar',()=>{ fecharModal('modal-entrega'); recarregarResto(renderEntregas); });
+    else { btn.disabled=false; btn.innerText='Confirmar e Gravar'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Confirmar e Gravar',null)).salvarEntrega(dados);
+}
+
+function abrirEditarEntrega(ctx) {
+  const ent = state.deliveries.find(e => e.riscoVinculado === ctx.risco && e.unidade === ctx.unidade);
+  if (!ent) { showAlerta('Registro não encontrado. Recarregue a página.'); return; }
+  $id('ee-risco-hidden').value = ctx.risco; $id('ee-unidade-hidden').value = ctx.unidade;
+  $id('ee-risco').innerText = ctx.risco; $id('ee-what').innerText = ctx.what; $id('ee-unidade').innerText = ctx.unidade;
+  $id('ee-status').value = ent.entregue;
+  $id('ee-evidencias').style.display = ent.entregue === 'Sim' ? 'block' : 'none';
+  $id('ee-data').value = ent.dataEntrega || '';
+  $id('ee-sei').value  = ent.processoSei === '-' ? '' : ent.processoSei;
+  $id('ee-obs').value  = ent.justificativa === '-' ? '' : ent.justificativa;
+  marcarChecklist('ee-tipos', ent.tipoDoc === '-' ? '' : ent.tipoDoc);
+  abrirModal('modal-entrega-editar');
+}
+function atualizarEntrega() {
+  const btn = $id('btn-confirmar-entrega-editar');
+  const entregue = $id('ee-status').value;
+  if (!entregue) return showAlerta('Selecione o status da entrega.');
+  if (entregue === 'Sim' && !$id('ee-data').value) return showAlerta('Informe a data da entrega.');
+  const dados = {
+    riscoVinculado: $id('ee-risco-hidden').value, unidade: $id('ee-unidade-hidden').value,
+    entregue: entregue, dataEntrega: entregue === 'Sim' ? $id('ee-data').value : '',
+    tipoDoc: entregue === 'Sim' ? lerChecklist('ee-tipos') : '',
+    processoSei: entregue === 'Sim' ? $id('ee-sei').value.trim() : '',
+    justificativa: $id('ee-obs').value.trim()
+  };
+  btn.disabled = true; btn.innerText = 'A atualizar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn,'✅ Atualizado!','Atualizar Registro',()=>{ fecharModal('modal-entrega-editar'); recarregarResto(renderEntregas); });
+    else { btn.disabled=false; btn.innerText='Atualizar Registro'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Atualizar Registro',null)).atualizarEntrega(dados);
+}
+function excluirEntrega(risco, unidade) {
+  google.script.run.withSuccessHandler(() => recarregarResto(renderEntregas))
+    .withFailureHandler(e => showAlerta(String(e))).excluirEntrega(risco, unidade);
+}
+
+// ==========================================
+// ACOMPANHAMENTO DE ENTREGAS (modal inline no Plano de Ação)
+// ==========================================
+var acompEntregasPlanoCtx = null;
+
+function abrirModalAcompEntregas(idx) {
+  const p = state.plans[idx]; if (!p) return;
+  const subcomissoes = state.units.filter(function(u) {
+    const n = u.unidade.toLowerCase();
+    return n.includes('subcomissão') || n.includes('subcomissao');
+  });
+
+  $id('acomp-ent-info').innerHTML =
+    '<strong>Risco:</strong> ' + esc(p.riscoVinculado) +
+    ' &nbsp;·&nbsp; <strong>Ação:</strong> ' + esc(p.what) +
+    ' &nbsp;·&nbsp; <strong>Prazo:</strong> ' + fmtBr(p.whenPrevisto);
+
+  if (!subcomissoes.length) {
+    $id('acomp-ent-lista').innerHTML =
+      '<p class="msg-empty">Nenhuma Subcomissão encontrada. ' +
+      'Cadastre unidades com "Subcomissão" no nome para acompanhar entregas aqui.</p>';
+    acompEntregasPlanoCtx = p;
+    abrirModal('modal-acomp-entregas');
+    return;
+  }
+
+  acompEntregasPlanoCtx = p;
+
+  $id('acomp-ent-lista').innerHTML = subcomissoes.map(function(u, i) {
+    const chave = u.sigla ? (u.sigla + ' - ' + u.unidade) : u.unidade;
+    const ent = state.deliveries.find(function(e) {
+      return e.riscoVinculado === p.riscoVinculado && e.unidade === chave;
+    });
+    const entregue = ent ? ent.entregue : '';
+    const sei      = ent && ent.processoSei && ent.processoSei !== '-' ? ent.processoSei : '';
+    const dataEnt  = ent && ent.dataEntrega ? ent.dataEntrega : '';
+    const rowClass = entregue === 'Sim' ? 'entregue' : (entregue === 'Não' ? 'pendente' : '');
+    const selClass = rowClass ? (' ' + rowClass) : '';
+    return (
+      '<div class="acomp-ent-row ' + rowClass + '" data-unidade="' + chave + '" style="display:flex; align-items:center; gap:16px; flex-wrap:nowrap;">' +
+        '<div class="acomp-unit-info" style="flex:1; min-width:200px;">' +
+          '<div class="acomp-unit-sigla">' + esc(u.sigla || '') + '</div>' +
+          '<div class="acomp-unit-nome" style="white-space:normal; line-height:1.2; margin-top:2px;">' + esc(u.unidade) + '</div>' +
+        '</div>' +
+        '<div class="acomp-status-wrap" style="width:160px; flex-shrink:0;">' +
+          '<select class="acomp-status-select acomp-status' + selClass + '" data-row="' + i + '" style="width:100%;">' +
+            '<option value=""' + (!entregue ? ' selected' : '') + '>— Selecione —</option>' +
+            '<option value="Sim"' + (entregue === 'Sim' ? ' selected' : '') + '>Sim — Entregue</option>' +
+            '<option value="Não"' + (entregue === 'Não' ? ' selected' : '') + '>Não — Pendente</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="acomp-sei-wrap" style="display:' + (entregue === 'Sim' ? 'flex' : 'none') + '; align-items:center; gap:12px; flex-shrink:0;">' +
+          '<div class="acomp-field-group">' +
+            '<span class="acomp-field-label">Data de Entrega</span>' +
+            '<input type="date" class="acomp-data" value="' + esc(dataEnt) + '" style="width:130px; height:32px; padding:0 8px;">' +
+          '</div>' +
+          '<div class="acomp-field-group">' +
+            '<span class="acomp-field-label">Nº Processo SEI <span style="color:#dc2626;">*</span></span>' +
+            '<input type="text" class="acomp-sei" placeholder="Ex: 00060-000..." value="' + esc(sei) + '" style="width:150px; height:32px; padding:0 8px;">' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join('');
+
+  // Atualizar visual e mostrar/ocultar campos SEI ao mudar status
+  $id('acomp-ent-lista').querySelectorAll('.acomp-status').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      const row  = this.closest('.acomp-ent-row');
+      const wrap = row.querySelector('.acomp-sei-wrap');
+      wrap.style.display = this.value === 'Sim' ? 'flex' : 'none';
+      row.classList.remove('entregue', 'pendente');
+      this.classList.remove('entregue', 'pendente');
+      if (this.value === 'Sim')      { row.classList.add('entregue'); this.classList.add('entregue'); }
+      else if (this.value === 'Não') { row.classList.add('pendente'); this.classList.add('pendente'); }
+    });
+  });
+
+  abrirModal('modal-acomp-entregas');
+}
+
+function salvarAcompEntregas() {
+  const btn = $id('btn-salvar-acomp-entregas');
+  const p = acompEntregasPlanoCtx; if (!p) return;
+
+  const rows = $id('acomp-ent-lista').querySelectorAll('.acomp-ent-row');
+  const entregas = [];
+  let valido = true;
+
+  rows.forEach(function(row) {
+    const unidade  = row.dataset.unidade;
+    const status   = row.querySelector('.acomp-status').value;
+    const sei      = row.querySelector('.acomp-sei').value.trim();
+    const dataEnt  = row.querySelector('.acomp-data').value;
+
+    if (!status) return; // linha sem seleção — ignora
+
+    if (status === 'Sim' && !sei) {
+      showAlerta('Informe o número SEI para: ' + unidade);
+      valido = false;
+      return;
+    }
+
+    entregas.push({
+      unidade:      unidade,
+      entregue:     status,
+      dataEntrega:  status === 'Sim' ? (dataEnt || new Date().toISOString().split('T')[0]) : '',
+      processoSei:  status === 'Sim' ? sei : '',
+      tipoDoc:      '',
+      justificativa:''
+    });
+  });
+
+  if (!valido) return;
+  if (!entregas.length) { fecharModal('modal-acomp-entregas'); return; }
+
+  btn.disabled = true; btn.innerText = 'A gravar...';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Registros', function() {
+        fecharModal('modal-acomp-entregas');
+        recarregarResto(renderAcompanhamento);
+      });
+      else { btn.disabled = false; btn.innerText = 'Salvar Registros'; showAlerta(r.mensagem); }
+    })
+    .withFailureHandler(falha(btn, 'Salvar Registros', null))
+    .salvarEntregasEmLote(p.riscoVinculado, entregas);
+}
+</script>

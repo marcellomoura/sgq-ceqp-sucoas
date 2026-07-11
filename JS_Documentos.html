@@ -1,0 +1,157 @@
+<script>
+// ==========================================
+// MÓDULO 3 — DOCUMENTOS
+// ==========================================
+function renderDocumentos(modo) {
+  const tbodyId = modo === 'mestra' ? 'lista-mestra' : 'lista-revisoes';
+  const cols     = modo === 'mestra' ? 12 : 10;
+  msgTabela(tbodyId, cols, 'A carregar...');
+
+  const fU = ($id('f-doc-unidade') || {value:''}).value;
+  const fT = ($id('f-doc-tipo')    || {value:''}).value;
+  const fS = ($id('f-doc-status')  || {value:''}).value;
+  const fR = ($id('f-rev-unidade') || {value:''}).value;
+
+  const filtrados = state.docs.filter(d => {
+    if (modo === 'mestra') {
+      if (!['Vigente','Vencido','Próximo da Revisão','Em Elaboração'].includes(d.status)) return false;
+      return (!fU || d.responsavel === fU) && (!fT || d.tipo === fT) && (!fS || d.status === fS);
+    }
+    if (d.status !== 'Obsoleto') return false;
+    return !fR || d.responsavel === fR;
+  }).sort((a, b) => {
+    const rA = (a.responsavel||'').toUpperCase(), rB = (b.responsavel||'').toUpperCase();
+    return rA !== rB ? (rA < rB ? -1 : 1) : (a.codigo||'').localeCompare(b.codigo||'');
+  });
+
+  if (modo === 'mestra') {
+    let tot=0, vig=0, prox=0, ven=0, elab=0;
+    state.docs.forEach(d => {
+      if (['Vigente','Vencido','Próximo da Revisão','Em Elaboração'].includes(d.status)) {
+        tot++;
+        if (d.status==='Vigente') vig++;
+        else if (d.status==='Próximo da Revisão') prox++;
+        else if (d.status==='Em Elaboração') elab++;
+        else ven++;
+      }
+    });
+    ['kpi-d-total','kpi-d-vig','kpi-d-prox','kpi-d-ven','kpi-d-elab'].forEach((id,i)=>{ const el=$id(id); if(el) el.innerText=[tot,vig,prox,ven,elab][i]; });
+  }
+
+  if (!filtrados.length) { msgTabela(tbodyId, cols, 'Nenhum documento encontrado.'); return; }
+
+  // Encontra o índice original do doc em state.docs para ações
+  const docOrigIdx = d => state.docs.findIndex(x => x.idRow === d.idRow);
+
+  $id(tbodyId).innerHTML = filtrados.map(d => {
+    const oi = docOrigIdx(d);
+    const aux = [linkA(d.docAuxiliar,'Anexo 1','#64748b'), linkA(d.docAuxiliar2,'Anexo 2','#64748b')].filter(x=>x!=='-').join('<br>') || '-';
+    const base = `<td style="font-weight:700; white-space:nowrap;">${esc(d.codigo)}</td><td style="text-align:center;">v${esc(d.versao)}</td><td>${esc(d.tipo)}</td><td><span style="display:inline-block; font-weight:600; color:#1e293b; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; background:#f8fafc;">${esc(d.titulo)}</span></td><td>${esc(d.responsavel)}</td><td>${fmtBr(d.dataAprovacao)}</td>`;
+    if (modo === 'mestra') return `<tr>${base}
+      <td>${fmtBr(d.proximaRevisao)}</td>
+      <td style="text-align:center;">${linkA(d.linkDoc,'Visualizar')}</td>
+      <td style="text-align:center;">${aux}</td>
+      <td style="font-size:12px;">${esc(d.motivo)}</td>
+      <td style="text-align:center;">${badge(d.status)}</td>
+      <td><div class="cell-actions" style="justify-content:center;">${iconBtn('edit','edit-doc','Editar',`data-idx="${oi}"`)}${iconBtn('rev','rev-doc','Nova Revisão',`data-idx="${oi}"`)}${iconBtn('del','del-doc','Excluir',`data-idx="${oi}"`)} </div></td>
+    </tr>`;
+    return `<tr>${base}
+      <td style="text-align:center;">${linkA(d.linkDoc,'Visualizar')}</td>
+      <td style="text-align:center;">${aux}</td>
+      <td style="font-size:12px;">${esc(d.motivo)}</td>
+      <td style="text-align:center;">${badge('Obsoleto')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirModalNovoDocumento() {
+  try {
+    ['d-tipo','d-titulo','d-data-aprov','d-link','d-link-aux1','d-link-aux2','d-resp'].forEach(id => { const el = $id(id); if (el) el.value = ''; });
+    sincronizarSelectsUnidade();
+    abrirModal('modal-doc-novo');
+  } catch (err) {
+    console.error('Erro ao abrir modal de novo documento:', err);
+    showAlerta('Não foi possível abrir o formulário: ' + (err.message || String(err)));
+  }
+}
+
+function salvarDocumento() {
+  const btn = $id('btn-salvar-doc');
+  const respSel = $id('d-resp').value;
+  const respObj = state.units.find(u => `${u.sigla} - ${u.unidade}` === respSel);
+  const dados = {
+    tipo: $id('d-tipo').value, titulo: ($id('d-titulo').value||'').trim(),
+    dataAprovacao: $id('d-data-aprov').value, responsavel: respSel,
+    email: respObj ? respObj.email : '',
+    linkDoc: ($id('d-link').value||'').trim(),
+    docAuxiliar: ($id('d-link-aux1').value||'').trim(),
+    docAuxiliar2: ($id('d-link-aux2').value||'').trim()
+  };
+  if (!dados.tipo || !dados.titulo || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha todos os campos obrigatórios.');
+  btn.disabled = true; btn.innerText = 'A guardar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Documento', () => { fecharModal('modal-doc-novo'); recarregarResto(() => renderDocumentos('mestra')); });
+    else { btn.disabled=false; btn.innerText='Salvar Documento'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Salvar Documento',null)).salvarDocumento(dados);
+}
+
+function abrirEditarDoc(idx) {
+  const d = state.docs[idx]; if(!d) return;
+  $id('ed-idrow').value = d.idRow; $id('ed-codigo').value = d.codigo;
+  $id('ed-cod-display').value = d.codigo; $id('ed-versao-display').value = 'v' + d.versao;
+  $id('ed-tipo').value = d.tipo; $id('ed-titulo').value = d.titulo;
+  $id('ed-resp').innerHTML = gerarOptsUnidades(false); $id('ed-resp').value = d.responsavel;
+  $id('ed-data').value = d.dataAprovacao; $id('ed-link').value = d.linkDoc;
+  $id('ed-aux1').value = d.docAuxiliar; $id('ed-aux2').value = d.docAuxiliar2;
+  abrirModal('modal-doc-editar');
+}
+function confirmarEdicaoDoc() {
+  const btn = $id('btn-confirmar-doc');
+  const respSel = $id('ed-resp').value;
+  const respObj = state.units.find(u => `${u.sigla} - ${u.unidade}` === respSel);
+  const dados = {
+    idRow: $id('ed-idrow').value, codigo: $id('ed-codigo').value,
+    tipo: $id('ed-tipo').value, titulo: $id('ed-titulo').value.trim(),
+    dataAprovacao: $id('ed-data').value, responsavel: respSel,
+    email: respObj ? respObj.email : '',
+    linkDoc: $id('ed-link').value.trim(),
+    docAuxiliar: $id('ed-aux1').value.trim(),
+    docAuxiliar2: $id('ed-aux2').value.trim()
+  };
+  if (!dados.titulo || !dados.dataAprovacao || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha os campos obrigatórios.');
+  btn.disabled = true; btn.innerText = 'A atualizar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-doc-editar'); recarregarResto(()=>renderDocumentos('mestra')); });
+    else { btn.disabled=false; btn.innerText='Confirmar'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarDocumento(dados);
+}
+
+function abrirRevisaoDoc(idx) {
+  const d = state.docs[idx]; if(!d) return;
+  $id('rev-doc-idrow').value = d.idRow; $id('rev-doc-versao-hidden').value = d.versao;
+  $id('rev-doc-cod').innerText = d.codigo; $id('rev-doc-titulo').innerText = d.titulo; $id('rev-doc-versao').innerText = d.versao;
+  $id('rev-doc-data').value = ''; $id('rev-doc-motivo').value = '';
+  $id('rev-doc-link').value = d.linkDoc; $id('rev-doc-aux1').value = d.docAuxiliar; $id('rev-doc-aux2').value = d.docAuxiliar2;
+  abrirModal('modal-doc-revisao');
+}
+function publicarRevisaoDoc() {
+  const btn = $id('btn-publicar-doc');
+  const dados = {
+    idRow: $id('rev-doc-idrow').value, versaoAtual: $id('rev-doc-versao-hidden').value,
+    dataAprovacao: $id('rev-doc-data').value, motivo: $id('rev-doc-motivo').value.trim(),
+    linkDoc: $id('rev-doc-link').value.trim(),
+    docAuxiliar: $id('rev-doc-aux1').value.trim(),
+    docAuxiliar2: $id('rev-doc-aux2').value.trim()
+  };
+  if (!dados.dataAprovacao || !dados.motivo || !dados.linkDoc) return showAlerta('Informe a nova data de aprovação, a descrição e o link.');
+  btn.disabled = true; btn.innerText = 'A publicar...';
+  google.script.run.withSuccessHandler(r => {
+    if (r.sucesso) feedbackBtn(btn,'✅ Publicado!','Publicar Revisão',()=>{ fecharModal('modal-doc-revisao'); recarregarResto(()=>renderDocumentos('mestra')); });
+    else { btn.disabled=false; btn.innerText='Publicar Revisão'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Publicar Revisão',null)).salvarRevisaoDocumento(dados);
+}
+function excluirDoc(idRow, codigo) {
+  google.script.run.withSuccessHandler(r => { if(r.sucesso) recarregarResto(()=>renderDocumentos('mestra')); else showAlerta(r.mensagem); })
+    .withFailureHandler(e=>showAlerta(String(e))).excluirDocumento(idRow, codigo);
+}
+</script>

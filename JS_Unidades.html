@@ -1,0 +1,52 @@
+<script>
+// ==========================================
+// MÓDULO 2 — UNIDADES
+// ==========================================
+function renderUnidades() {
+  const tbody = $id('lista-unidades');
+  const units = Array.isArray(state.units) ? state.units : [];
+  if (!units.length) { tbody.innerHTML = '<tr><td colspan="4" class="msg-empty">Nenhuma unidade cadastrada.</td></tr>'; return; }
+  const ordenadas = units
+    .map((u, i) => ({ u, i }))
+    .sort((a, b) => a.u.unidade.localeCompare(b.u.unidade, 'pt-BR', { sensitivity: 'base' }));
+  tbody.innerHTML = ordenadas.map(({u, i}) => `<tr>
+    <td style="font-weight:700;color:#2563eb;padding-right:6px;">${esc(u.sigla)}</td>
+    <td style="padding-left:6px; font-size:12px;">${esc(u.unidade)}</td>
+    <td style="color:#64748b;">${esc(u.email)}</td>
+    <td><div class="cell-actions" style="justify-content:center;">
+      ${iconBtn('edit','edit-unidade','Editar',`data-idx="${i}"`)}
+      ${iconBtn('del','del-unidade','Excluir',`data-idx="${i}"`)}
+    </div></td>
+  </tr>`).join('');
+}
+
+function abrirModalUnidade() {
+  $id('eu-id').value = ''; $id('eu-nome').value = ''; $id('eu-sigla').value = ''; $id('eu-email').value = '';
+  $id('modal-unidade-title').innerText = 'Nova Unidade';
+  abrirModal('modal-unidade');
+}
+function abrirEditarUnidade(u) {
+  $id('eu-id').value = u.id; $id('eu-nome').value = u.unidade; $id('eu-sigla').value = u.sigla; $id('eu-email').value = u.email;
+  $id('modal-unidade-title').innerText = 'Editar Unidade';
+  abrirModal('modal-unidade');
+}
+function confirmarUnidade() {
+  const btn = $id('btn-confirmar-unidade');
+  const id = $id('eu-id').value;
+  const dados = { id: id, unidade: $id('eu-nome').value.trim(), sigla: $id('eu-sigla').value.trim(), email: $id('eu-email').value.trim() };
+  if (!dados.unidade || !dados.sigla || !dados.email) return showAlerta('Preencha todos os campos.');
+  btn.disabled = true; btn.innerText = id ? 'A atualizar...' : 'A guardar...';
+  const chamada = id
+    ? google.script.run.withSuccessHandler(tratarRespostaUnidade).withFailureHandler(falha(btn, 'Confirmar', null)).atualizarUnidade(dados)
+    : google.script.run.withSuccessHandler(tratarRespostaUnidade).withFailureHandler(falha(btn, 'Confirmar', null)).salvarUnidade(dados);
+
+  function tratarRespostaUnidade(r) {
+    if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Confirmar', () => { fecharModal('modal-unidade'); recarregarResto(renderUnidades); });
+    else { btn.disabled = false; btn.innerText = 'Confirmar'; showAlerta(r.mensagem); }
+  }
+}
+function excluirUnidade(id) {
+  google.script.run.withSuccessHandler(() => recarregarResto(renderUnidades))
+    .withFailureHandler(e => showAlerta(String(e))).excluirUnidade(id);
+}
+</script>
