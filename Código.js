@@ -9,7 +9,14 @@ const SHEET_RISKS    = 'Riscos';
 const SHEET_PLANS    = 'Planos_Acao';
 const SHEET_DELIVERY = 'Entregas_Acoes';
 const SHEET_LOGS     = 'Logs';
-const SHEET_AFAST_HIST = 'Historico_Afast';
+const SHEET_AFASTAMENTOS = 'Afastamentos';
+
+// Layouts de colunas usados em vários pontos (setup, leitura e escrita).
+// Uma única fonte de verdade evita que uma migração futura esqueça algum lugar.
+const CABECALHOS_MEMBROS = ['ID','Nome','Cargo','Email Funcional','Dias Semana','Dia Presencial','E-mail Pessoal'];
+// Uma linha por (Membro + Ano) — permite manter vários anos abertos ao
+// mesmo tempo sem perder histórico (ver Modulo_Pessoas.js).
+const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio'];
 
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
@@ -72,6 +79,23 @@ function getNowTimestamp() {
   return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
 }
 
+// E-mail do usuário ativo, com fallback seguro (contas sem permissão de
+// leitura do e-mail lançam exceção — nesses casos registra como 'Sistema').
+function usuarioAtual_() {
+  try { return Session.getActiveUser().getEmail() || 'Sistema'; } catch (e) { return 'Sistema'; }
+}
+
+// Converte datas vindas da planilha para 'yyyy-MM-dd'; strings passam
+// apenas por trim. Usada por todo o módulo de Pessoas/Afastamentos.
+function dataParaISO_(val) {
+  if (Object.prototype.toString.call(val) === '[object Date]') {
+    return val.getFullYear() + '-' +
+      String(val.getMonth() + 1).padStart(2, '0') + '-' +
+      String(val.getDate()).padStart(2, '0');
+  }
+  return String(val || '').trim();
+}
+
 function getNextId(sheetName, prefixo) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
   if (!sheet || sheet.getLastRow() <= 1) return prefixo + '1';
@@ -105,16 +129,20 @@ function calcularProximaRevisao(dataStr) {
 function registrarLog(acao, ref, detalhe) {
   try {
     const aba = conectarAba(SHEET_LOGS, ['Data/Hora','Usuário','Ação','Referência','Detalhes']);
-    let usr = 'Sistema';
-    try { usr = Session.getActiveUser().getEmail() || usr; } catch(e) {}
-    aba.appendRow([new Date(), usr, acao, ref, detalhe]);
+    aba.appendRow([new Date(), usuarioAtual_(), acao, ref, detalhe]);
   } catch(e) { console.error('Log falhou: ' + e); }
 }
 
 function setupDatabaseKanban() {
   conectarAba(SHEET_TASKS,    ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado']);
-  const abaMembros = conectarAba(SHEET_MEMBERS,  ['ID','Nome','Cargo','Email Funcional','Dias Semana','Dia Presencial','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio', 'E-mail Pessoal']);
-  abaMembros.getRange(1, 1, 1, 13).setValues([['ID','Nome','Cargo','Email Funcional','Dias Semana','Dia Presencial','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio', 'E-mail Pessoal']]).setFontWeight('bold').setBackground('#f1f5f9');
+  const abaMembros = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
+  // Corrige o texto do cabeçalho apenas se estiver divergente — evita uma
+  // escrita na planilha a cada carregamento do sistema.
+  const atual = abaMembros.getRange(1, 1, 1, CABECALHOS_MEMBROS.length).getValues()[0];
+  if (atual.some((v, i) => String(v) !== CABECALHOS_MEMBROS[i])) {
+    abaMembros.getRange(1, 1, 1, CABECALHOS_MEMBROS.length)
+      .setValues([CABECALHOS_MEMBROS]).setFontWeight('bold').setBackground('#f1f5f9');
+  }
 }
 
 function setupDatabaseResto() {
@@ -125,7 +153,6 @@ function setupDatabaseResto() {
   conectarAba(SHEET_PLANS,    ['Data Registro','ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Motivo Cancelamento','Versão']);
   conectarAba(SHEET_DELIVERY, ['Data Registo','Risco Vinculado','Unidade','Status','Data Entrega','Tipo Doc','SEI','Obs','Usuário','Status Sistema']);
   conectarAba(SHEET_LOGS,     ['Data/Hora','Usuário','Ação','Referência','Detalhes']);
-  conectarAba(SHEET_AFAST_HIST, ['Ano', 'Nome', 'Cargo', 'Férias 1', 'Férias 2', 'Férias 3', 'Abonos Fixos', 'Abono Aniversário', 'Licença Servidor/Prêmio']);
 }
 
 // Migração única e segura: se a aba Documentos já existir de uma versão
@@ -217,28 +244,13 @@ function getKanbanData() {
 }
 
 function getKanbanData_members_() {
-  const mData = conectarAba(SHEET_MEMBERS, ['ID','Nome','Cargo','Email Funcional','Dias Semana','Dia Presencial','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio','E-mail Pessoal']).getDataRange().getValues();
-  
-  const formatarData = function(val) {
-    if (Object.prototype.toString.call(val) === '[object Date]') {
-      let yyyy = val.getFullYear(); let mm = String(val.getMonth() + 1).padStart(2, '0'); let dd = String(val.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    }
-    return String(val || '').trim();
-  };
-
-  const parsePeriod = (str) => {
-    if (!str) return null;
-    const pts = str.split(' a ');
-    if (pts.length >= 2) return { inicio: pts[0].trim(), fim: pts[1].trim() };
-    return { inicio: str.trim(), fim: str.trim() }; // fallback if ' a ' is missing
-  };
+  const mData = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS).getDataRange().getValues();
 
   return mData.length > 1 ? mData.slice(1).map(r => {
     let rawDias = String(r[4] || '').trim();
     let diasSemana = [];
     let horarios = {};
-    
+
     if (rawDias.startsWith('[')) {
        try { diasSemana = JSON.parse(rawDias); if (!Array.isArray(diasSemana)) diasSemana = []; } catch(e) {}
     } else if (rawDias) {
@@ -249,24 +261,10 @@ function getKanbanData_members_() {
        });
     }
 
-    // Processamento de Afastamentos
-    let p1 = String(r[6] || '').trim(), p2 = String(r[7] || '').trim(), p3 = String(r[8] || '').trim();
-    let abs = String(r[9] || '').trim(), niver = formatarData(r[10]), lic = String(r[11] || '').trim();
-    
-    let ferias = [];
-    if (p1) ferias.push(parsePeriod(p1)); if (p2) ferias.push(parsePeriod(p2)); if (p3) ferias.push(parsePeriod(p3));
-    let abonosArr = abs ? abs.split(',').map(s => s.trim()).filter(x => x) : [];
-
     return {
-      id: String(r[0]), name: String(r[1]), role: String(r[2]), email: String(r[3]||''), emailPessoal: String(r[12]||''),
+      id: String(r[0]), name: String(r[1]), role: String(r[2]), email: String(r[3]||''), emailPessoal: String(r[6]||''),
       diasSemana: diasSemana, diaPresencial: String(r[5]||''),
-      horarios: horarios,
-      afastamentos: {
-        ferias: ferias,
-        abonosFixos: abonosArr,
-        abonoAniv: niver ? { inicio: niver, fim: niver } : null,
-        licenca: parsePeriod(lic)
-      }
+      horarios: horarios
     };
   }) : [];
 }
@@ -391,7 +389,7 @@ function getAppData() {
 // Retorna só os N registros mais recentes para não pesar com o tempo.
 // ==========================================
 function buscarLogs() {
-  const LIMITE_REGISTROS = 300;
+  const LIMITE_REGISTROS = 20;
   const aba = conectarAba(SHEET_LOGS, ['Data/Hora','Usuário','Ação','Referência','Detalhes']);
   const dados = aba.getDataRange().getValues();
   if (dados.length <= 1) return [];
@@ -412,4 +410,38 @@ function buscarLogs() {
   return linhas.slice(0, LIMITE_REGISTROS).map(l => ({
     dataHora: l.dataHora, usuario: l.usuario, acao: l.acao, referencia: l.referencia, detalhes: l.detalhes
   }));
+}
+
+// ==========================================
+// GERAÇÃO DE PDF
+// O PDF é montado no servidor a partir de um HTML de impressão dedicado
+// (montado no cliente com os dados já carregados na tela, sem tocar na
+// página visível — não há "flash" nem captura de tela). A conversão usa o
+// serviço nativo do Apps Script (Utilities/Blob), não uma biblioteca de
+// terceiros — mais leve e sem os cortes/páginas em branco que a captura
+// via html2canvas causava.
+// ==========================================
+function gerarPdfDeHtml(htmlContent, nomeArquivo) {
+  try {
+    const blob = Utilities.newBlob(htmlContent, MimeType.HTML, 'relatorio.html');
+    const pdf = blob.getAs(MimeType.PDF).setName(nomeArquivo);
+    return { sucesso: true, base64: Utilities.base64Encode(pdf.getBytes()) };
+  } catch (e) { return { sucesso: false, mensagem: e.toString() }; }
+}
+
+function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
+  try {
+    if (!destinatario || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario.trim()))
+      return { sucesso: false, mensagem: 'E-mail do destinatário inválido.' };
+    const blob = Utilities.newBlob(htmlContent, MimeType.HTML, 'relatorio.html');
+    const pdf = blob.getAs(MimeType.PDF).setName(nomeArquivo);
+    MailApp.sendEmail({
+      to: destinatario.trim(),
+      subject: 'SGQ · ' + (titulo || 'Relatório') + ' | CEQP / SUCOAS - SES/DF',
+      body: 'Segue em anexo o relatório gerado pelo Sistema de Gestão da Qualidade.\n\nEnvio automático — não responda.',
+      attachments: [pdf]
+    });
+    registrarLog('Envio de PDF', titulo || 'Relatório', 'Destinatário: ' + destinatario);
+    return { sucesso: true, mensagem: 'Relatório enviado com sucesso!' };
+  } catch (e) { return { sucesso: false, mensagem: e.toString() }; }
 }

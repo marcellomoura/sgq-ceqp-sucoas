@@ -8,7 +8,11 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
   <script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.0/DragDropTouch.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+  <!-- Só a captura de elemento (não o pacote html2pdf/jsPDF completo, removido
+       por ser pesado) — usada apenas para a Matriz de Risco no PDF, para
+       reaproveitar a imagem exata da tela (cores, fonte, badges) em vez de
+       redesenhar, já que o conversor de PDF do Apps Script não pinta fundo. -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
   <?!= include('CSS'); ?>
 </head>
 <body>
@@ -19,7 +23,7 @@
     <div class="sidebar-brand">
       <div class="sidebar-brand-icon">SGQ</div>
       <div class="sidebar-brand-text">
-        <div class="sidebar-brand-name">Gestão da Qualidade</div>
+        <div class="sidebar-brand-name">Sistema de Gestão da Qualidade</div>
         <div class="sidebar-brand-sub">CEQP · SUCOAS · SES/DF</div>
       </div>
     </div>
@@ -83,23 +87,17 @@
       <!-- Módulo 5: Rastreabilidade -->
       <button class="nav-group-title" data-group="g-auditoria">
         <span class="nav-group-icon"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg></span>
-        <span class="nav-group-label">Rastreabilidade</span>
+        <span class="nav-group-label">Monitoramento</span>
         <span class="arrow">▼</span>
       </button>
       <div class="nav-group-items" id="g-auditoria">
-        <button class="menu-item" data-tab="logs"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>Histórico de Atividades</button>
+        <button class="menu-item" data-tab="logs"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>Atividades</button>
       </div>
     </nav>
   </aside>
 
   <!-- ===== CONTEÚDO PRINCIPAL ===== -->
   <div class="main-content">
-
-    <!-- Header do sistema — começa após a coluna do menu -->
-    <header class="top-header no-print">
-      <div class="top-header-title">Sistema de Gestão da Qualidade</div>
-      <div class="top-header-sub">Comissão Especial de Qualidade e Padronização · CEQP | SUCOAS - SES/DF</div>
-    </header>
 
     <!-- Page Header: título da aba + filtros/ações — tudo junto, à
          esquerda, no mesmo padrão em todas as telas. Cada aba tem seu
@@ -188,7 +186,8 @@
       </div>
 
       <div class="hdr-tab-controls" id="hdr-plano-acomp" style="flex-direction: column; align-items: flex-end; gap: 8px;">
-        <div style="display: flex; gap: 10px;">
+        <button class="btn primary" id="btn-novo-plano" type="button">+ Novo Plano de Ação</button>
+        <div style="display: flex; align-items: center; gap: 10px;">
           <button class="btn-pdf" id="btn-pdf-acomp" type="button">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Baixar PDF
@@ -197,9 +196,6 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             Enviar por E-mail
           </button>
-          <button class="btn primary" id="btn-novo-plano" type="button">+ Novo Plano de Ação</button>
-        </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
           <label>Unidade:</label>
           <select id="f-acomp-unidade" class="hdr-select"><option value="">Todas</option></select>
           <label>Status:</label>
@@ -285,6 +281,7 @@
           <div><div class="kpi-label">Afastados Agora</div><div class="kpi-value" id="kpi-f-agora" style="color:#2563eb;">0</div></div>
         </div>
       </div>
+      <div class="ano-tabs-wrap" id="ferias-ano-tabs"></div>
       <div id="wrapper-ferias-active">
         <div class="table-wrap">
           <table class="data-table">
@@ -454,7 +451,6 @@
 
     <!-- ======================== MÓDULO 5: LOG DE ALTERAÇÕES ======================== -->
     <section id="view-logs" class="view-section compact-view">
-      <p style="font-size:13px; color:#64748b; margin-bottom:10px;">Rastreia cada criação, edição e exclusão realizada no sistema, identificando o usuário responsável e o momento da operação. Exibe os 300 registros mais recentes, sempre com os dados mais atualizados.</p>
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th style="width:130px;">Data/Hora</th><th style="width:180px;">Usuário</th><th style="width:170px;">Ação</th><th style="width:130px;">Referência</th><th>Detalhes</th></tr></thead>
@@ -889,13 +885,9 @@
 <div id="modal-ferias" class="modal-overlay">
   <div class="modal-box" style="max-width: 600px;">
     <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-ferias" aria-label="Fechar">&times;</button></div>
-    <h3 class="modal-title" id="modal-ferias-title">Gerenciar Afastamentos</h3>
-    <div class="form-row" style="margin-top: 15px;">
-      <div style="flex: 1;">
-        <label class="field-label" for="ef-membro">Membro <span style="color:#dc2626;">*</span></label>
-        <select id="ef-membro" class="field-select"></select>
-      </div>
-    </div>
+    <h3 class="modal-title" id="modal-ferias-title">Afastamentos</h3>
+    <p id="ef-membro-nome" style="font-weight:600;color:var(--primary);margin:4px 0 4px;font-size:14px;"></p>
+    <input type="hidden" id="ef-membro-id">
 
     <!-- Seção Férias (3 períodos) -->
     <div style="margin-top: 15px; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; background: #f8fafc;">

@@ -234,27 +234,22 @@ Tabela agrupada por risco. Exibe:
 
 ## PDF Generation (`JS_Utilitarios.html`)
 
+Ver detalhes completos em `docs/09-geracao-de-pdf.md`. Resumo: o PDF é gerado **no servidor**, a partir de um HTML de impressão dedicado (não uma captura de tela) — sem biblioteca de terceiros, sem cortes/páginas em branco, sem flash na tela.
+
 ### `gerarPdfLocal(tipo)`
-Gera PDF no cliente usando `html2pdf.js`. Antes de converter:
-1. Oculta a sidebar
-2. Força `overflow: visible` nos containers
-3. Converte todos os `<canvas>` (Chart.js) para `<img>` via `canvas.toDataURL('image/png')`
-4. Aplica configuração de página e resolução
-5. Restaura o DOM após geração
+Monta o HTML do relatório (`window[cfg.montarFn]()`) e envia para `gerarPdfDeHtml()` no servidor; ao voltar, dispara o download do PDF (Base64) no navegador.
 
 ### `dispararEnvioPdf()`
-1. Chama `gerarPdfLocal()` para obter o blob
-2. Converte para Base64
-3. Chama `enviarPdfPorEmail()` no servidor via `google.script.run`
+Mesma montagem de HTML, enviada para `enviarPdfDeHtml()` no servidor, que gera o PDF e já dispara o e-mail via `MailApp` — não há round-trip de Base64 de volta ao cliente.
 
 **Relatórios disponíveis:**
 
-| Chave | Elemento fonte | Arquivo gerado | Orientação |
+| Chave | Função que monta o corpo do HTML | Arquivo gerado | Orientação |
 |---|---|---|---|
-| `dashboard` | `#view-dashboard` | `Dashboard_Tarefas_SGQ.pdf` | Paisagem |
-| `archived` | `#view-archived` | `Cartoes_Arquivados_SGQ.pdf` | Retrato |
-| `matriz` | `#area-matriz` | `Matriz_Risco_SGQ.pdf` | Paisagem |
-| `acomp` | `#area-acomp` | `Acompanhamento_Acoes_SGQ.pdf` | Paisagem |
+| `dashboard` | `montarHtmlDashboardPdf()` (JS_Kanban.html) | `Dashboard_Tarefas_SGQ.pdf` | Paisagem |
+| `archived` | `montarHtmlArquivadosPdf()` (JS_Kanban.html) | `Cartoes_Arquivados_SGQ.pdf` | Retrato |
+| `matriz` | `montarHtmlMatrizPdf()` (JS_Riscos.html) | `Matriz_Risco_SGQ.pdf` | Paisagem |
+| `acomp` | `montarHtmlAcompanhamentoPdf()` (JS_Riscos.html) | `Acompanhamento_Acoes_SGQ.pdf` | Paisagem |
 
 ---
 

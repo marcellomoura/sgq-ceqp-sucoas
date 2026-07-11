@@ -5,12 +5,11 @@
 
 // ---------- Membros ----------
 function sincronizarDropdownMembros() {
-  const membrosOrdenados = [...state.members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }));
+  const opcoes = optsMembros();
   ['memberFilterSelect','dashMemberFilter'].forEach(id => {
     const el = $id(id); if(!el) return;
     const v = el.value;
-    el.innerHTML = '<option value="">Todos</option>';
-    membrosOrdenados.forEach(m => { el.innerHTML += `<option value="${m.id}">${esc(m.name)}</option>`; });
+    el.innerHTML = opcoes;
     if(v) el.value = v;
   });
 }
@@ -18,7 +17,7 @@ function sincronizarDropdownMembros() {
 function renderMembers() {
   const tbody = $id('members-list');
   if(!tbody) return;
-  if(!state.members.length) { tbody.innerHTML='<tr><td colspan="4" class="msg-empty">Nenhum membro cadastrado.</td></tr>'; return; }
+  if(!state.members.length) { tbody.innerHTML='<tr><td colspan="5" class="msg-empty">Nenhum membro cadastrado.</td></tr>'; return; }
   // Ordena por nome para exibição, mas mantém o índice ORIGINAL de
   // cada membro em state.members (é esse índice que os botões de
   // editar/excluir usam para encontrar o membro certo).
@@ -72,11 +71,10 @@ function renderTasks() {
     if (task.archived) return; // arquivados não aparecem no quadro
     const status = task.status||'Backlog';
     if(!listas[status]) return;
-    let ids=[];
-    try { ids=JSON.parse(task.assigneeId); if(!Array.isArray(ids)) ids=[task.assigneeId]; } catch(e){ ids=task.assigneeId?[String(task.assigneeId)]:[]; }
+    const ids = parseIdsResponsaveis(task.assigneeId);
     if(filterId && !ids.includes(String(filterId))) return;
     counts[status]++;
-    const nomes = ids.map(id=>{ const m=state.members.find(x=>String(x.id)===String(id)); return m?m.name:''; }).filter(n=>n).join(', ')||'Sem responsável';
+    const nomes = nomesMembros(ids)||'Sem responsável';
     let vencido=false, dtDisplay='';
     if(task.deadline){ const p=task.deadline.split('-'); if(p.length===3){ const d=new Date(+p[0],+p[1]-1,+p[2]); d.setHours(0,0,0,0); dtDisplay=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}); if(d<hoje && status!=='Concluído') vencido=true; } }
     let age='Fila (0d)';
@@ -116,19 +114,14 @@ function renderArquivados() {
   const selMembro = $id('f-archived-membro');
   if (selMembro) {
     const v = selMembro.value;
-    const membrosOrdenados = [...state.members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }));
-    selMembro.innerHTML = '<option value="">Todos</option>';
-    membrosOrdenados.forEach(m => { selMembro.innerHTML += `<option value="${m.id}">${esc(m.name)}</option>`; });
+    selMembro.innerHTML = optsMembros();
     if (v) selMembro.value = v;
   }
   const filtroMembro = selMembro ? selMembro.value : '';
 
   let arquivados = state.tasks.filter(t => t.archived);
   if (filtroMembro) {
-    arquivados = arquivados.filter(t => {
-      let ids = []; try { ids = JSON.parse(t.assigneeId); if (!Array.isArray(ids)) ids = [t.assigneeId]; } catch(e) { ids = t.assigneeId ? [String(t.assigneeId)] : []; }
-      return ids.includes(String(filtroMembro));
-    });
+    arquivados = arquivados.filter(t => parseIdsResponsaveis(t.assigneeId).includes(String(filtroMembro)));
   }
 
   if (!arquivados.length) { tbody.innerHTML = '<tr><td colspan="7" class="msg-empty">Nenhum cartão arquivado.</td></tr>'; return; }
@@ -138,8 +131,7 @@ function renderArquivados() {
   arquivados.sort((a,b) => (b.completionDate||'').localeCompare(a.completionDate||''));
 
   tbody.innerHTML = arquivados.map(task => {
-    let ids=[]; try{ ids=JSON.parse(task.assigneeId); if(!Array.isArray(ids)) ids=[task.assigneeId]; }catch(e){ ids=task.assigneeId?[String(task.assigneeId)]:[]; }
-    const nomes = ids.map(id=>{ const m=state.members.find(x=>String(x.id)===String(id)); return m?m.name:''; }).filter(n=>n).join(', ')||'Sem responsável';
+    const nomes = nomesMembros(parseIdsResponsaveis(task.assigneeId))||'Sem responsável';
 
     let duracao = '-';
     if (task.startDate && task.completionDate) {
@@ -159,7 +151,7 @@ function renderArquivados() {
       <td>${fmtBr(task.startDate)}</td>
       <td>${fmtBr(task.completionDate)}</td>
       <td style="text-align:center;font-weight:600;color:#475569;">${duracao}</td>
-      <td style="text-align:center;"><button class="btn-icon rev" title="Restaurar ao quadro" data-acao="restore-task" data-id="${esc(task.id)}">${ICON.rev}</button></td>
+      <td class="no-print" style="text-align:center;"><button class="btn-icon rev" title="Restaurar ao quadro" data-acao="restore-task" data-id="${esc(task.id)}">${ICON.rev}</button></td>
     </tr>`;
   }).join('');
 }
@@ -203,8 +195,7 @@ function restaurarTarefa(id) {
 function populateAssignees(selectedIds=[]) {
   const c=$id('taskAssigneesContainer'); if(!c) return;
   if(!state.members.length){ c.innerHTML='<div style="font-size:12px;color:#64748b;padding:8px;">Nenhum membro cadastrado.</div>'; atualizarTagsAssignee(); return; }
-  const membrosOrdenados = [...state.members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }));
-  c.innerHTML=membrosOrdenados.map(m=>`<label class="checkbox-label"><input type="checkbox" value="${esc(m.id)}" ${selectedIds.includes(String(m.id))?'checked':''}> ${esc(m.name)}</label>`).join('');
+  c.innerHTML=membrosOrdenados().map(m=>`<label class="checkbox-label"><input type="checkbox" value="${esc(m.id)}" ${selectedIds.includes(String(m.id))?'checked':''}> ${esc(m.name)}</label>`).join('');
   c.querySelectorAll('input').forEach(i=>i.addEventListener('change',atualizarTagsAssignee));
   atualizarTagsAssignee();
 }
@@ -284,11 +275,7 @@ function renderDashboard() {
   const fid = ($id('dashMemberFilter')||{value:''}).value;
   let tasks = state.tasks;
   if (fid) {
-    tasks = tasks.filter(t => {
-      let ids = [];
-      try { ids = JSON.parse(t.assigneeId); if (!Array.isArray(ids)) ids = [t.assigneeId]; } catch(e) { ids = t.assigneeId ? [String(t.assigneeId)] : []; }
-      return ids.includes(String(fid));
-    });
+    tasks = tasks.filter(t => parseIdsResponsaveis(t.assigneeId).includes(String(fid)));
   }
 
   let total = tasks.length, done = 0, overdue = 0, totalDays = 0, cntDays = 0;
@@ -306,8 +293,7 @@ function renderDashboard() {
     sc[st] = (sc[st] || 0) + 1;
     pc[t.priority] = (pc[t.priority] || 0) + 1;
 
-    let ids = [];
-    try { ids = JSON.parse(t.assigneeId); if (!Array.isArray(ids)) ids = [t.assigneeId]; } catch(e) { ids = t.assigneeId ? [String(t.assigneeId)] : []; }
+    const ids = parseIdsResponsaveis(t.assigneeId);
 
     if (st === 'Concluído') {
       done++;
@@ -334,8 +320,7 @@ function renderDashboard() {
           if (d < hoje) overdue++;
           // Inclui independente da distância — só exclui se não tiver data
           const diff = Math.floor((d - hoje) / 86400000);
-          const nm = ids.map(id => { const m = state.members.find(x => String(x.id) === String(id)); return m ? m.name : ''; }).filter(n => n).join(', ');
-          upcoming.push({ title: t.title, date: d, diff: diff, priority: t.priority, assignee: nm || 'Sem responsável', status: st });
+          upcoming.push({ title: t.title, date: d, diff: diff, priority: t.priority, assignee: nomesMembros(ids) || 'Sem responsável', status: st });
         }
       }
     }
@@ -446,11 +431,10 @@ function renderDashboard() {
   // Tabela: Próximas Entregas
   const ul = $id('upcoming-list');
   if (ul) {
-    ul.innerHTML = '';
     if (!upcoming.length) {
       ul.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Nenhuma tarefa com prazo definido.</td></tr>';
     } else {
-      upcoming.sort((a, b) => a.date - b.date).forEach(t => {
+      ul.innerHTML = upcoming.sort((a, b) => a.date - b.date).map(t => {
         const ds = t.date.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
         const atrasada = t.diff < 0;
         const urgente  = !atrasada && t.diff <= 3;
@@ -459,16 +443,56 @@ function renderDashboard() {
         const prioColor = t.priority === 'Alta' ? '#ef4444' : t.priority === 'Media' ? '#f59e0b' : '#22c55e';
         const pb = `<span class="tag-badge" style="background:${prioColor};">${esc(t.priority === 'Media' ? 'Média' : t.priority)}</span>`;
         const rowStyle = atrasada ? 'background:#fff8f8;' : '';
-        ul.innerHTML += `<tr style="${rowStyle}">
+        return `<tr style="${rowStyle}">
           <td style="font-weight:600;font-size:12px;">${esc(t.title)}</td>
           <td style="font-size:11.5px;color:#475569;">${esc(t.assignee.split(',')[0])}</td>
           <td>${pb}</td>
           <td>${badge(t.status)}</td>
           <td class="${urgClass}" style="font-size:12px;font-weight:700;">${labelData}</td>
         </tr>`;
-      });
+      }).join('');
     }
   }
+}
+
+// ---------- PDF ----------
+// Corpo do relatório do Dashboard — reaproveita os valores de KPI e a
+// tabela de "Próximas Entregas" já renderizados na tela; os 4 gráficos
+// viram imagem estática (Chart.js não existe fora do navegador).
+function montarHtmlDashboardPdf() {
+  const getTxt = id => { const el = $id(id); return el ? el.innerText : ''; };
+  const imgOf = canvasId => { try { const c = $id(canvasId); return c ? c.toDataURL('image/png') : ''; } catch(e) { return ''; } };
+
+  const kpiHtml = `<table style="margin-bottom:18px;"><tr>
+    ${_pdfKpiCell('Total de Cartões', getTxt('kpi-total'), '#2563eb')}
+    ${_pdfKpiCell('Concluídos', getTxt('kpi-done'), '#059669')}
+    ${_pdfKpiCell('Em Atraso', getTxt('kpi-overdue'), '#dc2626')}
+    ${_pdfKpiCell('Tempo Médio (dias)', getTxt('kpi-time'), '#7c3aed')}
+  </tr></table>`;
+
+  const graficoCel = (titulo, canvasId) => `<td style="border:none;width:50%;padding:8px;">
+    <span style="font-size:10px;font-weight:700;color:#64748b;">${esc(titulo)}</span><br>
+    <img src="${imgOf(canvasId)}" style="width:100%;max-width:340px;margin-top:4px;">
+  </td>`;
+
+  const graficosHtml =
+    `<table style="margin-bottom:14px;"><tr>${graficoCel('Distribuição por Status','statusChart')}${graficoCel('Distribuição por Prioridade','priorityChart')}</tr></table>` +
+    `<table style="margin-bottom:18px;"><tr>${graficoCel('Em Andamento por Membro','memberChart')}${graficoCel('Concluídas por Membro','memberConcluidoChart')}</tr></table>`;
+
+  const upcomingHtml = _pdfSecaoTitulo('Próximas Entregas e Prazos') +
+    `<table><thead><tr><th>Cartão</th><th>Responsável</th><th>Prioridade</th><th>Status</th><th>Prazo</th></tr></thead>
+    <tbody>${_tbodyParaPdf('upcoming-list')}</tbody></table>`;
+
+  return kpiHtml + graficosHtml + upcomingHtml;
+}
+
+// Corpo do relatório de Arquivados — reaproveita a tabela já renderizada,
+// só removendo a coluna de Ações (classe .no-print, ver _tbodyParaPdf).
+function montarHtmlArquivadosPdf() {
+  return `<table><thead><tr>
+    <th>Cartão</th><th>Responsável(is)</th><th style="text-align:center;">Prioridade</th>
+    <th>Início</th><th>Conclusão</th><th style="text-align:center;">Tempo de Execução</th>
+  </tr></thead><tbody>${_tbodyParaPdf('archived-list')}</tbody></table>`;
 }
 
 // ---------- Helpers ----------

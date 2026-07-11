@@ -60,7 +60,8 @@ Ponto de entrada e núcleo do sistema.
 - `setupDatabase*()` — inicialização das planilhas
 - `getKanbanData()` — carregamento estágio 1
 - `getRestoData()` — carregamento estágio 2
-- `buscarLogs()` — retorna últimas 300 entradas do log
+- `buscarLogs()` — retorna últimas entradas do log
+- `gerarPdfDeHtml()` / `enviarPdfDeHtml()` — geração de PDF a partir de HTML (ver `docs/09`)
 
 #### `Modulo_Tarefas.js`
 CRUD de tarefas Kanban e membros.
@@ -80,7 +81,7 @@ Gestão documental com versionamento.
 #### `Modulo_Riscos.js`
 Riscos, planos de ação (5W2H) e controle de entregas.
 
-**Funções exportadas:** `salvarRisco`, `atualizarRisco`, `salvarRevisaoRisco`, `excluirRisco`, `salvarPlano`, `atualizarPlano`, `salvarRevisaoPlano`, `buscarHistoricoPlano`, `excluirPlano`, `salvarEntrega`, `atualizarEntrega`, `excluirEntrega`, `enviarPdfPorEmail`
+**Funções exportadas:** `salvarRisco`, `atualizarRisco`, `salvarRevisaoRisco`, `excluirRisco`, `salvarPlano`, `atualizarPlano`, `salvarRevisaoPlano`, `buscarHistoricoPlano`, `excluirPlano`, `salvarEntrega`, `atualizarEntrega`, `excluirEntrega`
 
 ---
 

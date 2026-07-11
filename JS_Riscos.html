@@ -244,7 +244,11 @@ function renderEntregas() {
 
   state.plans.filter(p => p.status !== 'Arquivado').forEach(plano => {
     const global = (plano.who||'').toUpperCase().includes('TODAS');
-    const cobradas = global ? state.units.map(u => `${u.sigla} - ${u.unidade}`) : [plano.who];
+    // "Todas as Subcomissões" cobra apenas unidades com "Subcomissão" no nome
+    const cobradas = global
+      ? state.units.filter(u => { const n = u.unidade.toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); })
+          .map(u => `${u.sigla} - ${u.unidade}`)
+      : [plano.who];
     let linhasPlano = '';
 
     cobradas.forEach(unidade => {
@@ -349,17 +353,33 @@ var acompEntregasPlanoCtx = null;
 
 function abrirModalAcompEntregas(idx) {
   const p = state.plans[idx]; if (!p) return;
-  const subcomissoes = state.units.filter(function(u) {
-    const n = u.unidade.toLowerCase();
-    return n.includes('subcomissão') || n.includes('subcomissao');
-  });
+  const global = (p.who || '').toUpperCase().includes('TODAS');
+  let unidadesCobradas;
+  if (global) {
+    // "Todas as Subcomissões" cobra APENAS unidades com "Subcomissão" no nome
+    unidadesCobradas = state.units.filter(function(u) {
+      const n = u.unidade.toLowerCase();
+      return n.includes('subcomissão') || n.includes('subcomissao');
+    });
+  } else {
+    // Plano atribuído a uma unidade específica — só ela é cobrada
+    unidadesCobradas = state.units.filter(function(u) {
+      const chave = u.sigla ? (u.sigla + ' - ' + u.unidade) : u.unidade;
+      return chave === p.who;
+    });
+    if (!unidadesCobradas.length && p.who) {
+      // Unidade renomeada/excluída depois do plano: mantém a cobrança
+      // pelo texto gravado no plano para o registro não sumir
+      unidadesCobradas = [{ sigla: '', unidade: p.who }];
+    }
+  }
 
   $id('acomp-ent-info').innerHTML =
     '<strong>Risco:</strong> ' + esc(p.riscoVinculado) +
     ' &nbsp;·&nbsp; <strong>Ação:</strong> ' + esc(p.what) +
     ' &nbsp;·&nbsp; <strong>Prazo:</strong> ' + fmtBr(p.whenPrevisto);
 
-  if (!subcomissoes.length) {
+  if (!unidadesCobradas.length) {
     $id('acomp-ent-lista').innerHTML =
       '<p class="msg-empty">Nenhuma Subcomissão encontrada. ' +
       'Cadastre unidades com "Subcomissão" no nome para acompanhar entregas aqui.</p>';
@@ -370,7 +390,7 @@ function abrirModalAcompEntregas(idx) {
 
   acompEntregasPlanoCtx = p;
 
-  $id('acomp-ent-lista').innerHTML = subcomissoes.map(function(u, i) {
+  $id('acomp-ent-lista').innerHTML = unidadesCobradas.map(function(u, i) {
     const chave = u.sigla ? (u.sigla + ' - ' + u.unidade) : u.unidade;
     const ent = state.deliveries.find(function(e) {
       return e.riscoVinculado === p.riscoVinculado && e.unidade === chave;
@@ -381,7 +401,7 @@ function abrirModalAcompEntregas(idx) {
     const rowClass = entregue === 'Sim' ? 'entregue' : (entregue === 'Não' ? 'pendente' : '');
     const selClass = rowClass ? (' ' + rowClass) : '';
     return (
-      '<div class="acomp-ent-row ' + rowClass + '" data-unidade="' + chave + '" style="display:flex; align-items:center; gap:16px; flex-wrap:nowrap;">' +
+      '<div class="acomp-ent-row ' + rowClass + '" data-unidade="' + esc(chave) + '" style="display:flex; align-items:center; gap:16px; flex-wrap:nowrap;">' +
         '<div class="acomp-unit-info" style="flex:1; min-width:200px;">' +
           '<div class="acomp-unit-sigla">' + esc(u.sigla || '') + '</div>' +
           '<div class="acomp-unit-nome" style="white-space:normal; line-height:1.2; margin-top:2px;">' + esc(u.unidade) + '</div>' +
@@ -393,7 +413,7 @@ function abrirModalAcompEntregas(idx) {
             '<option value="Não"' + (entregue === 'Não' ? ' selected' : '') + '>Não — Pendente</option>' +
           '</select>' +
         '</div>' +
-        '<div class="acomp-sei-wrap" style="display:' + (entregue === 'Sim' ? 'flex' : 'none') + '; align-items:center; gap:12px; flex-shrink:0;">' +
+        '<div class="acomp-sei-wrap" style="display:flex; align-items:center; gap:12px; flex-shrink:0;">' +
           '<div class="acomp-field-group">' +
             '<span class="acomp-field-label">Data de Entrega</span>' +
             '<input type="date" class="acomp-data" value="' + esc(dataEnt) + '" style="width:130px; height:32px; padding:0 8px;">' +
@@ -407,12 +427,11 @@ function abrirModalAcompEntregas(idx) {
     );
   }).join('');
 
-  // Atualizar visual e mostrar/ocultar campos SEI ao mudar status
+  // Atualiza só o visual ao mudar status — os campos de Data/SEI ficam
+  // sempre visíveis para manter todas as linhas alinhadas entre si
   $id('acomp-ent-lista').querySelectorAll('.acomp-status').forEach(function(sel) {
     sel.addEventListener('change', function() {
       const row  = this.closest('.acomp-ent-row');
-      const wrap = row.querySelector('.acomp-sei-wrap');
-      wrap.style.display = this.value === 'Sim' ? 'flex' : 'none';
       row.classList.remove('entregue', 'pendente');
       this.classList.remove('entregue', 'pendente');
       if (this.value === 'Sim')      { row.classList.add('entregue'); this.classList.add('entregue'); }
@@ -469,5 +488,56 @@ function salvarAcompEntregas() {
     })
     .withFailureHandler(falha(btn, 'Salvar Registros', null))
     .salvarEntregasEmLote(p.riscoVinculado, entregas);
+}
+
+// ---------- PDF ----------
+// A grade da Matriz (cores + badges) é capturada como imagem real da tela
+// (_capturarElementoComoImg, em JS_Utilitarios.html — usa html2canvas só
+// nesses dois elementos pequenos, sem esconder nada nem piscar a tela) —
+// reaproveita exatamente a mesma cor, fonte e badge que já estão corretos
+// na tela, em vez de redesenhar. O conversor de PDF do Apps Script não
+// pinta background-color, mas <img> sempre renderiza (mesma técnica já
+// usada e funcional nos gráficos do Dashboard).
+// Assíncrono (html2canvas devolve Promise) — ver Promise.resolve() em
+// _gerarPdfReal/_dispararEnvioPdfReal, que aceitam tanto Promise quanto
+// string dos demais relatórios (síncronos).
+async function montarHtmlMatrizPdf() {
+  const matrizEl  = document.querySelector('#area-matriz .matrix-table');
+  const legendaEl = document.querySelector('#area-matriz .legend-row');
+  const [matrizImg, legendaImg] = await Promise.all([
+    _capturarElementoComoImg(matrizEl),
+    _capturarElementoComoImg(legendaEl)
+  ]);
+
+  const matrizHtml = matrizImg
+    ? `<img src="${matrizImg}" style="display:block;width:100%;margin-bottom:14px;">` : '';
+  const legendaHtml = legendaImg
+    ? `<img src="${legendaImg}" style="display:block;max-width:520px;margin:0 auto 20px;">` : '';
+
+  const riscosHtml = _pdfSecaoTitulo('Mapeamento de Riscos') +
+    `<table><thead><tr>
+      <th style="text-align:center;">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>
+      <th>Categoria</th><th style="text-align:center;">P×I</th><th style="text-align:center;">Nível</th>
+      <th>Tratamento</th><th>Proprietário</th><th>Plano de Ação</th>
+    </tr></thead><tbody>${_tbodyParaPdf('lista-riscos')}</tbody></table>`;
+
+  return matrizHtml + legendaHtml + riscosHtml;
+}
+
+// Corpo do relatório de Acompanhamento de Ações — KPIs + tabela de planos.
+function montarHtmlAcompanhamentoPdf() {
+  const getTxt = id => { const el = $id(id); return el ? el.innerText : ''; };
+  const kpiHtml = `<table style="margin-bottom:18px;"><tr>
+    ${_pdfKpiCell('Concluídas', getTxt('kpi-p-conc'), '#059669')}
+    ${_pdfKpiCell('Em Andamento', getTxt('kpi-p-and'), '#ca8a04')}
+    ${_pdfKpiCell('Atrasadas', getTxt('kpi-p-atr'), '#dc2626')}
+  </tr></table>`;
+
+  const planosHtml = `<table><thead><tr>
+    <th>Risco</th><th>Ação (What)</th><th>Por que (Why)</th><th>Quem (Who)</th><th>Onde</th>
+    <th>Prazo</th><th>Finalização</th><th>Como (How)</th><th>Custo</th><th style="text-align:center;">Status</th>
+  </tr></thead><tbody>${_tbodyParaPdf('lista-acomp')}</tbody></table>`;
+
+  return kpiHtml + planosHtml;
 }
 </script>

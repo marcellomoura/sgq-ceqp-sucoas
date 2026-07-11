@@ -171,7 +171,7 @@
     letter-spacing: -0.5px; font-family: 'IBM Plex Sans', 'Inter', sans-serif;
   }
   .sidebar-brand-text { min-width: 0; }
-  .sidebar-brand-name { font-size: 12px; font-weight: 700; color: #e2e8f0; line-height: 1.3; white-space: nowrap; font-family: 'IBM Plex Sans', 'Inter', sans-serif; }
+  .sidebar-brand-name { font-size: 14px; font-weight: 700; color: #e2e8f0; line-height: 1.3; font-family: 'IBM Plex Sans', 'Inter', sans-serif; }
   .sidebar-brand-sub { font-size: 10px; color: #7094b8; font-weight: 500; margin-top: 1px; white-space: nowrap; }
   .sidebar-nav { display: flex; flex-direction: column; padding: 4px 10px; gap: 1px; }
 
@@ -483,18 +483,12 @@
   /* ===== STATUS MSG / STATUS BAR ===== */
   .status-msg { margin-top: 14px; text-align: center; font-weight: 600; font-size: 13px; min-height: 20px; }
 
-  /* ===== PDF PRINTING ===== */
-  body.printing-mode,
-  body.printing-mode .app-layout,
-  body.printing-mode .main-content { overflow: visible !important; height: auto !important; width: 1120px !important; display: block !important; position: static !important; background: white !important; }
-  body.printing-mode .sidebar, body.printing-mode .top-bar, body.printing-mode .no-print, body.printing-mode .top-header { display: none !important; }
-  body.printing-mode .print-target { width: 1120px !important; max-width: 1120px !important; display: flex !important; flex-direction: column !important; background: white !important; padding: 15px !important; box-sizing: border-box !important; }
-  /* No PDF todas as linhas do dashboard ficam em coluna única para não cortar */
-  body.printing-mode .dash-row.two-cols,
-  body.printing-mode .dash-row.two-cols-table,
-  body.printing-mode .dash-row.one-col { grid-template-columns: 1fr 1fr !important; }
-  body.printing-mode .chart-wrap { height: 200px !important; }
-  body.printing-mode .upcoming-wrap { max-height: none !important; overflow: visible !important; }
+  /* ===== PDF ===== */
+  /* O PDF agora é gerado no servidor a partir de um HTML próprio (ver
+     JS_Utilitarios.html/_envelopeHtml) — a página visível nunca é
+     tocada, então não existe mais um "modo de impressão" aqui. Os
+     blocos .pdf-header abaixo ficam sempre ocultos (display:none);
+     mantidos apenas por compatibilidade com o markup existente. */
   .pdf-header { display: none; margin-bottom: 26px; padding: 14px 20px; background: #f8fafc; border-left: 4px solid var(--primary); border-radius: 0 8px 8px 0; }
   .pdf-header h1 { font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px; }
   .pdf-header .pdf-sub { color: #64748b; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.4px; margin: 3px 0 8px; }
@@ -589,4 +583,19 @@
   }
   .escala-day-check:hover { border-color: #2563eb; background: #eff6ff; }
   .escala-day-check input { accent-color: #2563eb; width: 15px; height: 15px; margin: 0; }
+
+  /* Afastamentos — abas de ano (navegação entre anos, sem perder histórico) */
+  .ano-tabs-wrap { margin-bottom: 14px; }
+  .ano-tabs-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .ano-tab {
+    background: white; border: 1.5px solid #e2e8f0; color: #475569;
+    padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: 0.15s; font-family: inherit;
+  }
+  .ano-tab:hover { border-color: #93c5fd; background: #eff6ff; }
+  .ano-tab.active { background: var(--primary); border-color: var(--primary); color: white; }
+  .ano-tab-add { color: var(--primary); border-style: dashed; background: #f8fafc; }
+  .ano-tab-add:hover { background: #eff6ff; }
+  .ano-tab-input-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .ano-tab-input-row .field-input { margin: 0; }
 </style>

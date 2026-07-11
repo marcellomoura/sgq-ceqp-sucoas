@@ -20,20 +20,26 @@ function renderUnidades() {
   </tr>`).join('');
 }
 
+// Sigla no momento em que a edição foi aberta — o servidor confere esse
+// valor antes de gravar, já que o id da unidade é a posição da linha
+var unidadeSiglaOriginal = '';
+
 function abrirModalUnidade() {
   $id('eu-id').value = ''; $id('eu-nome').value = ''; $id('eu-sigla').value = ''; $id('eu-email').value = '';
+  unidadeSiglaOriginal = '';
   $id('modal-unidade-title').innerText = 'Nova Unidade';
   abrirModal('modal-unidade');
 }
 function abrirEditarUnidade(u) {
   $id('eu-id').value = u.id; $id('eu-nome').value = u.unidade; $id('eu-sigla').value = u.sigla; $id('eu-email').value = u.email;
+  unidadeSiglaOriginal = u.sigla || '';
   $id('modal-unidade-title').innerText = 'Editar Unidade';
   abrirModal('modal-unidade');
 }
 function confirmarUnidade() {
   const btn = $id('btn-confirmar-unidade');
   const id = $id('eu-id').value;
-  const dados = { id: id, unidade: $id('eu-nome').value.trim(), sigla: $id('eu-sigla').value.trim(), email: $id('eu-email').value.trim() };
+  const dados = { id: id, unidade: $id('eu-nome').value.trim(), sigla: $id('eu-sigla').value.trim(), email: $id('eu-email').value.trim(), siglaOriginal: unidadeSiglaOriginal };
   if (!dados.unidade || !dados.sigla || !dados.email) return showAlerta('Preencha todos os campos.');
   btn.disabled = true; btn.innerText = id ? 'A atualizar...' : 'A guardar...';
   const chamada = id
@@ -45,8 +51,10 @@ function confirmarUnidade() {
     else { btn.disabled = false; btn.innerText = 'Confirmar'; showAlerta(r.mensagem); }
   }
 }
-function excluirUnidade(id) {
-  google.script.run.withSuccessHandler(() => recarregarResto(renderUnidades))
-    .withFailureHandler(e => showAlerta(String(e))).excluirUnidade(id);
+function excluirUnidade(id, sigla) {
+  google.script.run.withSuccessHandler(r => {
+    if (r && r.sucesso === false) { showAlerta(r.mensagem); recarregarResto(renderUnidades); return; }
+    recarregarResto(renderUnidades);
+  }).withFailureHandler(e => showAlerta(String(e))).excluirUnidade(id, sigla || '');
 }
 </script>

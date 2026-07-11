@@ -62,8 +62,18 @@ Wrapper de compatibilidade que combina ambos os estágios.
 - **Retorno:** objeto com todas as coleções (`tasks`, `members`, `units`, `docs`, `risks`, `plans`, `deliveries`)
 
 ### `buscarLogs()`
-Retorna as últimas 300 entradas do log de auditoria, em ordem decrescente.
+Retorna as últimas entradas do log de auditoria, em ordem decrescente.
 - **Retorno:** array de objetos `{ dataHora, usuario, acao, referencia, detalhes }`
+
+### `gerarPdfDeHtml(htmlContent, nomeArquivo)`
+Converte um HTML de impressão (montado no cliente, ver `docs/09`) em PDF usando o serviço nativo do Apps Script (`Utilities.newBlob(...).getAs(MimeType.PDF)`) — não depende de biblioteca externa nem de captura de tela.
+- **Parâmetros:** `htmlContent` (string HTML completo), `nomeArquivo` (string)
+- **Retorno:** `{ sucesso: true, base64 }` (PDF em Base64, para download direto no cliente) ou `{ sucesso: false, mensagem }`
+
+### `enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo)`
+Mesma conversão de `gerarPdfDeHtml`, mas envia o PDF por e-mail via `MailApp` em vez de devolvê-lo ao cliente.
+- **Parâmetros:** `destinatario` (e-mail), `htmlContent`, `nomeArquivo`, `titulo` (assunto do e-mail)
+- **Retorno:** `{ sucesso, mensagem }`
 
 ### Utilitários internos
 
@@ -200,14 +210,6 @@ Atualiza um registro de entrega existente.
 
 ### `excluirEntrega(riscoVinculado, unidade)`
 Remove a entrega de uma unidade específica para um risco.
-
-### `enviarPdfPorEmail(destinatario, base64Pdf, nomeArquivo, titulo)`
-Envia um PDF gerado no cliente por e-mail via `MailApp`.
-- **Parâmetros:**
-  - `destinatario` — endereço de e-mail
-  - `base64Pdf` — conteúdo do PDF em Base64
-  - `nomeArquivo` — nome do arquivo anexo
-  - `titulo` — assunto do e-mail
 
 ### Funções internas
 

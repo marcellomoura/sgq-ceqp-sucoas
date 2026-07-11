@@ -20,8 +20,7 @@ function renderEscala() {
     tbody.innerHTML = '<tr><td colspan="8" class="msg-empty">Nenhum membro cadastrado.</td></tr>';
     return;
   }
-  var ordenados = state.members.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||'','pt-BR',{sensitivity:'base'}); });
-  tbody.innerHTML = ordenados.map(function(m) {
+  tbody.innerHTML = membrosOrdenados().map(function(m) {
     var origIdx = state.members.indexOf(m);
     var dias = Array.isArray(m.diasSemana) ? m.diasSemana : [];
     var pres = m.diaPresencial || '';
@@ -149,49 +148,94 @@ function confirmarEscala() {
 }
 
 // ─── FÉRIAS / AFASTAMENTOS ────────────────────────────────────────────────────────
+// Um registro por (Membro + Ano) — o usuário navega entre anos pelas abas
+// internas (ferias-ano-tabs) e edita direto na linha do membro, igual à
+// Escala Semanal. Nada é excluído/arquivado: anos antigos continuam
+// acessíveis normalmente, só trocando a aba de ano.
 
-var feriasCache = [];
+var afastamentosCache = [];         // todos os registros, de todos os anos
+var anoAfastamentoAtual = new Date().getFullYear();
+var anosExtras = [];                // anos adicionados manualmente nesta sessão, ainda sem registro salvo
 var feriasFiltersInitialized = false;
 
 function carregarFerias() {
   if (!feriasFiltersInitialized) {
     feriasFiltersInitialized = true;
     var el = $id('f-ferias-membro');
-    if (el) el.addEventListener('change', function(){ renderFerias(feriasCache); });
-    
-    var modalMembroSel = $id('ef-membro');
-    if (modalMembroSel) {
-      modalMembroSel.addEventListener('change', function() {
-        onMembroAfastamentoChange(this.value);
-      });
-    }
+    if (el) el.addEventListener('change', renderFerias);
     preencherDropdownMembrosFerias();
   }
-
-  // Pre-loaded from getKanbanData -> state.members! No network necessary.
-  var mData = (state.members || []).map(function(m) {
-    return {
-      membroId: m.id || '',
-      membroNome: m.name || 'Sem Nome',
-      membroRole: m.role || '',
-      afastamentos: m.afastamentos || { ferias: [], abonosFixos: [], abonoAniv: null, licenca: null }
-    };
-  });
-
-  feriasCache = mData;
-  renderFerias(mData);
+  // Toda vez que se entra na aba, ela abre no ano vigente — dali o
+  // usuário navega livremente pelas abas de ano já cadastradas.
+  anoAfastamentoAtual = new Date().getFullYear();
+  msgTabela('lista-ferias', 8, 'A carregar...');
+  google.script.run
+    .withFailureHandler(function(e) { msgTabela('lista-ferias', 8, 'Falha ao carregar: ' + String(e), true); })
+    .withSuccessHandler(function(data) {
+      afastamentosCache = data || [];
+      renderAnoTabs();
+      renderFerias();
+    })
+    .getAfastamentos();
 }
 
 function preencherDropdownMembrosFerias() {
   var sel = $id('f-ferias-membro');
   if (!sel) return;
-  var ops = '<option value="">Todos os membros</option>' +
-    state.members.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||'','pt-BR',{sensitivity:'base'}); })
-      .map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>'; }).join('');
-  sel.innerHTML = ops;
+  sel.innerHTML = '<option value="">Todos os membros</option>' +
+    membrosOrdenados().map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>'; }).join('');
 }
 
+// ─── Abas de ano ────────────────────────────────────────────────────────────
+function renderAnoTabs() {
+  var wrap = $id('ferias-ano-tabs');
+  if (!wrap) return;
 
+  var anos = new Set(afastamentosCache.map(function(r){ return parseInt(r.ano, 10); }).filter(function(n){ return !isNaN(n); }));
+  anosExtras.forEach(function(a){ anos.add(a); });
+  anos.add(new Date().getFullYear());
+  var lista = Array.from(anos).sort(function(a,b){ return a - b; });
+  if (lista.indexOf(anoAfastamentoAtual) === -1) anoAfastamentoAtual = lista[lista.length - 1];
+
+  var tabsHtml = lista.map(function(ano) {
+    return '<button type="button" class="ano-tab' + (ano === anoAfastamentoAtual ? ' active' : '') + '" data-ano="' + ano + '">' + ano + '</button>';
+  }).join('');
+
+  wrap.innerHTML =
+    '<div class="ano-tabs-row">' + tabsHtml +
+      '<button type="button" class="ano-tab ano-tab-add" id="btn-add-ano-afastamento" title="Cadastrar um novo ano para lançar afastamentos com antecedência">+ Novo Ano</button>' +
+    '</div>' +
+    '<div class="ano-tab-input-row" id="ano-tab-input-row" style="display:none;">' +
+      '<label class="field-label" style="margin:0;white-space:nowrap;">Ano a cadastrar:</label>' +
+      '<input type="number" id="input-novo-ano" class="field-input" style="width:110px;" min="2000" max="2100" placeholder="Ex: 2027">' +
+      '<button type="button" class="btn primary btn-sm" id="btn-confirmar-novo-ano">Adicionar Ano</button>' +
+    '</div>';
+
+  wrap.querySelectorAll('.ano-tab[data-ano]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      anoAfastamentoAtual = parseInt(this.dataset.ano, 10);
+      renderAnoTabs();
+      renderFerias();
+    });
+  });
+  var btnAdd = $id('btn-add-ano-afastamento');
+  if (btnAdd) btnAdd.addEventListener('click', function() {
+    var row = $id('ano-tab-input-row');
+    var mostrar = row.style.display === 'none';
+    row.style.display = mostrar ? 'flex' : 'none';
+    if (mostrar) { $id('input-novo-ano').value = ''; $id('input-novo-ano').focus(); }
+  });
+  var btnConfirm = $id('btn-confirmar-novo-ano');
+  if (btnConfirm) btnConfirm.addEventListener('click', function() {
+    var v = parseInt($id('input-novo-ano').value, 10);
+    if (!v || v < 2000 || v > 2100) return showAlerta('Informe um ano válido.');
+    if (anosExtras.indexOf(v) === -1) anosExtras.push(v);
+    anoAfastamentoAtual = v;
+    $id('ano-tab-input-row').style.display = 'none';
+    renderAnoTabs();
+    renderFerias();
+  });
+}
 
 function parseDataStr(s) {
   if (!s) return null;
@@ -201,95 +245,69 @@ function parseDataStr(s) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function renderFerias(data) {
+function renderFerias() {
   var tbody = $id('lista-ferias');
   if (!tbody) return;
   var hoje = new Date(); hoje.setHours(0,0,0,0);
 
-  // KPIs
-  var emFerias = 0, proximas = 0, esteAno = 0;
-  var anoAtual = hoje.getFullYear();
-  
-  data.forEach(function(m) {
-    var afs = m.afastamentos || {};
+  // Só os registros do ano em exibição — cada membro tem no máximo 1
+  var registrosDoAno = afastamentosCache.filter(function(r){ return parseInt(r.ano, 10) === anoAfastamentoAtual; });
+  var porMembro = {};
+  registrosDoAno.forEach(function(r){ porMembro[r.membroId] = r; });
+
+  // KPI — calculado só sobre o ano selecionado
+  var emFerias = 0;
+  registrosDoAno.forEach(function(r) {
     var list = [];
-    if (afs.ferias) {
-      afs.ferias.forEach(function(f){ if(f && f.inicio && f.fim) list.push(f); });
-    }
-    if (afs.abonosFixos && Array.isArray(afs.abonosFixos)) {
-      afs.abonosFixos.forEach(function(d){ if(d) list.push({inicio: d, fim: d}); });
-    }
-    if (afs.abonoAniv && afs.abonoAniv.inicio && afs.abonoAniv.fim) list.push(afs.abonoAniv);
-    if (afs.licenca && afs.licenca.inicio && afs.licenca.fim) list.push(afs.licenca);
-    
-    var isAfastadoAgora = false;
-    var hasProximo = false;
-    var hasEsteAno = false;
-
-    list.forEach(function(p) {
-      var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim);
-      if (ini && fim) {
-        if (ini <= hoje && fim >= hoje) isAfastadoAgora = true;
-        if (ini > hoje && (ini - hoje) / 86400000 <= 30) hasProximo = true;
-        if (ini.getFullYear() === anoAtual || fim.getFullYear() === anoAtual) hasEsteAno = true;
-      }
-    });
-
-    if (isAfastadoAgora) emFerias++;
-    if (hasProximo) proximas++;
-    if (hasEsteAno) esteAno++;
+    (r.ferias || []).forEach(function(f){ if (f && f.inicio && f.fim) list.push(f); });
+    (r.abonosFixos || []).forEach(function(d){ if (d) list.push({inicio: d, fim: d}); });
+    if (r.abonoAniv && r.abonoAniv.inicio) list.push(r.abonoAniv);
+    if (r.licenca && r.licenca.inicio && r.licenca.fim) list.push(r.licenca);
+    list.some(function(p) {
+      var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim || p.inicio);
+      return ini && fim && ini <= hoje && fim >= hoje;
+    }) && emFerias++;
   });
-  
-  var setKpi = function(id, v) { var el = $id(id); if (el) el.innerText = v; };
-  setKpi('kpi-f-agora', emFerias);
-  setKpi('kpi-f-prox',  proximas);
-  setKpi('kpi-f-ano',   esteAno);
+  var kpiEl = $id('kpi-f-agora'); if (kpiEl) kpiEl.innerText = emFerias;
 
-  // Filtros
-  var fM  = ($id('f-ferias-membro') || {value:''}).value;
-  
-  var filtrado = data.filter(function(m) {
-    if (fM && String(m.membroId) !== fM) return false;
-    return true;
-  });
+  // Filtro por membro (mesmo select do cabeçalho)
+  var fM = ($id('f-ferias-membro') || {value:''}).value;
+  var membrosFiltrados = membrosOrdenados().filter(function(m){ return !fM || String(m.id) === fM; });
 
-  filtrado.sort(function(a,b){ return a.membroNome.localeCompare(b.membroNome,'pt-BR',{sensitivity:'base'}); });
-
-  if (!filtrado.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="msg-empty">Nenhum registro encontrado.</td></tr>';
+  if (!membrosFiltrados.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="msg-empty">Nenhum membro cadastrado.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = filtrado.map(function(m) {
-    var afs = m.afastamentos || {};
+  // Helpers de formatação — definidos uma vez por render, fora do loop de linhas
+  var TRACO = '<span style="color:#94a3b8;font-size:12px;">—</span>';
+  var fmtDM = function(isoStr) {
+    if (!isoStr) return '';
+    var p = isoStr.split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] : isoStr;
+  };
+  var getHtmlFerias = function(p) {
+    if (!p || !p.inicio || !p.fim) return TRACO;
+    var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim);
+    var dias = (ini && fim) ? Math.floor((fim - ini) / 86400000) + 1 : null;
+    var agora = ini && fim && ini <= hoje && fim >= hoje;
+    return '<span style="display:inline-block; margin-right:4px; margin-bottom:4px; margin-top:4px; font-size:11.5px; white-space:nowrap;' + (agora ? 'background:#dcfce7; border: 1px solid #86efac; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#15803d;' : 'color:#334155; padding: 2px 0px;') + '">' +
+      fmtDM(p.inicio) + ' a ' + fmtDM(p.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + dias + 'd)</span>' +
+      '</span>';
+  };
 
-    var fmtDM = function(isoStr) {
-      if (!isoStr) return '';
-      var p = isoStr.split('-');
-      return p.length === 3 ? p[2] + '/' + p[1] : isoStr;
-    };
-    // Férias Períodos 1, 2, 3
-    var getHtmlFerias = function(p) {
-      if (!p || !p.inicio || !p.fim) return '<span style="color:#94a3b8;font-size:12px;">—</span>';
-      var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim);
-      var dias = (ini && fim) ? Math.floor((fim - ini) / 86400000) + 1 : null;
-      var agora = ini && fim && ini <= hoje && fim >= hoje;
-      return '<span style="display:inline-block; margin-right:4px; margin-bottom:4px; margin-top:4px; font-size:11.5px; white-space:nowrap;' + (agora ? 'background:#dcfce7; border: 1px solid #86efac; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#15803d;' : 'color:#334155; padding: 2px 0px;') + '">' +
-        fmtDM(p.inicio) + ' a ' + fmtDM(p.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + dias + 'd)</span>' +
-        '</span>';
-    };
-    
-    var htmlF1 = '<span style="color:#94a3b8;font-size:12px;">—</span>';
-    var htmlF2 = '<span style="color:#94a3b8;font-size:12px;">—</span>';
-    var htmlF3 = '<span style="color:#94a3b8;font-size:12px;">—</span>';
-    
-    if (afs.ferias && Array.isArray(afs.ferias)) {
+  tbody.innerHTML = membrosFiltrados.map(function(m) {
+    var origIdx = state.members.indexOf(m);
+    var afs = porMembro[m.id] || { ferias: [], abonosFixos: [], abonoAniv: null, licenca: null };
+
+    var htmlF1 = TRACO, htmlF2 = TRACO, htmlF3 = TRACO;
+    if (Array.isArray(afs.ferias)) {
       if (afs.ferias[0]) htmlF1 = getHtmlFerias(afs.ferias[0]);
       if (afs.ferias[1]) htmlF2 = getHtmlFerias(afs.ferias[1]);
       if (afs.ferias[2]) htmlF3 = getHtmlFerias(afs.ferias[2]);
     }
-    // Abonos (5 datas fixas)
-    var htmlAbono = '';
+
+    var htmlAbono = TRACO;
     if (afs.abonosFixos && afs.abonosFixos.length > 0) {
       var tagsData = afs.abonosFixos.map(function(d) {
         var dt = parseDataStr(d);
@@ -297,67 +315,39 @@ function renderFerias(data) {
         return '<span style="display:inline-block; font-size:11px;' + (agora ? 'background:#fef9c3; border: 1px solid #fef08a; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#854d0e;' : 'background:#f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 6px; color:#475569;') + '">' + fmtDM(d) + '</span>';
       });
       htmlAbono = '<div style="display:flex; flex-wrap:nowrap; gap:4px; align-items:center;">' + tagsData.join('') + '</div>';
-    } else {
-      htmlAbono = '<span style="color:#94a3b8;font-size:12px;">—</span>';
     }
-    
-    // Abono Aniversário
-    var htmlAbonoAniv = '';
+
+    var htmlAbonoAniv = TRACO;
     if (afs.abonoAniv && afs.abonoAniv.inicio) {
-      var dt = parseDataStr(afs.abonoAniv.inicio);
-      var agora = dt && dt.getTime() === hoje.getTime();
-      htmlAbonoAniv = '<span style="display:inline-block; font-size:11.5px; margin-top:4px; white-space:nowrap;' + (agora ? 'background:#d1fae5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#047857;' : 'color:#334155; padding: 2px 0px;') + '">' +
-        fmtDM(afs.abonoAniv.inicio) +
-        '</span>';
-    } else {
-      htmlAbonoAniv = '<span style="color:#94a3b8;font-size:12px;">—</span>';
+      var dtA = parseDataStr(afs.abonoAniv.inicio);
+      var agoraA = dtA && dtA.getTime() === hoje.getTime();
+      htmlAbonoAniv = '<span style="display:inline-block; font-size:11.5px; margin-top:4px; white-space:nowrap;' + (agoraA ? 'background:#d1fae5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#047857;' : 'color:#334155; padding: 2px 0px;') + '">' +
+        fmtDM(afs.abonoAniv.inicio) + '</span>';
     }
 
-    // Licença
-    var htmlLicenca = '';
+    var htmlLicenca = TRACO;
     if (afs.licenca && afs.licenca.inicio && afs.licenca.fim) {
-      var ini = parseDataStr(afs.licenca.inicio), fim = parseDataStr(afs.licenca.fim);
-      var dias = (ini && fim) ? Math.floor((fim - ini) / 86400000) + 1 : null;
-      var agora = ini && fim && ini <= hoje && fim >= hoje;
-      htmlLicenca = '<span style="display:inline-block; font-size:11.5px; margin-top:4px; white-space:nowrap;' + (agora ? 'background:#f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#6b21a8;' : 'color:#334155; padding: 2px 0px;') + '">' +
-        fmtDM(afs.licenca.inicio) + ' a ' + fmtDM(afs.licenca.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + dias + 'd)</span>' +
-        '</span>';
-    } else {
-      htmlLicenca = '<span style="color:#94a3b8;font-size:12px;">—</span>';
+      var iniL = parseDataStr(afs.licenca.inicio), fimL = parseDataStr(afs.licenca.fim);
+      var diasL = (iniL && fimL) ? Math.floor((fimL - iniL) / 86400000) + 1 : null;
+      var agoraL = iniL && fimL && iniL <= hoje && fimL >= hoje;
+      htmlLicenca = '<span style="display:inline-block; font-size:11.5px; margin-top:4px; white-space:nowrap;' + (agoraL ? 'background:#f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#6b21a8;' : 'color:#334155; padding: 2px 0px;') + '">' +
+        fmtDM(afs.licenca.inicio) + ' a ' + fmtDM(afs.licenca.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + diasL + 'd)</span></span>';
     }
 
-    var cargo = m.membroRole || '';
-    
-    // Check if any of the absences is active today to highlight the row
-    var isQualquerAtivo = false;
-    if (afs.ferias) {
-      afs.ferias.forEach(function(p) {
-        if (p && p.inicio && p.fim) {
-          var i = parseDataStr(p.inicio), f = parseDataStr(p.fim);
-          if (i <= hoje && f >= hoje) isQualquerAtivo = true;
-        }
-      });
-    }
-    if (afs.abonosFixos) {
-      afs.abonosFixos.forEach(function(d) {
-        var dt = parseDataStr(d);
-        if (dt && dt.getTime() === hoje.getTime()) isQualquerAtivo = true;
-      });
-    }
-    [[afs.abonoAniv], [afs.licenca]].forEach(function(categ) {
-      categ.forEach(function(p) {
-        if (p && p.inicio && p.fim) {
-          var i = parseDataStr(p.inicio), f = parseDataStr(p.fim);
-          if (i <= hoje && f >= hoje) isQualquerAtivo = true;
-        }
-      });
+    // Destaca a linha se algum afastamento está ativo hoje
+    var listaAtivos = [].concat(afs.ferias || [], afs.abonoAniv ? [afs.abonoAniv] : [], afs.licenca ? [afs.licenca] : []);
+    (afs.abonosFixos || []).forEach(function(d){ if (d) listaAtivos.push({inicio: d, fim: d}); });
+    var isQualquerAtivo = listaAtivos.some(function(p) {
+      if (!p || !p.inicio) return false;
+      var i = parseDataStr(p.inicio), f = parseDataStr(p.fim || p.inicio);
+      return i && f && i <= hoje && f >= hoje;
     });
 
     return '<tr' + (isQualquerAtivo ? ' style="background:#f8fafc;"' : '') + '>' +
       '<td><div style="display:flex;align-items:center;gap:10px;">' +
-        '<div class="member-avatar">' + esc(m.membroNome.charAt(0)) + '</div>' +
-        '<div><div style="font-weight:600;font-size:13px;">' + esc(m.membroNome) + '</div>' +
-        '<div style="font-size:11px;color:#64748b;">' + esc(cargo) + '</div></div>' +
+        '<div class="member-avatar">' + esc(m.name.charAt(0)) + '</div>' +
+        '<div><div style="font-weight:600;font-size:13px;">' + esc(m.name) + '</div>' +
+        '<div style="font-size:11px;color:#64748b;">' + esc(m.role) + '</div></div>' +
       '</div></td>' +
       '<td>' + htmlF1 + '</td>' +
       '<td>' + htmlF2 + '</td>' +
@@ -366,33 +356,22 @@ function renderFerias(data) {
       '<td>' + htmlAbonoAniv + '</td>' +
       '<td>' + htmlLicenca + '</td>' +
       '<td><div class="cell-actions" style="justify-content:center;">' +
-        iconBtn('edit','edit-ferias','Editar',  'data-membro-id="' + esc(m.membroId) + '"') +
-        iconBtn('del', 'del-ferias', 'Limpar Tudo', 'data-membro-id="' + esc(m.membroId) + '"') +
+        iconBtn('edit','edit-ferias','Editar Afastamentos','data-idx="' + origIdx + '"') +
       '</div></td>' +
     '</tr>';
   }).join('');
 }
 
-function abrirModalFerias(mObj) {
-  var sel = $id('ef-membro');
-  sel.innerHTML = '<option value="" disabled selected>Selecione um membro...</option>' +
-    state.members.slice()
-      .sort(function(a,b){ return a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'}); })
-      .map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>'; })
-      .join('');
-      
-  sel.disabled = false;
-  
-  if (mObj) {
-    sel.value = mObj.membroId;
-    sel.disabled = true; // Disable select on edit to map to that member specifically
-    $id('modal-ferias-title').innerText = 'Editar Afastamentos';
-    fillModalWithData(mObj.afastamentos);
-  } else {
-    sel.value = '';
-    $id('modal-ferias-title').innerText = 'Registrar Afastamentos';
-    clearModalAfastamentos();
-  }
+// Abre o modal já fixado no membro clicado — igual à Escala Semanal. O ano
+// editado é sempre o da aba selecionada no momento (anoAfastamentoAtual).
+function abrirModalFerias(m) {
+  $id('ef-membro-nome').innerText = m.name + ' — ' + m.role;
+  $id('ef-membro-id').value = m.id;
+  $id('modal-ferias-title').innerText = 'Afastamentos — ' + anoAfastamentoAtual;
+  var registro = afastamentosCache.find(function(r) {
+    return String(r.membroId) === String(m.id) && parseInt(r.ano, 10) === anoAfastamentoAtual;
+  });
+  fillModalWithData(registro || null);
   abrirModal('modal-ferias');
 }
 
@@ -458,25 +437,11 @@ function fillModalWithData(afs) {
   }
 }
 
-function onMembroAfastamentoChange(membroId) {
-  if (!membroId) {
-    clearModalAfastamentos();
-    return;
-  }
-  var mObj = feriasCache.find(function(x){ return String(x.membroId) === String(membroId); });
-  if (mObj) {
-    fillModalWithData(mObj.afastamentos);
-  } else {
-    clearModalAfastamentos();
-  }
-}
-
 function confirmarFerias() {
   var btn = $id('btn-confirmar-ferias');
-  var selMembro = $id('ef-membro');
-  var membroId  = selMembro.value;
-  if (!membroId)
-    return showAlerta('Por favor, selecione um membro.');
+  var membroId = $id('ef-membro-id').value;
+  var membro = state.members.find(function(x){ return String(x.id) === String(membroId); });
+  if (!membro) return showAlerta('Membro não encontrado.');
 
   var ferias = [];
   for (var i = 1; i <= 3; i++) {
@@ -511,7 +476,7 @@ function confirmarFerias() {
   }
 
   var dados = {
-    membroId: membroId,
+    membroId: membroId, membroNome: membro.name, ano: anoAfastamentoAtual,
     ferias: ferias,
     abonos: abonos,
     abonoAniversario: abonoAniversario,
@@ -521,111 +486,12 @@ function confirmarFerias() {
   btn.disabled = true; btn.innerText = 'A guardar...';
   google.script.run
     .withSuccessHandler(function(r) {
-      if (r.sucesso) {
-        feedbackBtn(btn,'✅ Salvo!','Confirmar',function(){ fecharModal('modal-ferias'); carregarFerias(); });
-      } else { btn.disabled = false; btn.innerText = 'Confirmar'; showAlerta(r.mensagem); }
+      if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',function(){ fecharModal('modal-ferias'); carregarFerias(); });
+      else { btn.disabled = false; btn.innerText = 'Confirmar'; showAlerta(r.mensagem); }
     })
     .withFailureHandler(falha(btn,'Confirmar',null))
-    .salvarFerias(dados);
+    .salvarAfastamento(dados);
 }
-
-function excluirFeriasLocal(membroId) {
-  google.script.run
-    .withSuccessHandler(function(r) { if (r.sucesso) carregarFerias(); else showAlerta(r.mensagem); })
-    .withFailureHandler(function(e){ showAlerta(String(e)); })
-    .excluirFerias(membroId);
-}
-
-// ==========================================
-// ARQUIVAMENTO E HISTÓRICO
-// ==========================================
-var historicoFeriasCache = [];
-
-function carregarHistoricoFerias() {
-  $id('lista-ferias-hist').innerHTML = '<tr><td colspan="8" class="msg-empty">A carregar Histórico...</td></tr>';
-  google.script.run
-    .withFailureHandler(function(e){ showAlerta('Erro ao carregar histórico: ' + String(e)); })
-    .withSuccessHandler(function(logs) {
-      historicoFeriasCache = logs || [];
-      renderHistoricoFerias();
-    })
-    .getHistoricoAfastamentos();
-}
-
-function renderHistoricoFerias() {
-  var tbody = $id('lista-ferias-hist');
-  var dts = historicoFeriasCache.slice();
-  
-  // Sorting: Ano Descending, Membro Ascending
-  dts.sort(function(a, b) {
-    if (b.ano !== a.ano) return String(b.ano).localeCompare(String(a.ano));
-    return a.nome.localeCompare(b.nome, 'pt-BR', {sensitivity: 'base'});
-  });
-
-  if (!dts.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="msg-empty">Nenhum registro no histórico.</td></tr>';
-    return;
-  }
-
-  var fmtDMY = function(isoStr) {
-    if (!isoStr) return '';
-    var p = isoStr.split('-');
-    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : isoStr;
-  };
-
-  var processPer = function(txt) {
-    if (!txt) return '<span style="color:#94a3b8;font-size:12px;">—</span>';
-    return '<span style="display:inline-block; font-size:11px; color:#475569; padding:2px 0;">' + txt.split(' a ').map(fmtDMY).join(' a ') + '</span>';
-  };
-
-  tbody.innerHTML = dts.map(function(r) {
-    var absHTML = (r.abonos ? r.abonos.split(',').map(function(dt){
-      return '<span style="display:inline-block; margin-right:2px; font-size:11px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:1px 4px; color:#475569;">' + fmtDMY(dt.trim()) + '</span>';
-    }).join(' ') : '<span style="color:#94a3b8;font-size:12px;">—</span>');
-
-    return '<tr>' +
-      '<td style="font-weight:600; color:#334155;">' + esc(r.ano) + '</td>' +
-      '<td><div style="font-weight:600;font-size:13px;">' + esc(r.nome) + '</div><div style="font-size:11px;color:#64748b;">' + esc(r.cargo) + '</div></td>' +
-      '<td>' + processPer(r.f1) + '</td>' +
-      '<td>' + processPer(r.f2) + '</td>' +
-      '<td>' + processPer(r.f3) + '</td>' +
-      '<td>' + absHTML + '</td>' +
-      '<td>' + (r.niver ? '<span style="display:inline-block;font-size:11px;color:#475569;">' + fmtDMY(r.niver) + '</span>' : '<span style="color:#94a3b8;font-size:12px;">—</span>') + '</td>' +
-      '<td>' + processPer(r.licenca) + '</td>' +
-    '</tr>';
-  }).join('');
-}
-
-// Event Listeners for frontend UI
-document.addEventListener('DOMContentLoaded', function() {
-
-
-  document.body.addEventListener('click', function(e) {
-    if (e.target.closest('.arquivar-membro')) {
-      var btn = e.target.closest('.arquivar-membro');
-      var id = btn.getAttribute('data-membro-id');
-      var nome = btn.getAttribute('data-membro-nome');
-      if (confirm('Deseja arquivar todos os afastamentos ativos de ' + nome + ' para o histórico e limpar a planilha principal?')) {
-        btn.disabled = true;
-        google.script.run
-          .withSuccessHandler(function(r) {
-            btn.disabled = false;
-            if (r.sucesso) {
-              historicoFeriasCache = []; // force reload
-              showAlerta('✅ Afastamentos de ' + nome + ' arquivados com sucesso!');
-              var mem = state.members.find(function(x){ return String(x.id) === String(id); });
-              if (mem && mem.afastamentos) {
-                mem.afastamentos = { ferias: [], abonosFixos: [], abonoAniv: null, licenca: null };
-              }
-              carregarFerias(); 
-            } else { showAlerta(r.mensagem); }
-          })
-          .withFailureHandler(function(err){ btn.disabled = false; showAlerta('Erro: '+err); })
-          .arquivarAfastamentosGeral(new Date().getFullYear(), id);
-      }
-    }
-  });
-});
 </script>
 
 

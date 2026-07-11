@@ -236,7 +236,16 @@ function excluirPlano(idPlano) {
         if (String(rows[i][1]||'') === idPlano) { aba.deleteRow(i+1); excluiu = true; }
       }
       if (!excluiu) return { sucesso: false, mensagem: 'Plano não localizado.' };
-      registrarLog('Exclusão de Plano', idPlano, 'Plano removido.');
+      // Remove também as entregas vinculadas — sem isso, um plano novo criado
+      // para o mesmo risco "herdava" os registros de entrega do plano excluído.
+      const abaE = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DELIVERY);
+      if (abaE) {
+        const rowsE = abaE.getDataRange().getValues();
+        for (let i = rowsE.length - 1; i >= 1; i--) {
+          if (String(rowsE[i][1]||'') === idPlano) abaE.deleteRow(i+1);
+        }
+      }
+      registrarLog('Exclusão de Plano', idPlano, 'Plano e entregas vinculadas removidos.');
       return { sucesso: true, mensagem: 'Plano excluído!' };
     });
   } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
@@ -254,9 +263,8 @@ function salvarEntrega(dados) {
             String(rows[i][9]||'Ativo') !== 'Arquivado')
           return { sucesso: false, mensagem: 'Já existe um registro ativo para esta unidade.' };
       }
-      let usr = 'Sistema'; try { usr = Session.getActiveUser().getEmail() || usr; } catch(e) {}
       aba.appendRow([new Date(), dados.riscoVinculado, dados.unidade, dados.entregue,
-        dados.dataEntrega||'', dados.tipoDoc||'', dados.processoSei||'', dados.justificativa||'', usr, 'Ativo']);
+        dados.dataEntrega||'', dados.tipoDoc||'', dados.processoSei||'', dados.justificativa||'', usuarioAtual_(), 'Ativo']);
       _reavaliarBaixa(dados.riscoVinculado);
       registrarLog('Registro de Entrega', dados.riscoVinculado, 'Unidade: ' + dados.unidade);
       return { sucesso: true, mensagem: 'Registro salvo!' };
@@ -273,9 +281,8 @@ function atualizarEntrega(dados) {
         if (String(rows[i][1]||'') === dados.riscoVinculado &&
             String(rows[i][2]||'') === dados.unidade &&
             String(rows[i][9]||'Ativo') !== 'Arquivado') {
-          let usr = 'Sistema'; try { usr = Session.getActiveUser().getEmail() || usr; } catch(e) {}
           aba.getRange(i+1, 4, 1, 6).setValues([[dados.entregue, dados.dataEntrega||'',
-            dados.tipoDoc||'', dados.processoSei||'', dados.justificativa||'', usr]]);
+            dados.tipoDoc||'', dados.processoSei||'', dados.justificativa||'', usuarioAtual_()]]);
           _reavaliarBaixa(dados.riscoVinculado);
           return { sucesso: true, mensagem: 'Entrega atualizada!' };
         }
@@ -354,7 +361,7 @@ function salvarEntregasEmLote(riscoVinculado, entregas) {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_DELIVERY);
       let rows = aba.getDataRange().getValues();
-      let usr = 'Sistema'; try { usr = Session.getActiveUser().getEmail() || usr; } catch(e) {}
+      const usr = usuarioAtual_();
 
       entregas.forEach(function(ent) {
         let linhaExistente = -1;
@@ -382,20 +389,6 @@ function salvarEntregasEmLote(riscoVinculado, entregas) {
   } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
 }
 
-// --- PDF por e-mail ---
-function enviarPdfPorEmail(destinatario, base64Pdf, nomeArquivo, titulo) {
-  try {
-    if (!destinatario || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario.trim()))
-      return { sucesso: false, mensagem: 'E-mail do destinatário inválido.' };
-    const conteudo = base64Pdf.toString().replace(/^data:application\/pdf;(?:filename=[^;]+;)?base64,/, '');
-    const blob = Utilities.newBlob(Utilities.base64Decode(conteudo), 'application/pdf', nomeArquivo || 'relatorio.pdf');
-    MailApp.sendEmail({
-      to: destinatario.trim(),
-      subject: 'SGQ · ' + (titulo || 'Relatório') + ' | CEQP / SUCOAS - SES/DF',
-      body: 'Segue em anexo o relatório gerado pelo Sistema de Gestão da Qualidade.\n\nEnvio automático — não responda.',
-      attachments: [blob]
-    });
-    registrarLog('Envio de PDF', titulo || 'Relatório', 'Destinatário: ' + destinatario);
-    return { sucesso: true, mensagem: 'Relatório enviado com sucesso!' };
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
-}
+// PDF por e-mail: ver gerarPdfDeHtml/enviarPdfDeHtml em Código.js — a
+// geração de PDF agora é feita a partir de HTML (não mais de um Base64
+// de captura de tela), então essa função não é mais necessária aqui.

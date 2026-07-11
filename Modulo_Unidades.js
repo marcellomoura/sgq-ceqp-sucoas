@@ -27,6 +27,14 @@ function atualizarUnidade(dados) {
       const linha = parseInt(dados.id, 10) + 1;
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Registro não localizado.' };
+      // O id é a posição da linha — confere a sigla original antes de
+      // escrever, para não atualizar a linha errada se a lista do usuário
+      // estiver desatualizada (mesma proteção que Documentos já usa).
+      if (dados.siglaOriginal) {
+        const atual = aba.getRange(linha, 2).getValue().toString().trim();
+        if (atual !== String(dados.siglaOriginal).trim())
+          return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
+      }
       aba.getRange(linha, 1, 1, 4).setValues([[dados.unidade, dados.sigla, dados.email, (dados.tipo||'').trim()]]);
       registrarLog('Edição de Unidade', dados.sigla, 'Dados atualizados.');
       return { sucesso: true, mensagem: 'Unidade atualizada com sucesso!' };
@@ -34,7 +42,7 @@ function atualizarUnidade(dados) {
   } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
 }
 
-function excluirUnidade(idUnidade) {
+function excluirUnidade(idUnidade, siglaEsperada) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_UNITS);
@@ -42,6 +50,10 @@ function excluirUnidade(idUnidade) {
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Registro não localizado.' };
       const sigla = aba.getRange(linha, 2).getValue();
+      // Confere a sigla antes de excluir — o id é posição de linha e uma
+      // lista desatualizada apagaria a unidade errada
+      if (siglaEsperada && sigla.toString().trim() !== String(siglaEsperada).trim())
+        return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
       aba.deleteRow(linha);
       registrarLog('Exclusão de Unidade', sigla, 'Unidade removida.');
       return { sucesso: true, mensagem: 'Unidade excluída com sucesso!' };

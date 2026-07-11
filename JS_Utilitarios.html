@@ -3,8 +3,7 @@
 // JS_Utilitarios.html
 // Helpers, navegação, delegação de eventos
 // ==========================================
-var state = { tasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [], ferias: [] };
-var cacheIdx = {};  // índices pré-computados para acesso O(1)
+var state = { tasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [] };
 var currentTab  = 'kanban';
 var itemExcluir = null, tipoPdfAtual = null, entregaCtx = null, planoRevCtx = null;
 var currentActivities = [];
@@ -32,7 +31,13 @@ function $id(id) { return document.getElementById(id); }
 function esc(s) { return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 function fmtBr(d) { if (!d || !String(d).includes('-')) return d || '-'; const p = String(d).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d; }
 function badge(st) { const c = CORES_STATUS[st] || ['#f1f5f9','#475569']; return `<span class="status-badge" style="background:${c[0]};color:${c[1]};">${esc(st)}</span>`; }
-function linkA(url, txt, cor) { return url && url !== '-' ? `<a href="${esc(url)}" target="_blank" style="color:${cor||'#2563eb'};font-weight:600;text-decoration:none;">${txt}</a>` : '-'; }
+// Só renderiza como link URLs http(s) — qualquer outro valor (ex.:
+// "javascript:...") aparece como texto simples, sem virar clicável
+function linkA(url, txt, cor) {
+  if (!url || url === '-') return '-';
+  if (!/^https?:\/\//i.test(String(url).trim())) return esc(url);
+  return `<a href="${esc(url)}" target="_blank" style="color:${cor||'#2563eb'};font-weight:600;text-decoration:none;">${txt}</a>`;
+}
 function iconBtn(cls, acao, title, attrs) { return `<button type="button" class="btn-icon ${cls}" title="${title}" data-acao="${acao}" ${attrs||''}>${ICON[cls] || ICON.del}</button>`; }
 function msgTabela(tbodyId, cols, txt, err) { $id(tbodyId).innerHTML = `<tr><td colspan="${cols}" class="${err?'msg-error':'msg-empty'}">${txt}</td></tr>`; }
 function feedbackBtn(btn, ok, orig, cb) { btn.disabled=false; btn.innerText=ok; setTimeout(()=>{ btn.innerText=orig; if(cb) cb(); }, 1400); }
@@ -43,6 +48,30 @@ function falha(btn, orig, statusEl) {
     if(statusEl){statusEl.innerText=msg; statusEl.style.color='#dc2626';}
     else showAlerta(msg);
   };
+}
+
+// ---------- Helpers de membros (compartilhados por Kanban, Dashboard, Pessoas) ----------
+// Cópia ordenada por nome (pt-BR) — a ordem original de state.members é
+// preservada porque os botões de editar/excluir usam o índice original.
+function membrosOrdenados() {
+  return [...state.members].sort((a, b) => (a.name||'').localeCompare(b.name||'', 'pt-BR', { sensitivity: 'base' }));
+}
+// A coluna Responsável_ID guarda um JSON de ids ("[\"MEM-1\"]"), mas dados
+// antigos podem ter um id solto — os dois formatos são aceitos aqui.
+function parseIdsResponsaveis(val) {
+  try {
+    const ids = JSON.parse(val);
+    return Array.isArray(ids) ? ids.map(String) : (val ? [String(val)] : []);
+  } catch(e) { return val ? [String(val)] : []; }
+}
+function nomesMembros(ids) {
+  return ids.map(id => { const m = state.members.find(x => String(x.id) === String(id)); return m ? m.name : ''; })
+    .filter(n => n).join(', ');
+}
+// Options "Todos" + membros em ordem alfabética (filtros de membro)
+function optsMembros() {
+  return '<option value="">Todos</option>' +
+    membrosOrdenados().map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
 }
 
 // Alertas e confirmações
@@ -144,7 +173,7 @@ function mudarTab(tab, botao) {
   document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
   if(botao) botao.classList.add('active');
-  const view = $id('view-' + tab.replace(/-/g,'_').replace(/_/g, '-'));
+  const view = $id('view-' + tab);
   if(view) view.classList.add('active');
 
   atualizarTopBar();
@@ -197,7 +226,7 @@ var TAB_TITULOS = {
   'plano-acomp':  'Plano de Ação',
   'escala':       'Escala Semanal',
   'ferias':       'Férias e Ausências',
-  'logs':         'Log de Alterações'
+  'logs':         'Atividades'
 };
 
 function atualizarTopBar() {
@@ -256,6 +285,17 @@ document.addEventListener('DOMContentLoaded', function() {
       state.members = data.members;
       renderTasks();
       sincronizarDropdownMembros();
+      // Se o usuário já clicou numa aba que também depende destes dados
+      // (Membros, Escala, Férias, Dashboard, Arquivados) ANTES desta resposta
+      // chegar, essa aba renderizou vazia e nunca era atualizada sozinha —
+      // precisava trocar de aba e voltar para os dados aparecerem. Re-renderiza
+      // a aba que estiver ativa neste momento para corrigir isso.
+      const rotinasPosCargaInicial = {
+        'members': renderMembers, 'escala': renderEscala,
+        'ferias': carregarFerias, 'dashboard': renderDashboard,
+        'archived': renderArquivados
+      };
+      if (rotinasPosCargaInicial[currentTab]) rotinasPosCargaInicial[currentTab]();
     }).getKanbanData();
 });
 
@@ -290,70 +330,40 @@ document.addEventListener('click', function(e) {
   const idx  = alvo.dataset.idx !== undefined ? parseInt(alvo.dataset.idx,10) : null;
   const ctx  = { risco: alvo.dataset.risco, unidade: alvo.dataset.unidade, what: alvo.dataset.what };
 
+  // Apenas ações disparadas por botões GERADOS dinamicamente (iconBtn e
+  // afins, que carregam data-acao). Botões fixos do HTML usam o handler
+  // por ID logo abaixo — manter aqui só o que realmente é gerado evita
+  // entradas mortas apontando para funções que não existem mais.
   const acoes = {
     // Kanban
-    'add-card'        : () => abrirModalTarefa(alvo.dataset.status),
     'edit-card'       : () => abrirEditarTarefa(state.tasks[idx]),
-    'save-task'       : () => salvarTarefa(),
-    'delete-task'     : () => confirmarExcluirTarefa(),
     'restore-task'    : () => restaurarTarefa(alvo.dataset.id),
-    'add-comment'     : () => adicionarComentario(),
-    'toggle-assignees': () => { $id('taskAssigneesContainer').classList.toggle('show'); },
-    'novo-membro'     : () => abrirModalMembro(),
+    // Membros
     'edit-membro'     : () => abrirEditarMembro(state.members[idx]),
     'del-membro'      : () => showConfirm('Excluir este membro?', () => excluirMembro(state.members[idx].id)),
-    'save-member'     : () => salvarMembro(),
-    // Pessoas — Escala
+    // Pessoas — Escala e Afastamentos
     'edit-escala'     : () => abrirModalEscala(state.members[idx]),
-    // Pessoas — Férias
-    'nova-ferias'     : () => abrirModalFerias(null),
-    'edit-ferias'     : () => { const m=feriasCache.find(x=>x.membroId===alvo.dataset.membroId); if(m) abrirModalFerias(m); },
-    'del-ferias'      : () => showConfirm('Limpar todos os afastamentos de ' + (feriasCache.find(x=>x.membroId===alvo.dataset.membroId)||{membroNome:''}).membroNome + '?', () => excluirFeriasLocal(alvo.dataset.membroId)),
-    'download-pdf'    : () => gerarPdfLocal('dashboard'),
+    'edit-ferias'     : () => abrirModalFerias(state.members[idx]),
     // Unidades
-    'nova-unidade'    : () => abrirModalUnidade(),
     'edit-unidade'    : () => abrirEditarUnidade(state.units[idx]),
-    'del-unidade'     : () => showConfirm(`Excluir a unidade "${state.units[idx].sigla}"?`, () => excluirUnidade(state.units[idx].id)),
-    'confirmar-unidade': () => confirmarUnidade(),
+    'del-unidade'     : () => showConfirm(`Excluir a unidade "${state.units[idx].sigla}"?`, () => excluirUnidade(state.units[idx].id, state.units[idx].sigla)),
     // Documentos
-    'salvar-doc'      : () => salvarDocumento(),
     'edit-doc'        : () => abrirEditarDoc(idx),
     'rev-doc'         : () => abrirRevisaoDoc(idx),
     'del-doc'         : () => { const d=state.docs[idx]; showConfirm(`Excluir "${d.codigo}"?`, ()=>excluirDoc(d.idRow, d.codigo)); },
-    'confirmar-doc'   : () => confirmarEdicaoDoc(),
-    'publicar-doc'    : () => publicarRevisaoDoc(),
     // Riscos
-    'salvar-risco'    : () => salvarRisco(),
     'edit-risco'      : () => abrirEditarRisco(idx),
     'rev-risco'       : () => abrirRevisaoRisco(idx),
     'del-risco'       : () => { const r=state.risks[idx]; showConfirm(`Excluir R${r.id}?`, ()=>excluirRisco(r.id)); },
-    'confirmar-risco' : () => confirmarEdicaoRisco(),
-    'publicar-risco'  : () => publicarRevisaoRisco(),
     // Planos
-    'salvar-plano'    : () => salvarPlano(),
     'edit-plano'      : () => abrirEditarPlano(idx),
     'arquivar-plano'  : () => abrirRevisaoPlano(idx),
-    'nova-rev-plano'  : () => abrirModalNovaRevisaoPlano(idx),
-    'historico-plano' : () => abrirHistoricoPlano(alvo.dataset.risco),
     'acomp-entregas'  : () => abrirModalAcompEntregas(idx),
     'del-plano'       : () => { const p=state.plans[idx]; showConfirm(`Excluir plano de ${p.riscoVinculado}?`, ()=>excluirPlano(p.riscoVinculado)); },
-    'confirmar-plano' : () => confirmarEdicaoPlano(),
-    'confirmar-rev-plano': () => confirmarRevisaoPlano(),
-    'confirmar-nova-rev-plano': () => confirmarNovaRevisaoPlano(),
     // Entregas
     'reg-entrega'     : () => abrirModalEntrega(ctx),
     'edit-entrega'    : () => abrirEditarEntrega(ctx),
-    'del-entrega'     : () => showConfirm(`Excluir entrega de "${ctx.unidade}"?`, ()=>excluirEntrega(ctx.risco, ctx.unidade)),
-    'confirmar-entrega': () => salvarEntrega(),
-    'confirmar-entrega-editar': () => atualizarEntrega(),
-    // PDF e e-mail
-    'pdf-matriz'      : () => gerarPdfLocal('matriz'),
-    'email-matriz'    : () => abrirModalEmail('matriz'),
-    'pdf-acomp'       : () => gerarPdfLocal('acomp'),
-    'enviar-pdf'      : () => dispararEnvioPdf(),
-    // Confirmações
-    'confirmar-excluir': () => { if(itemExcluir){ fecharModal('modal-confirmar'); itemExcluir(); itemExcluir=null; } },
-    'fechar-alerta'   : () => fecharModal('modal-alerta')
+    'del-entrega'     : () => showConfirm(`Excluir entrega de "${ctx.unidade}"?`, ()=>excluirEntrega(ctx.risco, ctx.unidade))
   };
   if (acoes[acao]) acoes[acao]();
 });
@@ -370,7 +380,6 @@ document.addEventListener('click', function(e) {
   if(e.target.id === 'btn-salvar-plano') salvarPlano();
   if(e.target.id === 'btn-confirmar-plano') confirmarEdicaoPlano();
   if(e.target.id === 'btn-confirmar-rev-plano') confirmarRevisaoPlano();
-  if(e.target.id === 'btn-confirmar-nova-rev-plano') confirmarNovaRevisaoPlano();
   if(e.target.id === 'btn-salvar-acomp-entregas') salvarAcompEntregas();
   if(e.target.id === 'btn-confirmar-entrega') salvarEntrega();
   if(e.target.id === 'btn-confirmar-entrega-editar') atualizarEntrega();
@@ -395,7 +404,6 @@ document.addEventListener('click', function(e) {
   if(e.target.id === 'btn-pdf-acomp') gerarPdfLocal('acomp');
   if(e.target.id === 'btn-email-acomp') abrirModalEmail('acomp');
   if(e.target.id === 'btn-atualizar-logs')       carregarLogs();
-  if(e.target.id === 'btn-nova-ferias')          abrirModalFerias(null);
   if(e.target.id === 'btn-confirmar-escala')     confirmarEscala();
   if(e.target.id === 'btn-confirmar-ferias')     confirmarFerias();
   if(e.target.id === 'btn-enviar-pdf') dispararEnvioPdf();
@@ -429,117 +437,165 @@ document.addEventListener('input', function(e) {
 
 // ==========================================
 // PDF
+// Gerado inteiramente no SERVIDOR a partir de um HTML de impressão
+// dedicado (montado aqui reaproveitando os dados já na tela — não uma
+// captura da página). Vantagens sobre a captura de tela (html2canvas):
+// nunca corta/deixa página em branco (é um documento real, não uma
+// imagem fatiada), não pisca nada na tela (a página visível nunca é
+// tocada) e é mais leve (sem biblioteca de terceiros).
+// Cada tipo aponta pro nome de uma função "montarHtml...Pdf" (definida
+// perto do render da respectiva tela) que devolve só o HTML do corpo do
+// relatório — o envelope (estilo + cabeçalho) é comum, montado abaixo.
+// A função é referenciada por NOME (string) e resolvida em tempo de
+// clique, não no carregamento do script: como os arquivos JS_*.html são
+// concatenados em <script>s separados, na hora em que este trecho é
+// executado nem todo mundo já rodou — resolver por nome evita depender
+// da ordem de carregamento.
 // ==========================================
 const CFG_PDF = {
-  'dashboard': { area: 'view-dashboard', header: 'pdf-header-dashboard', file: 'Dashboard_Tarefas_SGQ.pdf',      title: 'Dashboard de Indicadores de Tarefas', ori: 'landscape', pagebreak: ['css','avoid-all'], winW: null },
-  'archived' : { area: 'view-archived',  header: 'pdf-header-archived',   file: 'Cartoes_Arquivados_SGQ.pdf',     title: 'Cartões Arquivados',                  ori: 'portrait',  pagebreak: ['css','avoid-all'], winW: null },
-  'matriz'   : { area: 'area-matriz',    header: 'pdf-header-matriz',     file: 'Matriz_Risco_SGQ.pdf',           title: 'Matriz de Risco',                     ori: 'landscape', pagebreak: 'css',              winW: 1240 },
-  'acomp'    : { area: 'area-acomp',     header: 'pdf-header-acomp',      file: 'Acompanhamento_Acoes_SGQ.pdf',   title: 'Acompanhamento de Ações',             ori: 'landscape', pagebreak: ['css','avoid-all'], winW: null }
+  'dashboard': { file: 'Dashboard_Tarefas_SGQ.pdf',    title: 'Dashboard de Indicadores de Tarefas', ori: 'landscape', montarFn: 'montarHtmlDashboardPdf' },
+  'archived' : { file: 'Cartoes_Arquivados_SGQ.pdf',   title: 'Cartões Arquivados',                  ori: 'portrait',  montarFn: 'montarHtmlArquivadosPdf' },
+  'matriz'   : { file: 'Matriz_Risco_SGQ.pdf',         title: 'Matriz de Risco',                     ori: 'landscape', montarFn: 'montarHtmlMatrizPdf' },
+  'acomp'    : { file: 'Acompanhamento_Acoes_SGQ.pdf', title: 'Acompanhamento de Ações',             ori: 'landscape', montarFn: 'montarHtmlAcompanhamentoPdf' }
 };
 
-// Gera PDF a partir do elemento REAL da tela (não um clone), depois de
-// remover temporariamente qualquer limite de altura/overflow ao redor
-// dele e esconder sidebar/topo. É a técnica mais confiável testada —
-// captura exatamente o que está desenhado, sem cortes. Tudo é
-// restaurado ao estado original em seguida (efeito visual muito
-// rápido, imperceptível na prática).
+// O conversor de HTML→PDF do Apps Script (Utilities.newBlob().getAs(PDF))
+// não renderiza background-color de forma confiável em elementos comuns
+// (testado: cor de fundo de <div>/<span> some por completo). O que
+// funciona de forma consistente:
+//  - texto e cor de texto (color)
+//  - bordas
+//  - o atributo HTML legado "bgcolor" em <table>/<tr>/<td>/<th>
+// Por isso, TUDO que precisa de uma cor de preenchimento no PDF usa
+// <td bgcolor="..."> (nunca <div style="background:...">), e badges que
+// no app usam pílula colorida (fundo + texto branco) viram aqui borda +
+// texto colorido — sem depender de nenhum preenchimento.
+
+// Extrai a cor de "background: X" / "background-color: X" de um style inline.
+function _extrairCorFundo(styleTexto) {
+  const m = /background(?:-color)?\s*:\s*([^;]+)/i.exec(styleTexto || '');
+  return m ? m[1].trim() : null;
+}
+
+// Converte badges de pílula colorida (status-badge/tag-badge, que usam
+// background inline) em borda + texto colorido — a única forma que
+// renderiza de maneira confiável no PDF.
+function _converterBadgesParaPdf(container) {
+  container.querySelectorAll('.status-badge, .tag-badge').forEach(function(el) {
+    const cor = _extrairCorFundo(el.getAttribute('style'));
+    if (!cor) return;
+    el.setAttribute('style', `border:1.3px solid ${cor};color:${cor};font-weight:700;background:none;`);
+  });
+}
+
+// Clona um <tbody> já renderizado na tela e remove qualquer célula
+// marcada com a classe "no-print" (colunas de ações/botões) — assim o
+// PDF reaproveita exatamente os mesmos dados/badges que já estão
+// corretos na tela, sem duplicar a lógica de cada tabela. Os badges
+// coloridos passam por _converterBadgesParaPdf (ver acima).
+function _tbodyParaPdf(tbodyId) {
+  const tbody = $id(tbodyId);
+  if (!tbody) return '';
+  const clone = tbody.cloneNode(true);
+  clone.querySelectorAll('.no-print').forEach(el => el.remove());
+  _converterBadgesParaPdf(clone);
+  return clone.innerHTML;
+}
+
+// Título de seção — tabela de uma célula sem borda (mais confiável no
+// conversor do que um <div> solto).
+function _pdfSecaoTitulo(texto) {
+  return `<table style="margin:10px 0 6px;"><tr><td style="border:none;padding:0;font-size:13px;font-weight:700;color:#1e293b;">${esc(texto)}</td></tr></table>`;
+}
+
+function _pdfKpiCell(label, valor, cor) {
+  return `<td bgcolor="#f8fafc" style="background:#f8fafc;width:25%;padding:10px 12px;border:1px solid #e2e8f0;">
+    <span style="font-size:9.5px;font-weight:700;color:#64748b;">${esc(label)}</span><br>
+    <span style="font-size:20px;font-weight:700;color:${cor};">${esc(String(valor))}</span>
+  </td>`;
+}
+
+// Cabeçalho institucional — montado com <table> (não <div>): o teste
+// real mostrou que um <div> com padding+border-left simplesmente some
+// no PDF gerado, enquanto tabelas renderizam de forma previsível.
+function _cabecalhoPdfHtml(cfg) {
+  return `<table style="margin-bottom:22px;"><tr>
+    <td bgcolor="#2563eb" width="4" style="background:#2563eb;padding:0;border:none;"></td>
+    <td bgcolor="#f8fafc" style="background:#f8fafc;padding:14px 20px;border:none;">
+      <table style="margin:0;"><tr><td style="border:none;padding:0;font-size:12px;font-weight:800;color:#0f172a;">SISTEMA DE GESTÃO DA QUALIDADE</td></tr>
+      <tr><td style="border:none;padding:0;color:#64748b;font-size:9.5px;">COMISSÃO ESPECIAL DE QUALIDADE E PADRONIZAÇÃO · CEQP | SUCOAS - SES/DF</td></tr>
+      <tr><td style="border:none;padding:2px 0 0;font-size:19px;font-weight:700;color:#2563eb;">${esc(cfg.title)}</td></tr></table>
+    </td>
+  </tr></table>`;
+}
+
+// Envelope HTML completo (documento válido, com <style> próprio — não
+// depende do CSS.html do app, que usa flex/grid não confiáveis no
+// conversor de PDF do Apps Script). Dimensões do @page em milímetros
+// explícitos (mais confiável entre conversores do que a palavra-chave
+// "landscape") para garantir a orientação correta.
+function _envelopeHtml(cfg, corpoHtml) {
+  const pagina = cfg.ori === 'landscape' ? '297mm 210mm' : '210mm 297mm';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    @page { size: ${pagina}; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #1e293b; font-size: 11px; margin: 0; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+    th, td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: middle; font-size: 10.5px; }
+    th { background: #f8fafc; color: #475569; font-size: 9.5px; text-transform: uppercase; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
+    tr { page-break-inside: avoid; }
+    .msg-empty { text-align: center; color: #94a3b8; padding: 16px; font-size: 11px; }
+    .status-badge { padding: 3px 8px; border-radius: 5px; font-weight: 700; font-size: 9.5px; display: inline-block; white-space: nowrap; }
+    .tag-badge { border-radius: 4px; padding: 2px 6px; font-size: 9px; font-weight: 700; color: white; display: inline-block; }
+    .urgent-date { color: #dc2626; font-weight: 700; }
+    .matrix-table { border-collapse: separate; border-spacing: 3px; margin-bottom: 6px; }
+    .matrix-table th, .matrix-table td { height: 70px; text-align: center; font-weight: 700; border-radius: 5px; font-size: 10.5px; width: 16%; vertical-align: middle; padding: 3px; }
+    .badge-cluster { display: block; text-align: center; }
+    .risk-badge { display: inline-block; border: 1px solid #94a3b8; color: #1e293b; padding: 1px 5px; border-radius: 4px; font-size: 9.5px; font-weight: 700; margin: 1px; }
+  </style></head><body>${_cabecalhoPdfHtml(cfg)}${corpoHtml}</body></html>`;
+}
+
 function gerarPdfLocal(tipo) {
   // Matriz e Acompanhamento dependem dos dados do SGQ (carregados sob
   // demanda). Se o usuário clicar em "Baixar PDF" antes desses dados
   // terminarem de chegar, o PDF sai com "A carregar..." nas tabelas —
   // por isso esperamos a confirmação de que já estão prontos.
   if (tipo === 'matriz' || tipo === 'acomp') {
-    garantirRestoData(function() { _gerarPdfLocalReal(tipo); });
+    garantirRestoData(function() { _gerarPdfReal(tipo); });
   } else {
-    _gerarPdfLocalReal(tipo);
+    _gerarPdfReal(tipo);
   }
 }
 
-function _gerarPdfLocalReal(tipo) {
-  if (typeof html2pdf === 'undefined') { showAlerta('Biblioteca PDF não carregou. Recarregue a página e tente novamente.'); return; }
-  const cfg  = CFG_PDF[tipo];
-  const area = $id(cfg.area);
+// Alguns relatórios (Matriz) precisam capturar um elemento da tela como
+// imagem antes de montar o HTML (ver _capturarElementoComoImg) — isso é
+// assíncrono, então `montarFn` pode devolver uma string OU uma Promise
+// que resolve para uma string. Promise.resolve() trata os dois casos
+// da mesma forma, sem exigir mudança nos relatórios que já são síncronos.
+function _gerarPdfReal(tipo) {
+  const cfg = CFG_PDF[tipo];
   const btnMap = { dashboard: 'btn-download-pdf', archived: 'btn-pdf-archived', matriz: 'btn-pdf-matriz', acomp: 'btn-pdf-acomp' };
-  const btn  = $id(btnMap[tipo]);
+  const btn = $id(btnMap[tipo]);
   if (btn) { btn.innerText = 'A gerar...'; btn.disabled = true; }
 
-  // 1. Canvas → img estático (Chart.js)
-  const canvasTemp = [];
-  area.querySelectorAll('canvas').forEach(function(c) {
-    if (!c.id) return;
-    try {
-      const img = document.createElement('img');
-      img.src = c.toDataURL('image/png');
-      img.style.cssText = 'width:100%;height:auto;display:block;';
-      c.parentNode.insertBefore(img, c);
-      c.style.display = 'none';
-      canvasTemp.push({ canvas: c, img: img });
-    } catch(e) {}
-  });
-
-  // 2. Cabeçalho institucional visível
-  $id(cfg.header).style.display = 'block';
-
-  // 3. Esconde sidebar/topo/filtros
-  const escondidos = [];
-  document.querySelectorAll('.sidebar, .top-header, .page-header, .no-print').forEach(function(el) {
-    if (el.style.display !== 'none') { escondidos.push(el); el.style.display = 'none'; }
-  });
-
-  // 4. Temporariamente ajusta o elemento original em vez de clonar
-  const originalWidth = area.style.width;
-  const originalMaxWidth = area.style.maxWidth;
-  const originalPosition = area.style.position;
-  const originalLeft = area.style.left;
-  const originalTop = area.style.top;
-  const originalMargin = area.style.margin;
-  const originalTransform = area.style.transform;
-  
-  const pdfW = cfg.winW || (cfg.ori === 'landscape' ? 1060 : 794);
-  area.style.width = pdfW + 'px';
-  area.style.maxWidth = 'none';
-  area.style.position = 'absolute';
-  area.style.left = '0';
-  area.style.top = '0';
-  area.style.margin = '0';
-  area.style.transform = 'none';
-
-  // Salva o scroll para não gerar gap em branco
-  const sx = window.scrollX, sy = window.scrollY;
-  window.scrollTo(0, 0);
-
-  function restaurar() {
-    area.style.width = originalWidth;
-    area.style.maxWidth = originalMaxWidth;
-    area.style.position = originalPosition;
-    area.style.left = originalLeft;
-    area.style.top = originalTop;
-    area.style.margin = originalMargin;
-    area.style.transform = originalTransform;
-    window.scrollTo(sx, sy);
-    
-    escondidos.forEach(function(elx) { elx.style.display = ''; });
-    $id(cfg.header).style.display = 'none';
-    canvasTemp.forEach(function(o) { o.canvas.style.display = ''; if (o.img.parentNode) o.img.parentNode.removeChild(o.img); });
-    [statusChartInst, priorityChartInst, memberChartInst, memberConcluidoChartInst].forEach(function(c) { if (c) c.resize(); });
-    if (btn) { btn.innerText = 'Baixar PDF'; btn.disabled = false; }
-  }
-
-  requestAnimationFrame(function() {
-    requestAnimationFrame(function() {
-      const opts = {
-        margin: 10,
-        filename: cfg.file,
-        image: { type: 'jpeg', quality: 0.90 },
-        html2canvas: { scale: 1.5, scrollY: 0, scrollX: 0, windowWidth: pdfW, useCORS: true, allowTaint: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: cfg.ori },
-        pagebreak: { mode: cfg.pagebreak || ['css', 'avoid-all'] }
-      };
-
-      html2pdf().set(opts).from(area).save()
-        .then(restaurar)
-        .catch(function(err) { restaurar(); showAlerta('Erro ao gerar PDF: ' + String(err)); });
-    });
+  Promise.resolve(window[cfg.montarFn]()).then(function(corpoHtml) {
+    const html = _envelopeHtml(cfg, corpoHtml);
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (btn) { btn.innerText = 'Baixar PDF'; btn.disabled = false; }
+        if (!r.sucesso) { showAlerta('Erro ao gerar PDF: ' + r.mensagem); return; }
+        const link = document.createElement('a');
+        link.href = 'data:application/pdf;base64,' + r.base64;
+        link.download = cfg.file;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      })
+      .withFailureHandler(function(e) {
+        if (btn) { btn.innerText = 'Baixar PDF'; btn.disabled = false; }
+        showAlerta('Erro ao gerar PDF: ' + String(e));
+      })
+      .gerarPdfDeHtml(html, cfg.file);
   });
 }
 
@@ -560,85 +616,28 @@ function dispararEnvioPdf() {
 function _dispararEnvioPdfReal(email) {
   const btn = $id('btn-enviar-pdf');
   const cfg = CFG_PDF[tipoPdfAtual];
-  const area = $id(cfg.area);
-  btn.innerText = 'A gerar PDF...'; btn.disabled = true;
 
-  const canvasTemp = [];
-  area.querySelectorAll('canvas').forEach(function(c) {
-    if (!c.id) return;
-    try {
-      const img = document.createElement('img');
-      img.src = c.toDataURL('image/png');
-      img.style.cssText = 'width:100%;height:auto;display:block;';
-      c.parentNode.insertBefore(img, c);
-      c.style.display = 'none';
-      canvasTemp.push({ canvas: c, img: img });
-    } catch(e) {}
+  Promise.resolve(window[cfg.montarFn]()).then(function(corpoHtml) {
+    const html = _envelopeHtml(cfg, corpoHtml);
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (r.sucesso) feedbackBtn(btn,'✅ Enviado!','📨 Enviar PDF',function(){ fecharModal('modal-pdf-email'); });
+        else { btn.innerText='📨 Enviar PDF'; btn.disabled=false; showAlerta(r.mensagem); }
+      })
+      .withFailureHandler(falha(btn,'📨 Enviar PDF',null))
+      .enviarPdfDeHtml(email, html, cfg.file, cfg.title);
   });
+}
 
-  $id(cfg.header).style.display = 'block';
-
-  const escondidos = [];
-  document.querySelectorAll('.sidebar, .top-header, .page-header, .no-print').forEach(function(el) {
-    if (el.style.display !== 'none') { escondidos.push(el); el.style.display = 'none'; }
-  });
-
-  const pdfW = cfg.winW || (cfg.ori === 'landscape' ? 1060 : 794);
-  const originalWidth = area.style.width;
-  const originalMaxWidth = area.style.maxWidth;
-  const originalPosition = area.style.position;
-  const originalLeft = area.style.left;
-  const originalTop = area.style.top;
-  const originalMargin = area.style.margin;
-  const originalTransform = area.style.transform;
-  
-  area.style.width = pdfW + 'px';
-  area.style.maxWidth = 'none';
-  area.style.position = 'absolute';
-  area.style.left = '0';
-  area.style.top = '0';
-  area.style.margin = '0';
-  area.style.transform = 'none';
-
-  const sx = window.scrollX, sy = window.scrollY;
-  window.scrollTo(0, 0);
-
-  function limpar() {
-    area.style.width = originalWidth;
-    area.style.maxWidth = originalMaxWidth;
-    area.style.position = originalPosition;
-    area.style.left = originalLeft;
-    area.style.top = originalTop;
-    area.style.margin = originalMargin;
-    area.style.transform = originalTransform;
-    window.scrollTo(sx, sy);
-    
-    escondidos.forEach(function(elx) { elx.style.display = ''; });
-    $id(cfg.header).style.display = 'none';
-    canvasTemp.forEach(function(o) { o.canvas.style.display = ''; if (o.img.parentNode) o.img.parentNode.removeChild(o.img); });
-    [statusChartInst, priorityChartInst, memberChartInst, memberConcluidoChartInst].forEach(function(c) { if (c) c.resize(); });
-  }
-
-  requestAnimationFrame(function() {
-    requestAnimationFrame(function() {
-      const opts = { margin:10, filename:cfg.file, image:{type:'jpeg',quality:0.90},
-        html2canvas:{ scale:1.5, scrollY: 0, scrollX: 0, windowWidth: pdfW, useCORS:true, allowTaint:true, logging:false },
-        jsPDF:{unit:'mm',format:'a4',orientation:cfg.ori},
-        pagebreak: { mode: cfg.pagebreak || ['css', 'avoid-all'] } };
-
-      html2pdf().set(opts).from(area).outputPdf('datauristring').then(function(uri) {
-        limpar();
-        btn.innerText = 'A enviar...';
-        google.script.run.withSuccessHandler(function(r) {
-          if (r.sucesso) feedbackBtn(btn,'✅ Enviado!','📨 Enviar PDF',function(){ fecharModal('modal-pdf-email'); });
-          else { btn.innerText='📨 Enviar PDF'; btn.disabled=false; showAlerta(r.mensagem); }
-        }).withFailureHandler(falha(btn,'📨 Enviar PDF',null)).enviarPdfPorEmail(email, uri, cfg.file, cfg.title);
-      }).catch(function(e) {
-        limpar();
-        btn.innerText='📨 Enviar PDF'; btn.disabled=false; showAlerta('Erro: '+String(e));
-      });
-    });
-  });
+// Captura um elemento visível da tela como imagem PNG (data URI), com
+// fidelidade real (cores, fonte, badges) — usa html2canvas, mas apenas
+// sobre um elemento pequeno e já visível (não a página toda), então não
+// precisa esconder nada nem alterar o layout: sem flash na tela.
+function _capturarElementoComoImg(el) {
+  if (!el || typeof html2canvas === 'undefined') return Promise.resolve('');
+  return html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false })
+    .then(function(canvas) { return canvas.toDataURL('image/png'); })
+    .catch(function() { return ''; });
 }
 
 // ==========================================
