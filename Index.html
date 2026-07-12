@@ -670,21 +670,6 @@
   </div>
 </div>
 
-<!-- Modal: Revisão Risco -->
-<div id="modal-risco-revisao" class="modal-overlay">
-  <div class="modal-box">
-    <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-risco-revisao" aria-label="Fechar">&times;</button></div>
-    <h3 class="modal-title">Revisar Mapeamento do Risco</h3>
-    <p id="label-risco-revisao" style="font-weight:700; color:var(--primary); margin:8px 0 16px; font-size:14px;"></p>
-    <input type="hidden" id="rr-id">
-    <div class="form-row"><div style="flex:1;"><label class="field-label" for="rr-data">Data da Revisão</label><input type="date" id="rr-data" class="field-input"></div><div style="flex:1;"><label class="field-label" for="rr-resp">Proprietário</label><select id="rr-resp" class="field-select"></select></div></div>
-    <div class="form-row"><div style="flex:1;"><label class="field-label" for="rr-prob">Nova Probabilidade</label><select id="rr-prob" class="field-select"><option value="1">1 - Raro</option><option value="2">2 - Pouco Provável</option><option value="3">3 - Provável</option><option value="4">4 - Muito Provável</option><option value="5">5 - Praticamente Certo</option></select></div><div style="flex:1;"><label class="field-label" for="rr-imp">Novo Impacto</label><select id="rr-imp" class="field-select"><option value="1">1 - Muito Baixo</option><option value="2">2 - Baixo</option><option value="3">3 - Médio</option><option value="4">4 - Alto</option><option value="5">5 - Muito Alto</option></select></div></div>
-    <label class="field-label" for="rr-trat">Tipo de Tratamento</label><select id="rr-trat" class="field-select"><option>Aceitar (Tolerar)</option><option>Evitar</option><option>Compartilhar (Transferir)</option><option>Mitigar (Reduzir)</option></select>
-    <label class="field-label" for="rr-motivo">Justificativa da Revisão</label><textarea id="rr-motivo" class="field-area" rows="3" placeholder="Descreva os motivos desta revisão..."></textarea>
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-risco-revisao">Cancelar</button><button class="btn primary" id="btn-publicar-risco">Publicar Revisão</button></div>
-  </div>
-</div>
-
 <!-- Modal: Editar Plano -->
 <!-- Modal: Novo Plano de Ação -->
 <div id="modal-plano-novo" class="modal-overlay">
@@ -722,19 +707,6 @@
     <div class="modal-footer"><button class="btn secondary" data-close="modal-plano-editar">Cancelar</button><button class="btn success" id="btn-confirmar-plano">Confirmar</button></div>
   </div>
 </div>
-
-<!-- Modal: Arquivar Plano -->
-<div id="modal-plano-revisao" class="modal-overlay">
-  <div class="modal-box" style="max-width:480px;">
-    <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-plano-revisao" aria-label="Fechar">&times;</button></div>
-    <h3 class="modal-title">Arquivar Plano</h3>
-    <div class="modal-info"><strong>Risco:</strong> <span id="rev-plano-risco"></span><br><strong>Ação:</strong> <span id="rev-plano-what"></span></div>
-    <p style="font-size:13px; color:#64748b; line-height:1.5; margin-bottom:14px;">Use isto quando o plano for <strong>cancelado ou não for mais necessário</strong>. Ele sai da lista ativa e as entregas vinculadas a ele deixam de aparecer no Controle de Entregas. Se o plano só precisa ser replanejado (mudou o prazo, a estratégia, etc.), use <strong>"Nova Revisão"</strong> em vez de arquivar.</p>
-    <label class="field-label" for="rev-plano-motivo">Justificativa do arquivamento</label><textarea id="rev-plano-motivo" class="field-area" rows="3" placeholder="Ex: Risco não se concretizou / ação cancelada..."></textarea>
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-plano-revisao">Cancelar</button><button class="btn" style="background:#eab308; color:#422006;" id="btn-confirmar-rev-plano">Arquivar</button></div>
-  </div>
-</div>
-
 
 <!-- Modal: Acompanhamento de Entregas -->
 <div id="modal-acomp-entregas" class="modal-overlay">

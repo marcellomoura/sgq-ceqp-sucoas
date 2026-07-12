@@ -21,8 +21,8 @@ const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1
 const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas'];
 const CABECALHOS_UNIDADES = ['Nome da Unidade','Sigla','E-mail Funcional','Link do Drive'];
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','E-mail','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
-const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status','Motivo'];
-const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Motivo Cancelamento','Versão'];
+const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável'];
+const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status'];
 const CABECALHOS_ENTREGAS = ['Risco Vinculado','Unidade','Status','Data Entrega','SEI','Status Sistema'];
 const CABECALHOS_LOGS     = ['Data/Hora','Usuário','Ação','Referência','Detalhes'];
 
@@ -396,7 +396,7 @@ function getRestoData() {
   const rData = ss.getSheetByName(SHEET_RISKS).getDataRange().getValues();
   const pData = ss.getSheetByName(SHEET_PLANS).getDataRange().getValues();
   const planosRows = pData.length > 1 ? pData.slice(1) : [];
-  const risks = rData.length > 1 ? rData.slice(1).filter(r => (String(r[CR('Status')]||'Vigente')).trim() === 'Vigente')
+  const risks = rData.length > 1 ? rData.slice(1)
     .map((r, i) => {
       const idRisco = parseInt(String(r[CR('ID Risco')]||'').replace('R',''), 10) || (i+1);
       const ref = 'R' + idRisco;
@@ -404,9 +404,7 @@ function getRestoData() {
       for (const p of planosRows) {
         const rRef = String(p[CP('ID Risco')]||'');
         const statusP = String(p[CP('Status')]||'').trim();
-        // Ignora versões antigas (Superado) e planos cancelados (Arquivado) —
-        // só mostra o texto do plano ATUAL na Matriz de Riscos.
-        if ((rRef === ref || rRef.startsWith(ref + ' -')) && statusP !== 'Superado' && statusP !== 'Arquivado') {
+        if (rRef === ref || rRef.startsWith(ref + ' -')) {
           planoAcao = String(p[CP('O Que')]||'-'); break;
         }
       }
@@ -415,31 +413,23 @@ function getRestoData() {
         consequencia: String(r[CR('Consequência')]||''), categoria: String(r[CR('Categoria')]||''),
         probabilidade: parseInt(r[CR('Probabilidade')],10)||1, impacto: parseInt(r[CR('Impacto')],10)||1,
         nivel: String(r[CR('Nível')]||''), tipoTratamento: String(r[CR('Tipo Tratamento')]||''),
-        responsavel: String(r[CR('Responsável')]||'Não atribuído'), status: String(r[CR('Status')]||'Vigente'),
-        motivo: String(r[CR('Motivo')]||''), planoAcao: planoAcao
+        responsavel: String(r[CR('Responsável')]||'Não atribuído'), planoAcao: planoAcao
       };
     }) : [];
 
   // --- Planos ---
-  // "Superado" = versão antiga de um plano que foi revisado (existe
-  // histórico, mas não deve aparecer na lista de planos ativos).
-  const plans = planosRows.filter(r => {
-    const st = String(r[CP('Status')]||'').trim();
-    return st !== 'Arquivado' && st !== 'Superado';
-  }).map(r => ({
+  const plans = planosRows.map(r => ({
     riscoVinculado: String(r[CP('ID Risco')]||''), what: String(r[CP('O Que')]||''), why: String(r[CP('Por Que')]||''),
     who: String(r[CP('Quem')]||''), where: String(r[CP('Onde')]||''),
     whenPrevisto: formatarDataParaUI(r[CP('Data Prevista')]), whenFinalizado: formatarDataParaUI(r[CP('Data Finalização')]),
     how: String(r[CP('Como')]||''), howMuch: String(r[CP('Quanto Custa')]||''),
-    status: String(r[CP('Status')]||'Em Andamento'), cancelamento: String(r[CP('Motivo Cancelamento')]||''),
-    versao: (parseFloat(String(r[CP('Versão')]||'1').replace(',','.')) || 1).toFixed(1)
+    status: String(r[CP('Status')]||'Em Andamento')
   }));
 
   // --- Entregas ---
   const CE = colIdx_(CABECALHOS_ENTREGAS);
   const eData = ss.getSheetByName(SHEET_DELIVERY).getDataRange().getValues();
   const deliveries = eData.length > 1 ? eData.slice(1)
-    .filter(r => String(r[CE('Status Sistema')]||'Ativo') !== 'Arquivado')
     .map(r => ({
       riscoVinculado: String(r[CE('Risco Vinculado')]||''), unidade: String(r[CE('Unidade')]||''),
       entregue: String(r[CE('Status')]||''), dataEntrega: formatarDataParaUI(r[CE('Data Entrega')]),

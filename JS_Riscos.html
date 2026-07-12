@@ -23,7 +23,7 @@ function renderMatriz() {
     }
   });
 
-  if (!state.risks.length) { msgTabela('lista-riscos', 12, 'Nenhum risco vigente mapeado.'); return; }
+  if (!state.risks.length) { msgTabela('lista-riscos', 12, 'Nenhum risco mapeado.'); return; }
   $id('lista-riscos').innerHTML = state.risks.map((r, i) => `<tr>
     <td style="text-align:center;font-weight:700;color:#2563eb;">R${r.id}</td>
     <td>${esc(r.macroetapa)}</td><td><span style="display:inline-block; font-weight:600; color:#1e293b; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; background:#f8fafc;">${esc(r.nome)}</span></td><td>${esc(r.causa)}</td>
@@ -31,7 +31,7 @@ function renderMatriz() {
     <td style="text-align:center;font-weight:700;">${r.probabilidade * r.impacto}</td>
     <td style="text-align:center;">${badge(r.nivel)}</td>
     <td>${esc(r.tipoTratamento)}</td><td>${esc(r.responsavel)}</td><td>${esc(r.planoAcao)}</td>
-    <td class="no-print"><div class="cell-actions" style="justify-content:center;">${iconBtn('edit','edit-risco','Editar',`data-idx="${i}"`)}${iconBtn('rev','rev-risco','Revisar',`data-idx="${i}"`)}${iconBtn('del','del-risco','Excluir',`data-idx="${i}"`)} </div></td>
+    <td class="no-print"><div class="cell-actions" style="justify-content:center;">${iconBtn('edit','edit-risco','Editar',`data-idx="${i}"`)}${iconBtn('del','del-risco','Excluir',`data-idx="${i}"`)} </div></td>
   </tr>`).join('');
 }
 
@@ -91,31 +91,6 @@ function confirmarEdicaoRisco() {
   }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarRisco(dados);
 }
 
-function abrirRevisaoRisco(idx) {
-  const r = state.risks[idx]; if(!r) return;
-  $id('rr-id').value = r.id; $id('label-risco-revisao').innerText = `Risco: R${r.id} — ${r.nome}`;
-  $id('rr-data').value = hojeISO();
-  $id('rr-prob').value = r.probabilidade; $id('rr-imp').value = r.impacto;
-  $id('rr-trat').value = r.tipoTratamento;
-  $id('rr-resp').innerHTML = gerarOptsUnidades(true); $id('rr-resp').value = r.responsavel;
-  $id('rr-motivo').value = '';
-  abrirModal('modal-risco-revisao');
-}
-function publicarRevisaoRisco() {
-  const btn = $id('btn-publicar-risco');
-  const dados = {
-    id: $id('rr-id').value, data: $id('rr-data').value,
-    probabilidade: Number($id('rr-prob').value), impacto: Number($id('rr-imp').value),
-    tipoTratamento: $id('rr-trat').value, responsavel: $id('rr-resp').value,
-    motivo: $id('rr-motivo').value.trim()
-  };
-  if (!dados.motivo) return showAlerta('Informe a justificativa da revisão.');
-  btn.disabled = true; btn.innerText = 'A publicar...';
-  google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Publicado!','Publicar Revisão',()=>{ fecharModal('modal-risco-revisao'); recarregarResto(renderMatriz); });
-    else { btn.disabled=false; btn.innerText='Publicar Revisão'; showAlerta(r.mensagem); }
-  }).withFailureHandler(falha(btn,'Publicar Revisão',null)).salvarRevisaoRisco(dados);
-}
 function excluirRisco(id) {
   google.script.run.withSuccessHandler(() => recarregarResto(renderMatriz))
     .withFailureHandler(e => showAlerta(String(e))).excluirRisco(id);
@@ -164,14 +139,13 @@ function salvarPlano() {
 }
 
 function renderAcompanhamento() {
-  const ativos = state.plans.filter(p => p.status !== 'Arquivado');
-  $id('kpi-p-conc').innerText = ativos.filter(p=>p.status==='Concluído').length;
-  $id('kpi-p-and').innerText  = ativos.filter(p=>p.status==='Em Andamento').length;
-  $id('kpi-p-atr').innerText  = ativos.filter(p=>p.status==='Atrasado').length;
+  $id('kpi-p-conc').innerText = state.plans.filter(p=>p.status==='Concluído').length;
+  $id('kpi-p-and').innerText  = state.plans.filter(p=>p.status==='Em Andamento').length;
+  $id('kpi-p-atr').innerText  = state.plans.filter(p=>p.status==='Atrasado').length;
 
   const fU = ($id('f-acomp-unidade')||{value:''}).value;
   const fS = ($id('f-acomp-status') ||{value:''}).value;
-  const filtrados = ativos.filter(p => (!fU || p.who === fU) && (!fS || p.status === fS));
+  const filtrados = state.plans.filter(p => (!fU || p.who === fU) && (!fS || p.status === fS));
   if (!filtrados.length) { msgTabela('lista-acomp', 12, 'Nenhum plano encontrado.'); return; }
 
   $id('lista-acomp').innerHTML = filtrados.map((p, i) => {
@@ -182,7 +156,7 @@ function renderAcompanhamento() {
       <td>${esc(p.where)}</td><td>${fmtBr(p.whenPrevisto)}</td><td>${fmtBr(p.whenFinalizado)}</td>
       <td>${esc(p.how)}</td><td>${esc(p.howMuch)}</td>
       <td style="text-align:center;">${badge(p.status)}</td>
-      <td class="no-print"><div class="cell-actions" style="justify-content:center;">${iconBtn('edit','edit-plano','Editar',`data-idx="${oi}"`)}${iconBtn('history','acomp-entregas','Acompanhamento',`data-idx="${oi}"`)}${iconBtn('archive','arquivar-plano','Arquivar',`data-idx="${oi}"`)}${iconBtn('del','del-plano','Excluir',`data-idx="${oi}"`)}</div></td>
+      <td class="no-print"><div class="cell-actions" style="justify-content:center;">${iconBtn('edit','edit-plano','Editar',`data-idx="${oi}"`)}${iconBtn('history','acomp-entregas','Acompanhamento',`data-idx="${oi}"`)}${iconBtn('del','del-plano','Excluir',`data-idx="${oi}"`)}</div></td>
     </tr>`;
   }).join('');
 }
@@ -204,7 +178,7 @@ function confirmarEdicaoPlano() {
     why: $id('ep-why').value.trim(), who: $id('ep-who').value,
     where: $id('ep-where').value.trim(), whenPrevisto: $id('ep-when').value,
     whenFinalizado: $id('ep-fin').value, how: $id('ep-how').value.trim(),
-    howMuch: $id('ep-cost').value.trim() || 'Sem custos', cancelamento: ''
+    howMuch: $id('ep-cost').value.trim() || 'Sem custos'
   };
   if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
@@ -214,25 +188,6 @@ function confirmarEdicaoPlano() {
   }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarPlano(dados);
 }
 
-function abrirRevisaoPlano(idx) {
-  planoRevCtx = state.plans[idx]; if(!planoRevCtx) return;
-  $id('rev-plano-risco').innerText = planoRevCtx.riscoVinculado;
-  $id('rev-plano-what').innerText  = planoRevCtx.what;
-  $id('rev-plano-motivo').value = '';
-  abrirModal('modal-plano-revisao');
-}
-function confirmarRevisaoPlano() {
-  const btn = $id('btn-confirmar-rev-plano');
-  const motivo = $id('rev-plano-motivo').value.trim();
-  if (!motivo) return showAlerta('Informe a justificativa.');
-  const p = planoRevCtx;
-  const dados = { riscoVinculado: p.riscoVinculado, what: p.what, why: p.why, who: p.who, where: p.where, whenPrevisto: p.whenPrevisto, whenFinalizado: p.whenFinalizado, how: p.how, howMuch: p.howMuch, cancelamento: motivo };
-  btn.disabled = true; btn.innerText = 'A arquivar...';
-  google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Arquivado!','Arquivar',()=>{ fecharModal('modal-plano-revisao'); recarregarResto(renderAcompanhamento); });
-    else { btn.disabled=false; btn.innerText='Arquivar'; showAlerta(r.mensagem); }
-  }).withFailureHandler(falha(btn,'Arquivar',null)).atualizarPlano(dados);
-}
 function excluirPlano(riscoVinculado) {
   google.script.run.withSuccessHandler(() => recarregarResto(renderAcompanhamento))
     .withFailureHandler(e => showAlerta(String(e))).excluirPlano(riscoVinculado);

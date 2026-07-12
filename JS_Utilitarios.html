@@ -5,7 +5,7 @@
 // ==========================================
 var state = { tasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [] };
 var currentTab  = 'kanban';
-var itemExcluir = null, tipoPdfAtual = null, planoRevCtx = null;
+var itemExcluir = null, tipoPdfAtual = null;
 var currentActivities = [];
 var statusChartInst = null, memberChartInst = null, priorityChartInst = null, memberConcluidoChartInst = null;
 
@@ -126,7 +126,7 @@ function optsUnidFiltro() {
   return h;
 }
 function sincronizarSelectsUnidade() {
-  const resps = [['d-resp',false],['r-resp',true],['p-who',true],['ed-resp',false],['er-resp',true],['rr-resp',true],['ep-who',true]];
+  const resps = [['d-resp',false],['r-resp',true],['p-who',true],['ed-resp',false],['er-resp',true],['ep-who',true]];
   resps.forEach(([id, comTodas]) => { const el=$id(id); if(!el) return; const v=el.value; el.innerHTML=gerarOptsUnidades(comTodas); if(v) el.value=v; });
   const filtros = ['f-doc-unidade','f-rev-unidade','f-acomp-unidade'];
   filtros.forEach(id => { const el=$id(id); if(!el) return; const v=el.value; el.innerHTML=optsUnidFiltro(); if(v) el.value=v; });
@@ -369,11 +369,9 @@ document.addEventListener('click', function(e) {
     'del-doc'         : () => { const d=state.docs[idx]; showConfirm(`Excluir "${d.codigo}"?`, ()=>excluirDoc(d.idRow, d.codigo)); },
     // Riscos
     'edit-risco'      : () => abrirEditarRisco(idx),
-    'rev-risco'       : () => abrirRevisaoRisco(idx),
     'del-risco'       : () => { const r=state.risks[idx]; showConfirm(`Excluir R${r.id}?`, ()=>excluirRisco(r.id)); },
     // Planos
     'edit-plano'      : () => abrirEditarPlano(idx),
-    'arquivar-plano'  : () => abrirRevisaoPlano(idx),
     'acomp-entregas'  : () => abrirModalAcompEntregas(idx),
     'del-plano'       : () => { const p=state.plans[idx]; showConfirm(`Excluir plano de ${p.riscoVinculado}?`, ()=>excluirPlano(p.riscoVinculado)); }
   };
@@ -388,10 +386,8 @@ document.addEventListener('click', function(e) {
   if(e.target.id === 'btn-publicar-doc') publicarRevisaoDoc();
   if(e.target.id === 'btn-salvar-risco') salvarRisco();
   if(e.target.id === 'btn-confirmar-risco') confirmarEdicaoRisco();
-  if(e.target.id === 'btn-publicar-risco') publicarRevisaoRisco();
   if(e.target.id === 'btn-salvar-plano') salvarPlano();
   if(e.target.id === 'btn-confirmar-plano') confirmarEdicaoPlano();
-  if(e.target.id === 'btn-confirmar-rev-plano') confirmarRevisaoPlano();
   if(e.target.id === 'btn-salvar-acomp-entregas') salvarAcompEntregas();
   if(e.target.id === 'btn-confirmar-excluir') { if(itemExcluir){ fecharModal('modal-confirmar'); itemExcluir(); itemExcluir=null; } }
   if(e.target.id === 'btn-fechar-alerta') fecharModal('modal-alerta');
