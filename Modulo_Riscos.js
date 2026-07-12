@@ -22,7 +22,7 @@ function salvarRisco(dados) {
       });
       const id = 'R' + (max + 1);
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
-      aba.appendRow([new Date(), id, dados.macroetapa, dados.nomeRisco, dados.causa, dados.consequencia,
+      aba.appendRow([id, dados.macroetapa, dados.nomeRisco, dados.causa, dados.consequencia,
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel,
         dados.tipoTratamento, dados.responsavel, 'Vigente', 'Mapeamento Inicial']);
       registrarLog('Cadastro de Risco', id, 'Risco criado: ' + dados.nomeRisco);
@@ -68,7 +68,7 @@ function salvarRevisaoRisco(dados) {
       aba.getRange(linhaAntiga, CR('Status')+1).setValue('Obsoleto');
       const antiga = rows[linhaAntiga - 1];
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
-      aba.appendRow([dados.data ? new Date(dados.data + 'T12:00:00') : new Date(), ref,
+      aba.appendRow([ref,
         antiga[CR('Macroetapa')], antiga[CR('Risco')], antiga[CR('Causa')], antiga[CR('Consequência')], antiga[CR('Categoria')],
         Number(dados.probabilidade), Number(dados.impacto), nivel,
         dados.tipoTratamento, dados.responsavel, 'Vigente', dados.motivo]);
@@ -144,7 +144,7 @@ function salvarPlano(dados) {
           return { sucesso: false, mensagem: 'Já existe um plano ativo para este risco.' };
       }
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado, '');
-      aba.appendRow([new Date(), dados.riscoVinculado, dados.what, dados.why, dados.who,
+      aba.appendRow([dados.riscoVinculado, dados.what, dados.why, dados.who,
         dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, '', '1.0']);
       registrarLog('Cadastro de Plano', dados.riscoVinculado, 'Plano 5W2H criado: ' + dados.what);
       return { sucesso: true, mensagem: 'Plano registrado!' };
@@ -216,7 +216,7 @@ function salvarRevisaoPlano(dados) {
       aba.getRange(linhaAtual, CP('Motivo Cancelamento')+1).setValue(dados.motivo || '');
 
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado, '');
-      aba.appendRow([new Date(), dados.riscoVinculado, dados.what, dados.why, dados.who,
+      aba.appendRow([dados.riscoVinculado, dados.what, dados.why, dados.who,
         dados.where, dados.whenPrevisto, dados.whenFinalizado || '', dados.how, dados.howMuch,
         status, '', novaVersao]);
 
@@ -242,8 +242,7 @@ function buscarHistoricoPlano(riscoVinculado) {
           who: String(rows[i][CP('Quem')] || ''), where: String(rows[i][CP('Onde')] || ''),
           whenPrevisto: formatarDataParaUI(rows[i][CP('Data Prevista')]), whenFinalizado: formatarDataParaUI(rows[i][CP('Data Finalização')]),
           how: String(rows[i][CP('Como')] || ''), howMuch: String(rows[i][CP('Quanto Custa')] || ''),
-          status: String(rows[i][CP('Status')] || ''), motivo: String(rows[i][CP('Motivo Cancelamento')] || ''),
-          dataRegistro: formatarDataParaUI(rows[i][CP('Data Registro')])
+          status: String(rows[i][CP('Status')] || ''), motivo: String(rows[i][CP('Motivo Cancelamento')] || '')
         });
       }
     }
@@ -341,7 +340,6 @@ function salvarEntregasEmLote(riscoVinculado, entregas) {
       const aba = conectarAba(SHEET_DELIVERY);
       const CE = colIdx_(CABECALHOS_ENTREGAS);
       let rows = aba.getDataRange().getValues();
-      const usr = usuarioAtual_();
 
       entregas.forEach(function(ent) {
         let linhaExistente = -1;
@@ -353,12 +351,12 @@ function salvarEntregasEmLote(riscoVinculado, entregas) {
           }
         }
         if (linhaExistente > 0) {
-          // Bloco contíguo Status → Usuário (6 colunas)
-          aba.getRange(linhaExistente, CE('Status')+1, 1, 6).setValues([[ent.entregue, ent.dataEntrega||'',
-            ent.tipoDoc||'', ent.processoSei||'', ent.justificativa||'', usr]]);
+          // Bloco contíguo Status → SEI (3 colunas)
+          aba.getRange(linhaExistente, CE('Status')+1, 1, 3).setValues([[ent.entregue, ent.dataEntrega||'',
+            ent.processoSei||'']]);
         } else {
-          aba.appendRow([new Date(), riscoVinculado, ent.unidade, ent.entregue,
-            ent.dataEntrega||'', ent.tipoDoc||'', ent.processoSei||'', ent.justificativa||'', usr, 'Ativo']);
+          aba.appendRow([riscoVinculado, ent.unidade, ent.entregue,
+            ent.dataEntrega||'', ent.processoSei||'', 'Ativo']);
           rows.push(new Array(CABECALHOS_ENTREGAS.length).fill(''));
         }
       });

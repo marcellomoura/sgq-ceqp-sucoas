@@ -148,10 +148,10 @@ function confirmarEscala() {
 }
 
 // ─── FÉRIAS / AFASTAMENTOS ────────────────────────────────────────────────────────
-// Um registro por (Membro + Ano) — o usuário navega entre anos pelas abas
-// internas (ferias-ano-tabs) e edita direto na linha do membro, igual à
+// Um registro por (Membro + Ano) — o usuário navega entre anos pelo
+// dropdown de ano no cabeçalho e edita direto na linha do membro, igual à
 // Escala Semanal. Nada é excluído/arquivado: anos antigos continuam
-// acessíveis normalmente, só trocando a aba de ano.
+// acessíveis normalmente, só trocando o ano no dropdown.
 
 var afastamentosCache = [];         // todos os registros, de todos os anos
 var anoAfastamentoAtual = new Date().getFullYear();
@@ -164,10 +164,12 @@ function carregarFerias() {
     var el = $id('f-ferias-membro');
     if (el) el.addEventListener('change', renderFerias);
     preencherDropdownMembrosFerias();
+    initControlesAno();
   }
   // Toda vez que se entra na aba, ela abre no ano vigente — dali o
-  // usuário navega livremente pelas abas de ano já cadastradas.
+  // usuário navega livremente pelos anos já cadastrados no dropdown.
   anoAfastamentoAtual = new Date().getFullYear();
+  fecharNovoAno();
   msgTabela('lista-ferias', 9, 'A carregar...');
   google.script.run
     .withFailureHandler(function(e) { msgTabela('lista-ferias', 9, 'Falha ao carregar: ' + String(e), true); })
@@ -186,10 +188,12 @@ function preencherDropdownMembrosFerias() {
     membrosOrdenados().map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>'; }).join('');
 }
 
-// ─── Abas de ano ────────────────────────────────────────────────────────────
+// ─── Seletor de ano (dropdown no cabeçalho) ──────────────────────────────────
+// Preenche o <select> de anos com todos os anos que têm registro + os
+// adicionados manualmente nesta sessão + o ano vigente, sempre em ordem.
 function renderAnoTabs() {
-  var wrap = $id('ferias-ano-tabs');
-  if (!wrap) return;
+  var sel = $id('f-ferias-ano');
+  if (!sel) return;
 
   var anos = new Set(afastamentosCache.map(function(r){ return parseInt(r.ano, 10); }).filter(function(n){ return !isNaN(n); }));
   anosExtras.forEach(function(a){ anos.add(a); });
@@ -197,43 +201,51 @@ function renderAnoTabs() {
   var lista = Array.from(anos).sort(function(a,b){ return a - b; });
   if (lista.indexOf(anoAfastamentoAtual) === -1) anoAfastamentoAtual = lista[lista.length - 1];
 
-  var tabsHtml = lista.map(function(ano) {
-    return '<button type="button" class="ano-tab' + (ano === anoAfastamentoAtual ? ' active' : '') + '" data-ano="' + ano + '">' + ano + '</button>';
+  sel.innerHTML = lista.map(function(ano) {
+    return '<option value="' + ano + '"' + (ano === anoAfastamentoAtual ? ' selected' : '') + '>' + ano + '</option>';
   }).join('');
+}
 
-  wrap.innerHTML =
-    '<div class="ano-tabs-row">' + tabsHtml +
-      '<button type="button" class="ano-tab ano-tab-add" id="btn-add-ano-afastamento" title="Cadastrar um novo ano para lançar afastamentos com antecedência">+ Novo Ano</button>' +
-    '</div>' +
-    '<div class="ano-tab-input-row" id="ano-tab-input-row" style="display:none;">' +
-      '<label class="field-label" style="margin:0;white-space:nowrap;">Ano a cadastrar:</label>' +
-      '<input type="number" id="input-novo-ano" class="field-input" style="width:110px;" min="2000" max="2100" placeholder="Ex: 2027">' +
-      '<button type="button" class="btn primary btn-sm" id="btn-confirmar-novo-ano">Adicionar Ano</button>' +
-    '</div>';
+// Fecha e limpa a caixa de "Novo ano"
+function fecharNovoAno() {
+  var box = $id('ano-novo-inline');
+  if (box) box.style.display = 'none';
+  var inp = $id('input-novo-ano');
+  if (inp) inp.value = '';
+}
 
-  wrap.querySelectorAll('.ano-tab[data-ano]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      anoAfastamentoAtual = parseInt(this.dataset.ano, 10);
-      renderAnoTabs();
-      renderFerias();
-    });
+// Liga (uma única vez) os controles de ano do cabeçalho: troca de ano,
+// abrir/fechar a caixa e confirmar o cadastro de um novo ano.
+function initControlesAno() {
+  var sel = $id('f-ferias-ano');
+  if (sel) sel.addEventListener('change', function() {
+    anoAfastamentoAtual = parseInt(this.value, 10);
+    renderFerias();
   });
   var btnAdd = $id('btn-add-ano-afastamento');
   if (btnAdd) btnAdd.addEventListener('click', function() {
-    var row = $id('ano-tab-input-row');
-    var mostrar = row.style.display === 'none';
-    row.style.display = mostrar ? 'flex' : 'none';
+    var box = $id('ano-novo-inline');
+    var mostrar = box.style.display === 'none';
+    box.style.display = mostrar ? 'inline-flex' : 'none';
     if (mostrar) { $id('input-novo-ano').value = ''; $id('input-novo-ano').focus(); }
   });
+  var btnCancel = $id('btn-cancelar-novo-ano');
+  if (btnCancel) btnCancel.addEventListener('click', fecharNovoAno);
   var btnConfirm = $id('btn-confirmar-novo-ano');
   if (btnConfirm) btnConfirm.addEventListener('click', function() {
     var v = parseInt($id('input-novo-ano').value, 10);
-    if (!v || v < 2000 || v > 2100) return showAlerta('Informe um ano válido.');
+    if (!v || v < 2000 || v > 2100) return showAlerta('Informe um ano válido (entre 2000 e 2100).');
     if (anosExtras.indexOf(v) === -1) anosExtras.push(v);
     anoAfastamentoAtual = v;
-    $id('ano-tab-input-row').style.display = 'none';
+    fecharNovoAno();
     renderAnoTabs();
     renderFerias();
+  });
+  // Enter confirma; Esc cancela — direto na caixa de digitar
+  var inp = $id('input-novo-ano');
+  if (inp) inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter')  { e.preventDefault(); $id('btn-confirmar-novo-ano').click(); }
+    if (e.key === 'Escape') { fecharNovoAno(); }
   });
 }
 

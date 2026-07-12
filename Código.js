@@ -21,9 +21,9 @@ const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1
 const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas'];
 const CABECALHOS_UNIDADES = ['Nome da Unidade','Sigla','E-mail Funcional','Link do Drive'];
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','E-mail','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
-const CABECALHOS_RISCOS   = ['Data','ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status','Motivo'];
-const CABECALHOS_PLANOS   = ['Data Registro','ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Motivo Cancelamento','Versão'];
-const CABECALHOS_ENTREGAS = ['Data Registo','Risco Vinculado','Unidade','Status','Data Entrega','Tipo Doc','SEI','Obs','Usuário','Status Sistema'];
+const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status','Motivo'];
+const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Motivo Cancelamento','Versão'];
+const CABECALHOS_ENTREGAS = ['Risco Vinculado','Unidade','Status','Data Entrega','SEI','Status Sistema'];
 const CABECALHOS_LOGS     = ['Data/Hora','Usuário','Ação','Referência','Detalhes'];
 
 // Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
@@ -443,7 +443,7 @@ function getRestoData() {
     .map(r => ({
       riscoVinculado: String(r[CE('Risco Vinculado')]||''), unidade: String(r[CE('Unidade')]||''),
       entregue: String(r[CE('Status')]||''), dataEntrega: formatarDataParaUI(r[CE('Data Entrega')]),
-      tipoDoc: String(r[CE('Tipo Doc')]||''), processoSei: String(r[CE('SEI')]||''), justificativa: String(r[CE('Obs')]||'')
+      processoSei: String(r[CE('SEI')]||'')
     })) : [];
 
   return { units: units, docs: docs, risks: risks, plans: plans, deliveries: deliveries };

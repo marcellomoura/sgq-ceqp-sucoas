@@ -136,8 +136,7 @@ function carregarRiscosLivres() {
 
 function abrirModalNovoPlano() {
   try {
-    ['p-risco','p-what','p-why','p-where','p-when','p-how','p-who'].forEach(id => { const el = $id(id); if (el) el.value = ''; });
-    const howmuch = $id('p-howmuch'); if (howmuch) howmuch.value = 'Sem custos';
+    ['p-risco','p-what','p-why','p-where','p-when','p-how','p-who','p-howmuch'].forEach(id => { const el = $id(id); if (el) el.value = ''; });
     sincronizarSelectsUnidade();
     carregarRiscosLivres();
     abrirModal('modal-plano-novo');
@@ -154,7 +153,7 @@ function salvarPlano() {
     why: ($id('p-why').value||'').trim(), who: $id('p-who').value,
     where: ($id('p-where').value||'').trim(), whenPrevisto: $id('p-when').value,
     whenFinalizado: '', how: ($id('p-how').value||'').trim(),
-    howMuch: ($id('p-howmuch').value||'').trim()
+    howMuch: ($id('p-howmuch').value||'').trim() || 'Sem custos'
   };
   if (!dados.riscoVinculado || !dados.what || !dados.why || !dados.who || !dados.where || !dados.whenPrevisto || !dados.how) return showAlerta('Preencha todos os campos do plano.');
   btn.disabled = true; btn.innerText = 'A guardar...';
@@ -196,7 +195,6 @@ function abrirEditarPlano(idx) {
   $id('ep-where').value = p.where === '-' ? '' : p.where;
   $id('ep-when').value = p.whenPrevisto; $id('ep-fin').value = p.whenFinalizado;
   $id('ep-how').value = p.how === '-' ? '' : p.how; $id('ep-cost').value = p.howMuch === '-' ? '' : p.howMuch;
-  $id('ep-cancel').value = p.cancelamento === '-' ? '' : p.cancelamento;
   abrirModal('modal-plano-editar');
 }
 function confirmarEdicaoPlano() {
@@ -206,7 +204,7 @@ function confirmarEdicaoPlano() {
     why: $id('ep-why').value.trim(), who: $id('ep-who').value,
     where: $id('ep-where').value.trim(), whenPrevisto: $id('ep-when').value,
     whenFinalizado: $id('ep-fin').value, how: $id('ep-how').value.trim(),
-    howMuch: $id('ep-cost').value.trim(), cancelamento: $id('ep-cancel').value.trim()
+    howMuch: $id('ep-cost').value.trim() || 'Sem custos', cancelamento: ''
   };
   if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
@@ -297,7 +295,8 @@ function abrirModalAcompEntregas(idx) {
           '<div class="acomp-unit-sigla">' + esc(u.sigla || '') + '</div>' +
           '<div class="acomp-unit-nome" style="white-space:normal; line-height:1.2; margin-top:2px;">' + esc(u.unidade) + '</div>' +
         '</div>' +
-        '<div class="acomp-status-wrap" style="width:160px; flex-shrink:0;">' +
+        '<div class="acomp-field-group acomp-status-wrap" style="width:160px; flex-shrink:0;">' +
+          '<span class="acomp-field-label">Status</span>' +
           '<select class="acomp-status-select acomp-status' + selClass + '" data-row="' + i + '" style="width:100%;">' +
             '<option value=""' + (!entregue ? ' selected' : '') + '>— Selecione —</option>' +
             '<option value="Sim"' + (entregue === 'Sim' ? ' selected' : '') + '>Sim — Entregue</option>' +
@@ -359,9 +358,7 @@ function salvarAcompEntregas() {
       unidade:      unidade,
       entregue:     status,
       dataEntrega:  status === 'Sim' ? (dataEnt || hojeISO()) : '',
-      processoSei:  status === 'Sim' ? sei : '',
-      tipoDoc:      '',
-      justificativa:''
+      processoSei:  status === 'Sim' ? sei : ''
     });
   });
 

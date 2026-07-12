@@ -118,7 +118,7 @@ function confirmarEdicaoDoc() {
     docAuxiliar: $id('ed-aux1').value.trim(),
     docAuxiliar2: $id('ed-aux2').value.trim()
   };
-  if (!dados.titulo || !dados.dataAprovacao || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha os campos obrigatórios.');
+  if (!dados.titulo || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
   google.script.run.withSuccessHandler(r => {
     if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-doc-editar'); recarregarResto(()=>renderDocumentos('mestra')); });
