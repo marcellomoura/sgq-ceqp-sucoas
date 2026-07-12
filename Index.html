@@ -715,42 +715,6 @@
 </div>
 
 
-<!-- Modal: Entrega -->
-<div id="modal-entrega" class="modal-overlay">
-  <div class="modal-box">
-    <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-entrega" aria-label="Fechar">&times;</button></div>
-    <h3 class="modal-title">Registrar Entrega de Ação</h3>
-    <div class="modal-info"><strong>Risco:</strong> <span id="ent-risco"></span><br><strong>Ação:</strong> <span id="ent-what"></span><br><strong>Unidade:</strong> <span id="ent-unidade"></span></div>
-    <input type="hidden" id="ent-risco-hidden"><input type="hidden" id="ent-unidade-hidden">
-    <label class="field-label" for="ent-status">A unidade enviou a evidência?</label><select id="ent-status" class="field-select"><option value="" disabled selected>Selecione...</option><option value="Sim">Sim, entregue</option><option value="Não">Não (Registar pendência)</option></select>
-    <div id="ent-evidencias" style="display:none;">
-      <div class="form-row"><div style="flex:1;"><label class="field-label" for="ent-data">Data da Entrega</label><input type="date" id="ent-data" class="field-input"></div><div style="flex:1;"><label class="field-label" for="ent-sei">Nº Processo SEI</label><input type="text" id="ent-sei" class="field-input" placeholder="Ex: 00060-000123/2026"></div></div>
-      <label class="field-label">Tipo(s) de Documento Comprobatório</label>
-      <div id="ent-tipos" class="checkbox-list"></div>
-    </div>
-    <label class="field-label" for="ent-obs">Observação (Opcional)</label><textarea id="ent-obs" class="field-area" rows="2"></textarea>
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-entrega">Cancelar</button><button class="btn success" id="btn-confirmar-entrega">Confirmar e Gravar</button></div>
-  </div>
-</div>
-
-<!-- Modal: Editar Entrega -->
-<div id="modal-entrega-editar" class="modal-overlay">
-  <div class="modal-box">
-    <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-entrega-editar" aria-label="Fechar">&times;</button></div>
-    <h3 class="modal-title">Editar Registro de Entrega</h3>
-    <div class="modal-info"><strong>Risco:</strong> <span id="ee-risco"></span><br><strong>Ação:</strong> <span id="ee-what"></span><br><strong>Unidade:</strong> <span id="ee-unidade"></span></div>
-    <input type="hidden" id="ee-risco-hidden"><input type="hidden" id="ee-unidade-hidden">
-    <label class="field-label" for="ee-status">Status da Entrega</label><select id="ee-status" class="field-select"><option value="" disabled selected>Selecione...</option><option value="Sim">Sim, entregue</option><option value="Não">Não (Pendente)</option></select>
-    <div id="ee-evidencias" style="display:none;">
-      <div class="form-row"><div style="flex:1;"><label class="field-label" for="ee-data">Data da Entrega</label><input type="date" id="ee-data" class="field-input"></div><div style="flex:1;"><label class="field-label" for="ee-sei">Nº Processo SEI</label><input type="text" id="ee-sei" class="field-input"></div></div>
-      <label class="field-label">Tipo(s) de Documento</label>
-      <div id="ee-tipos" class="checkbox-list"></div>
-    </div>
-    <label class="field-label" for="ee-obs">Observação</label><textarea id="ee-obs" class="field-area" rows="2"></textarea>
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-entrega-editar">Cancelar</button><button class="btn success" id="btn-confirmar-entrega-editar">Atualizar Registro</button></div>
-  </div>
-</div>
-
 <!-- Modal: Acompanhamento de Entregas por Subcomissão -->
 <div id="modal-acomp-entregas" class="modal-overlay">
   <div class="modal-box wide">
@@ -787,27 +751,6 @@
     <div class="modal-footer" style="justify-content:center; gap:12px; border-top:none; padding-top:0;">
       <button class="btn secondary" data-close="modal-confirmar" style="width:100px;">Cancelar</button>
       <button class="btn" style="background:#ef4444; color:white; width:100px; border-color:#dc2626;" id="btn-confirmar-excluir">Excluir</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Arquivar Ano -->
-<div id="modal-arquivar-ano" class="modal-overlay" style="z-index:300;">
-  <div class="modal-box narrow" style="max-width:400px; padding:30px 20px 24px; text-align:center; border-top: 4px solid #f59e0b;">
-    <div style="width:56px; height:56px; border-radius:50%; background:#fef3c7; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>
-    </div>
-    <h3 class="modal-title" style="color:#0f172a; font-size:18px; margin-bottom:8px;">Arquivar Virada de Ano</h3>
-    <p style="font-size:13.5px; color:#475569; margin:0 0 16px; line-height:1.5;">Esta ação fará uma cópia profunda de todos os membros com registros em aberto (férias, abonos, etc) transferindo-os para o <b>Histórico</b> daquele ano. Após isso, ela apagará as colunas de afastamento da escala para começar o novo ano limpo.</p>
-    
-    <div style="margin-bottom:20px; text-align:left;">
-      <label class="field-label" for="inp-arquivar-ano">Digite o Ano a Arquivar (ex: 2024)</label>
-      <input type="number" id="inp-arquivar-ano" class="field-input" placeholder="Ano de fechamento" min="2020" max="2050">
-    </div>
-
-    <div class="modal-footer" style="justify-content:center; gap:12px; border-top:none; padding-top:0;">
-      <button class="btn secondary" data-close="modal-arquivar-ano" style="width:100px;">Cancelar</button>
-      <button class="btn" style="background:#f59e0b; color:white; border-color:#d97706;" id="btn-confirmar-arquivar-ano">Confirmar Arquivamento</button>
     </div>
   </div>
 </div>

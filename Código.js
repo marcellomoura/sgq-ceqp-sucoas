@@ -173,12 +173,6 @@ function migrarRemoverCarimboDocumentos() {
   }
 }
 
-// Mantida para compatibilidade com qualquer chamada antiga
-function setupDatabase() {
-  setupDatabaseKanban();
-  setupDatabaseResto();
-}
-
 // ==========================================
 // CARREGAMENTO EM DUAS ETAPAS
 // Etapa 1 (getKanbanData): só Tarefas + Membros — usada para o quadro
@@ -368,17 +362,6 @@ function getRestoData() {
     })) : [];
 
   return { units: units, docs: docs, risks: risks, plans: plans, deliveries: deliveries };
-}
-
-// Mantida para compatibilidade — combina as duas etapas numa só chamada
-function getAppData() {
-  const kanban = getKanbanData();
-  const resto  = getRestoData();
-  return {
-    tasks: kanban.tasks, members: kanban.members,
-    units: resto.units, docs: resto.docs, risks: resto.risks,
-    plans: resto.plans, deliveries: resto.deliveries
-  };
 }
 
 // ==========================================

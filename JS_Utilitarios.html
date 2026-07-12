@@ -5,11 +5,10 @@
 // ==========================================
 var state = { tasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [] };
 var currentTab  = 'kanban';
-var itemExcluir = null, tipoPdfAtual = null, entregaCtx = null, planoRevCtx = null;
+var itemExcluir = null, tipoPdfAtual = null, planoRevCtx = null;
 var currentActivities = [];
 var statusChartInst = null, memberChartInst = null, priorityChartInst = null, memberConcluidoChartInst = null;
 
-const TIPOS_EVIDENCIA = ['Relatório Técnico','Formulário / Check-list','Planilha de Controle','Ata de Reunião','Lista de Presença','Certificado','POP / Instrução de Trabalho','Registro Fotográfico','Print de Tela (SEI)','Termo de Recebimento','Outros'];
 const CORES_STATUS = {
   'Vigente':['#dcfce7','#166534'], 'Concluído':['#dcfce7','#166534'], 'Entregue':['#dcfce7','#166534'],
   'Próximo da Revisão':['#fef9c3','#854d0e'], 'Em Andamento':['#fef9c3','#854d0e'], 'Pendente':['#fef9c3','#854d0e'],
@@ -102,17 +101,6 @@ function sincronizarSelectsUnidade() {
   const filtros = ['f-doc-unidade','f-rev-unidade','f-acomp-unidade'];
   filtros.forEach(id => { const el=$id(id); if(!el) return; const v=el.value; el.innerHTML=optsUnidFiltro(); if(v) el.value=v; });
 }
-
-// Checklists de evidência
-function montarChecklists() {
-  ['ent-tipos','ee-tipos'].forEach(id => {
-    $id(id).innerHTML = TIPOS_EVIDENCIA.map((t,i) =>
-      `<div class="chk-item"><input type="checkbox" id="chk_${id}_${i}" value="${esc(t)}"><label for="chk_${id}_${i}">${esc(t)}</label></div>`
-    ).join('');
-  });
-}
-function lerChecklist(id) { return Array.from($id(id).querySelectorAll('input:checked')).map(c=>c.value).join(', '); }
-function marcarChecklist(id, val) { const s=val||''; $id(id).querySelectorAll('input').forEach(c=>{ c.checked=s.includes(c.value); }); }
 
 // ==========================================
 // CARREGAMENTO SOB DEMANDA (lazy) do "resto" do sistema
@@ -252,8 +240,6 @@ function atualizarTopBar() {
 // DELEGAÇÃO DE EVENTOS
 // ==========================================
 document.addEventListener('DOMContentLoaded', function() {
-  montarChecklists();
-
   // Inicia com todos os grupos da sidebar FECHADOS
   document.querySelectorAll('.nav-group-title').forEach(function(btn) {
     btn.classList.remove('open');
@@ -328,7 +314,6 @@ document.addEventListener('click', function(e) {
   }
   const acao = alvo.dataset.acao;
   const idx  = alvo.dataset.idx !== undefined ? parseInt(alvo.dataset.idx,10) : null;
-  const ctx  = { risco: alvo.dataset.risco, unidade: alvo.dataset.unidade, what: alvo.dataset.what };
 
   // Apenas ações disparadas por botões GERADOS dinamicamente (iconBtn e
   // afins, que carregam data-acao). Botões fixos do HTML usam o handler
@@ -359,11 +344,7 @@ document.addEventListener('click', function(e) {
     'edit-plano'      : () => abrirEditarPlano(idx),
     'arquivar-plano'  : () => abrirRevisaoPlano(idx),
     'acomp-entregas'  : () => abrirModalAcompEntregas(idx),
-    'del-plano'       : () => { const p=state.plans[idx]; showConfirm(`Excluir plano de ${p.riscoVinculado}?`, ()=>excluirPlano(p.riscoVinculado)); },
-    // Entregas
-    'reg-entrega'     : () => abrirModalEntrega(ctx),
-    'edit-entrega'    : () => abrirEditarEntrega(ctx),
-    'del-entrega'     : () => showConfirm(`Excluir entrega de "${ctx.unidade}"?`, ()=>excluirEntrega(ctx.risco, ctx.unidade))
+    'del-plano'       : () => { const p=state.plans[idx]; showConfirm(`Excluir plano de ${p.riscoVinculado}?`, ()=>excluirPlano(p.riscoVinculado)); }
   };
   if (acoes[acao]) acoes[acao]();
 });
@@ -381,8 +362,6 @@ document.addEventListener('click', function(e) {
   if(e.target.id === 'btn-confirmar-plano') confirmarEdicaoPlano();
   if(e.target.id === 'btn-confirmar-rev-plano') confirmarRevisaoPlano();
   if(e.target.id === 'btn-salvar-acomp-entregas') salvarAcompEntregas();
-  if(e.target.id === 'btn-confirmar-entrega') salvarEntrega();
-  if(e.target.id === 'btn-confirmar-entrega-editar') atualizarEntrega();
   if(e.target.id === 'btn-confirmar-excluir') { if(itemExcluir){ fecharModal('modal-confirmar'); itemExcluir(); itemExcluir=null; } }
   if(e.target.id === 'btn-fechar-alerta') fecharModal('modal-alerta');
   if(e.target.id === 'btn-novo-membro') abrirModalMembro();
@@ -427,8 +406,6 @@ document.addEventListener('change', function(e) {
   if (id === 'f-acomp-unidade' || id === 'f-acomp-status') renderAcompanhamento();
   if (id === 'f-archived-membro') renderArquivados();
   if (id === 'f-log-acao') renderLogs();
-  if (id === 'ent-status') $id('ent-evidencias').style.display = e.target.value === 'Sim' ? 'block' : 'none';
-  if (id === 'ee-status') $id('ee-evidencias').style.display = e.target.value === 'Sim' ? 'block' : 'none';
 });
 
 document.addEventListener('input', function(e) {

@@ -252,66 +252,8 @@ function excluirPlano(idPlano) {
 }
 
 // --- Entregas ---
-function salvarEntrega(dados) {
-  try {
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_DELIVERY);
-      const rows = aba.getDataRange().getValues();
-      for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][1]||'') === dados.riscoVinculado &&
-            String(rows[i][2]||'') === dados.unidade &&
-            String(rows[i][9]||'Ativo') !== 'Arquivado')
-          return { sucesso: false, mensagem: 'Já existe um registro ativo para esta unidade.' };
-      }
-      aba.appendRow([new Date(), dados.riscoVinculado, dados.unidade, dados.entregue,
-        dados.dataEntrega||'', dados.tipoDoc||'', dados.processoSei||'', dados.justificativa||'', usuarioAtual_(), 'Ativo']);
-      _reavaliarBaixa(dados.riscoVinculado);
-      registrarLog('Registro de Entrega', dados.riscoVinculado, 'Unidade: ' + dados.unidade);
-      return { sucesso: true, mensagem: 'Registro salvo!' };
-    });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
-}
-
-function atualizarEntrega(dados) {
-  try {
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_DELIVERY);
-      const rows = aba.getDataRange().getValues();
-      for (let i = rows.length - 1; i >= 1; i--) {
-        if (String(rows[i][1]||'') === dados.riscoVinculado &&
-            String(rows[i][2]||'') === dados.unidade &&
-            String(rows[i][9]||'Ativo') !== 'Arquivado') {
-          aba.getRange(i+1, 4, 1, 6).setValues([[dados.entregue, dados.dataEntrega||'',
-            dados.tipoDoc||'', dados.processoSei||'', dados.justificativa||'', usuarioAtual_()]]);
-          _reavaliarBaixa(dados.riscoVinculado);
-          return { sucesso: true, mensagem: 'Entrega atualizada!' };
-        }
-      }
-      return { sucesso: false, mensagem: 'Registro não encontrado.' };
-    });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
-}
-
-function excluirEntrega(riscoVinculado, unidade) {
-  try {
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_DELIVERY);
-      const rows = aba.getDataRange().getValues();
-      for (let i = rows.length - 1; i >= 1; i--) {
-        if (String(rows[i][1]||'') === riscoVinculado &&
-            String(rows[i][2]||'') === unidade &&
-            String(rows[i][9]||'Ativo') !== 'Arquivado') {
-          aba.deleteRow(i+1);
-          _reavaliarBaixa(riscoVinculado);
-          registrarLog('Exclusão de Entrega', riscoVinculado, 'Unidade: ' + unidade);
-          return { sucesso: true, mensagem: 'Registro excluído!' };
-        }
-      }
-      return { sucesso: false, mensagem: 'Registro não encontrado.' };
-    });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
-}
-
+// A reavaliação da baixa automática do plano e a gravação de entregas em
+// lote (via modal de Acompanhamento) são o único fluxo de entregas em uso.
 function _reavaliarBaixa(refRisco) {
   const abaP = conectarAba(SHEET_PLANS);
   const abaE = conectarAba(SHEET_DELIVERY);
