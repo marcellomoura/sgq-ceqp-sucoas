@@ -251,7 +251,7 @@ function salvarEntregasEmLote(riscoVinculado, entregas) {
             ent.processoSei||'']]);
         } else {
           aba.appendRow([riscoVinculado, ent.unidade, ent.entregue,
-            ent.dataEntrega||'', ent.processoSei||'', 'Ativo']);
+            ent.dataEntrega||'', ent.processoSei||'']);
           rows.push(new Array(CABECALHOS_ENTREGAS.length).fill(''));
         }
       });
