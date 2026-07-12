@@ -19,7 +19,7 @@ const CABECALHOS_MEMBROS = ['ID','Nome','Cargo','Email Funcional','Dias Semana',
 const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio','Demais Afastamentos'];
 // Demais abas — mesma ideia de fonte única de verdade para o layout.
 const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas'];
-const CABECALHOS_UNIDADES = ['Nome da Unidade','Sigla','E-mail Funcional','Tipo'];
+const CABECALHOS_UNIDADES = ['Nome da Unidade','Sigla','E-mail Funcional','Link do Drive'];
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','E-mail','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
 const CABECALHOS_RISCOS   = ['Data','ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status','Motivo'];
 const CABECALHOS_PLANOS   = ['Data Registro','ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Motivo Cancelamento','Versão'];
@@ -169,7 +169,7 @@ function calcularProximaRevisao(dataStr) {
 function registrarLog(acao, ref, detalhe) {
   try {
     const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
-    aba.appendRow([new Date(), usuarioAtual_(), acao, ref, detalhe]);
+    aba.appendRow([new Date(), nomeUsuarioAtual_(), acao, ref, detalhe]);
   } catch(e) { console.error('Log falhou: ' + e); }
 }
 
@@ -350,7 +350,7 @@ function getRestoData() {
   const CU = colIdx_(CABECALHOS_UNIDADES);
   const uData = ss.getSheetByName(SHEET_UNITS).getDataRange().getValues();
   const units = uData.length > 1 ? uData.slice(1).map((r, i) => ({
-    id: i + 1, unidade: String(r[CU('Nome da Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('E-mail Funcional')] || ''), tipo: String(r[CU('Tipo')] || '')
+    id: i + 1, unidade: String(r[CU('Nome da Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('E-mail Funcional')] || ''), linkDrive: String(r[CU('Link do Drive')] || '')
   })) : [];
 
   // --- Documentos ---

@@ -206,9 +206,14 @@
       <div class="hdr-tab-controls" id="hdr-logs">
         <label>Ação:</label>
         <select id="f-log-acao" class="hdr-select"><option value="">Todas</option></select>
+        <label>Usuário:</label>
+        <select id="f-log-usuario" class="hdr-select"><option value="">Todos</option></select>
+        <label>Período:</label>
+        <input type="date" id="f-log-data-ini" class="hdr-input" style="width:135px;">
+        <span style="color:#64748b; font-size:11px;">até</span>
+        <input type="date" id="f-log-data-fim" class="hdr-input" style="width:135px;">
         <label>Buscar:</label>
         <input type="text" id="f-log-busca" class="hdr-input" style="width:170px;" placeholder="Referência ou detalhes...">
-        <button class="btn-outline" id="btn-atualizar-logs" type="button">🔄 Atualizar</button>
       </div>
     </header>
 
@@ -359,7 +364,7 @@
     <section id="view-unidades" class="view-section">
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th style="width:160px; padding-right:6px;">Sigla</th><th style="padding-left:6px;">Nome</th><th>E-mail</th><th style="text-align:center; width:100px;">Ações</th></tr></thead>
+          <thead><tr><th style="width:140px; padding-right:6px;">Sigla</th><th style="padding-left:6px;">Nome</th><th>E-mail</th><th style="width:250px;">Link do Drive</th><th style="text-align:center; width:90px;">Ações</th></tr></thead>
           <tbody id="lista-unidades"><tr><td colspan="4" class="msg-empty">A carregar...</td></tr></tbody>
         </table>
       </div>
@@ -554,6 +559,7 @@
       <div style="flex:1;"><label class="field-label" for="eu-sigla">Sigla</label><input type="text" id="eu-sigla" class="field-input"></div>
     </div>
     <label class="field-label" for="eu-email">E-mail</label><input type="email" id="eu-email" class="field-input">
+    <label class="field-label" for="eu-link-drive">Link do Drive</label><input type="text" id="eu-link-drive" class="field-input">
     <div class="modal-footer"><button class="btn secondary" data-close="modal-unidade">Cancelar</button><button class="btn success" id="btn-confirmar-unidade">Confirmar</button></div>
   </div>
 </div>

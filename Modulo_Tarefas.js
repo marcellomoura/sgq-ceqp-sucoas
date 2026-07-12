@@ -160,8 +160,8 @@ function restaurarTarefaArquivada(id) {
 // MÓDULO 2 — MEMBROS (KANBAN)
 // ==========================================
 function saveMember(member) {
-  if (!member || !String(member.name||'').trim() || !String(member.role||'').trim())
-    return { sucesso: false, mensagem: 'Preencha Nome e Cargo.' };
+  if (!member || !String(member.name||'').trim() || !String(member.role||'').trim() || !String(member.email||'').trim() || !String(member.emailPessoal||'').trim())
+    return { sucesso: false, mensagem: 'Preencha todos os campos.' };
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
     const C = colIdx_(CABECALHOS_MEMBROS);

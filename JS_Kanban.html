@@ -48,7 +48,7 @@ function abrirEditarMembro(m) {
 function salvarMembro() {
   const btn=$id('btn-save-member');
   const dados={ id:$id('memberId').value, name:($id('memberName').value||'').trim(), role:($id('memberRole').value||'').trim(), email:($id('memberEmail').value||'').trim(), emailPessoal:($id('memberEmailPessoal').value||'').trim() };
-  if(!dados.name||!dados.role){ showAlerta('Preencha Nome e Cargo.'); return; }
+  if(!dados.name||!dados.role||!dados.email||!dados.emailPessoal){ showAlerta('Preencha todos os campos.'); return; }
   btn.disabled=true; btn.innerText='Salvando...';
   google.script.run.withSuccessHandler(()=>{
     feedbackBtn(btn,'✅ Salvo!','Salvar Cadastro',()=>{ fecharModal('modal-member'); recarregarKanban(()=>{ renderMembers(); sincronizarDropdownMembros(); }); });

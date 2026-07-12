@@ -403,7 +403,7 @@ async function montarHtmlMatrizPdf() {
   const matrizHtml = matrizImg
     ? `<img src="${matrizImg}" style="display:block;width:100%;margin-bottom:14px;">` : '';
   const legendaHtml = legendaImg
-    ? `<img src="${legendaImg}" style="display:block;max-width:520px;margin:0 auto 20px;">` : '';
+    ? `<img src="${legendaImg}" style="display:block;width:100%;margin:0 auto 20px;">` : '';
 
   const riscosHtml = _pdfSecaoTitulo('Mapeamento de Riscos') +
     `<table><thead><tr>

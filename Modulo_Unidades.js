@@ -14,7 +14,7 @@ function salvarUnidade(dados) {
         if ((rows[i][C('Sigla')]||'').toString().trim().toUpperCase() === siglaNova)
           return { sucesso: false, mensagem: "Já existe uma unidade com a sigla '" + dados.sigla + "'." };
       }
-      aba.appendRow([dados.unidade.trim(), dados.sigla.trim(), dados.email.trim(), (dados.tipo||'').trim()]);
+      aba.appendRow([dados.unidade.trim(), dados.sigla.trim(), dados.email.trim(), (dados.linkDrive||'').trim()]);
       registrarLog('Cadastro de Unidade', dados.sigla, 'Unidade incluída: ' + dados.unidade);
       return { sucesso: true, mensagem: 'Unidade cadastrada com sucesso!' };
     });
@@ -37,7 +37,7 @@ function atualizarUnidade(dados) {
         if (atual !== String(dados.siglaOriginal).trim())
           return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
       }
-      aba.getRange(linha, 1, 1, 4).setValues([[dados.unidade, dados.sigla, dados.email, (dados.tipo||'').trim()]]);
+      aba.getRange(linha, 1, 1, 4).setValues([[dados.unidade, dados.sigla, dados.email, (dados.linkDrive||'').trim()]]);
       registrarLog('Edição de Unidade', dados.sigla, 'Dados atualizados.');
       return { sucesso: true, mensagem: 'Unidade atualizada com sucesso!' };
     });

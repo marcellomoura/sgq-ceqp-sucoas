@@ -437,7 +437,7 @@ document.addEventListener('change', function(e) {
   if (id === 'f-rev-unidade') renderDocumentos('revisoes');
   if (id === 'f-acomp-unidade' || id === 'f-acomp-status') renderAcompanhamento();
   if (id === 'f-archived-membro') renderArquivados();
-  if (id === 'f-log-acao') renderLogs();
+  if (id === 'f-log-acao' || id === 'f-log-usuario' || id === 'f-log-data-ini' || id === 'f-log-data-fim') renderLogs();
 });
 
 document.addEventListener('input', function(e) {
@@ -669,16 +669,34 @@ function carregarLogs() {
         selAcao.innerHTML = '<option value="">Todas</option>' + acoesUnicas.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
         if (v) selAcao.value = v;
       }
+      const selUsuario = $id('f-log-usuario');
+      if (selUsuario) {
+        const v = selUsuario.value;
+        const usuariosUnicos = membrosOrdenados().map(m => m.name);
+        selUsuario.innerHTML = '<option value="">Todos</option>' + usuariosUnicos.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
+        if (v) selUsuario.value = v;
+      }
       renderLogs();
     }).buscarLogs();
 }
 
 function renderLogs() {
   const fAcao = ($id('f-log-acao') || {value:''}).value;
+  const fUsuario = ($id('f-log-usuario') || {value:''}).value;
+  const fDataIni = ($id('f-log-data-ini') || {value:''}).value;
+  const fDataFim = ($id('f-log-data-fim') || {value:''}).value;
   const fBusca = (($id('f-log-busca') || {value:''}).value || '').toLowerCase().trim();
 
   let filtrados = logsCache;
   if (fAcao) filtrados = filtrados.filter(l => l.acao === fAcao);
+  if (fUsuario) filtrados = filtrados.filter(l => l.usuario === fUsuario);
+  
+  if (fDataIni || fDataFim) {
+    const tsIni = fDataIni ? new Date(fDataIni + 'T00:00:00').getTime() : 0;
+    const tsFim = fDataFim ? new Date(fDataFim + 'T23:59:59').getTime() : Infinity;
+    filtrados = filtrados.filter(l => l._ordenacao >= tsIni && l._ordenacao <= tsFim);
+  }
+
   if (fBusca) filtrados = filtrados.filter(l =>
     (l.referencia || '').toLowerCase().includes(fBusca) || (l.detalhes || '').toLowerCase().includes(fBusca)
   );
