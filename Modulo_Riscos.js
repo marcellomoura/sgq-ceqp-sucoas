@@ -5,6 +5,12 @@
 // ==========================================
 function salvarRisco(dados) {
   try {
+    // Validação no servidor (espelha a do cliente) — protege contra dados
+    // incompletos mesmo que a checagem da tela seja contornada.
+    if (!dados || !dados.macroetapa || !dados.categoria || !String(dados.nomeRisco||'').trim() ||
+        !String(dados.causa||'').trim() || !String(dados.consequencia||'').trim() ||
+        !dados.tipoTratamento || !dados.responsavel)
+      return { sucesso: false, mensagem: 'Preencha todos os campos do risco.' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_RISKS);
       const CR = colIdx_(CABECALHOS_RISCOS);
@@ -125,6 +131,9 @@ function _statusPlano(previsto, finalizado, cancelamento) {
 
 function salvarPlano(dados) {
   try {
+    if (!dados || !dados.riscoVinculado || !String(dados.what||'').trim() || !String(dados.why||'').trim() ||
+        !dados.who || !String(dados.where||'').trim() || !dados.whenPrevisto || !String(dados.how||'').trim())
+      return { sucesso: false, mensagem: 'Preencha todos os campos do plano.' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_PLANS);
       const CP = colIdx_(CABECALHOS_PLANOS);
@@ -271,6 +280,12 @@ function excluirPlano(idPlano) {
 }
 
 // --- Entregas ---
+// Regra de negócio, num único ponto de verdade: um plano cujo "Quem" contém
+// "TODAS" cobra todas as subcomissões; uma unidade é subcomissão quando
+// "Subcomissão" aparece no nome. (Espelhada no cliente — ver JS_Riscos.html.)
+function _planoEhGlobal_(quem) { return String(quem||'').toUpperCase().includes('TODAS'); }
+function _ehSubcomissao_(nomeUnidade) { const n = String(nomeUnidade||'').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); }
+
 // A reavaliação da baixa automática do plano e a gravação de entregas em
 // lote (via modal de Acompanhamento) são o único fluxo de entregas em uso.
 function _reavaliarBaixa(refRisco) {
@@ -284,7 +299,7 @@ function _reavaliarBaixa(refRisco) {
     const st = String(rowsP[i][CP('Status')]||'').trim();
     if (String(rowsP[i][CP('ID Risco')]||'') === refRisco && st !== 'Arquivado' && st !== 'Superado') {
       indexPlano = i+1;
-      planoGlobal = (String(rowsP[i][CP('Quem')]||'')).toUpperCase().includes('TODAS');
+      planoGlobal = _planoEhGlobal_(rowsP[i][CP('Quem')]);
       break;
     }
   }
@@ -295,7 +310,7 @@ function _reavaliarBaixa(refRisco) {
     const CU = colIdx_(CABECALHOS_UNIDADES);
     const abaU = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_UNITS);
     const rowsU = abaU ? abaU.getDataRange().getValues() : [];
-    const subcomissoes = rowsU.slice(1).filter(r => { const n = String(r[CU('Nome da Unidade')]||'').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); });
+    const subcomissoes = rowsU.slice(1).filter(r => _ehSubcomissao_(r[CU('Nome da Unidade')]));
     const total = Math.max(subcomissoes.length, 1);
     const entregaram = new Set();
     rowsE.slice(1).forEach(r => {

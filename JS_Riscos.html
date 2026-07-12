@@ -2,6 +2,13 @@
 // ==========================================
 // MÓDULO 4 — RISCOS
 // ==========================================
+
+// Regra de negócio (espelho da do servidor, ver Modulo_Riscos.js): plano com
+// "TODAS" no responsável cobra todas as subcomissões; unidade é subcomissão
+// quando "Subcomissão" aparece no nome. Único ponto de verdade no cliente.
+function planoEhGlobal(quem) { return String(quem||'').toUpperCase().includes('TODAS'); }
+function ehSubcomissao(nomeUnidade) { const n = String(nomeUnidade||'').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); }
+
 function renderMatriz() {
   msgTabela('lista-riscos', 12, 'A carregar...');
   for (let p=1;p<=5;p++) for(let i=1;i<=5;i++) { const el=$id(`cell-${p}-${i}`); if(el) el.innerHTML=''; }
@@ -240,14 +247,11 @@ var acompEntregasPlanoCtx = null;
 
 function abrirModalAcompEntregas(idx) {
   const p = state.plans[idx]; if (!p) return;
-  const global = (p.who || '').toUpperCase().includes('TODAS');
+  const global = planoEhGlobal(p.who);
   let unidadesCobradas;
   if (global) {
     // "Todas as Subcomissões" cobra APENAS unidades com "Subcomissão" no nome
-    unidadesCobradas = state.units.filter(function(u) {
-      const n = u.unidade.toLowerCase();
-      return n.includes('subcomissão') || n.includes('subcomissao');
-    });
+    unidadesCobradas = state.units.filter(function(u) { return ehSubcomissao(u.unidade); });
   } else {
     // Plano atribuído a uma unidade específica — só ela é cobrada
     unidadesCobradas = state.units.filter(function(u) {

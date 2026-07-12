@@ -3,6 +3,8 @@
 // (arquivo único: Membros só existe como responsáveis das Tarefas)
 // ==========================================
 function saveTask(task) {
+  if (!task || !String(task.title||'').trim())
+    return { sucesso: false, mensagem: 'O título do cartão é obrigatório.' };
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
@@ -137,6 +139,8 @@ function restaurarTarefaArquivada(id) {
 // MÓDULO 2 — MEMBROS (KANBAN)
 // ==========================================
 function saveMember(member) {
+  if (!member || !String(member.name||'').trim() || !String(member.role||'').trim())
+    return { sucesso: false, mensagem: 'Preencha Nome e Cargo.' };
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
     const C = colIdx_(CABECALHOS_MEMBROS);
