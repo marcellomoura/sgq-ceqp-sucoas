@@ -8,20 +8,22 @@ function salvarEscala(dados) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
+      const C = colIdx_(CABECALHOS_MEMBROS);
       const rows = aba.getDataRange().getValues();
       const membroId = String(dados.membroId || '');
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][0]) === membroId) {
+        if (String(rows[i][C('ID')]) === membroId) {
           // Dias gravados como texto legível na planilha: "Segunda (08h-12h), Terça"
           const comboStr = (dados.diasSemana || []).map(d => {
             const h = (dados.horarios && dados.horarios[d]) ? dados.horarios[d] : '';
             return h ? `${d} (${h})` : d;
           });
-          aba.getRange(i + 1, 5, 1, 2).setValues([[
+          // Colunas contíguas Dias Semana + Dia Presencial
+          aba.getRange(i + 1, C('Dias Semana')+1, 1, 2).setValues([[
             comboStr.join(', '),
             dados.diaPresencial || ''
           ]]);
-          registrarLog('Edição de Escala', String(rows[i][1]), 'Escala semanal atualizada.');
+          registrarLog('Edição de Escala', String(rows[i][C('Nome')]), 'Escala semanal atualizada.');
           return { sucesso: true };
         }
       }
@@ -38,6 +40,7 @@ function salvarEscala(dados) {
 function getAfastamentos() {
   try {
     const aba = conectarAba(SHEET_AFASTAMENTOS, CABECALHOS_AFASTAMENTOS);
+    const CA = colIdx_(CABECALHOS_AFASTAMENTOS);
     const rows = aba.getDataRange().getValues();
     if (rows.length <= 1) return [];
 
@@ -50,12 +53,12 @@ function getAfastamentos() {
     };
 
     return rows.slice(1).map(r => {
-      const p1 = String(r[4] || '').trim();
-      const p2 = String(r[5] || '').trim();
-      const p3 = String(r[6] || '').trim();
-      const abonosSt = String(r[7] || '').trim();
-      const aniversario = dataParaISO_(r[8]);
-      const licencaSt = String(r[9] || '').trim();
+      const p1 = String(r[CA('Férias 1')] || '').trim();
+      const p2 = String(r[CA('Férias 2')] || '').trim();
+      const p3 = String(r[CA('Férias 3')] || '').trim();
+      const abonosSt = String(r[CA('Abonos')] || '').trim();
+      const aniversario = dataParaISO_(r[CA('Abono Aniversário')]);
+      const licencaSt = String(r[CA('Licença Servidor/Prêmio')] || '').trim();
 
       const ferias = [];
       if (p1) ferias.push(parsePeriod(p1));
@@ -63,10 +66,10 @@ function getAfastamentos() {
       if (p3) ferias.push(parsePeriod(p3));
 
       return {
-        id: String(r[0]),
-        ano: String(r[1]),
-        membroId: String(r[2]),
-        membroNome: String(r[3]),
+        id: String(r[CA('ID')]),
+        ano: String(r[CA('Ano')]),
+        membroId: String(r[CA('Membro ID')]),
+        membroNome: String(r[CA('Membro Nome')]),
         ferias: ferias,
         abonosFixos: abonosSt ? abonosSt.split(',').map(s => s.trim()).filter(x => x) : [],
         abonoAniv: aniversario ? { inicio: aniversario, fim: aniversario } : null,
@@ -87,18 +90,20 @@ function salvarAfastamento(dados) {
       return { sucesso: false, mensagem: 'Membro e ano são obrigatórios.' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_AFASTAMENTOS, CABECALHOS_AFASTAMENTOS);
+      const CA = colIdx_(CABECALHOS_AFASTAMENTOS);
       const rows = aba.getDataRange().getValues();
       const periodo = p => p ? p.inicio + ' a ' + p.fim : '';
       const f = dados.ferias || [];
       const abonoStr = Array.isArray(dados.abonos) ? dados.abonos.filter(d => d).join(', ') : '';
+      // Bloco Férias 1 → Licença (6 colunas contíguas)
       const valores = [
         periodo(f[0]), periodo(f[1]), periodo(f[2]),
         abonoStr, dados.abonoAniversario || '', periodo(dados.licenca)
       ];
 
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][2]) === String(dados.membroId) && String(rows[i][1]) === String(dados.ano)) {
-          aba.getRange(i + 1, 5, 1, 6).setValues([valores]);
+        if (String(rows[i][CA('Membro ID')]) === String(dados.membroId) && String(rows[i][CA('Ano')]) === String(dados.ano)) {
+          aba.getRange(i + 1, CA('Férias 1')+1, 1, 6).setValues([valores]);
           registrarLog('Edição de Afastamentos', dados.membroNome + ' (' + dados.ano + ')', 'Afastamentos atualizados.');
           return { sucesso: true };
         }

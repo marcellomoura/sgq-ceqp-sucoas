@@ -97,7 +97,7 @@ function drop(e, newStatus) {
   if(idx<0) return;
   const task=state.tasks[idx];
   if(task.status===newStatus) return;
-  const dateNow=new Date().toISOString().split('T')[0];
+  const dateNow=hojeISO();
   state.tasks[idx].status=newStatus;
   if(newStatus==='Concluído') state.tasks[idx].completionDate=dateNow; else state.tasks[idx].completionDate='';
   if(newStatus!=='Backlog'&&!state.tasks[idx].startDate) state.tasks[idx].startDate=dateNow;

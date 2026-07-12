@@ -29,6 +29,10 @@ const ICON = {
 function $id(id) { return document.getElementById(id); }
 function esc(s) { return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 function fmtBr(d) { if (!d || !String(d).includes('-')) return d || '-'; const p = String(d).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d; }
+// Data de hoje (fuso do navegador) como 'yyyy-MM-dd', sem passar por UTC —
+// evita o desvio de 1 dia que new Date().toISOString() causa à noite no
+// horário de Brasília (espelha _dataLocalISO_ do servidor).
+function hojeISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function badge(st) { const c = CORES_STATUS[st] || ['#f1f5f9','#475569']; return `<span class="status-badge" style="background:${c[0]};color:${c[1]};">${esc(st)}</span>`; }
 // Só renderiza como link URLs http(s) — qualquer outro valor (ex.:
 // "javascript:...") aparece como texto simples, sem virar clicável

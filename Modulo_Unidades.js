@@ -6,11 +6,12 @@ function salvarUnidade(dados) {
     if (!dados || !String(dados.unidade||'').trim() || !String(dados.sigla||'').trim() || !String(dados.email||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos da Unidade.' };
     return comBloqueio(() => {
-      const aba = conectarAba(SHEET_UNITS, ['Nome da Unidade','Sigla','E-mail Funcional','Tipo']);
+      const aba = conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
+      const C = colIdx_(CABECALHOS_UNIDADES);
       const rows = aba.getDataRange().getValues();
       const siglaNova = dados.sigla.toString().trim().toUpperCase();
       for (let i = 1; i < rows.length; i++) {
-        if ((rows[i][1]||'').toString().trim().toUpperCase() === siglaNova)
+        if ((rows[i][C('Sigla')]||'').toString().trim().toUpperCase() === siglaNova)
           return { sucesso: false, mensagem: "Já existe uma unidade com a sigla '" + dados.sigla + "'." };
       }
       aba.appendRow([dados.unidade.trim(), dados.sigla.trim(), dados.email.trim(), (dados.tipo||'').trim()]);
@@ -24,6 +25,7 @@ function atualizarUnidade(dados) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_UNITS);
+      const C = colIdx_(CABECALHOS_UNIDADES);
       const linha = parseInt(dados.id, 10) + 1;
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Registro não localizado.' };
@@ -31,7 +33,7 @@ function atualizarUnidade(dados) {
       // escrever, para não atualizar a linha errada se a lista do usuário
       // estiver desatualizada (mesma proteção que Documentos já usa).
       if (dados.siglaOriginal) {
-        const atual = aba.getRange(linha, 2).getValue().toString().trim();
+        const atual = aba.getRange(linha, C('Sigla')+1).getValue().toString().trim();
         if (atual !== String(dados.siglaOriginal).trim())
           return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
       }
@@ -46,10 +48,11 @@ function excluirUnidade(idUnidade, siglaEsperada) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_UNITS);
+      const C = colIdx_(CABECALHOS_UNIDADES);
       const linha = parseInt(idUnidade, 10) + 1;
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Registro não localizado.' };
-      const sigla = aba.getRange(linha, 2).getValue();
+      const sigla = aba.getRange(linha, C('Sigla')+1).getValue();
       // Confere a sigla antes de excluir — o id é posição de linha e uma
       // lista desatualizada apagaria a unidade errada
       if (siglaEsperada && sigla.toString().trim() !== String(siglaEsperada).trim())

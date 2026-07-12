@@ -5,16 +5,18 @@
 function saveTask(task) {
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
+    const C = colIdx_(CABECALHOS_TAREFAS);
     const timeNow = getNowTimestamp();
 
     if (task.id && task.id !== 'null' && task.id !== '') {
       const data = sheet.getDataRange().getValues();
       for (let i = 1; i < data.length; i++) {
-        if (String(data[i][0]) === String(task.id)) {
+        if (String(data[i][C('ID')]) === String(task.id)) {
           let acts = [];
           try { acts = JSON.parse(task.activities); } catch(e) {}
           acts.push({ type: 'log', text: 'Cartão atualizado via sistema', date: timeNow });
-          sheet.getRange(i+1, 2, 1, 10).setValues([[
+          // Bloco contíguo de Status até Atividades (10 colunas)
+          sheet.getRange(i+1, C('Status')+1, 1, 10).setValues([[
             task.status, task.title, task.description, task.assigneeId,
             task.priority, task.creationDate, task.startDate,
             task.deadline, task.completionDate, JSON.stringify(acts)
@@ -25,7 +27,7 @@ function saveTask(task) {
       }
     } else {
       const newId = getNextId(SHEET_TASKS, 'TAR-');
-      const dateNow = new Date().toISOString().split('T')[0];
+      const dateNow = _dataLocalISO_(new Date());
       const hist = [{ type: 'log', text: `Criou este cartão na lista "${task.status}"`, date: timeNow }];
       sheet.appendRow([
         newId, task.status, task.title, task.description, task.assigneeId,
@@ -41,28 +43,29 @@ function saveTask(task) {
 function updateTaskStatus(id, newStatus) {
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
+    const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
-    const dateNow = new Date().toISOString().split('T')[0];
+    const dateNow = _dataLocalISO_(new Date());
     const timeNow = getNowTimestamp();
 
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]) === String(id)) {
-        const oldStatus = String(data[i][1]);
+      if (String(data[i][C('ID')]) === String(id)) {
+        const oldStatus = String(data[i][C('Status')]);
         if (oldStatus === newStatus) { SpreadsheetApp.flush(); return { sucesso: true }; }
 
-        sheet.getRange(i+1, 2).setValue(newStatus);
+        sheet.getRange(i+1, C('Status')+1).setValue(newStatus);
         let acts = [];
-        try { acts = JSON.parse(String(data[i][10] || '[]')); } catch(e) {}
+        try { acts = JSON.parse(String(data[i][C('Atividades')] || '[]')); } catch(e) {}
         acts.push({ type: 'log', text: `Moveu de "${oldStatus}" para "${newStatus}"`, date: timeNow });
-        sheet.getRange(i+1, 11).setValue(JSON.stringify(acts));
+        sheet.getRange(i+1, C('Atividades')+1).setValue(JSON.stringify(acts));
 
-        if (newStatus === 'Concluído') sheet.getRange(i+1, 10).setValue(dateNow);
-        else sheet.getRange(i+1, 10).setValue('');
-        if (newStatus !== 'Backlog' && !String(data[i][7] || '')) sheet.getRange(i+1, 8).setValue(dateNow);
+        if (newStatus === 'Concluído') sheet.getRange(i+1, C('Data Conclusão')+1).setValue(dateNow);
+        else sheet.getRange(i+1, C('Data Conclusão')+1).setValue('');
+        if (newStatus !== 'Backlog' && !String(data[i][C('Data Início')] || '')) sheet.getRange(i+1, C('Data Início')+1).setValue(dateNow);
 
         // Qualquer mudança de status reseta o arquivamento (recomeça o
         // contador de 15 dias caso o cartão volte a ser concluído depois)
-        sheet.getRange(i+1, 12).setValue('');
+        sheet.getRange(i+1, C('Arquivado')+1).setValue('');
 
         SpreadsheetApp.flush();
         return { sucesso: true };
@@ -75,9 +78,10 @@ function updateTaskStatus(id, newStatus) {
 function deleteTask(id) {
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
+    const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]) === String(id)) {
+      if (String(data[i][C('ID')]) === String(id)) {
         sheet.deleteRow(i+1);
         SpreadsheetApp.flush();
         registrarLog('Exclusão de Tarefa', id, 'Cartão removido do Kanban.');
@@ -92,13 +96,14 @@ function deleteTask(id) {
 function arquivarTarefaManual(id) {
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
+    const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]) === String(id)) {
-        if (String(data[i][1]) !== 'Concluído') {
+      if (String(data[i][C('ID')]) === String(id)) {
+        if (String(data[i][C('Status')]) !== 'Concluído') {
           return { sucesso: false, mensagem: 'Só é possível arquivar cartões já concluídos.' };
         }
-        sheet.getRange(i+1, 12).setValue('Sim');
+        sheet.getRange(i+1, C('Arquivado')+1).setValue('Sim');
         SpreadsheetApp.flush();
         registrarLog('Arquivamento Manual', id, 'Cartão arquivado manualmente.');
         return { sucesso: true };
@@ -114,10 +119,11 @@ function arquivarTarefaManual(id) {
 function restaurarTarefaArquivada(id) {
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
+    const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]) === String(id)) {
-        sheet.getRange(i+1, 12).setValue('Não');
+      if (String(data[i][C('ID')]) === String(id)) {
+        sheet.getRange(i+1, C('Arquivado')+1).setValue('Não');
         SpreadsheetApp.flush();
         registrarLog('Restauração de Arquivo', id, 'Cartão restaurado ao quadro.');
         return { sucesso: true };
@@ -132,20 +138,26 @@ function restaurarTarefaArquivada(id) {
 // ==========================================
 function saveMember(member) {
   return comBloqueio(() => {
-    const sheet = conectarAba(SHEET_MEMBERS);
+    const sheet = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
+    const C = colIdx_(CABECALHOS_MEMBROS);
     if (member.id && member.id !== 'null' && member.id !== '') {
       const data = sheet.getDataRange().getValues();
       for (let i = 1; i < data.length; i++) {
-        if (String(data[i][0]) === String(member.id)) {
-          sheet.getRange(i+1, 2, 1, 3).setValues([[member.name, member.role, member.email]]);
-          sheet.getRange(i+1, 13).setValue(member.emailPessoal || '');
+        if (String(data[i][C('ID')]) === String(member.id)) {
+          // Nome, Cargo e Email Funcional são contíguos (colunas 2-4)
+          sheet.getRange(i+1, C('Nome')+1, 1, 3).setValues([[member.name, member.role, member.email]]);
+          // E-mail pessoal na coluna do cabeçalho (antes ia para a 13ª por
+          // engano, ficando invisível na leitura — ver getKanbanData_members_)
+          sheet.getRange(i+1, C('E-mail Pessoal')+1).setValue(member.emailPessoal || '');
           SpreadsheetApp.flush();
           return { sucesso: true };
         }
       }
     } else {
       const newId = getNextId(SHEET_MEMBERS, 'MEM-');
-      const row = [newId, member.name, member.role, member.email || '', '', '', '', '', '', '', '', '', member.emailPessoal || ''];
+      // Nova linha no layout de CABECALHOS_MEMBROS (Dias Semana / Dia
+      // Presencial ficam vazios até a edição da Escala)
+      const row = [newId, member.name, member.role, member.email || '', '', '', member.emailPessoal || ''];
       sheet.appendRow(row);
       SpreadsheetApp.flush();
       return { sucesso: true };
@@ -156,10 +168,11 @@ function saveMember(member) {
 
 function deleteMember(id) {
   return comBloqueio(() => {
-    const sheet = conectarAba(SHEET_MEMBERS);
+    const sheet = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
+    const C = colIdx_(CABECALHOS_MEMBROS);
     const data  = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]) === String(id)) {
+      if (String(data[i][C('ID')]) === String(id)) {
         sheet.deleteRow(i+1);
         SpreadsheetApp.flush();
         return { sucesso: true };

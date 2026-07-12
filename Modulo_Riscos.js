@@ -7,10 +7,11 @@ function salvarRisco(dados) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_RISKS);
+      const CR = colIdx_(CABECALHOS_RISCOS);
       const rows = aba.getDataRange().getValues();
       let max = 0;
       rows.slice(1).forEach(r => {
-        const n = parseInt(String(r[1]||'').replace(/\D/g,''), 10);
+        const n = parseInt(String(r[CR('ID Risco')]||'').replace(/\D/g,''), 10);
         if (!isNaN(n) && n > max) max = n;
       });
       const id = 'R' + (max + 1);
@@ -28,15 +29,17 @@ function atualizarRisco(dados) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_RISKS);
+      const CR = colIdx_(CABECALHOS_RISCOS);
       const ref = 'R' + dados.id;
       const rows = aba.getDataRange().getValues();
       let linha = -1;
       for (let i = 1; i < rows.length; i++) {
-        if (rows[i][1].toString().trim() === ref && String(rows[i][12]||'Vigente').trim() === 'Vigente') { linha = i+1; break; }
+        if (rows[i][CR('ID Risco')].toString().trim() === ref && String(rows[i][CR('Status')]||'Vigente').trim() === 'Vigente') { linha = i+1; break; }
       }
       if (linha === -1) return { sucesso: false, mensagem: 'Risco não localizado.' };
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
-      aba.getRange(linha, 3, 1, 10).setValues([[dados.macroetapa, dados.nome, dados.causa, dados.consequencia,
+      // Bloco contíguo Macroetapa → Responsável (10 colunas)
+      aba.getRange(linha, CR('Macroetapa')+1, 1, 10).setValues([[dados.macroetapa, dados.nome, dados.causa, dados.consequencia,
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel, dados.tipoTratamento, dados.responsavel]]);
       registrarLog('Edição de Risco', ref, 'Metadados atualizados.');
       return { sucesso: true, mensagem: 'Risco atualizado!' };
@@ -48,18 +51,19 @@ function salvarRevisaoRisco(dados) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_RISKS);
+      const CR = colIdx_(CABECALHOS_RISCOS);
       const ref = 'R' + dados.id;
       const rows = aba.getDataRange().getValues();
       let linhaAntiga = -1;
       for (let i = 1; i < rows.length; i++) {
-        if (rows[i][1].toString().trim() === ref && String(rows[i][12]||'Vigente').trim() === 'Vigente') { linhaAntiga = i+1; break; }
+        if (rows[i][CR('ID Risco')].toString().trim() === ref && String(rows[i][CR('Status')]||'Vigente').trim() === 'Vigente') { linhaAntiga = i+1; break; }
       }
       if (linhaAntiga === -1) throw new Error('Risco original não localizado.');
-      aba.getRange(linhaAntiga, 13).setValue('Obsoleto');
+      aba.getRange(linhaAntiga, CR('Status')+1).setValue('Obsoleto');
       const antiga = rows[linhaAntiga - 1];
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
       aba.appendRow([dados.data ? new Date(dados.data + 'T12:00:00') : new Date(), ref,
-        antiga[2], antiga[3], antiga[4], antiga[5], antiga[6],
+        antiga[CR('Macroetapa')], antiga[CR('Risco')], antiga[CR('Causa')], antiga[CR('Consequência')], antiga[CR('Categoria')],
         Number(dados.probabilidade), Number(dados.impacto), nivel,
         dados.tipoTratamento, dados.responsavel, 'Vigente', dados.motivo]);
       registrarLog('Revisão de Risco', ref, 'Nova revisão publicada.');
@@ -76,15 +80,22 @@ function excluirRisco(idRisco) {
 
       const abaR = conectarAba(SHEET_RISKS);
       const rowsR = abaR.getDataRange().getValues();
+      const colIdRisco = colIdx_(CABECALHOS_RISCOS)('ID Risco');
       for (let i = rowsR.length - 1; i >= 1; i--) {
-        if (rowsR[i][1].toString().trim() === ref) abaR.deleteRow(i+1);
+        if (rowsR[i][colIdRisco].toString().trim() === ref) abaR.deleteRow(i+1);
       }
+      // A coluna que guarda a referência do risco tem nomes diferentes em
+      // cada aba (Planos: 'ID Risco'; Entregas: 'Risco Vinculado').
+      const colRefPorAba = {};
+      colRefPorAba[SHEET_PLANS]    = colIdx_(CABECALHOS_PLANOS)('ID Risco');
+      colRefPorAba[SHEET_DELIVERY] = colIdx_(CABECALHOS_ENTREGAS)('Risco Vinculado');
       [SHEET_PLANS, SHEET_DELIVERY].forEach(nomeAba => {
         const aba = ss.getSheetByName(nomeAba);
         if (!aba) return;
+        const colRef = colRefPorAba[nomeAba];
         const rows = aba.getDataRange().getValues();
         for (let i = rows.length - 1; i >= 1; i--) {
-          const r = String(rows[i][1]||'');
+          const r = String(rows[i][colRef]||'');
           if (r === ref || r.startsWith(ref + ' -')) aba.deleteRow(i+1);
         }
       });
@@ -116,10 +127,11 @@ function salvarPlano(dados) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_PLANS);
+      const CP = colIdx_(CABECALHOS_PLANOS);
       const rows = aba.getDataRange().getValues();
       for (let i = 1; i < rows.length; i++) {
-        const st = String(rows[i][10]||'').trim();
-        if (String(rows[i][1]||'') === dados.riscoVinculado && st !== 'Arquivado' && st !== 'Superado')
+        const st = String(rows[i][CP('Status')]||'').trim();
+        if (String(rows[i][CP('ID Risco')]||'') === dados.riscoVinculado && st !== 'Arquivado' && st !== 'Superado')
           return { sucesso: false, mensagem: 'Já existe um plano ativo para este risco.' };
       }
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado, '');
@@ -136,18 +148,21 @@ function atualizarPlano(dados) {
     return comBloqueio(() => {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
       const aba = conectarAba(SHEET_PLANS);
+      const CP = colIdx_(CABECALHOS_PLANOS);
+      const CE = colIdx_(CABECALHOS_ENTREGAS);
       const rows = aba.getDataRange().getValues();
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado, dados.cancelamento);
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][1]||'') === dados.riscoVinculado) {
-          aba.getRange(i+1, 3, 1, 10).setValues([[dados.what, dados.why, dados.who, dados.where,
+        if (String(rows[i][CP('ID Risco')]||'') === dados.riscoVinculado) {
+          // Bloco contíguo O Que → Motivo Cancelamento (10 colunas)
+          aba.getRange(i+1, CP('O Que')+1, 1, 10).setValues([[dados.what, dados.why, dados.who, dados.where,
             dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, dados.cancelamento||'']]);
           if (status === 'Arquivado') {
             const abaE = ss.getSheetByName(SHEET_DELIVERY);
             if (abaE) {
               const rowsE = abaE.getDataRange().getValues();
               for (let e = 1; e < rowsE.length; e++) {
-                if (String(rowsE[e][1]||'') === dados.riscoVinculado) abaE.getRange(e+1, 10).setValue('Arquivado');
+                if (String(rowsE[e][CE('Risco Vinculado')]||'') === dados.riscoVinculado) abaE.getRange(e+1, CE('Status Sistema')+1).setValue('Arquivado');
               }
             }
           }
@@ -169,26 +184,27 @@ function salvarRevisaoPlano(dados) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_PLANS);
+      const CP = colIdx_(CABECALHOS_PLANOS);
       const rows = aba.getDataRange().getValues();
       let linhaAtual = -1;
       for (let i = 1; i < rows.length; i++) {
-        const st = String(rows[i][10]||'').trim();
-        if (String(rows[i][1]||'') === dados.riscoVinculado && st !== 'Arquivado' && st !== 'Superado') {
+        const st = String(rows[i][CP('Status')]||'').trim();
+        if (String(rows[i][CP('ID Risco')]||'') === dados.riscoVinculado && st !== 'Arquivado' && st !== 'Superado') {
           linhaAtual = i + 1; break;
         }
       }
       if (linhaAtual === -1) return { sucesso: false, mensagem: 'Plano ativo não localizado para este risco.' };
 
       const antiga = rows[linhaAtual - 1];
-      const versaoAtual = parseFloat(String(antiga[12] || '1').replace(',', '.')) || 1;
+      const versaoAtual = parseFloat(String(antiga[CP('Versão')] || '1').replace(',', '.')) || 1;
       const novaVersao = (versaoAtual + 1).toFixed(1);
 
-      aba.getRange(linhaAtual, 11).setValue('Superado');
+      aba.getRange(linhaAtual, CP('Status')+1).setValue('Superado');
       // Guarda o motivo da revisão na própria linha antiga (coluna de
       // Motivo Cancelamento é reaproveitada aqui só para versões
       // superadas — não tem conflito, pois "Arquivado" já usa esse
       // mesmo campo para o motivo do arquivamento).
-      aba.getRange(linhaAtual, 12).setValue(dados.motivo || '');
+      aba.getRange(linhaAtual, CP('Motivo Cancelamento')+1).setValue(dados.motivo || '');
 
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado, '');
       aba.appendRow([new Date(), dados.riscoVinculado, dados.what, dados.why, dados.who,
@@ -206,18 +222,19 @@ function salvarRevisaoPlano(dados) {
 function buscarHistoricoPlano(riscoVinculado) {
   try {
     const aba = conectarAba(SHEET_PLANS);
+    const CP = colIdx_(CABECALHOS_PLANOS);
     const rows = aba.getDataRange().getValues();
     const versoes = [];
     for (let i = 1; i < rows.length; i++) {
-      if (String(rows[i][1] || '') === riscoVinculado) {
+      if (String(rows[i][CP('ID Risco')] || '') === riscoVinculado) {
         versoes.push({
-          versao: (parseFloat(String(rows[i][12] || '1').replace(',', '.')) || 1).toFixed(1),
-          what: String(rows[i][2] || ''), why: String(rows[i][3] || ''),
-          who: String(rows[i][4] || ''), where: String(rows[i][5] || ''),
-          whenPrevisto: formatarDataParaUI(rows[i][6]), whenFinalizado: formatarDataParaUI(rows[i][7]),
-          how: String(rows[i][8] || ''), howMuch: String(rows[i][9] || ''),
-          status: String(rows[i][10] || ''), motivo: String(rows[i][11] || ''),
-          dataRegistro: formatarDataParaUI(rows[i][0])
+          versao: (parseFloat(String(rows[i][CP('Versão')] || '1').replace(',', '.')) || 1).toFixed(1),
+          what: String(rows[i][CP('O Que')] || ''), why: String(rows[i][CP('Por Que')] || ''),
+          who: String(rows[i][CP('Quem')] || ''), where: String(rows[i][CP('Onde')] || ''),
+          whenPrevisto: formatarDataParaUI(rows[i][CP('Data Prevista')]), whenFinalizado: formatarDataParaUI(rows[i][CP('Data Finalização')]),
+          how: String(rows[i][CP('Como')] || ''), howMuch: String(rows[i][CP('Quanto Custa')] || ''),
+          status: String(rows[i][CP('Status')] || ''), motivo: String(rows[i][CP('Motivo Cancelamento')] || ''),
+          dataRegistro: formatarDataParaUI(rows[i][CP('Data Registro')])
         });
       }
     }
@@ -230,19 +247,21 @@ function excluirPlano(idPlano) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_PLANS);
+      const CP = colIdx_(CABECALHOS_PLANOS);
       const rows = aba.getDataRange().getValues();
       let excluiu = false;
       for (let i = rows.length - 1; i >= 1; i--) {
-        if (String(rows[i][1]||'') === idPlano) { aba.deleteRow(i+1); excluiu = true; }
+        if (String(rows[i][CP('ID Risco')]||'') === idPlano) { aba.deleteRow(i+1); excluiu = true; }
       }
       if (!excluiu) return { sucesso: false, mensagem: 'Plano não localizado.' };
       // Remove também as entregas vinculadas — sem isso, um plano novo criado
       // para o mesmo risco "herdava" os registros de entrega do plano excluído.
       const abaE = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DELIVERY);
       if (abaE) {
+        const CE = colIdx_(CABECALHOS_ENTREGAS);
         const rowsE = abaE.getDataRange().getValues();
         for (let i = rowsE.length - 1; i >= 1; i--) {
-          if (String(rowsE[i][1]||'') === idPlano) abaE.deleteRow(i+1);
+          if (String(rowsE[i][CE('Risco Vinculado')]||'') === idPlano) abaE.deleteRow(i+1);
         }
       }
       registrarLog('Exclusão de Plano', idPlano, 'Plano e entregas vinculadas removidos.');
@@ -257,13 +276,15 @@ function excluirPlano(idPlano) {
 function _reavaliarBaixa(refRisco) {
   const abaP = conectarAba(SHEET_PLANS);
   const abaE = conectarAba(SHEET_DELIVERY);
+  const CP = colIdx_(CABECALHOS_PLANOS);
+  const CE = colIdx_(CABECALHOS_ENTREGAS);
   const rowsP = abaP.getDataRange().getValues();
   let indexPlano = -1, planoGlobal = false;
   for (let i = 1; i < rowsP.length; i++) {
-    const st = String(rowsP[i][10]||'').trim();
-    if (String(rowsP[i][1]||'') === refRisco && st !== 'Arquivado' && st !== 'Superado') {
+    const st = String(rowsP[i][CP('Status')]||'').trim();
+    if (String(rowsP[i][CP('ID Risco')]||'') === refRisco && st !== 'Arquivado' && st !== 'Superado') {
       indexPlano = i+1;
-      planoGlobal = (String(rowsP[i][4]||'')).toUpperCase().includes('TODAS');
+      planoGlobal = (String(rowsP[i][CP('Quem')]||'')).toUpperCase().includes('TODAS');
       break;
     }
   }
@@ -271,29 +292,30 @@ function _reavaliarBaixa(refRisco) {
   const rowsE = abaE.getDataRange().getValues();
   let darBaixa = false;
   if (planoGlobal) {
+    const CU = colIdx_(CABECALHOS_UNIDADES);
     const abaU = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_UNITS);
     const rowsU = abaU ? abaU.getDataRange().getValues() : [];
-    const subcomissoes = rowsU.slice(1).filter(r => { const n = String(r[0]||'').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); });
+    const subcomissoes = rowsU.slice(1).filter(r => { const n = String(r[CU('Nome da Unidade')]||'').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); });
     const total = Math.max(subcomissoes.length, 1);
     const entregaram = new Set();
     rowsE.slice(1).forEach(r => {
-      if (String(r[1]||'') === refRisco && r[3] === 'Sim' && r[9] !== 'Arquivado') entregaram.add(String(r[2]||''));
+      if (String(r[CE('Risco Vinculado')]||'') === refRisco && r[CE('Status')] === 'Sim' && r[CE('Status Sistema')] !== 'Arquivado') entregaram.add(String(r[CE('Unidade')]||''));
     });
     darBaixa = entregaram.size >= total;
   } else {
     for (let i = rowsE.length - 1; i >= 1; i--) {
-      if (String(rowsE[i][1]||'') === refRisco && rowsE[i][9] !== 'Arquivado') {
-        darBaixa = rowsE[i][3] === 'Sim'; break;
+      if (String(rowsE[i][CE('Risco Vinculado')]||'') === refRisco && rowsE[i][CE('Status Sistema')] !== 'Arquivado') {
+        darBaixa = rowsE[i][CE('Status')] === 'Sim'; break;
       }
     }
   }
-  const hoje = new Date().toISOString().split('T')[0];
+  const hoje = _dataLocalISO_(new Date());
   if (darBaixa) {
-    abaP.getRange(indexPlano, 8).setValue(hoje);
-    abaP.getRange(indexPlano, 11).setValue('Concluído');
+    abaP.getRange(indexPlano, CP('Data Finalização')+1).setValue(hoje);
+    abaP.getRange(indexPlano, CP('Status')+1).setValue('Concluído');
   } else {
-    abaP.getRange(indexPlano, 8).clearContent();
-    abaP.getRange(indexPlano, 11).setValue(_statusPlano(rowsP[indexPlano-1][6], '', rowsP[indexPlano-1][11]));
+    abaP.getRange(indexPlano, CP('Data Finalização')+1).clearContent();
+    abaP.getRange(indexPlano, CP('Status')+1).setValue(_statusPlano(rowsP[indexPlano-1][CP('Data Prevista')], '', rowsP[indexPlano-1][CP('Motivo Cancelamento')]));
   }
 }
 
@@ -302,25 +324,27 @@ function salvarEntregasEmLote(riscoVinculado, entregas) {
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_DELIVERY);
+      const CE = colIdx_(CABECALHOS_ENTREGAS);
       let rows = aba.getDataRange().getValues();
       const usr = usuarioAtual_();
 
       entregas.forEach(function(ent) {
         let linhaExistente = -1;
         for (let i = rows.length - 1; i >= 1; i--) {
-          if (String(rows[i][1]||'') === riscoVinculado &&
-              String(rows[i][2]||'') === ent.unidade &&
-              String(rows[i][9]||'Ativo') !== 'Arquivado') {
+          if (String(rows[i][CE('Risco Vinculado')]||'') === riscoVinculado &&
+              String(rows[i][CE('Unidade')]||'') === ent.unidade &&
+              String(rows[i][CE('Status Sistema')]||'Ativo') !== 'Arquivado') {
             linhaExistente = i + 1; break;
           }
         }
         if (linhaExistente > 0) {
-          aba.getRange(linhaExistente, 4, 1, 6).setValues([[ent.entregue, ent.dataEntrega||'',
+          // Bloco contíguo Status → Usuário (6 colunas)
+          aba.getRange(linhaExistente, CE('Status')+1, 1, 6).setValues([[ent.entregue, ent.dataEntrega||'',
             ent.tipoDoc||'', ent.processoSei||'', ent.justificativa||'', usr]]);
         } else {
           aba.appendRow([new Date(), riscoVinculado, ent.unidade, ent.entregue,
             ent.dataEntrega||'', ent.tipoDoc||'', ent.processoSei||'', ent.justificativa||'', usr, 'Ativo']);
-          rows.push(new Array(10).fill(''));
+          rows.push(new Array(CABECALHOS_ENTREGAS.length).fill(''));
         }
       });
 

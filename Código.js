@@ -17,6 +17,30 @@ const CABECALHOS_MEMBROS = ['ID','Nome','Cargo','Email Funcional','Dias Semana',
 // Uma linha por (Membro + Ano) — permite manter vários anos abertos ao
 // mesmo tempo sem perder histórico (ver Modulo_Pessoas.js).
 const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio'];
+// Demais abas — mesma ideia de fonte única de verdade para o layout.
+const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado'];
+const CABECALHOS_UNIDADES = ['Nome da Unidade','Sigla','E-mail Funcional','Tipo'];
+const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','E-mail','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
+const CABECALHOS_RISCOS   = ['Data','ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status','Motivo'];
+const CABECALHOS_PLANOS   = ['Data Registro','ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Motivo Cancelamento','Versão'];
+const CABECALHOS_ENTREGAS = ['Data Registo','Risco Vinculado','Unidade','Status','Data Entrega','Tipo Doc','SEI','Obs','Usuário','Status Sistema'];
+const CABECALHOS_LOGS     = ['Data/Hora','Usuário','Ação','Referência','Detalhes'];
+
+// Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
+// (a mesma fonte única usada no setup da planilha). Elimina os índices
+// mágicos (r[11], getRange(i,12)) na leitura e na escrita: se uma coluna
+// mudar de posição, basta atualizar o CABECALHOS_* correspondente.
+// Retorna uma função C('Nome') → índice; um nome inexistente lança erro na
+// hora, então um engano de digitação falha alto em vez de virar `undefined`
+// silencioso. Para getRange (base 1) use C('Nome') + 1.
+function colIdx_(cabecalhos) {
+  const mapa = {};
+  cabecalhos.forEach((c, i) => { mapa[String(c).trim()] = i; });
+  return function (nome) {
+    if (!(nome in mapa)) throw new Error('Coluna desconhecida: "' + nome + '"');
+    return mapa[nome];
+  };
+}
 
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
@@ -61,17 +85,18 @@ function conectarAba(nome, cabecalhos) {
   return aba;
 }
 
-function safeDateString(val) {
-  if (val instanceof Date) return val.toISOString().split('T')[0];
-  return val ? String(val) : '';
+// Formata um Date para 'yyyy-MM-dd' a partir dos componentes LOCAIS (fuso do
+// script), sem passar por UTC. É a única forma de montar a data ISO no
+// sistema — evita o deslocamento de 1 dia que toISOString() causa em datas à
+// meia-noite no horário de Brasília.
+function _dataLocalISO_(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
 }
 
 function formatarDataParaUI(campo) {
-  if (campo instanceof Date) {
-    return campo.getFullYear() + '-' +
-      String(campo.getMonth() + 1).padStart(2,'0') + '-' +
-      String(campo.getDate()).padStart(2,'0');
-  }
+  if (campo instanceof Date) return _dataLocalISO_(campo);
   return campo ? campo.toString() : '';
 }
 
@@ -88,11 +113,7 @@ function usuarioAtual_() {
 // Converte datas vindas da planilha para 'yyyy-MM-dd'; strings passam
 // apenas por trim. Usada por todo o módulo de Pessoas/Afastamentos.
 function dataParaISO_(val) {
-  if (Object.prototype.toString.call(val) === '[object Date]') {
-    return val.getFullYear() + '-' +
-      String(val.getMonth() + 1).padStart(2, '0') + '-' +
-      String(val.getDate()).padStart(2, '0');
-  }
+  if (Object.prototype.toString.call(val) === '[object Date]') return _dataLocalISO_(val);
   return String(val || '').trim();
 }
 
@@ -128,13 +149,13 @@ function calcularProximaRevisao(dataStr) {
 
 function registrarLog(acao, ref, detalhe) {
   try {
-    const aba = conectarAba(SHEET_LOGS, ['Data/Hora','Usuário','Ação','Referência','Detalhes']);
+    const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
     aba.appendRow([new Date(), usuarioAtual_(), acao, ref, detalhe]);
   } catch(e) { console.error('Log falhou: ' + e); }
 }
 
 function setupDatabaseKanban() {
-  conectarAba(SHEET_TASKS,    ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado']);
+  conectarAba(SHEET_TASKS, CABECALHOS_TAREFAS);
   const abaMembros = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
   // Corrige o texto do cabeçalho apenas se estiver divergente — evita uma
   // escrita na planilha a cada carregamento do sistema.
@@ -143,16 +164,48 @@ function setupDatabaseKanban() {
     abaMembros.getRange(1, 1, 1, CABECALHOS_MEMBROS.length)
       .setValues([CABECALHOS_MEMBROS]).setFontWeight('bold').setBackground('#f1f5f9');
   }
+  migrarEmailPessoalMembros_(abaMembros);
+}
+
+// Migração única e segura: versões antigas do saveMember gravavam o e-mail
+// pessoal na 13ª coluna, enquanto a leitura sempre usou a coluna do
+// cabeçalho ('E-mail Pessoal', 7ª) — o que fazia o e-mail sumir ao recarregar.
+// Traz o valor legado da col 13 para a 7ª quando esta está vazia e limpa a
+// col 13. Idempotente e sem perda de dados (só escreve quando há o que migrar).
+function migrarEmailPessoalMembros_(abaMembros) {
+  try {
+    const COL_LEGADO = 13; // posição usada pela versão antiga (fora do layout atual)
+    const nLin = abaMembros.getLastRow() - 1;
+    if (nLin < 1 || abaMembros.getLastColumn() < COL_LEGADO) return; // sem coluna legada
+    const colCorreta = colIdx_(CABECALHOS_MEMBROS)('E-mail Pessoal') + 1;
+    const legado = abaMembros.getRange(2, COL_LEGADO, nLin, 1).getValues();
+    const atual  = abaMembros.getRange(2, colCorreta, nLin, 1).getValues();
+    let mudou = false;
+    for (let i = 0; i < nLin; i++) {
+      const val = String(legado[i][0] || '').trim();
+      if (val && !String(atual[i][0] || '').trim()) {
+        atual[i][0] = val;
+        legado[i][0] = ''; // já preservado na coluna correta
+        mudou = true;
+      }
+    }
+    if (mudou) {
+      abaMembros.getRange(2, colCorreta, nLin, 1).setValues(atual);
+      abaMembros.getRange(2, COL_LEGADO, nLin, 1).setValues(legado);
+    }
+  } catch (e) {
+    console.error('Falha na migração de e-mail pessoal: ' + e);
+  }
 }
 
 function setupDatabaseResto() {
-  conectarAba(SHEET_UNITS,    ['Nome da Unidade','Sigla','E-mail Funcional','Tipo']);
+  conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
   migrarRemoverCarimboDocumentos();
-  conectarAba(SHEET_DOCS,     ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','E-mail','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão']);
-  conectarAba(SHEET_RISKS,    ['Data','ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status','Motivo']);
-  conectarAba(SHEET_PLANS,    ['Data Registro','ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Motivo Cancelamento','Versão']);
-  conectarAba(SHEET_DELIVERY, ['Data Registo','Risco Vinculado','Unidade','Status','Data Entrega','Tipo Doc','SEI','Obs','Usuário','Status Sistema']);
-  conectarAba(SHEET_LOGS,     ['Data/Hora','Usuário','Ação','Referência','Detalhes']);
+  conectarAba(SHEET_DOCS,     CABECALHOS_DOCS);
+  conectarAba(SHEET_RISKS,    CABECALHOS_RISCOS);
+  conectarAba(SHEET_PLANS,    CABECALHOS_PLANOS);
+  conectarAba(SHEET_DELIVERY, CABECALHOS_ENTREGAS);
+  conectarAba(SHEET_LOGS,     CABECALHOS_LOGS);
 }
 
 // Migração única e segura: se a aba Documentos já existir de uma versão
@@ -188,6 +241,7 @@ function getKanbanData() {
   setupDatabaseKanban();
   const sheet = conectarAba(SHEET_TASKS);
   const tData = sheet.getDataRange().getValues();
+  const C = colIdx_(CABECALHOS_TAREFAS);
 
   if (tData.length <= 1) return { tasks: [], members: getKanbanData_members_() };
 
@@ -195,9 +249,9 @@ function getKanbanData() {
   const linhasParaArquivar = []; // índices (0-based, relativos aos dados sem cabeçalho) a marcar 'Sim'
 
   const tasks = tData.slice(1).map((r, idx) => {
-    const status = String(r[1]);
-    const completionDate = safeDateString(r[9]);
-    let arquivadoRaw = String(r[11] || '').trim();
+    const status = String(r[C('Status')]);
+    const completionDate = formatarDataParaUI(r[C('Data Conclusão')]);
+    let arquivadoRaw = String(r[C('Arquivado')] || '').trim();
     let archived = arquivadoRaw === 'Sim';
 
     // Arquivamento automático: só entra em jogo quando a coluna está
@@ -217,10 +271,10 @@ function getKanbanData() {
     }
 
     return {
-      id: String(r[0]), status: status, title: String(r[2]), description: String(r[3]),
-      assigneeId: String(r[4]), priority: String(r[5]), creationDate: safeDateString(r[6]),
-      startDate: safeDateString(r[7]), deadline: safeDateString(r[8]),
-      completionDate: completionDate, activities: String(r[10] || '[]'),
+      id: String(r[C('ID')]), status: status, title: String(r[C('Título')]), description: String(r[C('Descrição')]),
+      assigneeId: String(r[C('Responsável_ID')]), priority: String(r[C('Prioridade')]), creationDate: formatarDataParaUI(r[C('Data Criação')]),
+      startDate: formatarDataParaUI(r[C('Data Início')]), deadline: formatarDataParaUI(r[C('Prazo')]),
+      completionDate: completionDate, activities: String(r[C('Atividades')] || '[]'),
       archived: archived
     };
   });
@@ -228,9 +282,10 @@ function getKanbanData() {
   // Grava as marcações novas em UMA única escrita (independente de quantas linhas mudaram)
   if (linhasParaArquivar.length > 0) {
     comBloqueio(() => {
-      const colArquivado = sheet.getRange(2, 12, tData.length - 1, 1).getValues();
+      const colArq = C('Arquivado') + 1; // getRange usa base 1
+      const colArquivado = sheet.getRange(2, colArq, tData.length - 1, 1).getValues();
       linhasParaArquivar.forEach(idx => { colArquivado[idx][0] = 'Sim'; });
-      sheet.getRange(2, 12, colArquivado.length, 1).setValues(colArquivado);
+      sheet.getRange(2, colArq, colArquivado.length, 1).setValues(colArquivado);
     });
   }
 
@@ -238,10 +293,11 @@ function getKanbanData() {
 }
 
 function getKanbanData_members_() {
+  const C = colIdx_(CABECALHOS_MEMBROS);
   const mData = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS).getDataRange().getValues();
 
   return mData.length > 1 ? mData.slice(1).map(r => {
-    let rawDias = String(r[4] || '').trim();
+    let rawDias = String(r[C('Dias Semana')] || '').trim();
     let diasSemana = [];
     let horarios = {};
 
@@ -255,9 +311,13 @@ function getKanbanData_members_() {
        });
     }
 
+    // ATENÇÃO: a leitura do e-mail pessoal usa a coluna do cabeçalho
+    // ('E-mail Pessoal', 7ª col), mas saveMember() grava na 13ª coluna —
+    // divergência pré-existente que faz o e-mail pessoal aparecer vazio
+    // após recarregar. Mantido como está aqui; reconciliar em saveMember.
     return {
-      id: String(r[0]), name: String(r[1]), role: String(r[2]), email: String(r[3]||''), emailPessoal: String(r[6]||''),
-      diasSemana: diasSemana, diaPresencial: String(r[5]||''),
+      id: String(r[C('ID')]), name: String(r[C('Nome')]), role: String(r[C('Cargo')]), email: String(r[C('Email Funcional')]||''), emailPessoal: String(r[C('E-mail Pessoal')]||''),
+      diasSemana: diasSemana, diaPresencial: String(r[C('Dia Presencial')]||''),
       horarios: horarios
     };
   }) : [];
@@ -268,19 +328,21 @@ function getRestoData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   // --- Unidades (usadas por Documentos, Riscos e Entregas) ---
+  const CU = colIdx_(CABECALHOS_UNIDADES);
   const uData = ss.getSheetByName(SHEET_UNITS).getDataRange().getValues();
   const units = uData.length > 1 ? uData.slice(1).map((r, i) => ({
-    id: i + 1, unidade: String(r[0] || ''), sigla: String(r[1] || ''), email: String(r[2] || ''), tipo: String(r[3] || '')
+    id: i + 1, unidade: String(r[CU('Nome da Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('E-mail Funcional')] || ''), tipo: String(r[CU('Tipo')] || '')
   })) : [];
 
   // --- Documentos ---
+  const CD = colIdx_(CABECALHOS_DOCS);
   const dData = ss.getSheetByName(SHEET_DOCS).getDataRange().getValues();
   const hoje  = new Date(); hoje.setHours(0,0,0,0);
   const docs  = dData.length > 1 ? dData.slice(1).map((r, i) => {
-    const statusOrig = String(r[6] || 'Vigente').trim();
+    const statusOrig = String(r[CD('Status')] || 'Vigente').trim();
     const isObsoleto = statusOrig.toUpperCase() === 'OBSOLETO';
-    let proxRevStr   = formatarDataParaUI(r[5]);
-    const dataAprovacaoStr = formatarDataParaUI(r[4]);
+    let proxRevStr   = formatarDataParaUI(r[CD('Próxima Revisão')]);
+    const dataAprovacaoStr = formatarDataParaUI(r[CD('Data Aprovação')]);
     let statusCalc   = statusOrig;
     if (!isObsoleto && !dataAprovacaoStr) {
       // Documento cadastrado sem data de aprovação ainda — está em
@@ -295,44 +357,47 @@ function getRestoData() {
       }
     }
     let versao = 1.0;
-    if (r[1] !== undefined && r[1] !== '') {
-      const v = typeof r[1] === 'number' ? r[1] : parseFloat(String(r[1]).replace(',','.'));
+    const versaoRaw = r[CD('Versão')];
+    if (versaoRaw !== undefined && versaoRaw !== '') {
+      const v = typeof versaoRaw === 'number' ? versaoRaw : parseFloat(String(versaoRaw).replace(',','.'));
       if (!isNaN(v) && v > 0) versao = v;
     }
     return {
-      idRow: i + 2, codigo: String(r[0] || ''), versao: versao.toFixed(1), tipo: String(r[2] || ''),
-      titulo: String(r[3] || ''), dataAprovacao: formatarDataParaUI(r[4]), proximaRevisao: proxRevStr,
-      status: statusCalc, responsavel: String(r[7] || ''), email: String(r[8] || ''),
-      linkDoc: String(r[9] || ''), docAuxiliar: String(r[10] || ''), docAuxiliar2: String(r[11] || ''),
-      obsoleto: isObsoleto, motivo: String(r[12] || '')
+      idRow: i + 2, codigo: String(r[CD('Código')] || ''), versao: versao.toFixed(1), tipo: String(r[CD('Tipo')] || ''),
+      titulo: String(r[CD('Título')] || ''), dataAprovacao: dataAprovacaoStr, proximaRevisao: proxRevStr,
+      status: statusCalc, responsavel: String(r[CD('Responsável')] || ''), email: String(r[CD('E-mail')] || ''),
+      linkDoc: String(r[CD('Link Principal')] || ''), docAuxiliar: String(r[CD('Doc Auxiliar 1')] || ''), docAuxiliar2: String(r[CD('Doc Auxiliar 2')] || ''),
+      obsoleto: isObsoleto, motivo: String(r[CD('Revisão')] || '')
     };
   }) : [];
 
   // --- Riscos ---
+  const CR = colIdx_(CABECALHOS_RISCOS);
+  const CP = colIdx_(CABECALHOS_PLANOS);
   const rData = ss.getSheetByName(SHEET_RISKS).getDataRange().getValues();
   const pData = ss.getSheetByName(SHEET_PLANS).getDataRange().getValues();
   const planosRows = pData.length > 1 ? pData.slice(1) : [];
-  const risks = rData.length > 1 ? rData.slice(1).filter(r => (String(r[12]||'Vigente')).trim() === 'Vigente')
+  const risks = rData.length > 1 ? rData.slice(1).filter(r => (String(r[CR('Status')]||'Vigente')).trim() === 'Vigente')
     .map((r, i) => {
-      const idRisco = parseInt(String(r[1]||'').replace('R',''), 10) || (i+1);
+      const idRisco = parseInt(String(r[CR('ID Risco')]||'').replace('R',''), 10) || (i+1);
       const ref = 'R' + idRisco;
       let planoAcao = '-';
       for (const p of planosRows) {
-        const rRef = String(p[1]||'');
-        const statusP = String(p[10]||'').trim();
+        const rRef = String(p[CP('ID Risco')]||'');
+        const statusP = String(p[CP('Status')]||'').trim();
         // Ignora versões antigas (Superado) e planos cancelados (Arquivado) —
         // só mostra o texto do plano ATUAL na Matriz de Riscos.
         if ((rRef === ref || rRef.startsWith(ref + ' -')) && statusP !== 'Superado' && statusP !== 'Arquivado') {
-          planoAcao = String(p[2]||'-'); break;
+          planoAcao = String(p[CP('O Que')]||'-'); break;
         }
       }
       return {
-        id: idRisco, macroetapa: String(r[2]||''), nome: String(r[3]||''), causa: String(r[4]||''),
-        consequencia: String(r[5]||''), categoria: String(r[6]||''),
-        probabilidade: parseInt(r[7],10)||1, impacto: parseInt(r[8],10)||1,
-        nivel: String(r[9]||''), tipoTratamento: String(r[10]||''),
-        responsavel: String(r[11]||'Não atribuído'), status: String(r[12]||'Vigente'),
-        motivo: String(r[13]||''), planoAcao: planoAcao
+        id: idRisco, macroetapa: String(r[CR('Macroetapa')]||''), nome: String(r[CR('Risco')]||''), causa: String(r[CR('Causa')]||''),
+        consequencia: String(r[CR('Consequência')]||''), categoria: String(r[CR('Categoria')]||''),
+        probabilidade: parseInt(r[CR('Probabilidade')],10)||1, impacto: parseInt(r[CR('Impacto')],10)||1,
+        nivel: String(r[CR('Nível')]||''), tipoTratamento: String(r[CR('Tipo Tratamento')]||''),
+        responsavel: String(r[CR('Responsável')]||'Não atribuído'), status: String(r[CR('Status')]||'Vigente'),
+        motivo: String(r[CR('Motivo')]||''), planoAcao: planoAcao
       };
     }) : [];
 
@@ -340,25 +405,26 @@ function getRestoData() {
   // "Superado" = versão antiga de um plano que foi revisado (existe
   // histórico, mas não deve aparecer na lista de planos ativos).
   const plans = planosRows.filter(r => {
-    const st = String(r[10]||'').trim();
+    const st = String(r[CP('Status')]||'').trim();
     return st !== 'Arquivado' && st !== 'Superado';
   }).map(r => ({
-    riscoVinculado: String(r[1]||''), what: String(r[2]||''), why: String(r[3]||''),
-    who: String(r[4]||''), where: String(r[5]||''),
-    whenPrevisto: formatarDataParaUI(r[6]), whenFinalizado: formatarDataParaUI(r[7]),
-    how: String(r[8]||''), howMuch: String(r[9]||''),
-    status: String(r[10]||'Em Andamento'), cancelamento: String(r[11]||''),
-    versao: (parseFloat(String(r[12]||'1').replace(',','.')) || 1).toFixed(1)
+    riscoVinculado: String(r[CP('ID Risco')]||''), what: String(r[CP('O Que')]||''), why: String(r[CP('Por Que')]||''),
+    who: String(r[CP('Quem')]||''), where: String(r[CP('Onde')]||''),
+    whenPrevisto: formatarDataParaUI(r[CP('Data Prevista')]), whenFinalizado: formatarDataParaUI(r[CP('Data Finalização')]),
+    how: String(r[CP('Como')]||''), howMuch: String(r[CP('Quanto Custa')]||''),
+    status: String(r[CP('Status')]||'Em Andamento'), cancelamento: String(r[CP('Motivo Cancelamento')]||''),
+    versao: (parseFloat(String(r[CP('Versão')]||'1').replace(',','.')) || 1).toFixed(1)
   }));
 
   // --- Entregas ---
+  const CE = colIdx_(CABECALHOS_ENTREGAS);
   const eData = ss.getSheetByName(SHEET_DELIVERY).getDataRange().getValues();
   const deliveries = eData.length > 1 ? eData.slice(1)
-    .filter(r => String(r[9]||'Ativo') !== 'Arquivado')
+    .filter(r => String(r[CE('Status Sistema')]||'Ativo') !== 'Arquivado')
     .map(r => ({
-      riscoVinculado: String(r[1]||''), unidade: String(r[2]||''),
-      entregue: String(r[3]||''), dataEntrega: formatarDataParaUI(r[4]),
-      tipoDoc: String(r[5]||''), processoSei: String(r[6]||''), justificativa: String(r[7]||'')
+      riscoVinculado: String(r[CE('Risco Vinculado')]||''), unidade: String(r[CE('Unidade')]||''),
+      entregue: String(r[CE('Status')]||''), dataEntrega: formatarDataParaUI(r[CE('Data Entrega')]),
+      tipoDoc: String(r[CE('Tipo Doc')]||''), processoSei: String(r[CE('SEI')]||''), justificativa: String(r[CE('Obs')]||'')
     })) : [];
 
   return { units: units, docs: docs, risks: risks, plans: plans, deliveries: deliveries };
@@ -373,20 +439,21 @@ function getRestoData() {
 // ==========================================
 function buscarLogs() {
   const LIMITE_REGISTROS = 20;
-  const aba = conectarAba(SHEET_LOGS, ['Data/Hora','Usuário','Ação','Referência','Detalhes']);
+  const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
   const dados = aba.getDataRange().getValues();
   if (dados.length <= 1) return [];
 
+  const CL = colIdx_(CABECALHOS_LOGS);
   const linhas = dados.slice(1).map(r => ({
-    dataHora: r[0] instanceof Date
-      ? Utilities.formatDate(r[0], Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
-      : String(r[0] || ''),
-    usuario: String(r[1] || ''),
-    acao: String(r[2] || ''),
-    referencia: String(r[3] || ''),
-    detalhes: String(r[4] || ''),
+    dataHora: r[CL('Data/Hora')] instanceof Date
+      ? Utilities.formatDate(r[CL('Data/Hora')], Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
+      : String(r[CL('Data/Hora')] || ''),
+    usuario: String(r[CL('Usuário')] || ''),
+    acao: String(r[CL('Ação')] || ''),
+    referencia: String(r[CL('Referência')] || ''),
+    detalhes: String(r[CL('Detalhes')] || ''),
     // Mantém a data crua (não formatada) só para poder ordenar corretamente
-    _ordenacao: r[0] instanceof Date ? r[0].getTime() : 0
+    _ordenacao: r[CL('Data/Hora')] instanceof Date ? r[CL('Data/Hora')].getTime() : 0
   }));
 
   linhas.sort((a, b) => b._ordenacao - a._ordenacao);

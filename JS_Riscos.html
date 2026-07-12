@@ -87,7 +87,7 @@ function confirmarEdicaoRisco() {
 function abrirRevisaoRisco(idx) {
   const r = state.risks[idx]; if(!r) return;
   $id('rr-id').value = r.id; $id('label-risco-revisao').innerText = `Risco: R${r.id} — ${r.nome}`;
-  $id('rr-data').value = new Date().toISOString().slice(0,10);
+  $id('rr-data').value = hojeISO();
   $id('rr-prob').value = r.probabilidade; $id('rr-imp').value = r.impacto;
   $id('rr-trat').value = r.tipoTratamento;
   $id('rr-resp').innerHTML = gerarOptsUnidades(true); $id('rr-resp').value = r.responsavel;
@@ -354,7 +354,7 @@ function salvarAcompEntregas() {
     entregas.push({
       unidade:      unidade,
       entregue:     status,
-      dataEntrega:  status === 'Sim' ? (dataEnt || new Date().toISOString().split('T')[0]) : '',
+      dataEntrega:  status === 'Sim' ? (dataEnt || hojeISO()) : '',
       processoSei:  status === 'Sim' ? sei : '',
       tipoDoc:      '',
       justificativa:''
