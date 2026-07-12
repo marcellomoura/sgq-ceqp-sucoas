@@ -16,9 +16,9 @@ const SHEET_AFASTAMENTOS = 'Afastamentos';
 const CABECALHOS_MEMBROS = ['ID','Nome','Cargo','Email Funcional','Dias Semana','Dia Presencial','E-mail Pessoal'];
 // Uma linha por (Membro + Ano) — permite manter vários anos abertos ao
 // mesmo tempo sem perder histórico (ver Modulo_Pessoas.js).
-const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio'];
+const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio','Demais Afastamentos'];
 // Demais abas — mesma ideia de fonte única de verdade para o layout.
-const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado'];
+const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas'];
 const CABECALHOS_UNIDADES = ['Nome da Unidade','Sigla','E-mail Funcional','Tipo'];
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','E-mail','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
 const CABECALHOS_RISCOS   = ['Data','ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status','Motivo'];
@@ -108,6 +108,25 @@ function getNowTimestamp() {
 // leitura do e-mail lançam exceção — nesses casos registra como 'Sistema').
 function usuarioAtual_() {
   try { return Session.getActiveUser().getEmail() || 'Sistema'; } catch (e) { return 'Sistema'; }
+}
+
+// Nome amigável do usuário ativo para carimbar em atividades: procura o e-mail
+// (funcional ou pessoal) entre os membros cadastrados e devolve o Nome. Se não
+// achar, devolve o próprio e-mail; sem e-mail disponível, 'Sistema'.
+function nomeUsuarioAtual_() {
+  const email = usuarioAtual_();
+  if (!email || email === 'Sistema') return 'Sistema';
+  try {
+    const C = colIdx_(CABECALHOS_MEMBROS);
+    const mData = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS).getDataRange().getValues();
+    const alvo = email.trim().toLowerCase();
+    for (let i = 1; i < mData.length; i++) {
+      const ef = String(mData[i][C('Email Funcional')] || '').trim().toLowerCase();
+      const ep = String(mData[i][C('E-mail Pessoal')] || '').trim().toLowerCase();
+      if (alvo && (alvo === ef || alvo === ep)) return String(mData[i][C('Nome')] || email);
+    }
+  } catch (e) {}
+  return email;
 }
 
 // Converte datas vindas da planilha para 'yyyy-MM-dd'; strings passam
@@ -275,7 +294,7 @@ function getKanbanData() {
       assigneeId: String(r[C('Responsável_ID')]), priority: String(r[C('Prioridade')]), creationDate: formatarDataParaUI(r[C('Data Criação')]),
       startDate: formatarDataParaUI(r[C('Data Início')]), deadline: formatarDataParaUI(r[C('Prazo')]),
       completionDate: completionDate, activities: String(r[C('Atividades')] || '[]'),
-      archived: archived
+      labels: String(r[C('Etiquetas')] || '[]'), archived: archived
     };
   });
 

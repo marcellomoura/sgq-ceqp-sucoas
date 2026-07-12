@@ -80,10 +80,20 @@ function renderTasks() {
     let age='Fila (0d)';
     if(status!=='Backlog'){ const ref=task.startDate||task.creationDate; if(ref){ const p=ref.split('-'); if(p.length===3){ const s=new Date(+p[0],+p[1]-1,+p[2]); s.setHours(0,0,0,0); let end=hoje; if(status==='Concluído'&&task.completionDate){ const cp=task.completionDate.split('-'); if(cp.length===3){end=new Date(+cp[0],+cp[1]-1,+cp[2]); end.setHours(0,0,0,0);} } const d=Math.floor((end-s)/86400000); age=d<=0?(status==='Concluído'?'Fechado hoje':'Iniciado hoje'):(status==='Concluído'?`Fechado em ${d}d`:`Correndo há ${d}d`); } } }
     const div=document.createElement('div');
-    div.className='card'+(vencido?' overdue':'');
+    div.className='card prio-'+esc(task.priority)+(vencido?' overdue':'');
     div.draggable=true; div.dataset.id=task.id; div.dataset.idx=i;
     div.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',task.id));
-    div.innerHTML=`<div class="card-header"><div class="card-tag tag-${esc(task.priority)}"></div><button class="btn-edit-card" data-acao="edit-card" data-idx="${i}" title="Editar">✏️</button></div><div class="card-title">${esc(task.title)}</div><div class="card-assignee">👥 ${esc(nomes)}</div><div class="card-meta"><span>⏱️ ${age}${vencido?' · ⚠️ ATRASADO':''}</span><span>${dtDisplay?'📅 '+dtDisplay:''}</span></div>`;
+    const chips=labelChipsHTML(parseLabels(task.labels));
+    let nComments=0; try{ const a=JSON.parse(task.activities||'[]'); if(Array.isArray(a)) nComments=a.filter(x=>x&&x.type==='comment').length; }catch(e){}
+    const comentariosHtml = nComments>0 ? `<span class="card-comments" title="${nComments} comentário(s)">${ICON.comment}${nComments}</span>` : '';
+    div.innerHTML=`<button class="btn-edit-card" data-acao="edit-card" data-idx="${i}" title="Abrir cartão">${ICON.edit}</button>`+
+      `${chips?`<div class="card-labels">${chips}</div>`:''}`+
+      `<div class="card-title">${esc(task.title)}</div>`+
+      `<div class="card-assignee">${ICON.user} ${esc(nomes)}</div>`+
+      `<div class="card-meta">`+
+        `<span class="card-meta-left"><span class="meta-item">${ICON.clock} ${age}</span>${vencido?`<span class="meta-item meta-overdue">${ICON.alert} Atrasado</span>`:''}</span>`+
+        `<span class="card-meta-right">${comentariosHtml}${dtDisplay?`<span class="meta-item">${ICON.calendar} ${dtDisplay}</span>`:''}</span>`+
+      `</div>`;
     $id(listas[status]).appendChild(div);
   });
   Object.keys(counts).forEach(s => { const cnt=$id('cnt-'+{'Backlog':'backlog','A Fazer':'todo','Em Andamento':'inprogress','Em Revisão':'review','Concluído':'done'}[s]); if(cnt) cnt.innerText=counts[s]; });
@@ -171,10 +181,10 @@ function confirmarArquivarTarefa() {
         renderTasks();
       } else {
         showAlerta(r.mensagem);
-        if (btn) { btn.disabled = false; btn.innerText = '🗄️ Arquivar'; }
+        if (btn) { btn.disabled = false; btn.innerText = 'Arquivar'; }
       }
-    }).withFailureHandler(falha(btn, '🗄️ Arquivar', null)).arquivarTarefaManual(id);
-  });
+    }).withFailureHandler(falha(btn, 'Arquivar', null)).arquivarTarefaManual(id);
+  }, { tone: 'warning' });
 }
 
 function restaurarTarefa(id) {
@@ -192,6 +202,31 @@ function restaurarTarefa(id) {
 }
 
 // ---------- Modal Tarefa ----------
+// Etiquetas pré-definidas (paleta fixa, orientada à gestão da qualidade).
+const LABELS_DISPONIVEIS = [
+  { id:'auditoria',    nome:'Auditoria',        cor:'#2563eb' },
+  { id:'nc',           nome:'Não Conformidade', cor:'#dc2626' },
+  { id:'melhoria',     nome:'Melhoria',         cor:'#16a34a' },
+  { id:'documentacao', nome:'Documentação',     cor:'#7c3aed' },
+  { id:'treinamento',  nome:'Treinamento',      cor:'#ea580c' },
+  { id:'urgente',      nome:'Urgente',          cor:'#db2777' }
+];
+function parseLabels(raw) {
+  try { const a=JSON.parse(raw); return Array.isArray(a)?a.map(String):[]; } catch(e){ return []; }
+}
+function labelChipsHTML(ids) {
+  return ids.map(id=>{ const l=LABELS_DISPONIVEIS.find(x=>x.id===id); return l?`<span class="label-chip" style="background:${l.cor};">${esc(l.nome)}</span>`:''; }).join('');
+}
+function populateLabels(selectedIds=[]) {
+  const c=$id('taskLabelsContainer'); if(!c) return;
+  c.innerHTML=LABELS_DISPONIVEIS.map(l=>`<label class="checkbox-label"><input type="checkbox" value="${l.id}" ${selectedIds.includes(l.id)?'checked':''}><span class="label-dot" style="background:${l.cor};"></span>${esc(l.nome)}</label>`).join('');
+  c.querySelectorAll('input').forEach(i=>i.addEventListener('change',atualizarTagsLabels));
+  atualizarTagsLabels();
+}
+function atualizarTagsLabels() {
+  const checked=Array.from(($id('taskLabelsContainer')||{querySelectorAll:()=>[]}).querySelectorAll('input:checked')).map(c=>c.value);
+  const tags=$id('selected-labels-tags'); if(tags) tags.innerHTML=labelChipsHTML(checked);
+}
 function populateAssignees(selectedIds=[]) {
   const c=$id('taskAssigneesContainer'); if(!c) return;
   if(!state.members.length){ c.innerHTML='<div style="font-size:12px;color:#64748b;padding:8px;">Nenhum membro cadastrado.</div>'; atualizarTagsAssignee(); return; }
@@ -208,13 +243,14 @@ function abrirModalTarefa(status) {
   ['taskId','taskTitle','taskDesc','taskDeadline','taskCreation','taskCompletion','taskStartDate'].forEach(id=>{ const el=$id(id); if(el) el.value=''; });
   if($id('taskStatus')) $id('taskStatus').value=status;
   if($id('taskStatusDisplay')) $id('taskStatusDisplay').innerText=status;
-  if($id('taskPriority')) $id('taskPriority').value='Media';
+  if($id('taskPriority')) $id('taskPriority').value='';
   if($id('taskNewComment')) $id('taskNewComment').value='';
   if($id('btn-delete-task')) $id('btn-delete-task').style.display='none';
-  if($id('btn-archive-task')) { const b=$id('btn-archive-task'); b.style.display='none'; b.disabled=false; b.innerText='🗄️ Arquivar'; }
+  if($id('btn-archive-task')) { const b=$id('btn-archive-task'); b.style.display='none'; b.disabled=false; b.innerText='Arquivar'; }
   if($id('sidebar-add-title')) $id('sidebar-add-title').style.display='block';
   currentActivities=[]; renderActividades();
   populateAssignees([]);
+  populateLabels([]);
   abrirModal('modal-task');
   setTimeout(()=>{ const tf=$id('taskTitle'); if(tf){tf.style.height='auto';tf.style.height=tf.scrollHeight+'px';} },10);
 }
@@ -227,12 +263,13 @@ function abrirEditarTarefa(task) {
   if($id('btn-delete-task')) $id('btn-delete-task').style.display='block';
   if($id('btn-archive-task')) {
     const b=$id('btn-archive-task');
-    b.disabled=false; b.innerText='🗄️ Arquivar';
+    b.disabled=false; b.innerText='Arquivar';
     b.style.display = (task.status === 'Concluído') ? 'block' : 'none';
   }
   if($id('sidebar-add-title')) $id('sidebar-add-title').style.display='none';
   let sel=[]; try{ sel=JSON.parse(task.assigneeId); if(!Array.isArray(sel)) sel=[task.assigneeId]; }catch(e){ sel=task.assigneeId?[String(task.assigneeId)]:[];}
   populateAssignees(sel);
+  populateLabels(parseLabels(task.labels));
   currentActivities=[]; try{ if(task.activities&&task.activities!=='[]') currentActivities=JSON.parse(task.activities); }catch(e){}
   renderActividades();
   abrirModal('modal-task');
@@ -241,13 +278,14 @@ function abrirEditarTarefa(task) {
 function renderActividades() {
   const feed=$id('activity-feed'); if(!feed) return;
   if(!currentActivities.length){ feed.innerHTML='<div style="font-size:12px;color:#5e6c84;padding-left:10px;">Nenhuma atividade registrada.</div>'; return; }
-  feed.innerHTML=[...currentActivities].reverse().map(a=>`<div class="hist-item"><div class="hist-date">${esc(a.date)}</div><div class="hist-action">${a.type==='comment'?'<strong>Comentou:</strong> ':''}${esc(a.text)}</div></div>`).join('');
+  feed.innerHTML=[...currentActivities].reverse().map(a=>`<div class="hist-item"><div class="hist-date">${a.author?`<span class="hist-author">${esc(a.author)}</span> · `:''}${esc(a.date)}</div><div class="hist-action">${a.type==='comment'?'<strong>Comentou:</strong> ':''}${esc(a.text)}</div></div>`).join('');
 }
 function adicionarComentario() {
   const box=$id('taskNewComment'); if(!box) return;
   const txt=box.value.trim(); if(!txt) return;
   const agora=new Date(); const dt=agora.toLocaleDateString('pt-BR')+' às '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  currentActivities.push({type:'comment',text:txt,date:dt});
+  // _novo sinaliza ao servidor que este comentário precisa receber o autor
+  currentActivities.push({type:'comment',text:txt,date:dt,_novo:true});
   box.value=''; renderActividades();
 }
 function salvarTarefa() {
@@ -256,7 +294,8 @@ function salvarTarefa() {
   adicionarComentario();
   const btn=$id('btn-save-task'); btn.disabled=true; btn.innerText='Salvando...';
   const ids=Array.from(($id('taskAssigneesContainer')||{querySelectorAll:()=>[]}).querySelectorAll('input:checked')).map(c=>c.value);
-  const dados={ id:$id('taskId').value, status:$id('taskStatus').value||'Backlog', title:titulo, description:$id('taskDesc').value||'', assigneeId:JSON.stringify(ids), priority:$id('taskPriority').value||'Media', deadline:$id('taskDeadline').value||'', creationDate:$id('taskCreation').value||'', completionDate:$id('taskCompletion').value||'', startDate:$id('taskStartDate').value||'', activities:JSON.stringify(currentActivities) };
+  const labels=Array.from(($id('taskLabelsContainer')||{querySelectorAll:()=>[]}).querySelectorAll('input:checked')).map(c=>c.value);
+  const dados={ id:$id('taskId').value, status:$id('taskStatus').value||'Backlog', title:titulo, description:$id('taskDesc').value||'', assigneeId:JSON.stringify(ids), priority:$id('taskPriority').value||'Media', labels:JSON.stringify(labels), deadline:$id('taskDeadline').value||'', creationDate:$id('taskCreation').value||'', completionDate:$id('taskCompletion').value||'', startDate:$id('taskStartDate').value||'', activities:JSON.stringify(currentActivities) };
   google.script.run.withSuccessHandler(()=>{ btn.disabled=false; btn.innerText='Salvar Cartão'; fecharModal('modal-task'); recarregarKanban(renderTasks); })
     .withFailureHandler(falha(btn,'Salvar Cartão',null)).saveTask(dados);
 }
@@ -285,7 +324,7 @@ function renderDashboard() {
   let mc = {}; state.members.forEach(m => mc[m.name] = 0);
   // Demandas concluídas por membro: só tarefas com status "Concluído"
   let mcConcluido = {}; state.members.forEach(m => mcConcluido[m.name] = 0);
-  // Próximas entregas: todas as tarefas com prazo definido e sem conclusão
+  // Próximas entregas: todas as tarefas não concluídas (com ou sem prazo)
   let upcoming = [];
 
   tasks.forEach(t => {
@@ -312,16 +351,20 @@ function renderDashboard() {
         ids.forEach(id => { const m = state.members.find(x => String(x.id) === String(id)); if (m) mc[m.name]++; });
       }
 
-      // Próximas entregas: todas com prazo definido, sem conclusão
-      if (t.deadline) {
-        const p = t.deadline.split('-');
-        if (p.length === 3) {
-          const d = new Date(+p[0], +p[1]-1, +p[2]); d.setHours(0,0,0,0);
-          if (d < hoje) overdue++;
-          // Inclui independente da distância — só exclui se não tiver data
-          const diff = Math.floor((d - hoje) / 86400000);
-          upcoming.push({ title: t.title, date: d, diff: diff, priority: t.priority, assignee: nomesMembros(ids) || 'Sem responsável', status: st });
+      // Próximas entregas: tarefas em andamento (A Fazer, Em Andamento, Em
+      // Revisão), tenham ou não prazo. Backlog fica de fora e as sem data
+      // entram com date=null, indo para o fim da lista.
+      if (st !== 'Backlog') {
+        let d = null, diff = null;
+        if (t.deadline) {
+          const p = t.deadline.split('-');
+          if (p.length === 3) {
+            d = new Date(+p[0], +p[1]-1, +p[2]); d.setHours(0,0,0,0);
+            if (d < hoje) overdue++;
+            diff = Math.floor((d - hoje) / 86400000);
+          }
         }
+        upcoming.push({ title: t.title, date: d, diff: diff, priority: t.priority, assignee: nomesMembros(ids) || 'Sem responsável', status: st });
       }
     }
   });
@@ -432,23 +475,32 @@ function renderDashboard() {
   const ul = $id('upcoming-list');
   if (ul) {
     if (!upcoming.length) {
-      ul.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Nenhuma tarefa com prazo definido.</td></tr>';
+      ul.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Nenhuma entrega pendente.</td></tr>';
     } else {
-      ul.innerHTML = upcoming.sort((a, b) => a.date - b.date).map(t => {
-        const ds = t.date.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
-        const atrasada = t.diff < 0;
-        const urgente  = !atrasada && t.diff <= 3;
+      // Ordena por data (mais próxima primeiro); tarefas sem prazo vão para o fim
+      const ordenado = upcoming.sort((a, b) => {
+        if (a.date && b.date) return a.date - b.date;
+        if (a.date) return -1;
+        if (b.date) return 1;
+        return 0;
+      });
+      ul.innerHTML = ordenado.map(t => {
+        const semData  = !t.date;
+        const ds = semData ? '—' : t.date.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+        const atrasada = !semData && t.diff < 0;
+        const urgente  = !semData && !atrasada && t.diff <= 3;
         const urgClass = (atrasada || urgente) ? 'urgent-date' : '';
         const labelData = atrasada ? `⚠ ${ds}` : (urgente ? `! ${ds}` : ds);
         const prioColor = t.priority === 'Alta' ? '#ef4444' : t.priority === 'Media' ? '#f59e0b' : '#22c55e';
         const pb = `<span class="tag-badge" style="background:${prioColor};">${esc(t.priority === 'Media' ? 'Média' : t.priority)}</span>`;
         const rowStyle = atrasada ? 'background:#fff8f8;' : '';
+        const dataStyle = semData ? 'font-size:12px;color:#94a3b8;font-weight:500;' : 'font-size:12px;font-weight:700;';
         return `<tr style="${rowStyle}">
           <td style="font-weight:600;font-size:12px;">${esc(t.title)}</td>
           <td style="font-size:11.5px;color:#475569;">${esc(t.assignee.split(',')[0])}</td>
           <td>${pb}</td>
           <td>${badge(t.status)}</td>
-          <td class="${urgClass}" style="font-size:12px;font-weight:700;">${labelData}</td>
+          <td class="${urgClass}" style="${dataStyle}">${labelData}</td>
         </tr>`;
       }).join('');
     }

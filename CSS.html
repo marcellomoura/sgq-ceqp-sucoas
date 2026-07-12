@@ -256,22 +256,32 @@
     position: relative; background-color: var(--bg-card); border-radius: 6px;
     padding: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.08);
     cursor: grab; display: flex; flex-direction: column; gap: 6px;
-    transition: box-shadow 0.15s, border-left 0.15s;
-    border-left: 3px solid transparent;
+    transition: box-shadow 0.15s;
+    border-left: 4px solid var(--border-color);
   }
-  .card:hover { box-shadow: 0 3px 8px rgba(0,0,0,0.12); border-left-color: var(--primary); }
+  .card:hover { box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
+  /* Faixa lateral esquerda representa a prioridade do cartão */
+  .card.prio-Alta  { border-left-color: var(--tag-alta); }
+  .card.prio-Media { border-left-color: var(--tag-media); }
+  .card.prio-Baixa { border-left-color: var(--tag-baixa); }
   .card.overdue { background-color: var(--danger-bg) !important; border: 1px solid var(--danger-border) !important; border-left: 4px solid #ef4444 !important; }
   .card.overdue .card-title { color: var(--danger-text) !important; font-weight: 600; }
-  .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
-  .card-tag { height: 4px; width: 28px; border-radius: 2px; }
-  .tag-Alta { background-color: var(--tag-alta); }
-  .tag-Media { background-color: var(--tag-media); }
-  .tag-Baixa { background-color: var(--tag-baixa); }
-  .btn-edit-card { background: none; border: none; cursor: pointer; font-size: 11px; opacity: 0.3; transition: 0.2s; padding: 2px; }
-  .card:hover .btn-edit-card { opacity: 1; }
-  .card-title { font-size: 13px; font-weight: 500; line-height: 1.4; color: #172b4d; }
-  .card-assignee { font-size: 11px; color: var(--text-muted); }
-  .card-meta { font-size: 10.5px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+  .btn-edit-card { position: absolute; top: 9px; right: 9px; z-index: 1; background: none; border: none; cursor: pointer; color: #94a3b8; opacity: 0.5; transition: 0.15s; padding: 2px; line-height: 0; border-radius: 4px; }
+  .btn-edit-card svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  .card:hover .btn-edit-card { opacity: 1; color: var(--primary); }
+  .btn-edit-card:hover { background: #dbeafe; }
+  .card-labels { padding-right: 22px; }
+  .card-title { font-size: 13px; font-weight: 500; line-height: 1.4; color: #172b4d; padding-right: 22px; }
+  .card-assignee { font-size: 11px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
+  .card-meta { font-size: 10.5px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .card-meta-left, .card-meta-right { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .meta-item { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .meta-overdue { color: #dc2626; font-weight: 600; }
+  .card-comments { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; color: #64748b; }
+  .card-assignee svg, .meta-item svg, .card-comments svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .card-assignee svg { width: 13px; height: 13px; }
+  .meta-item svg { width: 12px; height: 12px; }
+  .card-comments svg { width: 13px; height: 13px; }
 
   /* ===== TABELAS (SGQ) ===== */
   .table-wrap { background: white; border: 1px solid var(--border-color); border-radius: 8px; overflow-x: auto; }
@@ -282,6 +292,9 @@
     font-weight: 600; font-size: 12px; white-space: nowrap;
   }
   .data-table td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  /* Tabela de Afastamentos: muitas colunas — padding menor e conteúdo que
+     quebra, para caber na tela sem barra de rolagem horizontal */
+  #view-ferias .data-table th, #view-ferias .data-table td { padding-left: 8px; padding-right: 8px; vertical-align: top; }
   .data-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
   .data-table tbody tr:nth-child(even) td { background: #fcfdfe; }
   .data-table tbody tr:hover td { background: #eff6ff; }
@@ -452,6 +465,7 @@
   .hist-item { display: flex; flex-direction: column; position: relative; padding-left: 12px; border-left: 2px solid #e2e8f0; }
   .hist-item::before { content: ''; position: absolute; left: -5px; top: 2px; width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
   .hist-date { font-size: 10px; font-weight: 600; color: var(--text-muted); margin-bottom: 2px; }
+  .hist-author { color: var(--text-main); font-weight: 700; }
   .hist-action { font-size: 12.5px; color: var(--text-main); line-height: 1.4; }
   .sidebar-field-group { display: flex; flex-direction: column; gap: 4px; }
   .sidebar-field-group label { font-size: 11.5px; font-weight: 600; color: #5e6c84; display: flex; align-items: center; gap: 5px; }
@@ -462,6 +476,14 @@
   .save-btn:hover { background: var(--primary-hover); }
   .del-btn { background: #091e420a; color: #ef4444; }
   .del-btn:hover { background: #fee2e2; }
+  .archive-btn { background: #fef3c7; color: #b45309; margin-bottom: 7px; }
+  .archive-btn:hover { background: #fde68a; }
+  /* Botões "Adicionar/Remover" das seções de afastamento */
+  .btn-add-afast { background: #eef2ff; color: #4338ca; border: 1px dashed #c7d2fe; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.15s; font-family: inherit; }
+  .btn-add-afast:hover { background: #e0e7ff; }
+  .btn-rem-afast { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; width: 28px; height: 28px; font-size: 16px; line-height: 1; cursor: pointer; flex-shrink: 0; transition: 0.15s; }
+  .btn-rem-afast:hover { background: #fee2e2; }
+  .afast-block { margin-bottom: 8px; }
   .custom-select-wrapper { position: relative; }
   .custom-select-display { background: #091e420a; border-radius: 4px; padding: 7px 9px; cursor: pointer; font-size: 12.5px; color: #172b4d; transition: 0.1s; }
   .custom-select-display:hover { background: #091e4214; }
@@ -473,6 +495,10 @@
   .checkbox-label input { width: auto; margin: 0; cursor: pointer; }
   .selected-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
   .assignee-tag { background: #cbd5e1; color: #172b4d; border-radius: 4px; padding: 3px 7px; font-size: 10.5px; font-weight: 600; }
+  .label-chip { color: #fff; border-radius: 4px; padding: 3px 8px; font-size: 10.5px; font-weight: 600; line-height: 1.3; letter-spacing: .2px; }
+  .label-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .card-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
+  .card-labels .label-chip { padding: 2px 7px; font-size: 9.5px; }
 
   /* ===== STATUS MSG / STATUS BAR ===== */
   .status-msg { margin-top: 14px; text-align: center; font-weight: 600; font-size: 13px; min-height: 20px; }

@@ -59,11 +59,28 @@ function getAfastamentos() {
       const abonosSt = String(r[CA('Abonos')] || '').trim();
       const aniversario = dataParaISO_(r[CA('Abono Aniversário')]);
       const licencaSt = String(r[CA('Licença Servidor/Prêmio')] || '').trim();
+      const demaisSt = String(r[CA('Demais Afastamentos')] || '').trim();
+
+      // Licença Servidor/Prêmio: pode ter várias. Formato novo = JSON
+      // [{inicio,fim}]; formato antigo = "inicio a fim" (um período), migrado
+      // para lista de um item na leitura.
+      let licencas = [];
+      if (licencaSt) {
+        if (licencaSt.charAt(0) === '[') {
+          try { const arr = JSON.parse(licencaSt); if (Array.isArray(arr)) licencas = arr.filter(x => x && x.inicio && x.fim); } catch(e) {}
+        } else {
+          const pL = parsePeriod(licencaSt); if (pL) licencas = [pL];
+        }
+      }
 
       const ferias = [];
       if (p1) ferias.push(parsePeriod(p1));
       if (p2) ferias.push(parsePeriod(p2));
       if (p3) ferias.push(parsePeriod(p3));
+
+      // Demais afastamentos: lista livre gravada como JSON (descrição + período)
+      let demais = [];
+      if (demaisSt) { try { const arr = JSON.parse(demaisSt); if (Array.isArray(arr)) demais = arr; } catch(e) {} }
 
       return {
         id: String(r[CA('ID')]),
@@ -73,7 +90,8 @@ function getAfastamentos() {
         ferias: ferias,
         abonosFixos: abonosSt ? abonosSt.split(',').map(s => s.trim()).filter(x => x) : [],
         abonoAniv: aniversario ? { inicio: aniversario, fim: aniversario } : null,
-        licenca: parsePeriod(licencaSt)
+        licencas: licencas,
+        demais: demais
       };
     });
   } catch(e) {
@@ -95,15 +113,18 @@ function salvarAfastamento(dados) {
       const periodo = p => p ? p.inicio + ' a ' + p.fim : '';
       const f = dados.ferias || [];
       const abonoStr = Array.isArray(dados.abonos) ? dados.abonos.filter(d => d).join(', ') : '';
-      // Bloco Férias 1 → Licença (6 colunas contíguas)
+      const demaisStr = Array.isArray(dados.demais) && dados.demais.length ? JSON.stringify(dados.demais) : '';
+      const licencasArr = Array.isArray(dados.licencas) ? dados.licencas.filter(l => l && l.inicio && l.fim) : [];
+      const licencaStr = licencasArr.length ? JSON.stringify(licencasArr) : '';
+      // Bloco Férias 1 → Demais Afastamentos (7 colunas contíguas)
       const valores = [
         periodo(f[0]), periodo(f[1]), periodo(f[2]),
-        abonoStr, dados.abonoAniversario || '', periodo(dados.licenca)
+        abonoStr, dados.abonoAniversario || '', licencaStr, demaisStr
       ];
 
       for (let i = 1; i < rows.length; i++) {
         if (String(rows[i][CA('Membro ID')]) === String(dados.membroId) && String(rows[i][CA('Ano')]) === String(dados.ano)) {
-          aba.getRange(i + 1, CA('Férias 1')+1, 1, 6).setValues([valores]);
+          aba.getRange(i + 1, CA('Férias 1')+1, 1, 7).setValues([valores]);
           registrarLog('Edição de Afastamentos', dados.membroNome + ' (' + dados.ano + ')', 'Afastamentos atualizados.');
           return { sucesso: true };
         }

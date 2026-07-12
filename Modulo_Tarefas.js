@@ -9,6 +9,7 @@ function saveTask(task) {
     const sheet = conectarAba(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
     const timeNow = getNowTimestamp();
+    const autor = nomeUsuarioAtual_();
 
     if (task.id && task.id !== 'null' && task.id !== '') {
       const data = sheet.getDataRange().getValues();
@@ -16,13 +17,32 @@ function saveTask(task) {
         if (String(data[i][C('ID')]) === String(task.id)) {
           let acts = [];
           try { acts = JSON.parse(task.activities); } catch(e) {}
-          acts.push({ type: 'log', text: 'Cartão atualizado via sistema', date: timeNow });
+          // Comentários novos chegam do cliente marcados com _novo — carimba
+          // o autor no servidor (não confia no cliente) sem tocar no histórico
+          // antigo, que fica sem autor.
+          acts.forEach(a => { if (a && a._novo) { a.author = autor; delete a._novo; } });
+          // Detecta quais campos mudaram comparando a linha antiga (já em
+          // memória) com o payload — sem leitura extra. Para incluir um campo
+          // novo no futuro, basta adicionar uma entrada nesta lista.
+          const campos = [
+            { label: 'Título',           antes: String(data[i][C('Título')]||''),          depois: String(task.title||'') },
+            { label: 'Descrição',        antes: String(data[i][C('Descrição')]||''),       depois: String(task.description||'') },
+            { label: 'Responsáveis',     antes: String(data[i][C('Responsável_ID')]||''),  depois: String(task.assigneeId||'') },
+            { label: 'Prioridade',       antes: String(data[i][C('Prioridade')]||''),      depois: String(task.priority||'') },
+            { label: 'Prazo de Entrega', antes: formatarDataParaUI(data[i][C('Prazo')]),   depois: String(task.deadline||'') },
+            { label: 'Etiquetas',        antes: String(data[i][C('Etiquetas')]||'[]'),     depois: String(task.labels||'[]') }
+          ];
+          const alterados = campos.filter(c => c.antes.trim() !== c.depois.trim()).map(c => c.label);
+          // Só registra log de alteração se algum campo realmente mudou (se o
+          // usuário só adicionou um comentário, não gera ruído no histórico).
+          if (alterados.length) acts.push({ type: 'log', text: 'Alterou: ' + alterados.join(', '), date: timeNow, author: autor });
           // Bloco contíguo de Status até Atividades (10 colunas)
           sheet.getRange(i+1, C('Status')+1, 1, 10).setValues([[
             task.status, task.title, task.description, task.assigneeId,
             task.priority, task.creationDate, task.startDate,
             task.deadline, task.completionDate, JSON.stringify(acts)
           ]]);
+          sheet.getRange(i+1, C('Etiquetas')+1).setValue(task.labels || '[]');
           SpreadsheetApp.flush();
           return { sucesso: true };
         }
@@ -30,10 +50,10 @@ function saveTask(task) {
     } else {
       const newId = getNextId(SHEET_TASKS, 'TAR-');
       const dateNow = _dataLocalISO_(new Date());
-      const hist = [{ type: 'log', text: `Criou este cartão na lista "${task.status}"`, date: timeNow }];
+      const hist = [{ type: 'log', text: `Criou este cartão na lista "${task.status}"`, date: timeNow, author: autor }];
       sheet.appendRow([
         newId, task.status, task.title, task.description, task.assigneeId,
-        task.priority, dateNow, task.startDate, task.deadline, '', JSON.stringify(hist), ''
+        task.priority, dateNow, task.startDate, task.deadline, '', JSON.stringify(hist), '', task.labels || '[]'
       ]);
       SpreadsheetApp.flush();
       return { sucesso: true };
@@ -49,6 +69,7 @@ function updateTaskStatus(id, newStatus) {
     const data  = sheet.getDataRange().getValues();
     const dateNow = _dataLocalISO_(new Date());
     const timeNow = getNowTimestamp();
+    const autor = nomeUsuarioAtual_();
 
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][C('ID')]) === String(id)) {
@@ -58,7 +79,7 @@ function updateTaskStatus(id, newStatus) {
         sheet.getRange(i+1, C('Status')+1).setValue(newStatus);
         let acts = [];
         try { acts = JSON.parse(String(data[i][C('Atividades')] || '[]')); } catch(e) {}
-        acts.push({ type: 'log', text: `Moveu de "${oldStatus}" para "${newStatus}"`, date: timeNow });
+        acts.push({ type: 'log', text: `Moveu de "${oldStatus}" para "${newStatus}"`, date: timeNow, author: autor });
         sheet.getRange(i+1, C('Atividades')+1).setValue(JSON.stringify(acts));
 
         if (newStatus === 'Concluído') sheet.getRange(i+1, C('Data Conclusão')+1).setValue(dateNow);

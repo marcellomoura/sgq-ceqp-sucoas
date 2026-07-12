@@ -3,8 +3,8 @@
 // MÓDULO 6 — GESTÃO DE PESSOAS
 // ==========================================
 
-var DIAS_SEMANA = ['Segunda','Terça','Quarta','Quinta','Sexta'];
-var DIAS_ABREV  = ['Seg','Ter','Qua','Qui','Sex'];
+var DIAS_SEMANA = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+var DIAS_ABREV  = ['Seg','Ter','Qua','Qui','Sex','Sáb'];
 
 function diaParaId(d) {
   return d.toLowerCase().replace(/ç/g,'c').replace(/[áâ]/g,'a').replace(/ã/g,'a');
@@ -17,7 +17,7 @@ function renderEscala() {
   var tbody = $id('lista-escala');
   if (!tbody) return;
   if (!state.members.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="msg-empty">Nenhum membro cadastrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="msg-empty">Nenhum membro cadastrado.</td></tr>';
     return;
   }
   tbody.innerHTML = membrosOrdenados().map(function(m) {
@@ -63,8 +63,8 @@ function renderEscalaGrid(members) {
   var grid = $id('escala-grid');
   if (!grid) return;
   var hoje = new Date();
-  var diaSemanaHoje = hoje.getDay(); // 0=Dom … 5=Sex
-  var mapDia = { 'Segunda':1,'Terça':2,'Quarta':3,'Quinta':4,'Sexta':5 };
+  var diaSemanaHoje = hoje.getDay(); // 0=Dom … 6=Sáb
+  var mapDia = { 'Segunda':1,'Terça':2,'Quarta':3,'Quinta':4,'Sexta':5,'Sábado':6 };
   grid.innerHTML = DIAS_SEMANA.map(function(dia, idx) {
     var numDia    = mapDia[dia];
     var ehHoje    = diaSemanaHoje === numDia;
@@ -168,9 +168,9 @@ function carregarFerias() {
   // Toda vez que se entra na aba, ela abre no ano vigente — dali o
   // usuário navega livremente pelas abas de ano já cadastradas.
   anoAfastamentoAtual = new Date().getFullYear();
-  msgTabela('lista-ferias', 8, 'A carregar...');
+  msgTabela('lista-ferias', 9, 'A carregar...');
   google.script.run
-    .withFailureHandler(function(e) { msgTabela('lista-ferias', 8, 'Falha ao carregar: ' + String(e), true); })
+    .withFailureHandler(function(e) { msgTabela('lista-ferias', 9, 'Falha ao carregar: ' + String(e), true); })
     .withSuccessHandler(function(data) {
       afastamentosCache = data || [];
       renderAnoTabs();
@@ -262,7 +262,8 @@ function renderFerias() {
     (r.ferias || []).forEach(function(f){ if (f && f.inicio && f.fim) list.push(f); });
     (r.abonosFixos || []).forEach(function(d){ if (d) list.push({inicio: d, fim: d}); });
     if (r.abonoAniv && r.abonoAniv.inicio) list.push(r.abonoAniv);
-    if (r.licenca && r.licenca.inicio && r.licenca.fim) list.push(r.licenca);
+    (r.licencas || []).forEach(function(lc){ if (lc && lc.inicio && lc.fim) list.push(lc); });
+    (r.demais || []).forEach(function(d){ if (d && d.inicio && d.fim) list.push({inicio: d.inicio, fim: d.fim}); });
     list.some(function(p) {
       var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim || p.inicio);
       return ini && fim && ini <= hoje && fim >= hoje;
@@ -275,7 +276,7 @@ function renderFerias() {
   var membrosFiltrados = membrosOrdenados().filter(function(m){ return !fM || String(m.id) === fM; });
 
   if (!membrosFiltrados.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="msg-empty">Nenhum membro cadastrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="msg-empty">Nenhum membro cadastrado.</td></tr>';
     return;
   }
 
@@ -291,7 +292,7 @@ function renderFerias() {
     var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim);
     var dias = (ini && fim) ? Math.floor((fim - ini) / 86400000) + 1 : null;
     var agora = ini && fim && ini <= hoje && fim >= hoje;
-    return '<span style="display:inline-block; margin-right:4px; margin-bottom:4px; margin-top:4px; font-size:11.5px; white-space:nowrap;' + (agora ? 'background:#dcfce7; border: 1px solid #86efac; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#15803d;' : 'color:#334155; padding: 2px 0px;') + '">' +
+    return '<span style="display:inline-block; margin-right:4px; margin-bottom:4px; margin-top:4px; font-size:11.5px;' + (agora ? 'background:#dcfce7; border: 1px solid #86efac; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#15803d;' : 'color:#334155; padding: 2px 0px;') + '">' +
       fmtDM(p.inicio) + ' a ' + fmtDM(p.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + dias + 'd)</span>' +
       '</span>';
   };
@@ -314,7 +315,7 @@ function renderFerias() {
         var agora = dt && dt.getTime() === hoje.getTime();
         return '<span style="display:inline-block; font-size:11px;' + (agora ? 'background:#fef9c3; border: 1px solid #fef08a; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#854d0e;' : 'background:#f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 6px; color:#475569;') + '">' + fmtDM(d) + '</span>';
       });
-      htmlAbono = '<div style="display:flex; flex-wrap:nowrap; gap:4px; align-items:center;">' + tagsData.join('') + '</div>';
+      htmlAbono = '<div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center;">' + tagsData.join('') + '</div>';
     }
 
     var htmlAbonoAniv = TRACO;
@@ -326,17 +327,35 @@ function renderFerias() {
     }
 
     var htmlLicenca = TRACO;
-    if (afs.licenca && afs.licenca.inicio && afs.licenca.fim) {
-      var iniL = parseDataStr(afs.licenca.inicio), fimL = parseDataStr(afs.licenca.fim);
-      var diasL = (iniL && fimL) ? Math.floor((fimL - iniL) / 86400000) + 1 : null;
-      var agoraL = iniL && fimL && iniL <= hoje && fimL >= hoje;
-      htmlLicenca = '<span style="display:inline-block; font-size:11.5px; margin-top:4px; white-space:nowrap;' + (agoraL ? 'background:#f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#6b21a8;' : 'color:#334155; padding: 2px 0px;') + '">' +
-        fmtDM(afs.licenca.inicio) + ' a ' + fmtDM(afs.licenca.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + diasL + 'd)</span></span>';
+    if (afs.licencas && afs.licencas.length > 0) {
+      htmlLicenca = afs.licencas.map(function(lc) {
+        if (!lc || !lc.inicio || !lc.fim) return '';
+        var iniL = parseDataStr(lc.inicio), fimL = parseDataStr(lc.fim);
+        var diasL = (iniL && fimL) ? Math.floor((fimL - iniL) / 86400000) + 1 : null;
+        var agoraL = iniL && fimL && iniL <= hoje && fimL >= hoje;
+        return '<div style="font-size:11.5px; margin:2px 0; line-height:1.35;' + (agoraL ? 'background:#f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#6b21a8;' : 'color:#334155;') + '">' +
+          fmtDM(lc.inicio) + ' a ' + fmtDM(lc.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + diasL + 'd)</span></div>';
+      }).join('');
+      if (!htmlLicenca) htmlLicenca = TRACO;
+    }
+
+    var htmlDemais = TRACO;
+    if (afs.demais && afs.demais.length > 0) {
+      htmlDemais = afs.demais.map(function(d) {
+        if (!d || !d.descricao) return '';
+        var temPeriodo = d.inicio && d.fim;
+        var iniD = temPeriodo ? parseDataStr(d.inicio) : null, fimD = temPeriodo ? parseDataStr(d.fim) : null;
+        var agoraD = iniD && fimD && iniD <= hoje && fimD >= hoje;
+        var periodoTxt = temPeriodo ? ' <span style="color:#64748b; font-weight:normal;">(' + fmtDM(d.inicio) + ' a ' + fmtDM(d.fim) + ')</span>' : '';
+        return '<div style="font-size:11px; margin:2px 0; line-height:1.35;' + (agoraD ? 'background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:2px 6px; font-weight:600; color:#334155;' : 'color:#334155;') + '">' + esc(d.descricao) + periodoTxt + '</div>';
+      }).join('');
+      if (!htmlDemais) htmlDemais = TRACO;
     }
 
     // Destaca a linha se algum afastamento está ativo hoje
-    var listaAtivos = [].concat(afs.ferias || [], afs.abonoAniv ? [afs.abonoAniv] : [], afs.licenca ? [afs.licenca] : []);
+    var listaAtivos = [].concat(afs.ferias || [], afs.abonoAniv ? [afs.abonoAniv] : [], afs.licencas || []);
     (afs.abonosFixos || []).forEach(function(d){ if (d) listaAtivos.push({inicio: d, fim: d}); });
+    (afs.demais || []).forEach(function(d){ if (d && d.inicio && d.fim) listaAtivos.push({inicio: d.inicio, fim: d.fim}); });
     var isQualquerAtivo = listaAtivos.some(function(p) {
       if (!p || !p.inicio) return false;
       var i = parseDataStr(p.inicio), f = parseDataStr(p.fim || p.inicio);
@@ -355,6 +374,7 @@ function renderFerias() {
       '<td>' + htmlAbono + '</td>' +
       '<td>' + htmlAbonoAniv + '</td>' +
       '<td>' + htmlLicenca + '</td>' +
+      '<td>' + htmlDemais + '</td>' +
       '<td><div class="cell-actions" style="justify-content:center;">' +
         iconBtn('edit','edit-ferias','Editar Afastamentos','data-idx="' + origIdx + '"') +
       '</div></td>' +
@@ -375,46 +395,93 @@ function abrirModalFerias(m) {
   abrirModal('modal-ferias');
 }
 
+// ── Helpers dos botões "Adicionar" (revelam campos sob demanda) ──────────────
+function atualizarBotaoFerias() {
+  var vis = 0;
+  for (var n = 1; n <= 3; n++) { if ($id('ef-ferias-block' + n).style.display !== 'none') vis++; }
+  $id('btn-add-ferias').style.display = (vis >= 3) ? 'none' : '';
+}
+function adicionarFeriasBlock() {
+  for (var n = 1; n <= 3; n++) {
+    if ($id('ef-ferias-block' + n).style.display === 'none') { $id('ef-ferias-block' + n).style.display = ''; break; }
+  }
+  atualizarBotaoFerias();
+}
+function removerFeriasBlock(n) {
+  $id('ef-ferias-ini' + n).value = '';
+  $id('ef-ferias-fim' + n).value = '';
+  $id('ef-ferias-block' + n).style.display = 'none';
+  atualizarBotaoFerias();
+}
+// Linha de "Licença Servidor/Prêmio": período início/fim (várias por membro)
+function licencaRowHtml(item) {
+  item = item || {};
+  return '<div class="licenca-item" style="display:grid; grid-template-columns: 1fr 1fr 28px; gap:6px; align-items:end; margin-bottom:6px;">' +
+    '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Início</label><input type="date" class="ef-licenca-ini field-input" style="font-size:11px;padding:4px;" value="' + (item.inicio || '') + '"></div>' +
+    '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Fim</label><input type="date" class="ef-licenca-fim field-input" style="font-size:11px;padding:4px;" value="' + (item.fim || '') + '"></div>' +
+    '<button type="button" class="btn-rem-afast" data-afast-acao="rem-licenca" title="Remover licença" style="margin-bottom:4px;">&times;</button>' +
+  '</div>';
+}
+// Linha de "Demais Afastamentos": descrição livre + período opcional
+function demaisRowHtml(item) {
+  item = item || {};
+  return '<div class="demais-item" style="display:grid; grid-template-columns: 1fr 120px 120px 28px; gap:6px; align-items:end; margin-bottom:6px;">' +
+    '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Descrição</label><input type="text" class="ef-demais-desc field-input" style="font-size:11px;padding:4px;" placeholder="Descreva o afastamento..." value="' + esc(item.descricao || '') + '"></div>' +
+    '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Início</label><input type="date" class="ef-demais-ini field-input" style="font-size:11px;padding:4px;" value="' + (item.inicio || '') + '"></div>' +
+    '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Fim</label><input type="date" class="ef-demais-fim field-input" style="font-size:11px;padding:4px;" value="' + (item.fim || '') + '"></div>' +
+    '<button type="button" class="btn-rem-afast" data-afast-acao="rem-demais" title="Remover" style="margin-bottom:4px;">&times;</button>' +
+  '</div>';
+}
+
+// Delegação única para os controles do modal de afastamentos
+document.addEventListener('click', function(e) {
+  var el = e.target.closest('[data-afast-acao]');
+  if (!el) return;
+  var acao = el.getAttribute('data-afast-acao');
+  if (acao === 'add-ferias')       adicionarFeriasBlock();
+  else if (acao === 'rem-ferias')  removerFeriasBlock(parseInt(el.getAttribute('data-n'), 10));
+  else if (acao === 'add-licenca') $id('ef-licenca-list').insertAdjacentHTML('beforeend', licencaRowHtml());
+  else if (acao === 'rem-licenca') { var itL = el.closest('.licenca-item'); if (itL) itL.remove(); }
+  else if (acao === 'add-demais')  $id('ef-demais-list').insertAdjacentHTML('beforeend', demaisRowHtml());
+  else if (acao === 'rem-demais')  { var it = el.closest('.demais-item'); if (it) it.remove(); }
+});
+
 function clearModalAfastamentos() {
-  $id('ef-ferias-ini1').value = '';
-  $id('ef-ferias-fim1').value = '';
-  $id('ef-ferias-ini2').value = '';
-  $id('ef-ferias-fim2').value = '';
-  $id('ef-ferias-ini3').value = '';
-  $id('ef-ferias-fim3').value = '';
-  
+  for (var n = 1; n <= 3; n++) {
+    $id('ef-ferias-ini' + n).value = '';
+    $id('ef-ferias-fim' + n).value = '';
+    $id('ef-ferias-block' + n).style.display = 'none';
+  }
+  atualizarBotaoFerias();
+
   $id('ef-abono1').value = '';
   $id('ef-abono2').value = '';
   $id('ef-abono3').value = '';
   $id('ef-abono4').value = '';
   $id('ef-abono5').value = '';
-  
+
   $id('ef-abono-niver').value = '';
-  
-  $id('ef-licenca-ini').value = '';
-  $id('ef-licenca-fim').value = '';
+
+  $id('ef-licenca-list').innerHTML = '';
+  $id('ef-demais-list').innerHTML = '';
 }
 
 function fillModalWithData(afs) {
   clearModalAfastamentos();
   if (!afs) return;
   
-  // vacations
+  // Férias — só revela os blocos que já têm período gravado
   if (afs.ferias && Array.isArray(afs.ferias)) {
-    if (afs.ferias[0]) {
-      $id('ef-ferias-ini1').value = afs.ferias[0].inicio || '';
-      $id('ef-ferias-fim1').value = afs.ferias[0].fim || '';
+    for (var k = 0; k < 3; k++) {
+      if (afs.ferias[k] && (afs.ferias[k].inicio || afs.ferias[k].fim)) {
+        $id('ef-ferias-ini' + (k+1)).value = afs.ferias[k].inicio || '';
+        $id('ef-ferias-fim' + (k+1)).value = afs.ferias[k].fim || '';
+        $id('ef-ferias-block' + (k+1)).style.display = '';
+      }
     }
-    if (afs.ferias[1]) {
-      $id('ef-ferias-ini2').value = afs.ferias[1].inicio || '';
-      $id('ef-ferias-fim2').value = afs.ferias[1].fim || '';
-    }
-    if (afs.ferias[2]) {
-      $id('ef-ferias-ini3').value = afs.ferias[2].inicio || '';
-      $id('ef-ferias-fim3').value = afs.ferias[2].fim || '';
-    }
+    atualizarBotaoFerias();
   }
-  
+
   // abonos 1 to 5
   if (afs.abonosFixos && Array.isArray(afs.abonosFixos)) {
     for (var i = 0; i < 5; i++) {
@@ -423,17 +490,21 @@ function fillModalWithData(afs) {
        }
     }
   }
-  
+
   // aniversario
   if (afs.abonoAniv) {
     // We parse it back into the field. Since it has inicio and fim same, just use inicio
     $id('ef-abono-niver').value = afs.abonoAniv.inicio || '';
   }
 
-  // licenca
-  if (afs.licenca) {
-    $id('ef-licenca-ini').value = afs.licenca.inicio || '';
-    $id('ef-licenca-fim').value = afs.licenca.fim || '';
+  // licencas — uma linha por licença existente
+  if (afs.licencas && Array.isArray(afs.licencas)) {
+    afs.licencas.forEach(function(it) { $id('ef-licenca-list').insertAdjacentHTML('beforeend', licencaRowHtml(it)); });
+  }
+
+  // demais afastamentos — renderiza uma linha por item existente
+  if (afs.demais && Array.isArray(afs.demais)) {
+    afs.demais.forEach(function(it) { $id('ef-demais-list').insertAdjacentHTML('beforeend', demaisRowHtml(it)); });
   }
 }
 
@@ -465,14 +536,28 @@ function confirmarFerias() {
 
   var abonoAniversario = $id('ef-abono-niver').value;
 
-  var licenca = null;
-  var licencaIni = $id('ef-licenca-ini').value;
-  var licencaFim = $id('ef-licenca-fim').value;
-  if (licencaIni && licencaFim) {
-    if (licencaIni > licencaFim) return showAlerta('Na licença, a data de início deve ser anterior ao fim.');
-    licenca = { inicio: licencaIni, fim: licencaFim };
-  } else if (licencaIni || licencaFim) {
-    return showAlerta('Na licença, preencha ambas as datas de início e fim.');
+  var licencas = [];
+  var itensL = document.querySelectorAll('#ef-licenca-list .licenca-item');
+  for (var L = 0; L < itensL.length; L++) {
+    var lIni = itensL[L].querySelector('.ef-licenca-ini').value;
+    var lFim = itensL[L].querySelector('.ef-licenca-fim').value;
+    if (!lIni && !lFim) continue; // linha vazia — ignora
+    if (!lIni || !lFim) return showAlerta('Na licença, preencha início e fim (ou remova a linha em branco).');
+    if (lIni > lFim) return showAlerta('Na licença, a data de início deve ser anterior ao fim.');
+    licencas.push({ inicio: lIni, fim: lFim });
+  }
+
+  var demais = [];
+  var itens = document.querySelectorAll('#ef-demais-list .demais-item');
+  for (var j = 0; j < itens.length; j++) {
+    var desc = itens[j].querySelector('.ef-demais-desc').value.trim();
+    var dIni = itens[j].querySelector('.ef-demais-ini').value;
+    var dFim = itens[j].querySelector('.ef-demais-fim').value;
+    if (!desc && !dIni && !dFim) continue; // linha vazia — ignora
+    if (!desc) return showAlerta('Em "Demais Afastamentos", descreva o afastamento.');
+    if ((dIni && !dFim) || (!dIni && dFim)) return showAlerta('Em "Demais Afastamentos", preencha início e fim (ou deixe ambos vazios).');
+    if (dIni && dFim && dIni > dFim) return showAlerta('Em "Demais Afastamentos", a data de início deve ser anterior ao fim.');
+    demais.push({ descricao: desc, inicio: dIni, fim: dFim });
   }
 
   var dados = {
@@ -480,7 +565,8 @@ function confirmarFerias() {
     ferias: ferias,
     abonos: abonos,
     abonoAniversario: abonoAniversario,
-    licenca: licenca
+    licencas: licencas,
+    demais: demais
   };
 
   btn.disabled = true; btn.innerText = 'A guardar...';
