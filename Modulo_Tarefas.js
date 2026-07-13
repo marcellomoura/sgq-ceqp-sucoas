@@ -3,6 +3,7 @@
 // (arquivo único: Membros só existe como responsáveis das Tarefas)
 // ==========================================
 function saveTask(task) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar.' };
   if (!task || !String(task.title||'').trim())
     return { sucesso: false, mensagem: 'O título do cartão é obrigatório.' };
   return comBloqueio(() => {
@@ -63,6 +64,7 @@ function saveTask(task) {
 }
 
 function updateTaskStatus(id, newStatus) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar.' };
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
@@ -99,6 +101,7 @@ function updateTaskStatus(id, newStatus) {
 }
 
 function deleteTask(id) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para excluir.' };
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
@@ -117,6 +120,7 @@ function deleteTask(id) {
 
 // Arquiva manualmente um cartão concluído, sem esperar os 15 dias
 function arquivarTarefaManual(id) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar.' };
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
@@ -140,6 +144,7 @@ function arquivarTarefaManual(id) {
 // Grava 'Não' (não apenas vazio) para o sistema respeitar essa decisão e
 // não voltar a arquivar automaticamente, mesmo com a data de conclusão antiga.
 function restaurarTarefaArquivada(id) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar.' };
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
@@ -160,6 +165,7 @@ function restaurarTarefaArquivada(id) {
 // MÓDULO 2 — MEMBROS (KANBAN)
 // ==========================================
 function saveMember(member) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar membros.' };
   if (!member || !String(member.name||'').trim() || !String(member.role||'').trim() || !String(member.email||'').trim() || !String(member.emailPessoal||'').trim())
     return { sucesso: false, mensagem: 'Preencha todos os campos.' };
   return comBloqueio(() => {
@@ -175,6 +181,7 @@ function saveMember(member) {
           // engano, ficando invisível na leitura — ver getKanbanData_members_)
           sheet.getRange(i+1, C('E-mail Pessoal')+1).setValue(member.emailPessoal || '');
           SpreadsheetApp.flush();
+          invalidarCacheMembros_(); // nome/e-mails mudaram — refaz o cache de auth
           return { sucesso: true };
         }
       }
@@ -185,6 +192,7 @@ function saveMember(member) {
       const row = [newId, member.name, member.role, member.email || '', '', '', member.emailPessoal || ''];
       sheet.appendRow(row);
       SpreadsheetApp.flush();
+      invalidarCacheMembros_(); // membro novo ganha acesso imediato (sem esperar TTL)
       return { sucesso: true };
     }
     return { sucesso: false, mensagem: 'Membro não encontrado.' };
@@ -192,6 +200,7 @@ function saveMember(member) {
 }
 
 function deleteMember(id) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para excluir membros.' };
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
     const C = colIdx_(CABECALHOS_MEMBROS);
@@ -200,6 +209,7 @@ function deleteMember(id) {
       if (String(data[i][C('ID')]) === String(id)) {
         sheet.deleteRow(i+1);
         SpreadsheetApp.flush();
+        invalidarCacheMembros_(); // membro removido perde acesso na hora
         return { sucesso: true };
       }
     }

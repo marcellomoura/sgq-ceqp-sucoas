@@ -18,19 +18,19 @@ function renderMatriz() {
     if (cel) {
       if (!cel.querySelector('.badge-cluster')) cel.innerHTML = '<div class="badge-cluster"></div>';
       const b = document.createElement('span');
-      b.className = 'risk-badge'; b.textContent = 'R' + r.id; b.title = r.nome;
+      b.className = 'risk-badge'; b.textContent = 'R' + String(idx + 1); b.title = r.nome;
       cel.querySelector('.badge-cluster').appendChild(b);
     }
   });
 
   if (!state.risks.length) { msgTabela('lista-riscos', 12, 'Nenhum risco mapeado.'); return; }
   $id('lista-riscos').innerHTML = state.risks.map((r, i) => `<tr>
-    <td style="text-align:center;font-weight:700;color:#2563eb;">R${r.id}</td>
+    <td style="text-align:center;font-weight:700;color:#2563eb;white-space:nowrap;">Risco ${i + 1}</td>
     <td>${esc(r.macroetapa)}</td><td><span style="display:inline-block; font-weight:600; color:#1e293b; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; background:#f8fafc;">${esc(r.nome)}</span></td><td>${esc(r.causa)}</td>
     <td>${esc(r.consequencia)}</td><td>${esc(r.categoria)}</td>
     <td style="text-align:center;font-weight:700;">${r.probabilidade * r.impacto}</td>
     <td style="text-align:center;">${badge(r.nivel)}</td>
-    <td>${esc(r.tipoTratamento)}</td><td>${esc(r.responsavel)}</td><td>${esc(r.planoAcao)}</td>
+    <td>${esc(r.tipoTratamento)}</td><td>${esc(formatUnidadeUI(r.responsavel))}</td><td>${esc(r.planoAcao)}</td>
     <td class="no-print"><div class="cell-actions" style="justify-content:center;">${iconBtn('edit','edit-risco','Editar',`data-idx="${i}"`)}${iconBtn('del','del-risco','Excluir',`data-idx="${i}"`)} </div></td>
   </tr>`).join('');
 }
@@ -99,6 +99,15 @@ function excluirRisco(id) {
 // ==========================================
 // MÓDULO 4 — PLANOS DE AÇÃO (5W2H)
 // ==========================================
+function formatRiscoUI(val) {
+  if (!val || val === '-') return val || '';
+  const idx = state.risks.findIndex(x => 'R' + x.id === String(val));
+  if (idx !== -1) {
+    return `Risco ${idx + 1} — ${state.risks[idx].nome}`;
+  }
+  return val;
+}
+
 function carregarRiscosLivres() {
   const sel = $id('p-risco');
   sel.innerHTML = '<option value="">A carregar riscos sem plano...</option>';
@@ -106,7 +115,10 @@ function carregarRiscosLivres() {
   const livres = state.risks.filter(r => !idsComPlano.has('R' + r.id));
   if (!livres.length) { sel.innerHTML = '<option value="">Nenhum risco sem plano de ação.</option>'; return; }
   sel.innerHTML = '<option value="" disabled selected>Selecione o risco...</option>' +
-    livres.map(r => `<option value="R${r.id} - ${esc(r.nome)}">R${r.id} — ${esc(r.nome)}</option>`).join('');
+    livres.map(r => {
+      const idx = state.risks.findIndex(x => x.id === r.id);
+      return `<option value="R${r.id}">Risco ${idx + 1} — ${esc(r.nome)}</option>`;
+    }).join('');
 }
 
 function abrirModalNovoPlano() {
@@ -151,8 +163,8 @@ function renderAcompanhamento() {
   $id('lista-acomp').innerHTML = filtrados.map((p, i) => {
     const oi = state.plans.findIndex(x => x.riscoVinculado === p.riscoVinculado);
     return `<tr>
-      <td style="font-weight:700;color:#2563eb;">${esc(p.riscoVinculado)}</td>
-      <td>${esc(p.what)}</td><td>${esc(p.why)}</td><td>${esc(p.who)}</td>
+      <td style="font-weight:700;color:#2563eb;">${esc(formatRiscoUI(p.riscoVinculado))}</td>
+      <td>${esc(p.what)}</td><td>${esc(p.why)}</td><td>${esc(formatUnidadeUI(p.who))}</td>
       <td>${esc(p.where)}</td><td>${fmtBr(p.whenPrevisto)}</td><td>${fmtBr(p.whenFinalizado)}</td>
       <td>${esc(p.how)}</td><td>${esc(p.howMuch)}</td>
       <td style="text-align:center;">${badge(p.status)}</td>
@@ -208,18 +220,17 @@ function abrirModalAcompEntregas(idx) {
   } else {
     // Plano atribuído a uma unidade específica — só ela é cobrada
     unidadesCobradas = state.units.filter(function(u) {
-      const chave = u.sigla ? (u.sigla + ' - ' + u.unidade) : u.unidade;
-      return chave === p.who;
+      return String(u.id) === String(p.who) || (u.sigla + ' - ' + u.unidade) === p.who;
     });
     if (!unidadesCobradas.length && p.who) {
       // Unidade renomeada/excluída depois do plano: mantém a cobrança
       // pelo texto gravado no plano para o registro não sumir
-      unidadesCobradas = [{ sigla: '', unidade: p.who }];
+      unidadesCobradas = [{ id: p.who, sigla: '', unidade: formatUnidadeUI(p.who) }];
     }
   }
 
   $id('acomp-ent-info').innerHTML =
-    '<strong>Risco:</strong> ' + esc(p.riscoVinculado) +
+    '<strong>Risco:</strong> ' + esc(formatRiscoUI(p.riscoVinculado)) +
     ' &nbsp;·&nbsp; <strong>Ação:</strong> ' + esc(p.what) +
     ' &nbsp;·&nbsp; <strong>Prazo:</strong> ' + fmtBr(p.whenPrevisto);
 
@@ -235,7 +246,7 @@ function abrirModalAcompEntregas(idx) {
   acompEntregasPlanoCtx = p;
 
   $id('acomp-ent-lista').innerHTML = unidadesCobradas.map(function(u, i) {
-    const chave = u.sigla ? (u.sigla + ' - ' + u.unidade) : u.unidade;
+    const chave = u.id || (u.sigla ? (u.sigla + ' - ' + u.unidade) : u.unidade);
     const ent = state.deliveries.find(function(e) {
       return e.riscoVinculado === p.riscoVinculado && e.unidade === chave;
     });

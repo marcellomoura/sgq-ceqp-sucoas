@@ -307,25 +307,22 @@ function confirmarExcluirTarefa() {
   });
 }
 
-// ---------- Dashboard ----------
-function renderDashboard() {
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
-
-  const fid = ($id('dashMemberFilter')||{value:''}).value;
+// ---------- Painel de Indicadores: gráficos do Kanban ----------
+// Recebe o id de membro do filtro geral do Painel de Indicadores (fid);
+// os KPIs do quadro (Total, Concluídos, Em Atraso, Tempo Médio) ficam na
+// aba do próprio Kanban e NÃO usam esse filtro — ver renderKanbanKpis().
+function renderGraficosKanban(fid) {
   let tasks = state.tasks;
   if (fid) {
     tasks = tasks.filter(t => parseIdsResponsaveis(t.assigneeId).includes(String(fid)));
   }
 
-  let total = tasks.length, done = 0, overdue = 0, totalDays = 0, cntDays = 0;
   const sc = { 'Backlog':0, 'A Fazer':0, 'Em Andamento':0, 'Em Revisão':0, 'Concluído':0 };
   const pc = { 'Alta':0, 'Media':0, 'Baixa':0 };
   // Demandas em andamento por membro: só tarefas com status "Em Andamento"
   let mc = {}; state.members.forEach(m => mc[m.name] = 0);
   // Demandas concluídas por membro: só tarefas com status "Concluído"
   let mcConcluido = {}; state.members.forEach(m => mcConcluido[m.name] = 0);
-  // Próximas entregas: todas as tarefas não concluídas (com ou sem prazo)
-  let upcoming = [];
 
   tasks.forEach(t => {
     const st = t.status || 'Backlog';
@@ -335,71 +332,16 @@ function renderDashboard() {
     const ids = parseIdsResponsaveis(t.assigneeId);
 
     if (st === 'Concluído') {
-      done++;
       ids.forEach(id => { const m = state.members.find(x => String(x.id) === String(id)); if (m) mcConcluido[m.name]++; });
-      if (t.startDate && t.completionDate) {
-        const sp = t.startDate.split('-'), ep = t.completionDate.split('-');
-        if (sp.length === 3 && ep.length === 3) {
-          const s = new Date(+sp[0],+sp[1]-1,+sp[2]), e = new Date(+ep[0],+ep[1]-1,+ep[2]);
-          totalDays += Math.floor((e - s) / 86400000); cntDays++;
-        }
-      }
-    } else {
+    } else if (st === 'Em Andamento') {
       // Demandas em andamento por membro: só conta quando o status é
       // exatamente "Em Andamento" (não Backlog/A Fazer/Em Revisão)
-      if (st === 'Em Andamento') {
-        ids.forEach(id => { const m = state.members.find(x => String(x.id) === String(id)); if (m) mc[m.name]++; });
-      }
-
-      // Próximas entregas: tarefas em andamento (A Fazer, Em Andamento, Em
-      // Revisão), tenham ou não prazo. Backlog fica de fora e as sem data
-      // entram com date=null, indo para o fim da lista.
-      if (st !== 'Backlog') {
-        let d = null, diff = null;
-        if (t.deadline) {
-          const p = t.deadline.split('-');
-          if (p.length === 3) {
-            d = new Date(+p[0], +p[1]-1, +p[2]); d.setHours(0,0,0,0);
-            if (d < hoje) overdue++;
-            diff = Math.floor((d - hoje) / 86400000);
-          }
-        }
-        upcoming.push({ title: t.title, date: d, diff: diff, priority: t.priority, assignee: nomesMembros(ids) || 'Sem responsável', status: st });
-      }
+      ids.forEach(id => { const m = state.members.find(x => String(x.id) === String(id)); if (m) mc[m.name]++; });
     }
   });
 
-  // KPIs
-  const kpiEls = ['kpi-total','kpi-done','kpi-overdue'];
-  [total, done, overdue].forEach((v, i) => { const el = $id(kpiEls[i]); if (el) el.innerText = v; });
-  const elTime = $id('kpi-time');
-  if (elTime) elTime.innerText = cntDays > 0 ? Math.round(totalDays / cntDays) : '-';
-
   // Destroi gráficos anteriores
   [statusChartInst, priorityChartInst, memberChartInst, memberConcluidoChartInst].forEach(c => { if (c) c.destroy(); });
-
-  // Configuração base compartilhada
-  const tooltipBase = {
-    backgroundColor: '#1e293b', padding: 10, cornerRadius: 6,
-    titleFont: { size: 12, family: "'Inter',sans-serif" },
-    bodyFont:  { size: 11, family: "'Inter',sans-serif" },
-    titleColor: '#f8fafc', bodyColor: '#cbd5e1'
-  };
-  const legendBase = {
-    position: 'right',
-    labels: { usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 11, family: "'Inter',sans-serif" }, color: '#475569' }
-  };
-  const scalesBase = {
-    y: {
-      beginAtZero: true,
-      ticks: { precision: 0, font: { family: "'Inter',sans-serif", size: 11 }, color: '#94a3b8' },
-      grid: { color: '#f1f5f9' }, border: { display: false }
-    },
-    x: {
-      grid: { display: false }, border: { display: false },
-      ticks: { font: { family: "'Inter',sans-serif", size: 11, weight: '500' }, color: '#64748b', maxRotation: 30 }
-    }
-  };
 
   // Gráfico: Distribuição por Status
   const cS = $id('statusChart');
@@ -411,7 +353,7 @@ function renderDashboard() {
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
-      plugins: { legend: legendBase, tooltip: { ...tooltipBase, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } } }
+      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } } }
     }
   });
 
@@ -425,7 +367,7 @@ function renderDashboard() {
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
-      plugins: { legend: legendBase, tooltip: { ...tooltipBase, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } } }
+      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } } }
     }
   });
 
@@ -445,8 +387,8 @@ function renderDashboard() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...tooltipBase, callbacks: { label: ctx => ` ${ctx.parsed.y} em andamento` } } },
-      scales: scalesBase
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} em andamento` } } },
+      scales: CHART_SCALES_BASE
     }
   });
 
@@ -466,76 +408,18 @@ function renderDashboard() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...tooltipBase, callbacks: { label: ctx => ` ${ctx.parsed.y} concluída(s)` } } },
-      scales: scalesBase
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} concluída(s)` } } },
+      scales: CHART_SCALES_BASE
     }
   });
-
-  // Tabela: Próximas Entregas
-  const ul = $id('upcoming-list');
-  if (ul) {
-    if (!upcoming.length) {
-      ul.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Nenhuma entrega pendente.</td></tr>';
-    } else {
-      // Ordena por data (mais próxima primeiro); tarefas sem prazo vão para o fim
-      const ordenado = upcoming.sort((a, b) => {
-        if (a.date && b.date) return a.date - b.date;
-        if (a.date) return -1;
-        if (b.date) return 1;
-        return 0;
-      });
-      ul.innerHTML = ordenado.map(t => {
-        const semData  = !t.date;
-        const ds = semData ? '—' : t.date.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
-        const atrasada = !semData && t.diff < 0;
-        const urgente  = !semData && !atrasada && t.diff <= 3;
-        const urgClass = (atrasada || urgente) ? 'urgent-date' : '';
-        const labelData = atrasada ? `⚠ ${ds}` : (urgente ? `! ${ds}` : ds);
-        const prioColor = t.priority === 'Alta' ? '#ef4444' : t.priority === 'Media' ? '#f59e0b' : '#22c55e';
-        const pb = `<span class="tag-badge" style="background:${prioColor};">${esc(t.priority === 'Media' ? 'Média' : t.priority)}</span>`;
-        const rowStyle = atrasada ? 'background:#fff8f8;' : '';
-        const dataStyle = semData ? 'font-size:12px;color:#94a3b8;font-weight:500;' : 'font-size:12px;font-weight:700;';
-        return `<tr style="${rowStyle}">
-          <td style="font-weight:600;font-size:12px;">${esc(t.title)}</td>
-          <td style="font-size:11.5px;color:#475569;">${esc(t.assignee.split(',')[0])}</td>
-          <td>${pb}</td>
-          <td>${badge(t.status)}</td>
-          <td class="${urgClass}" style="${dataStyle}">${labelData}</td>
-        </tr>`;
-      }).join('');
-    }
-  }
 }
 
 // ---------- PDF ----------
-// Corpo do relatório do Dashboard — reaproveita os valores de KPI e a
-// tabela de "Próximas Entregas" já renderizados na tela; os 4 gráficos
-// viram imagem estática (Chart.js não existe fora do navegador).
-function montarHtmlDashboardPdf() {
-  const getTxt = id => { const el = $id(id); return el ? el.innerText : ''; };
-  const imgOf = canvasId => { try { const c = $id(canvasId); return c ? c.toDataURL('image/png') : ''; } catch(e) { return ''; } };
-
-  const kpiHtml = `<table style="margin-bottom:18px;"><tr>
-    ${_pdfKpiCell('Total de Cartões', getTxt('kpi-total'), '#2563eb')}
-    ${_pdfKpiCell('Concluídos', getTxt('kpi-done'), '#059669')}
-    ${_pdfKpiCell('Em Atraso', getTxt('kpi-overdue'), '#dc2626')}
-    ${_pdfKpiCell('Tempo Médio (dias)', getTxt('kpi-time'), '#7c3aed')}
-  </tr></table>`;
-
-  const graficoCel = (titulo, canvasId) => `<td style="border:none;width:50%;padding:8px;">
-    <span style="font-size:10px;font-weight:700;color:#64748b;">${esc(titulo)}</span><br>
-    <img src="${imgOf(canvasId)}" style="width:100%;max-width:340px;margin-top:4px;">
-  </td>`;
-
-  const graficosHtml =
-    `<table style="margin-bottom:14px;"><tr>${graficoCel('Distribuição por Status','statusChart')}${graficoCel('Distribuição por Prioridade','priorityChart')}</tr></table>` +
-    `<table style="margin-bottom:18px;"><tr>${graficoCel('Em Andamento por Membro','memberChart')}${graficoCel('Concluídas por Membro','memberConcluidoChart')}</tr></table>`;
-
-  const upcomingHtml = _pdfSecaoTitulo('Próximas Entregas e Prazos') +
-    `<table><thead><tr><th>Cartão</th><th>Responsável</th><th>Prioridade</th><th>Status</th><th>Prazo</th></tr></thead>
-    <tbody>${_tbodyParaPdf('upcoming-list')}</tbody></table>`;
-
-  return kpiHtml + graficosHtml + upcomingHtml;
+// Fragmento do relatório do Painel de Indicadores com os 4 gráficos do
+// Kanban (viram imagem estática, já que Chart.js não roda no servidor).
+function graficosKanbanPdfHtml() {
+  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Distribuição por Status','statusChart')}${_pdfGraficoCel('Distribuição por Prioridade','priorityChart')}</tr></table>` +
+    `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Em Andamento por Membro','memberChart')}${_pdfGraficoCel('Concluídas por Membro','memberConcluidoChart')}</tr></table>`;
 }
 
 // Corpo do relatório de Arquivados — reaproveita a tabela já renderizada,
@@ -557,11 +441,11 @@ function recarregarKanban(cb) {
   }).withFailureHandler(e => showAlerta('Falha ao sincronizar: ' + String(e))).getKanbanData();
 }
 
-// Recarrega Unidades/Documentos/Riscos/Planos/Entregas (usado após ações do SGQ)
+// Recarrega Unidades/Documentos/Riscos/Planos/Entregas/Capacitações (usado após ações do SGQ)
 function recarregarResto(cb) {
   google.script.run.withSuccessHandler(resto => {
     state.units = resto.units; state.docs = resto.docs; state.risks = resto.risks;
-    state.plans = resto.plans; state.deliveries = resto.deliveries;
+    state.plans = resto.plans; state.deliveries = resto.deliveries; state.trainings = resto.trainings;
     sincronizarSelectsUnidade();
     restoDataLoaded = true;
     if (cb) cb();

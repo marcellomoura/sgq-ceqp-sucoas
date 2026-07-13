@@ -10,6 +10,7 @@ const SHEET_PLANS    = 'Planos_Acao';
 const SHEET_DELIVERY = 'Entregas_Acoes';
 const SHEET_LOGS     = 'Logs';
 const SHEET_AFASTAMENTOS = 'Afastamentos';
+const SHEET_CAPACITACOES = 'Capacitações';
 
 // Layouts de colunas usados em vários pontos (setup, leitura e escrita).
 // Uma única fonte de verdade evita que uma migração futura esqueça algum lugar.
@@ -25,6 +26,7 @@ const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequên
 const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status'];
 const CABECALHOS_ENTREGAS = ['Risco Vinculado','Unidade','Status','Data Entrega','SEI'];
 const CABECALHOS_LOGS     = ['Data/Hora','Usuário','Ação','Referência','Detalhes'];
+const CABECALHOS_CAPACITACOES = ['ID', 'Título da Capacitação', 'Tema', 'Público-alvo', 'Modalidade', 'Data Prevista', 'Data Realizada', 'Status', 'Materiais', 'Participantes'];
 
 // Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
 // (a mesma fonte única usada no setup da planilha). Elimina os índices
@@ -43,6 +45,9 @@ function colIdx_(cabecalhos) {
 }
 
 function doGet() {
+  if (!isMembro_()) {
+    return HtmlService.createHtmlOutput('<div style="font-family:sans-serif;padding:2rem;text-align:center;color:#333;"><h2>Acesso Negado</h2><p>Você não possui acesso a este sistema.</p></div>');
+  }
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('SGQ · CEQP')
@@ -63,9 +68,25 @@ function comBloqueio(operacao) {
   try { return operacao(); } finally { lock.releaseLock(); }
 }
 
+function safeGetSheet(ss, sheetName) {
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    const normalize = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const target = normalize(sheetName);
+    sheet = ss.getSheets().find(s => normalize(s.getName()) === target);
+    if (sheet) sheet.setName(sheetName); // Padroniza o nome
+  }
+  return sheet;
+}
+
+function safeGetSheetData(ss, sheetName) {
+  const sheet = safeGetSheet(ss, sheetName);
+  return sheet ? sheet.getDataRange().getValues() : [];
+}
+
 function conectarAba(nome, cabecalhos) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let aba = ss.getSheetByName(nome);
+  let aba = safeGetSheet(ss, nome);
   if (!aba && cabecalhos) {
     aba = ss.insertSheet(nome);
     aba.appendRow(cabecalhos);
@@ -113,20 +134,71 @@ function usuarioAtual_() {
 // Nome amigável do usuário ativo para carimbar em atividades: procura o e-mail
 // (funcional ou pessoal) entre os membros cadastrados e devolve o Nome. Se não
 // achar, devolve o próprio e-mail; sem e-mail disponível, 'Sistema'.
-function nomeUsuarioAtual_() {
-  const email = usuarioAtual_();
-  if (!email || email === 'Sistema') return 'Sistema';
+// Lista compacta de membros para autenticação, em cache COMPARTILHADO
+// (ScriptCache): [ [emailFuncional, emailPessoal, nome], ... ].
+// isMembro_/nomeUsuarioAtual_ rodam no início de PRATICAMENTE TODA chamada ao
+// servidor; sem cache, cada uma relia a aba Membros inteira — um dos maiores
+// gargalos de carregamento. O cache é compartilhado entre todos os usuários
+// (memcache, leitura muito mais barata que a planilha) e é invalidado na hora
+// por invalidarCacheMembros_() sempre que um membro é criado/editado/removido —
+// então um membro novo passa a ter acesso imediatamente, sem esperar o TTL.
+function membrosParaAuth_() {
+  let cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (e) {}
+  if (cache) {
+    const bruto = cache.get('membros_auth');
+    if (bruto) { try { return JSON.parse(bruto); } catch (e) {} }
+  }
+  const lista = [];
   try {
     const C = colIdx_(CABECALHOS_MEMBROS);
     const mData = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS).getDataRange().getValues();
-    const alvo = email.trim().toLowerCase();
     for (let i = 1; i < mData.length; i++) {
-      const ef = String(mData[i][C('Email Funcional')] || '').trim().toLowerCase();
-      const ep = String(mData[i][C('E-mail Pessoal')] || '').trim().toLowerCase();
-      if (alvo && (alvo === ef || alvo === ep)) return String(mData[i][C('Nome')] || email);
+      lista.push([
+        String(mData[i][C('Email Funcional')] || '').trim().toLowerCase(),
+        String(mData[i][C('E-mail Pessoal')] || '').trim().toLowerCase(),
+        String(mData[i][C('Nome')] || '')
+      ]);
     }
   } catch (e) {}
+  // Só cacheia listas NÃO vazias: uma lista vazia quase sempre significa
+  // leitura falha (erro transitório do Sheets) ou aba ainda não populada.
+  // Cachear [] por 6h travaria TODO o sistema — isMembro_ retornaria false
+  // para todos, e nem saveMember (também protegido por isMembro_) conseguiria
+  // invalidar. Sem cache, a próxima chamada relê e se auto-recupera.
+  if (cache && lista.length > 0) { try { cache.put('membros_auth', JSON.stringify(lista), 21600); } catch (e) {} }
+  return lista;
+}
+
+// Remove o cache compartilhado de membros. Chamada após qualquer escrita na
+// aba Membros (saveMember/deleteMember) para que membership e nomes fiquem
+// atualizados na hora, sem esperar o TTL de 6h.
+function invalidarCacheMembros_() {
+  try { CacheService.getScriptCache().remove('membros_auth'); } catch (e) {}
+}
+
+function nomeUsuarioAtual_() {
+  const email = usuarioAtual_();
+  if (!email || email === 'Sistema') return 'Sistema';
+  const alvo = email.trim().toLowerCase();
+  const lista = membrosParaAuth_();
+  for (let i = 0; i < lista.length; i++) {
+    if (alvo && (alvo === lista[i][0] || alvo === lista[i][1])) return lista[i][2] || email;
+  }
   return email;
+}
+
+// Verifica se o usuário atual é um membro cadastrado (usado para autorização e bloqueio)
+function isMembro_() {
+  const email = usuarioAtual_();
+  // Se for uma chamada anônima ou não identificável, bloqueia o acesso
+  if (!email || email === 'Sistema') return false;
+  const alvo = email.trim().toLowerCase();
+  const lista = membrosParaAuth_();
+  for (let i = 0; i < lista.length; i++) {
+    if (alvo && (alvo === lista[i][0] || alvo === lista[i][1])) return true;
+  }
+  return false;
 }
 
 // Converte datas vindas da planilha para 'yyyy-MM-dd'; strings passam
@@ -174,6 +246,12 @@ function registrarLog(acao, ref, detalhe) {
 }
 
 function setupDatabaseKanban() {
+  if (!isMembro_()) return; // não-membros não disparam setup/migração (proteção contra chamada direta via F12)
+  // O setup só cria abas faltantes e roda migrações idempotentes — não
+  // precisa executar em TODA carga do Kanban. Sem esta guarda, cada abertura
+  // do sistema pagava ~5 round-trips à planilha (getSheetByName/getLastColumn/
+  // leitura de cabeçalho/migração). Roda no máximo 1x a cada 6h por deploy.
+  try { if (CacheService.getScriptCache().get('setup_kanban_ok')) return; } catch (e) {}
   conectarAba(SHEET_TASKS, CABECALHOS_TAREFAS);
   const abaMembros = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
   // Corrige o texto do cabeçalho apenas se estiver divergente — evita uma
@@ -184,6 +262,7 @@ function setupDatabaseKanban() {
       .setValues([CABECALHOS_MEMBROS]).setFontWeight('bold').setBackground('#f1f5f9');
   }
   migrarEmailPessoalMembros_(abaMembros);
+  try { CacheService.getScriptCache().put('setup_kanban_ok', '1', 21600); } catch (e) {}
 }
 
 // Migração única e segura: versões antigas do saveMember gravavam o e-mail
@@ -218,6 +297,11 @@ function migrarEmailPessoalMembros_(abaMembros) {
 }
 
 function setupDatabaseResto() {
+  if (!isMembro_()) return; // idem: bloqueia disparo direto por não-membro
+  // Mesma lógica de setupDatabaseKanban: conectar 7 abas + migração de
+  // Documentos custava ~8 round-trips à planilha em TODA primeira visita a
+  // uma aba do SGQ. Roda no máximo 1x a cada 6h; os dados seguem lidos frescos.
+  try { if (CacheService.getScriptCache().get('setup_resto_ok')) return; } catch (e) {}
   conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
   migrarRemoverCarimboDocumentos();
   conectarAba(SHEET_DOCS,     CABECALHOS_DOCS);
@@ -225,6 +309,8 @@ function setupDatabaseResto() {
   conectarAba(SHEET_PLANS,    CABECALHOS_PLANOS);
   conectarAba(SHEET_DELIVERY, CABECALHOS_ENTREGAS);
   conectarAba(SHEET_LOGS,     CABECALHOS_LOGS);
+  conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
+  try { CacheService.getScriptCache().put('setup_resto_ok', '1', 21600); } catch (e) {}
 }
 
 // Migração única e segura: se a aba Documentos já existir de uma versão
@@ -233,6 +319,7 @@ function setupDatabaseResto() {
 // nenhum dado) para o layout novo, sem essa coluna, ficar consistente
 // com os documentos que já estavam cadastrados.
 function migrarRemoverCarimboDocumentos() {
+  if (!isMembro_()) return; // migração só roda para membro autenticado
   try {
     const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DOCS);
     if (!aba || aba.getLastColumn() < 1) return; // aba ainda não existe — nada a migrar
@@ -257,6 +344,7 @@ function migrarRemoverCarimboDocumentos() {
 const DIAS_PARA_ARQUIVAR = 15;
 
 function getKanbanData() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
   setupDatabaseKanban();
   const sheet = conectarAba(SHEET_TASKS);
   const tData = sheet.getDataRange().getValues();
@@ -343,19 +431,20 @@ function getKanbanData_members_() {
 }
 
 function getRestoData() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
   setupDatabaseResto();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   // --- Unidades (usadas por Documentos, Riscos e Entregas) ---
   const CU = colIdx_(CABECALHOS_UNIDADES);
-  const uData = ss.getSheetByName(SHEET_UNITS).getDataRange().getValues();
+  const uData = safeGetSheetData(ss, SHEET_UNITS);
   const units = uData.length > 1 ? uData.slice(1).map((r, i) => ({
     idRow: i + 2, id: String(r[CU('ID Unidade')] || ''), unidade: String(r[CU('Nome da Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('E-mail Funcional')] || ''), linkDrive: String(r[CU('Link do Drive')] || '')
   })) : [];
 
   // --- Documentos ---
   const CD = colIdx_(CABECALHOS_DOCS);
-  const dData = ss.getSheetByName(SHEET_DOCS).getDataRange().getValues();
+  const dData = safeGetSheetData(ss, SHEET_DOCS);
   const hoje  = new Date(); hoje.setHours(0,0,0,0);
   const docs  = dData.length > 1 ? dData.slice(1).map((r, i) => {
     const statusOrig = String(r[CD('Status')] || 'Vigente').trim();
@@ -393,8 +482,8 @@ function getRestoData() {
   // --- Riscos ---
   const CR = colIdx_(CABECALHOS_RISCOS);
   const CP = colIdx_(CABECALHOS_PLANOS);
-  const rData = ss.getSheetByName(SHEET_RISKS).getDataRange().getValues();
-  const pData = ss.getSheetByName(SHEET_PLANS).getDataRange().getValues();
+  const rData = safeGetSheetData(ss, SHEET_RISKS);
+  const pData = safeGetSheetData(ss, SHEET_PLANS);
   const planosRows = pData.length > 1 ? pData.slice(1) : [];
   const risks = rData.length > 1 ? rData.slice(1)
     .map((r, i) => {
@@ -428,7 +517,7 @@ function getRestoData() {
 
   // --- Entregas ---
   const CE = colIdx_(CABECALHOS_ENTREGAS);
-  const eData = ss.getSheetByName(SHEET_DELIVERY).getDataRange().getValues();
+  const eData = safeGetSheetData(ss, SHEET_DELIVERY);
   const deliveries = eData.length > 1 ? eData.slice(1)
     .map(r => ({
       riscoVinculado: String(r[CE('Risco Vinculado')]||''), unidade: String(r[CE('Unidade')]||''),
@@ -436,7 +525,90 @@ function getRestoData() {
       processoSei: String(r[CE('SEI')]||'')
     })) : [];
 
-  return { units: units, docs: docs, risks: risks, plans: plans, deliveries: deliveries };
+  // --- Capacitações ---
+  const CCAP = colIdx_(CABECALHOS_CAPACITACOES);
+  const capData = safeGetSheetData(ss, SHEET_CAPACITACOES);
+  const trainings = capData.length > 1 ? capData.slice(1)
+    .map((r, i) => ({
+      idRow: i + 2,
+      id: String(r[CCAP('ID')]||''),
+      titulo: String(r[CCAP('Título da Capacitação')]||''),
+      tema: String(r[CCAP('Tema')]||''),
+      publico: String(r[CCAP('Público-alvo')]||''),
+      modalidade: String(r[CCAP('Modalidade')]||''),
+      dataPrevista: formatarDataParaUI(r[CCAP('Data Prevista')]),
+      dataPrevistaRaw: r[CCAP('Data Prevista')] instanceof Date ? r[CCAP('Data Prevista')].getTime() : null,
+      dataRealizada: formatarDataParaUI(r[CCAP('Data Realizada')]),
+      status: String(r[CCAP('Status')]||'Planejada'),
+      materiais: String(r[CCAP('Materiais')]||''),
+      participantes: String(r[CCAP('Participantes')]||'')
+    })) : [];
+
+  return { units: units, docs: docs, risks: risks, plans: plans, deliveries: deliveries, trainings: trainings };
+}
+
+function getCapacitacoesData() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const CCAP = colIdx_(CABECALHOS_CAPACITACOES);
+  const capData = safeGetSheetData(ss, SHEET_CAPACITACOES);
+  return capData.length > 1 ? capData.slice(1).map((r, i) => ({
+    idRow: i + 2,
+    id: String(r[CCAP('ID')]||''),
+    titulo: String(r[CCAP('Título da Capacitação')]||''),
+    tema: String(r[CCAP('Tema')]||''),
+    publico: String(r[CCAP('Público-alvo')]||''),
+    modalidade: String(r[CCAP('Modalidade')]||''),
+    dataPrevista: formatarDataParaUI(r[CCAP('Data Prevista')]),
+    dataPrevistaRaw: r[CCAP('Data Prevista')] instanceof Date ? r[CCAP('Data Prevista')].getTime() : null,
+    dataRealizada: formatarDataParaUI(r[CCAP('Data Realizada')]),
+    status: String(r[CCAP('Status')]||'Planejada'),
+    materiais: String(r[CCAP('Materiais')]||''),
+    // Incluído para casar com o shape de getRestoData(): sem este campo,
+    // recarregarCapacitacoes() (após salvar/editar/excluir) zerava a coluna
+    // Participantes na UI até um reload completo.
+    participantes: String(r[CCAP('Participantes')]||'')
+  })) : [];
+}
+
+// Migração única: remove colunas Código e Última Atualização da aba de
+// Capacitações preservando todos os dados. Executar uma vez pelo editor do
+// Apps Script após o deploy e depois pode apagar esta função.
+function migrarCapacitacoes() {
+  if (!isMembro_()) return 'Acesso Negado.'; // migração manual: exige membro autenticado
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = safeGetSheet(ss, SHEET_CAPACITACOES);
+  if (!aba) return 'Aba Capacitações não encontrada.';
+
+  const dados = aba.getDataRange().getValues();
+  if (dados.length < 1) return 'Aba vazia, nada para migrar.';
+
+  const cab = dados[0].map(String);
+  const idx = n => cab.indexOf(n);
+
+  const novosDados = dados.slice(1).map(r => [
+    r[idx('ID')],
+    r[idx('Título da Capacitação')],
+    r[idx('Tema')],
+    r[idx('Público-alvo')],
+    r[idx('Modalidade')],
+    r[idx('Data Prevista')],
+    r[idx('Data Realizada')],
+    r[idx('Status')],
+    r[idx('Materiais')]
+  ]);
+
+  aba.clearContents();
+  aba.getRange(1, 1, 1, CABECALHOS_CAPACITACOES.length)
+    .setValues([CABECALHOS_CAPACITACOES])
+    .setFontWeight('bold').setBackground('#f1f5f9');
+  aba.setFrozenRows(1);
+
+  if (novosDados.length > 0) {
+    aba.getRange(2, 1, novosDados.length, CABECALHOS_CAPACITACOES.length).setValues(novosDados);
+  }
+
+  return 'Migração concluída: ' + novosDados.length + ' registros reorganizados.';
 }
 
 // ==========================================
@@ -447,6 +619,7 @@ function getRestoData() {
 // Retorna só os N registros mais recentes para não pesar com o tempo.
 // ==========================================
 function buscarLogs(filtros) {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
   const LIMITE_REGISTROS = 30;
   filtros = filtros || {};
   const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
@@ -511,6 +684,7 @@ function buscarLogs(filtros) {
 // via html2canvas causava.
 // ==========================================
 function gerarPdfDeHtml(htmlContent, nomeArquivo) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     const blob = Utilities.newBlob(htmlContent, MimeType.HTML, 'relatorio.html');
     const pdf = blob.getAs(MimeType.PDF).setName(nomeArquivo);
@@ -519,6 +693,7 @@ function gerarPdfDeHtml(htmlContent, nomeArquivo) {
 }
 
 function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     if (!destinatario || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario.trim()))
       return { sucesso: false, mensagem: 'E-mail do destinatário inválido.' };

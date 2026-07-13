@@ -49,13 +49,22 @@
       <div class="nav-group-items" id="g-tarefas">
         <button class="menu-item" data-tab="kanban"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg></span>Quadro Kanban</button>
         <button class="menu-item" data-tab="archived"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg></span>Arquivados</button>
-        <button class="menu-item" data-tab="dashboard"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="7" width="4" height="13" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg></span>Dashboard</button>
+      </div>
+
+      <!-- Módulo 6: Capacitações -->
+      <button class="nav-group-title" data-group="g-capacitacoes">
+        <span class="nav-group-icon"><svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>
+        <span class="nav-group-label">Gestão de Capacitações</span>
+        <span class="arrow">▼</span>
+      </button>
+      <div class="nav-group-items" id="g-capacitacoes">
+        <button class="menu-item" data-tab="capacitacoes-lista"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>Capacitações</button>
       </div>
 
       <!-- Módulo 2: Unidades -->
       <button class="nav-group-title" data-group="g-unidades">
         <span class="nav-group-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
-        <span class="nav-group-label">Unidades</span>
+        <span class="nav-group-label">Gestão de Unidades</span>
         <span class="arrow">▼</span>
       </button>
       <div class="nav-group-items" id="g-unidades">
@@ -91,6 +100,7 @@
         <span class="arrow">▼</span>
       </button>
       <div class="nav-group-items" id="g-auditoria">
+        <button class="menu-item" data-tab="indicadores"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="7" width="4" height="13" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg></span>Painel de Indicadores</button>
         <button class="menu-item" data-tab="logs"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>Atividades</button>
       </div>
     </nav>
@@ -133,7 +143,7 @@
         <select id="f-ferias-membro" class="hdr-select"><option value="">Todos os membros</option></select>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-dashboard">
+      <div class="hdr-tab-controls" id="hdr-indicadores">
         <label>Filtrar por Membro:</label>
         <select id="dashMemberFilter" class="hdr-select"><option value="">Todos</option></select>
         <button class="btn-pdf" id="btn-download-pdf" type="button">
@@ -224,6 +234,12 @@
         <label>Buscar:</label>
         <input type="text" id="f-log-busca" class="hdr-input" style="width:170px;" placeholder="Referência ou detalhes...">
       </div>
+
+      <div class="hdr-tab-controls" id="hdr-capacitacoes-lista">
+        <button class="btn primary" id="btn-nova-capacitacao" type="button">+ Nova Capacitação</button>
+      </div>
+      
+
     </header>
 
     <!-- ======================== MÓDULO 1: KANBAN ======================== -->
@@ -331,20 +347,14 @@
       </div>
     </section>
 
-    <!-- ======================== MÓDULO 1: DASHBOARD ======================== -->
-    <section id="view-dashboard" class="view-section print-target">
-      <div class="pdf-header" id="pdf-header-dashboard">
+    <!-- ======================== MÓDULO 5: PAINEL DE INDICADORES ======================== -->
+    <section id="view-indicadores" class="view-section print-target">
+      <div class="pdf-header" id="pdf-header-indicadores">
         <h1>Sistema de Gestão da Qualidade</h1>
         <div class="pdf-sub">Comissão Especial de Qualidade e Padronização · CEQP | SUCOAS - SES/DF</div>
-        <h2>Dashboard de Indicadores</h2>
+        <h2>Painel de Indicadores</h2>
       </div>
 
-      <div class="kpi-grid" id="dash-kpis">
-        <div class="kpi-card"><div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg></div><div><div class="kpi-label">Total de Cartões</div><div class="kpi-value" id="kpi-total">0</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon icon-green"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="kpi-label">Concluídos</div><div class="kpi-value" id="kpi-done">0</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon icon-red"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div><div class="kpi-label">Em Atraso</div><div class="kpi-value" id="kpi-overdue">0</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon icon-purple"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="kpi-label">Tempo Médio (dias)</div><div class="kpi-value" id="kpi-time">-</div></div></div>
-      </div>
       <div class="dashboard-grid">
         <div class="dash-row two-cols">
           <div class="chart-box"><h3>Distribuição por Status</h3><div class="chart-wrap"><canvas id="statusChart"></canvas></div></div>
@@ -355,15 +365,11 @@
           <div class="chart-box"><h3>Concluídas por Membro</h3><div class="chart-wrap" style="height:230px;"><canvas id="memberConcluidoChart"></canvas></div></div>
         </div>
         <div class="dash-row one-col">
-          <div class="chart-box">
-            <h3>Próximas Entregas e Prazos</h3>
-            <div class="upcoming-wrap" style="max-height:none;">
-              <table class="upcoming-table" style="width:100%;">
-                <thead><tr><th>Cartão</th><th>Responsável</th><th>Prioridade</th><th>Status</th><th>Prazo</th></tr></thead>
-                <tbody id="upcoming-list"></tbody>
-              </table>
-            </div>
-          </div>
+          <div class="chart-box"><h3>Capacitações por Mês</h3><div class="chart-wrap" style="height:230px;"><canvas id="capMesChart"></canvas></div></div>
+        </div>
+        <div class="dash-row two-cols">
+          <div class="chart-box"><h3>Capacitações por Modalidade</h3><div class="chart-wrap"><canvas id="capModalidadeChart"></canvas></div></div>
+          <div class="chart-box"><h3>Capacitações por Membro</h3><div class="chart-wrap" style="height:230px;"><canvas id="capMembroChart"></canvas></div></div>
         </div>
       </div>
     </section>
@@ -474,6 +480,23 @@
         <button id="btn-load-more-logs" class="btn secondary" style="display:none; margin:0 auto;">Carregar mais</button>
       </div>
     </section>
+
+    <!-- ======================== MÓDULO 6: CAPACITAÇÕES ======================== -->
+    <section id="view-capacitacoes-lista" class="view-section">
+      <div class="kpi-grid" id="dash-kpis-capacitacoes" style="margin-bottom:16px;">
+        <div class="kpi-card" style="border-top:3px solid #2563eb;"><div class="kpi-icon icon-blue">📚</div><div><div class="kpi-label">Total</div><div class="kpi-value" id="kpi-cap-total" style="color:#2563eb;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #eab308;"><div class="kpi-icon icon-yellow">⏳</div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-cap-andamento" style="color:#eab308;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #059669;"><div class="kpi-icon icon-green">✅</div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="kpi-cap-concluidas" style="color:#059669;">0</div></div></div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th style="width:230px;">Título da Capacitação</th><th style="width:130px;">Tema</th><th style="width:110px;">Público-alvo</th><th style="width:100px;">Modalidade</th><th style="width:95px;">Data Prevista</th><th style="width:95px;">Data Realizada</th><th style="width:95px;">Status</th><th style="width:160px;">Participantes</th><th style="width:70px; text-align:center;">Materiais</th><th style="width:80px; text-align:center;">Ações</th></tr></thead>
+          <tbody id="lista-capacitacoes"><tr><td colspan="10" class="msg-empty">A carregar...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+
 
   </div><!-- /main-content -->
 </div><!-- /app-layout -->
@@ -918,11 +941,79 @@
   </div>
 </div>
 
+<!-- Modal: Nova Capacitação -->
+<div id="modal-capacitacao" class="modal-overlay">
+  <div class="modal-box" style="max-width:580px;">
+    <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-capacitacao" aria-label="Fechar">&times;</button></div>
+    <h3 class="modal-title" id="modal-capacitacao-title">Nova Capacitação</h3>
+    <input type="hidden" id="cap-idrow">
+    
+    <label class="field-label" for="cap-titulo">Título da Capacitação</label>
+    <input type="text" id="cap-titulo" class="field-input" placeholder="Ex: Treinamento sobre Processos">
+    
+    <div class="form-row">
+      <div style="flex:1;">
+        <label class="field-label" for="cap-tema">Tema</label>
+        <select id="cap-tema" class="field-select">
+          <option value="" disabled selected>Selecione...</option>
+          <option>Liderança</option>
+          <option>Gestão da Qualidade</option>
+          <option>Tecnologia e Ferramentas</option>
+          <option>Legislação e Normas</option>
+          <option>Comportamental</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div style="flex:1;">
+        <label class="field-label" for="cap-modalidade">Modalidade</label>
+        <select id="cap-modalidade" class="field-select">
+          <option value="" disabled selected>Selecione...</option>
+          <option>Presencial</option>
+          <option>Online (Ao Vivo)</option>
+          <option>Online (Gravado)</option>
+          <option>Híbrido</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div style="flex:1;">
+        <label class="field-label" for="cap-publico">Público-alvo</label>
+        <input type="text" id="cap-publico" class="field-input" placeholder="Ex: Todos, Gestores, etc.">
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div style="flex:1;"><label class="field-label" for="cap-data-prevista">Data Prevista</label><input type="date" id="cap-data-prevista" class="field-input"></div>
+      <div style="flex:1;"><label class="field-label" for="cap-data-realizada">Data Realizada</label><input type="date" id="cap-data-realizada" class="field-input"></div>
+    </div>
+    
+    <label class="field-label">Participantes</label>
+    <div class="custom-select-wrapper" style="position:relative;">
+      <div id="cap-participantes-trigger" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13.5px; background:#f8fafc; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:space-between; user-select:none; box-sizing:border-box; transition:border-color 0.15s;">
+        <span id="cap-participantes-label" style="color:#94a3b8;">Selecionar participantes...</span>
+        <span style="font-size:9px; color:#94a3b8; pointer-events:none;">▼</span>
+      </div>
+      <div id="cap-participantes-options" class="custom-select-options"></div>
+    </div>
+    <div class="selected-tags" id="cap-participantes-tags" style="margin-top:6px;"></div>
+
+    <label class="field-label" for="cap-materiais" style="margin-top:8px;">Materiais (Link)</label>
+    <input type="text" id="cap-materiais" class="field-input" placeholder="Link para apresentação, vídeo, pasta no Drive, etc.">
+    
+    <div class="modal-footer">
+      <button class="btn secondary" data-close="modal-capacitacao">Cancelar</button>
+      <button class="btn primary" id="btn-salvar-capacitacao">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <?!= include('JS_Utilitarios'); ?>
 <?!= include('JS_Kanban'); ?>
 <?!= include('JS_Unidades'); ?>
 <?!= include('JS_Documentos'); ?>
 <?!= include('JS_Riscos'); ?>
 <?!= include('JS_Pessoas'); ?>
+<?!= include('JS_Capacitacoes'); ?>
 </body>
 </html>

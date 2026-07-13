@@ -5,6 +5,7 @@
 // ==========================================
 
 function salvarEscala(dados) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
@@ -38,6 +39,7 @@ function salvarEscala(dados) {
 // o ano) — a tela troca de ano só filtrando quais linhas exibir/editar.
 
 function getAfastamentos() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
   try {
     const aba = conectarAba(SHEET_AFASTAMENTOS, CABECALHOS_AFASTAMENTOS);
     const CA = colIdx_(CABECALHOS_AFASTAMENTOS);
@@ -103,6 +105,7 @@ function getAfastamentos() {
 // Grava (ou atualiza, se já existir) o registro do membro para o ano
 // informado. Nunca mexe nos registros de outros anos do mesmo membro.
 function salvarAfastamento(dados) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     if (!dados.membroId || !dados.ano)
       return { sucesso: false, mensagem: 'Membro e ano são obrigatórios.' };

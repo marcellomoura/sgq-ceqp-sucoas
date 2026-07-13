@@ -1,0 +1,313 @@
+<script>
+// ==========================================
+// MÓDULO 6 — GESTÃO DE CAPACITAÇÕES
+// ==========================================
+
+function renderCapacitacoes() {
+  const tbody = $id('lista-capacitacoes');
+  const caps  = Array.isArray(state.trainings) ? state.trainings : [];
+
+  if (!caps.length) {
+    tbody.innerHTML = '<tr><td colspan="10" class="msg-empty">Nenhuma capacitação cadastrada.</td></tr>';
+    return;
+  }
+
+  const ordenadas = caps.map((c, i) => ({ c, i })).sort((a, b) => b.c.idRow - a.c.idRow);
+  const fmtData   = s => (s && s !== '-') ? s.split('-').reverse().join('/') : '-';
+
+  tbody.innerHTML = ordenadas.map(({c, i}) => {
+    const status = c.dataRealizada ? 'Concluída'
+                 : c.dataPrevista  ? 'Em Andamento'
+                 : 'Planejada';
+
+    let statusColor, statusBg;
+    if (status === 'Concluída')         { statusColor = '#059669'; statusBg = '#d1fae5'; }
+    else if (status === 'Em Andamento') { statusColor = '#7c3aed'; statusBg = '#ede9fe'; }
+    else                                { statusColor = '#d97706'; statusBg = '#fef3c7'; }
+
+    const materiaisLink = c.materiais
+      ? `<a href="${c.materiais.startsWith('http') ? esc(c.materiais) : 'https://' + esc(c.materiais)}" target="_blank" style="color:#2563eb; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
+      : '<span style="color:#cbd5e1;">-</span>';
+
+    const nomes = c.participantes ? nomesMembros(parseIdsResponsaveis(c.participantes)) : '';
+
+    return `<tr>
+      <td style="font-weight:500;">${esc(c.titulo)}</td>
+      <td style="font-size:12px;">${esc(c.tema || '-')}</td>
+      <td style="color:#475569; font-size:12.5px;">${esc(c.publico || '-')}</td>
+      <td style="font-size:12px;">${esc(c.modalidade || '-')}</td>
+      <td style="color:#64748b;">${fmtData(c.dataPrevista)}</td>
+      <td style="color:#64748b;">${fmtData(c.dataRealizada)}</td>
+      <td><span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; background:${statusBg}; color:${statusColor};">${status}</span></td>
+      <td style="font-size:11.5px; color:#475569;">${esc(nomes || '-')}</td>
+      <td style="text-align:center;">${materiaisLink}</td>
+      <td><div class="cell-actions" style="justify-content:center;">
+        ${iconBtn('edit','edit-capacitacao','Editar',`data-idx="${i}"`)}
+        ${iconBtn('del','del-capacitacao','Excluir',`data-idx="${i}"`)}
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ------------------------------------------
+// SELETOR DE PARTICIPANTES
+// ------------------------------------------
+function populateCapParticipantes(selectedIds = []) {
+  const c = $id('cap-participantes-options');
+  if (!c) return;
+  const membros = membrosOrdenados();
+  if (!membros.length) {
+    c.innerHTML = '<div style="font-size:12px;color:#64748b;padding:8px;">Nenhum membro cadastrado.</div>';
+  } else {
+    c.innerHTML = membros.map(m =>
+      `<label class="checkbox-label"><input type="checkbox" value="${esc(String(m.id))}" ${selectedIds.includes(String(m.id)) ? 'checked' : ''}> ${esc(m.name)}</label>`
+    ).join('');
+    c.querySelectorAll('input').forEach(i => i.addEventListener('change', atualizarTagsCapParticipantes));
+  }
+  atualizarTagsCapParticipantes();
+}
+
+function atualizarTagsCapParticipantes() {
+  const opts = $id('cap-participantes-options');
+  const tags = $id('cap-participantes-tags');
+  if (!opts || !tags) return;
+  const checked = Array.from(opts.querySelectorAll('input:checked'));
+  tags.innerHTML = checked.map(ch => {
+    const m = state.members.find(x => String(x.id) === ch.value);
+    return m ? `<span class="assignee-tag">${esc(m.name)}</span>` : '';
+  }).join('');
+}
+
+function getIdsParticipantesSelecionados() {
+  const opts = $id('cap-participantes-options');
+  if (!opts) return '[]';
+  return JSON.stringify(Array.from(opts.querySelectorAll('input:checked')).map(i => i.value));
+}
+
+// ------------------------------------------
+// KPIs DE CAPACITAÇÕES (aba "Capacitações")
+// ------------------------------------------
+function renderKpisCapacitacoes() {
+  const caps = Array.isArray(state.trainings) ? state.trainings : [];
+  let andamento = 0, concluidas = 0;
+
+  caps.forEach(c => {
+    const status = c.dataRealizada ? 'Concluída'
+                 : c.dataPrevista  ? 'Em Andamento'
+                 : 'Planejada';
+    if (status === 'Em Andamento') andamento++;
+    else if (status === 'Concluída') concluidas++;
+  });
+
+  $id('kpi-cap-total').innerText      = caps.length;
+  $id('kpi-cap-andamento').innerText  = andamento;
+  $id('kpi-cap-concluidas').innerText = concluidas;
+}
+
+// ------------------------------------------
+// PAINEL DE INDICADORES: gráficos de Capacitações
+// Recebe o id de membro do filtro geral do Painel de Indicadores (fid) —
+// quando definido, só entram capacitações em que esse membro participou.
+// ------------------------------------------
+function renderGraficosCapacitacoes(fid) {
+  let caps = Array.isArray(state.trainings) ? state.trainings : [];
+  if (fid) {
+    caps = caps.filter(c => c.participantes && parseIdsResponsaveis(c.participantes).includes(String(fid)));
+  }
+
+  let pMes = {}, pModalidade = {}, pMembro = {};
+
+  caps.forEach(c => {
+    // Mês — datas em YYYY-MM-DD
+    const dataRef = c.dataRealizada || c.dataPrevista;
+    if (dataRef) {
+      const p = dataRef.split('-');
+      if (p.length === 3) {
+        const mesAno = p[1] + '/' + p[0]; // MM/YYYY
+        pMes[mesAno] = (pMes[mesAno] || 0) + 1;
+      }
+    }
+
+    // Modalidade
+    const mod = c.modalidade || 'Não Definida';
+    pModalidade[mod] = (pModalidade[mod] || 0) + 1;
+
+    // Participantes → contar capacitações por membro
+    if (c.participantes) {
+      parseIdsResponsaveis(c.participantes).forEach(id => {
+        const m = state.members.find(x => String(x.id) === String(id));
+        const nome = m ? m.name : 'ID:' + id;
+        pMembro[nome] = (pMembro[nome] || 0) + 1;
+      });
+    }
+  });
+
+  [capMesChartInst, capModalidadeChartInst, capMembroChartInst].forEach(c => { if (c) c.destroy(); });
+
+  // Gráfico: Capacitações por Mês (chaves ordenadas cronologicamente, formato MM/YYYY)
+  const chavesMes = Object.keys(pMes).sort((a, b) => {
+    const [ma, ya] = a.split('/'), [mb, yb] = b.split('/');
+    return (ya + ma).localeCompare(yb + mb);
+  });
+  const cMes = $id('capMesChart');
+  if (cMes) capMesChartInst = new Chart(cMes.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: chavesMes,
+      datasets: [{
+        label: 'Capacitações',
+        data: chavesMes.map(k => pMes[k]),
+        backgroundColor: 'rgba(14,165,233,0.85)', borderColor: '#0284c7',
+        borderWidth: 1, borderRadius: 5, borderSkipped: false, maxBarThickness: 42
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } } },
+      scales: CHART_SCALES_BASE
+    }
+  });
+
+  // Gráfico: Capacitações por Modalidade
+  const cMod = $id('capModalidadeChart');
+  if (cMod) capModalidadeChartInst = new Chart(cMod.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(pModalidade),
+      datasets: [{ data: Object.values(pModalidade), backgroundColor: ['#0ea5e9','#8b5cf6','#f97316','#10b981','#f43f5e'], borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '66%',
+      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} capacitação(ões)` } } }
+    }
+  });
+
+  // Gráfico: Capacitações por Membro
+  const cMembro = $id('capMembroChart');
+  if (cMembro) capMembroChartInst = new Chart(cMembro.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(pMembro),
+      datasets: [{
+        label: 'Capacitações',
+        data: Object.values(pMembro),
+        backgroundColor: 'rgba(139,92,246,0.85)', borderColor: '#7c3aed',
+        borderWidth: 1, borderRadius: 5, borderSkipped: false, maxBarThickness: 42
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } } },
+      scales: CHART_SCALES_BASE
+    }
+  });
+}
+
+// Fragmento do relatório do Painel de Indicadores com os 3 gráficos de
+// Capacitações (viram imagem estática, já que Chart.js não roda no servidor).
+function graficosCapacitacoesPdfHtml() {
+  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Capacitações por Mês','capMesChart','100%')}</tr></table>` +
+    `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Capacitações por Modalidade','capModalidadeChart')}${_pdfGraficoCel('Capacitações por Membro','capMembroChart')}</tr></table>`;
+}
+
+// ------------------------------------------
+// INTERAÇÕES E MODAIS
+// ------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  const btnNovaCap = $id('btn-nova-capacitacao');
+  if (btnNovaCap) btnNovaCap.addEventListener('click', abrirModalCapacitacaoNova);
+
+  const btnSalvarCap = $id('btn-salvar-capacitacao');
+  if (btnSalvarCap) btnSalvarCap.addEventListener('click', salvarFormCapacitacao);
+
+  // Toggle dropdown de participantes
+  const trigger = $id('cap-participantes-trigger');
+  if (trigger) trigger.addEventListener('click', () => {
+    $id('cap-participantes-options').classList.toggle('show');
+  });
+});
+
+function abrirModalCapacitacaoNova() {
+  $id('cap-idrow').value          = '';
+  $id('cap-titulo').value         = '';
+  $id('cap-tema').value           = '';
+  $id('cap-modalidade').value     = '';
+  $id('cap-publico').value        = '';
+  $id('cap-data-prevista').value  = '';
+  $id('cap-data-realizada').value = '';
+  $id('cap-materiais').value      = '';
+  populateCapParticipantes([]);
+
+  $id('modal-capacitacao-title').innerText = 'Nova Capacitação';
+  abrirModal('modal-capacitacao');
+}
+
+function abrirEditarCapacitacao(obj) {
+  $id('cap-idrow').value          = obj.idRow;
+  $id('cap-titulo').value         = obj.titulo;
+  $id('cap-tema').value           = obj.tema      || '';
+  $id('cap-modalidade').value     = obj.modalidade || '';
+  $id('cap-publico').value        = obj.publico    || '';
+  $id('cap-data-prevista').value  = obj.dataPrevista  || '';
+  $id('cap-data-realizada').value = obj.dataRealizada || '';
+  $id('cap-materiais').value      = obj.materiais || '';
+  populateCapParticipantes(obj.participantes ? parseIdsResponsaveis(obj.participantes) : []);
+
+  $id('modal-capacitacao-title').innerText = 'Editar Capacitação';
+  abrirModal('modal-capacitacao');
+}
+
+function salvarFormCapacitacao() {
+  const btn   = $id('btn-salvar-capacitacao');
+  const idRow = $id('cap-idrow').value;
+
+  const dados = {
+    idRow,
+    titulo:        $id('cap-titulo').value.trim(),
+    tema:          $id('cap-tema').value,
+    publico:       $id('cap-publico').value.trim(),
+    modalidade:    $id('cap-modalidade').value,
+    dataPrevista:  $id('cap-data-prevista').value,
+    dataRealizada: $id('cap-data-realizada').value,
+    materiais:     $id('cap-materiais').value.trim(),
+    participantes: getIdsParticipantesSelecionados()
+  };
+
+  if (!dados.titulo) return showAlerta('O Título é obrigatório.');
+
+  btn.disabled = true;
+  btn.innerText = idRow ? 'Atualizando...' : 'Salvando...';
+
+  function tratarRespostaCap(r) {
+    if (r.sucesso) {
+      fecharModal('modal-capacitacao');
+      recarregarCapacitacoes(() => { renderCapacitacoes(); renderKpisCapacitacoes(); if (currentTab === 'indicadores') renderIndicadores(); });
+      feedbackBtn(btn, '✅ Salvo!', 'Salvar', null);
+    }
+    else { btn.disabled = false; btn.innerText = 'Salvar'; showAlerta(r.mensagem); }
+  }
+
+  if (idRow)
+    google.script.run.withSuccessHandler(tratarRespostaCap).withFailureHandler(falha(btn, 'Salvar', null)).atualizarCapacitacao(dados);
+  else
+    google.script.run.withSuccessHandler(tratarRespostaCap).withFailureHandler(falha(btn, 'Salvar', null)).salvarCapacitacao(dados);
+}
+
+function recarregarCapacitacoes(cb) {
+  google.script.run
+    .withSuccessHandler(trainings => { state.trainings = trainings; if (cb) cb(); })
+    .withFailureHandler(e => showAlerta('Falha ao sincronizar capacitações: ' + String(e)))
+    .getCapacitacoesData();
+}
+
+function excluirCapacitacaoConfirm(idRow, id) {
+  google.script.run
+    .withSuccessHandler(r => {
+      if (r && r.sucesso === false) { showAlerta(r.mensagem); return; }
+      recarregarCapacitacoes(() => { renderCapacitacoes(); renderKpisCapacitacoes(); if (currentTab === 'indicadores') renderIndicadores(); });
+    })
+    .withFailureHandler(e => showAlerta(String(e)))
+    .excluirCapacitacao(idRow);
+}
+
+</script>

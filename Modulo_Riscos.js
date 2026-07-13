@@ -4,6 +4,7 @@
 // a riscos, entregas vinculam a planos)
 // ==========================================
 function salvarRisco(dados) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     // Validação no servidor (espelha a do cliente) — protege contra dados
     // incompletos mesmo que a checagem da tela seja contornada.
@@ -11,6 +12,8 @@ function salvarRisco(dados) {
         !String(dados.causa||'').trim() || !String(dados.consequencia||'').trim() ||
         !dados.tipoTratamento || !dados.responsavel)
       return { sucesso: false, mensagem: 'Preencha todos os campos do risco.' };
+    if (isNaN(dados.probabilidade) || isNaN(dados.impacto) || dados.probabilidade < 1 || dados.impacto < 1)
+      return { sucesso: false, mensagem: 'Probabilidade e impacto são obrigatórios e devem ser válidos.' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_RISKS);
       const CR = colIdx_(CABECALHOS_RISCOS);
@@ -32,7 +35,10 @@ function salvarRisco(dados) {
 }
 
 function atualizarRisco(dados) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
+    if (isNaN(dados.probabilidade) || isNaN(dados.impacto) || dados.probabilidade < 1 || dados.impacto < 1)
+      return { sucesso: false, mensagem: 'Probabilidade e impacto são obrigatórios e devem ser válidos.' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_RISKS);
       const CR = colIdx_(CABECALHOS_RISCOS);
@@ -54,6 +60,7 @@ function atualizarRisco(dados) {
 }
 
 function excluirRisco(idRisco) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -104,6 +111,7 @@ function _statusPlano(previsto, finalizado) {
 }
 
 function salvarPlano(dados) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     if (!dados || !dados.riscoVinculado || !String(dados.what||'').trim() || !String(dados.why||'').trim() ||
         !dados.who || !String(dados.where||'').trim() || !dados.whenPrevisto || !String(dados.how||'').trim())
@@ -126,6 +134,7 @@ function salvarPlano(dados) {
 }
 
 function atualizarPlano(dados) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -149,6 +158,7 @@ function atualizarPlano(dados) {
 }
 
 function excluirPlano(idPlano) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_PLANS);
@@ -199,6 +209,7 @@ function _reavaliarBaixa(refRisco) {
     }
   }
   if (indexPlano === -1) return;
+  const statusAtualPlano = String(rowsP[indexPlano-1][CP('Status')] || '');
   const rowsE = abaE.getDataRange().getValues();
   let darBaixa = false;
   if (planoGlobal) {
@@ -224,6 +235,7 @@ function _reavaliarBaixa(refRisco) {
     abaP.getRange(indexPlano, CP('Data Finalização')+1).setValue(hoje);
     abaP.getRange(indexPlano, CP('Status')+1).setValue('Concluído');
   } else {
+    if (statusAtualPlano === 'Concluído') return; // Congelamento de status aprovado (não reabrir se cadastrar nova unidade)
     abaP.getRange(indexPlano, CP('Data Finalização')+1).clearContent();
     abaP.getRange(indexPlano, CP('Status')+1).setValue(_statusPlano(rowsP[indexPlano-1][CP('Data Prevista')], ''));
   }
@@ -231,6 +243,7 @@ function _reavaliarBaixa(refRisco) {
 
 // Salva/atualiza múltiplas entregas de uma vez (acompanhamento em lote).
 function salvarEntregasEmLote(riscoVinculado, entregas) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_DELIVERY);

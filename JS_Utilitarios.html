@@ -8,6 +8,31 @@ var currentTab  = 'kanban';
 var itemExcluir = null, tipoPdfAtual = null;
 var currentActivities = [];
 var statusChartInst = null, memberChartInst = null, priorityChartInst = null, memberConcluidoChartInst = null;
+var capMesChartInst = null, capModalidadeChartInst = null, capMembroChartInst = null;
+
+// Configuração base compartilhada pelos gráficos Chart.js do Painel de
+// Indicadores (Kanban e Capacitações), para manter o mesmo estilo visual.
+const CHART_TOOLTIP_BASE = {
+  backgroundColor: '#1e293b', padding: 10, cornerRadius: 6,
+  titleFont: { size: 12, family: "'Inter',sans-serif" },
+  bodyFont:  { size: 11, family: "'Inter',sans-serif" },
+  titleColor: '#f8fafc', bodyColor: '#cbd5e1'
+};
+const CHART_LEGEND_BASE = {
+  position: 'right',
+  labels: { usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 11, family: "'Inter',sans-serif" }, color: '#475569' }
+};
+const CHART_SCALES_BASE = {
+  y: {
+    beginAtZero: true,
+    ticks: { precision: 0, font: { family: "'Inter',sans-serif", size: 11 }, color: '#94a3b8' },
+    grid: { color: '#f1f5f9' }, border: { display: false }
+  },
+  x: {
+    grid: { display: false }, border: { display: false },
+    ticks: { font: { family: "'Inter',sans-serif", size: 11, weight: '500' }, color: '#64748b', maxRotation: 30 }
+  }
+};
 
 const CORES_STATUS = {
   'Vigente':['#dcfce7','#166534'], 'Concluído':['#dcfce7','#166534'], 'Entregue':['#dcfce7','#166534'],
@@ -170,6 +195,7 @@ function garantirRestoData(callback) {
         state.risks = resto.risks;
         state.plans = resto.plans;
         state.deliveries = resto.deliveries;
+        state.trainings = resto.trainings;
         sincronizarSelectsUnidade();
       } catch (err) {
         // Um erro aqui não pode travar o carregamento para sempre —
@@ -200,19 +226,20 @@ function mudarTab(tab, botao) {
   if(view) view.classList.add('active');
 
   atualizarTopBar();
-  const SGQ_TABS = ['unidades','doc-lista','doc-revisoes','risco-matriz','plano-acomp'];
+  const SGQ_TABS = ['unidades','doc-lista','doc-revisoes','risco-matriz','plano-acomp','capacitacoes-lista','indicadores'];
 
   const rotinas = {
     'kanban': ()=>renderTasks(),
     'archived': ()=>renderArquivados(),
     'members': ()=>renderMembers(),
-    'dashboard': ()=>setTimeout(renderDashboard, 50),
+    'indicadores': ()=>setTimeout(renderIndicadores, 50),
     'escala': ()=>renderEscala(),
     'unidades': ()=>renderUnidades(),
     'doc-lista': ()=>renderDocumentos('mestra'),
     'doc-revisoes': ()=>renderDocumentos('revisoes'),
     'risco-matriz': ()=>renderMatriz(),
-    'plano-acomp': ()=>renderAcompanhamento()
+    'plano-acomp': ()=>renderAcompanhamento(),
+    'capacitacoes-lista': ()=>{ renderCapacitacoes(); renderKpisCapacitacoes(); }
   };
 
   if (tab === 'logs')   { carregarLogs();   return; }
@@ -223,7 +250,7 @@ function mudarTab(tab, botao) {
   const MSG_TABELA_POR_ABA = {
     'unidades': ['lista-unidades', 4], 'doc-lista': ['lista-mestra', 12],
     'doc-revisoes': ['lista-revisoes', 10], 'risco-matriz': ['lista-riscos', 12],
-    'plano-acomp': ['lista-acomp', 11]
+    'plano-acomp': ['lista-acomp', 11], 'capacitacoes-lista': ['lista-capacitacoes', 10]
   };
 
   if (SGQ_TABS.indexOf(tab) !== -1) {
@@ -241,15 +268,16 @@ var TAB_TITULOS = {
   'kanban':       'Quadro Kanban',
   'archived':     'Cartões Arquivados',
   'members':      'Membros da Equipe',
-  'dashboard':    'Dashboard de Indicadores',
+  'indicadores':  'Painel de Indicadores',
   'unidades':     'Unidades e Subcomissões',
   'doc-lista':    'Lista Mestra de Documentos',
   'doc-revisoes': 'Histórico de Revisões',
   'risco-matriz': 'Matriz de Risco',
   'plano-acomp':  'Plano de Ação',
   'escala':       'Escala Semanal',
-  'ferias':       'Férias e Ausências',
-  'logs':         'Atividades'
+  'ferias':       'Mapa de Férias',
+  'logs':         'Atividades e Log do Sistema',
+  'capacitacoes-lista': 'Lista de Capacitações'
 };
 
 function atualizarTopBar() {
@@ -269,6 +297,24 @@ function atualizarTopBar() {
       selKanban.dataset.bound = '1';
     }
   }
+}
+
+// ==========================================
+// PAINEL DE INDICADORES (Monitoramento)
+// Centraliza os gráficos do Kanban (Módulo 1) e das Capacitações
+// (Módulo 6), sob um único filtro de membro (dashMemberFilter).
+// ==========================================
+function renderIndicadores() {
+  const fid = ($id('dashMemberFilter')||{value:''}).value;
+  renderGraficosKanban(fid);
+  renderGraficosCapacitacoes(fid);
+}
+
+// Corpo do relatório do Painel de Indicadores — os 7 gráficos viram
+// imagem estática (Chart.js não existe fora do navegador); cada módulo
+// monta apenas a parte que lhe pertence.
+function montarHtmlIndicadoresPdf() {
+  return graficosKanbanPdfHtml() + graficosCapacitacoesPdfHtml();
 }
 
 // ==========================================
@@ -313,10 +359,20 @@ document.addEventListener('DOMContentLoaded', function() {
       // a aba que estiver ativa neste momento para corrigir isso.
       const rotinasPosCargaInicial = {
         'members': renderMembers, 'escala': renderEscala,
-        'ferias': carregarFerias, 'dashboard': renderDashboard,
+        'ferias': carregarFerias, 'indicadores': renderIndicadores,
         'archived': renderArquivados
       };
       if (rotinasPosCargaInicial[currentTab]) rotinasPosCargaInicial[currentTab]();
+
+      // Pré-carrega o "resto" do sistema (Unidades, Documentos, Riscos,
+      // Planos, Entregas, Capacitações) em segundo plano, logo depois que o
+      // Kanban já está na tela. Assim a PRIMEIRA vez que o usuário abre uma
+      // aba do SGQ ela aparece na hora, em vez de esperar a busca pesada
+      // disparar só no clique. Se ele clicar antes de terminar, garantirRestoData
+      // apenas entra na fila da mesma busca (não dispara outra).
+      setTimeout(function() {
+        if (!restoDataLoaded && !restoDataLoading) garantirRestoData(function() {});
+      }, 400);
     }).getKanbanData();
 });
 
@@ -345,6 +401,7 @@ document.addEventListener('click', function(e) {
     if (!e.target.closest('.custom-select-wrapper')) {
       const dd = $id('taskAssigneesContainer'); if(dd) dd.classList.remove('show');
       const dl = $id('taskLabelsContainer'); if(dl) dl.classList.remove('show');
+      const dp = $id('cap-participantes-options'); if(dp) dp.classList.remove('show');
     }
     return;
   }
@@ -378,7 +435,10 @@ document.addEventListener('click', function(e) {
     // Planos
     'edit-plano'      : () => abrirEditarPlano(idx),
     'acomp-entregas'  : () => abrirModalAcompEntregas(idx),
-    'del-plano'       : () => { const p=state.plans[idx]; showConfirm(`Excluir plano de ${p.riscoVinculado}?`, ()=>excluirPlano(p.riscoVinculado)); }
+    'del-plano'       : () => { const p=state.plans[idx]; showConfirm(`Excluir plano de ${p.riscoVinculado}?`, ()=>excluirPlano(p.riscoVinculado)); },
+    // Capacitações
+    'edit-capacitacao': () => abrirEditarCapacitacao(state.trainings[idx]),
+    'del-capacitacao' : () => { const c=state.trainings[idx]; showConfirm(`Excluir a capacitação "${c.id} - ${c.titulo}"?`, ()=>excluirCapacitacaoConfirm(c.idRow, c.id)); }
   };
   if (acoes[acao]) acoes[acao]();
 });
@@ -434,7 +494,7 @@ document.querySelectorAll('.list-cards').forEach(el => {
 // Change handlers
 document.addEventListener('change', function(e) {
   const id = e.target.id;
-  if (id === 'dashMemberFilter') renderDashboard();
+  if (id === 'dashMemberFilter') renderIndicadores();
   if (id === 'f-doc-unidade' || id === 'f-doc-tipo' || id === 'f-doc-status') renderDocumentos('mestra');
   if (id === 'f-rev-unidade') renderDocumentos('revisoes');
   if (id === 'f-acomp-unidade' || id === 'f-acomp-status') renderAcompanhamento();
@@ -468,7 +528,7 @@ document.addEventListener('input', function(e) {
 // da ordem de carregamento.
 // ==========================================
 const CFG_PDF = {
-  'dashboard': { file: 'Dashboard_Tarefas_SGQ.pdf',    title: 'Dashboard de Indicadores de Tarefas', ori: 'landscape', montarFn: 'montarHtmlDashboardPdf' },
+  'dashboard': { file: 'Painel_Indicadores_SGQ.pdf',   title: 'Painel de Indicadores',                ori: 'landscape', montarFn: 'montarHtmlIndicadoresPdf' },
   'archived' : { file: 'Cartoes_Arquivados_SGQ.pdf',   title: 'Cartões Arquivados',                  ori: 'portrait',  montarFn: 'montarHtmlArquivadosPdf' },
   'matriz'   : { file: 'Matriz_Risco_SGQ.pdf',         title: 'Matriz de Risco',                     ori: 'landscape', montarFn: 'montarHtmlMatrizPdf' },
   'acomp'    : { file: 'Acompanhamento_Acoes_SGQ.pdf', title: 'Acompanhamento de Ações',             ori: 'landscape', montarFn: 'montarHtmlAcompanhamentoPdf' }
@@ -527,6 +587,18 @@ function _pdfKpiCell(label, valor, cor) {
   return `<td bgcolor="#f8fafc" style="background:#f8fafc;width:25%;padding:10px 12px;border:1px solid #e2e8f0;">
     <span style="font-size:9.5px;font-weight:700;color:#64748b;">${esc(label)}</span><br>
     <span style="font-size:20px;font-weight:700;color:${cor};">${esc(String(valor))}</span>
+  </td>`;
+}
+
+// Converte um <canvas> de gráfico Chart.js em imagem (Chart.js não roda
+// no servidor, então cada gráfico do PDF vira uma imagem estática).
+function _imgDeCanvas(canvasId) {
+  try { const c = $id(canvasId); return c ? c.toDataURL('image/png') : ''; } catch(e) { return ''; }
+}
+function _pdfGraficoCel(titulo, canvasId, largura) {
+  return `<td style="border:none;width:${largura||'50%'};padding:8px;">
+    <span style="font-size:10px;font-weight:700;color:#64748b;">${esc(titulo)}</span><br>
+    <img src="${_imgDeCanvas(canvasId)}" style="width:100%;max-width:340px;margin-top:4px;">
   </td>`;
 }
 

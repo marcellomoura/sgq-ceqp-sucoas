@@ -2,6 +2,7 @@
 // MÓDULO 4 — GESTÃO DOCUMENTAL
 // ==========================================
 function salvarDocumento(dados) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     if (!dados || !dados.tipo || !String(dados.titulo||'').trim() || !dados.responsavel || !String(dados.linkDoc||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos obrigatórios.' };
@@ -34,6 +35,7 @@ function salvarDocumento(dados) {
 }
 
 function atualizarDocumento(dados) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_DOCS);
@@ -54,6 +56,7 @@ function atualizarDocumento(dados) {
 }
 
 function salvarRevisaoDocumento(dados) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_DOCS);
@@ -82,6 +85,7 @@ function salvarRevisaoDocumento(dados) {
 }
 
 function excluirDocumento(idRow, codigoEsperado) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_DOCS);

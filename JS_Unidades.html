@@ -32,18 +32,18 @@ function abrirModalUnidade() {
   abrirModal('modal-unidade');
 }
 function abrirEditarUnidade(u) {
-  $id('eu-id').value = u.id; $id('eu-nome').value = u.unidade; $id('eu-sigla').value = u.sigla; $id('eu-email').value = u.email; $id('eu-link-drive').value = u.linkDrive || '';
+  $id('eu-id').value = u.idRow; $id('eu-nome').value = u.unidade; $id('eu-sigla').value = u.sigla; $id('eu-email').value = u.email; $id('eu-link-drive').value = u.linkDrive || '';
   unidadeSiglaOriginal = u.sigla || '';
   $id('modal-unidade-title').innerText = 'Editar Unidade';
   abrirModal('modal-unidade');
 }
 function confirmarUnidade() {
   const btn = $id('btn-confirmar-unidade');
-  const id = $id('eu-id').value;
-  const dados = { id: id, unidade: $id('eu-nome').value.trim(), sigla: $id('eu-sigla').value.trim(), email: $id('eu-email').value.trim(), linkDrive: $id('eu-link-drive').value.trim(), siglaOriginal: unidadeSiglaOriginal };
+  const idRow = $id('eu-id').value;
+  const dados = { idRow: idRow, unidade: $id('eu-nome').value.trim(), sigla: $id('eu-sigla').value.trim(), email: $id('eu-email').value.trim(), linkDrive: $id('eu-link-drive').value.trim(), siglaOriginal: unidadeSiglaOriginal };
   if (!dados.unidade || !dados.sigla || !dados.email) return showAlerta('Preencha todos os campos.');
-  btn.disabled = true; btn.innerText = id ? 'A atualizar...' : 'A guardar...';
-  const chamada = id
+  btn.disabled = true; btn.innerText = idRow ? 'A atualizar...' : 'A guardar...';
+  const chamada = idRow
     ? google.script.run.withSuccessHandler(tratarRespostaUnidade).withFailureHandler(falha(btn, 'Confirmar', null)).atualizarUnidade(dados)
     : google.script.run.withSuccessHandler(tratarRespostaUnidade).withFailureHandler(falha(btn, 'Confirmar', null)).salvarUnidade(dados);
 
