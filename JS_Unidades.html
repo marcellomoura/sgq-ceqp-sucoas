@@ -48,14 +48,24 @@ function confirmarUnidade() {
     : google.script.run.withSuccessHandler(tratarRespostaUnidade).withFailureHandler(falha(btn, 'Confirmar', null)).salvarUnidade(dados);
 
   function tratarRespostaUnidade(r) {
-    if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Confirmar', () => { fecharModal('modal-unidade'); recarregarResto(renderUnidades); });
+    if (r.sucesso) { recarregarUnidades(renderUnidades); feedbackBtn(btn, '✅ Salvo!', 'Confirmar', () => fecharModal('modal-unidade')); }
     else { btn.disabled = false; btn.innerText = 'Confirmar'; showAlerta(r.mensagem); }
   }
 }
-function excluirUnidade(id, sigla) {
+function excluirUnidade(idRow, sigla) {
   google.script.run.withSuccessHandler(r => {
-    if (r && r.sucesso === false) { showAlerta(r.mensagem); recarregarResto(renderUnidades); return; }
-    recarregarResto(renderUnidades);
-  }).withFailureHandler(e => showAlerta(String(e))).excluirUnidade(id, sigla || '');
+    if (r && r.sucesso === false) { showAlerta(r.mensagem); return; }
+    recarregarUnidades(renderUnidades);
+  }).withFailureHandler(e => showAlerta(String(e))).excluirUnidade(idRow, sigla || '');
+}
+
+// Recarga LEVE do módulo de Unidades: lê só a aba Unidades (getUnitsData) em
+// vez das 7 abas de recarregarResto, e ressincroniza os selects de unidade.
+function recarregarUnidades(cb) {
+  google.script.run.withSuccessHandler(r => {
+    state.units = r.units;
+    sincronizarSelectsUnidade();
+    if (cb) cb();
+  }).withFailureHandler(e => showAlerta('Falha ao sincronizar: ' + String(e))).getUnitsData();
 }
 </script>

@@ -13,15 +13,18 @@ function diaParaId(d) {
 // ─── ESCALA SEMANAL ────────────────────────────────────────────────────────────
 
 function renderEscala() {
-  renderEscalaGrid(state.members);
+  var ativos = membrosOrdenados(); // só ativos (inativos saem das telas)
+  renderEscalaGrid(ativos);
   var tbody = $id('lista-escala');
   if (!tbody) return;
-  if (!state.members.length) {
+  if (!ativos.length) {
     tbody.innerHTML = '<tr><td colspan="9" class="msg-empty">Nenhum membro cadastrado.</td></tr>';
     return;
   }
-  tbody.innerHTML = membrosOrdenados().map(function(m) {
-    var origIdx = state.members.indexOf(m);
+  // id → índice em state.members, pré-computado (evita indexOf O(n²) por linha)
+  var idxById = {}; state.members.forEach(function(m, i){ idxById[m.id] = i; });
+  tbody.innerHTML = ativos.map(function(m) {
+    var origIdx = idxById[m.id];
     var dias = Array.isArray(m.diasSemana) ? m.diasSemana : [];
     var pres = m.diaPresencial || '';
     var presList = pres ? pres.split(', ') : [];
@@ -112,12 +115,18 @@ function confirmarEscala() {
     return cb && cb.checked;
   });
   var horarios = {};
-  diasSelecionados.forEach(function(d) {
+  for (var hi = 0; hi < diasSelecionados.length; hi++) {
+    var d = diasSelecionados[hi];
     var inp = $id('ee-hora-' + diaParaId(d));
     if (inp && inp.value.trim()) {
-      horarios[d] = inp.value.trim();
+      var val = inp.value.trim();
+      // Vírgula quebraria o parsing da escala na leitura (os dias são separados
+      // por vírgula na planilha). Bloqueia e sugere outro separador.
+      if (val.indexOf(',') !== -1)
+        return showAlerta('O horário de "' + d + '" não pode conter vírgula. Use outro separador, ex.: "08h-12h / 14h-18h".');
+      horarios[d] = val;
     }
-  });
+  }
   
   var presList = [];
   document.querySelectorAll('[name="ee-presencial"]:checked').forEach(function(cb) {
@@ -309,9 +318,13 @@ function renderFerias() {
       '</span>';
   };
 
+  // id → índice em state.members, pré-computado (evita indexOf O(n²) por linha)
+  var idxByIdF = {}; state.members.forEach(function(m, i){ idxByIdF[m.id] = i; });
   tbody.innerHTML = membrosFiltrados.map(function(m) {
-    var origIdx = state.members.indexOf(m);
-    var afs = porMembro[m.id] || { ferias: [], abonosFixos: [], abonoAniv: null, licenca: null };
+    var origIdx = idxByIdF[m.id];
+    // Fallback com as MESMAS chaves lidas adiante (licencas/demais no plural) —
+    // antes usava "licenca" (singular), chave que o código nunca lê.
+    var afs = porMembro[m.id] || { ferias: [], abonosFixos: [], abonoAniv: null, licencas: [], demais: [] };
 
     var htmlF1 = TRACO, htmlF2 = TRACO, htmlF3 = TRACO;
     if (Array.isArray(afs.ferias)) {

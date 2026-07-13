@@ -17,22 +17,31 @@ function sincronizarDropdownMembros() {
 function renderMembers() {
   const tbody = $id('members-list');
   if(!tbody) return;
-  if(!state.members.length) { tbody.innerHTML='<tr><td colspan="5" class="msg-empty">Nenhum membro cadastrado.</td></tr>'; return; }
-  // Ordena por nome para exibição, mas mantém o índice ORIGINAL de
-  // cada membro em state.members (é esse índice que os botões de
-  // editar/excluir usam para encontrar o membro certo).
-  const ordenados = state.members
-    .map((m, i) => ({ m, i }))
+  const mostrarInativos = ($id('chk-membros-inativos')||{checked:false}).checked;
+  // Índice ORIGINAL em state.members (usado pelos botões) preservado via indexOf.
+  const visiveis = state.members.filter(m => mostrarInativos || m.ativo !== false);
+  if(!visiveis.length) {
+    tbody.innerHTML='<tr><td colspan="5" class="msg-empty">Nenhum membro '+(mostrarInativos?'':'ativo ')+'cadastrado.</td></tr>';
+    return;
+  }
+  const ordenados = visiveis
+    .map(m => ({ m, i: state.members.indexOf(m) }))
     .sort((a, b) => (a.m.name||'').localeCompare(b.m.name||'', 'pt-BR', { sensitivity: 'base' }));
-  tbody.innerHTML = ordenados.map(({m, i}) => `<tr>
-    <td style="font-weight:600;">${esc(m.name)}</td>
+  tbody.innerHTML = ordenados.map(({m, i}) => {
+    const inativo = m.ativo === false;
+    const btnStatus = inativo
+      ? `<button type="button" class="btn-membro-status" data-acao="reativar-membro" data-idx="${i}" title="Reativar membro" style="color:#059669;border-color:#a7f3d0;">Reativar</button>`
+      : `${iconBtn('edit','edit-membro','Editar',`data-idx="${i}"`)}<button type="button" class="btn-membro-status" data-acao="inativar-membro" data-idx="${i}" title="Inativar membro" style="color:#b45309;border-color:#fde68a;">Inativar</button>`;
+    return `<tr${inativo?' style="opacity:0.6;"':''}>
+    <td style="font-weight:600;">${esc(m.name)}${inativo?' <span class="tag-badge" style="background:#94a3b8;font-size:10px;margin-left:4px;">Inativo</span>':''}</td>
     <td><span class="member-role-badge">${esc(m.role)}</span></td>
     <td style="color:#64748b;">${esc(m.email)||'-'}</td>
     <td style="color:#64748b;">${esc(m.emailPessoal)||'-'}</td>
     <td style="text-align:right;">
-      <div class="cell-actions" style="justify-content:flex-end;">${iconBtn('edit','edit-membro','Editar',`data-idx="${i}"`)}${iconBtn('del','del-membro','Excluir',`data-idx="${i}"`)}</div>
+      <div class="cell-actions" style="justify-content:flex-end;">${btnStatus}</div>
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
 
 function abrirModalMembro() {
@@ -50,13 +59,23 @@ function salvarMembro() {
   const dados={ id:$id('memberId').value, name:($id('memberName').value||'').trim(), role:($id('memberRole').value||'').trim(), email:($id('memberEmail').value||'').trim(), emailPessoal:($id('memberEmailPessoal').value||'').trim() };
   if(!dados.name||!dados.role||!dados.email||!dados.emailPessoal){ showAlerta('Preencha todos os campos.'); return; }
   btn.disabled=true; btn.innerText='Salvando...';
-  google.script.run.withSuccessHandler(()=>{
+  google.script.run.withSuccessHandler(r=>{
+    if (r && r.sucesso === false) { btn.disabled=false; btn.innerText='Salvar Cadastro'; showAlerta(r.mensagem || 'Não foi possível salvar.'); return; }
     feedbackBtn(btn,'✅ Salvo!','Salvar Cadastro',()=>{ fecharModal('modal-member'); recarregarKanban(()=>{ renderMembers(); sincronizarDropdownMembros(); }); });
   }).withFailureHandler(falha(btn,'Salvar Cadastro',null)).saveMember(dados);
 }
-function excluirMembro(id) {
-  google.script.run.withSuccessHandler(()=>recarregarKanban(()=>{ renderMembers(); sincronizarDropdownMembros(); }))
-    .withFailureHandler(e=>showAlerta(String(e))).deleteMember(id);
+// Membros são inativados/reativados (nunca excluídos), preservando o histórico.
+function inativarMembro(id) {
+  google.script.run.withSuccessHandler(r=>{
+    if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível inativar.'); return; }
+    recarregarKanban(()=>{ renderMembers(); sincronizarDropdownMembros(); });
+  }).withFailureHandler(e=>showAlerta(String(e))).inativarMembro(id);
+}
+function reativarMembro(id) {
+  google.script.run.withSuccessHandler(r=>{
+    if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível reativar.'); return; }
+    recarregarKanban(()=>{ renderMembers(); sincronizarDropdownMembros(); });
+  }).withFailureHandler(e=>showAlerta(String(e))).reativarMembro(id);
 }
 
 // ---------- Kanban Board ----------
@@ -112,7 +131,12 @@ function drop(e, newStatus) {
   if(newStatus==='Concluído') state.tasks[idx].completionDate=dateNow; else state.tasks[idx].completionDate='';
   if(newStatus!=='Backlog'&&!state.tasks[idx].startDate) state.tasks[idx].startDate=dateNow;
   renderTasks();
-  google.script.run.withSuccessHandler(()=>recarregarKanban(renderTasks)).withFailureHandler(e=>showAlerta(String(e))).updateTaskStatus(id, newStatus);
+  google.script.run.withSuccessHandler(r=>{
+    // Em falha de negócio (ex.: cartão excluído por outro usuário), desfaz a
+    // mudança otimista recarregando o estado real do servidor.
+    if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível mover o cartão.'); recarregarKanban(renderTasks); return; }
+    recarregarKanban(renderTasks);
+  }).withFailureHandler(e=>{ showAlerta(String(e)); recarregarKanban(renderTasks); }).updateTaskStatus(id, newStatus);
 }
 
 // ---------- Arquivados ----------
@@ -229,8 +253,13 @@ function atualizarTagsLabels() {
 }
 function populateAssignees(selectedIds=[]) {
   const c=$id('taskAssigneesContainer'); if(!c) return;
-  if(!state.members.length){ c.innerHTML='<div style="font-size:12px;color:#64748b;padding:8px;">Nenhum membro cadastrado.</div>'; atualizarTagsAssignee(); return; }
-  c.innerHTML=membrosOrdenados().map(m=>`<label class="checkbox-label"><input type="checkbox" value="${esc(m.id)}" ${selectedIds.includes(String(m.id))?'checked':''}> ${esc(m.name)}</label>`).join('');
+  // Ativos + eventuais membros inativos JÁ atribuídos a este cartão (para não
+  // removê-los silenciosamente ao editar). Novos cartões só veem ativos.
+  let lista = membrosOrdenados();
+  const faltando = (selectedIds||[]).map(String).filter(id => !lista.some(m=>String(m.id)===id));
+  if (faltando.length) lista = lista.concat(state.members.filter(m => faltando.includes(String(m.id))));
+  if(!lista.length){ c.innerHTML='<div style="font-size:12px;color:#64748b;padding:8px;">Nenhum membro cadastrado.</div>'; atualizarTagsAssignee(); return; }
+  c.innerHTML=lista.map(m=>`<label class="checkbox-label"><input type="checkbox" value="${esc(m.id)}" ${selectedIds.includes(String(m.id))?'checked':''}> ${esc(m.name)}${m.ativo===false?' <span style="color:#94a3b8;font-size:11px;">(inativo)</span>':''}</label>`).join('');
   c.querySelectorAll('input').forEach(i=>i.addEventListener('change',atualizarTagsAssignee));
   atualizarTagsAssignee();
 }
@@ -296,14 +325,19 @@ function salvarTarefa() {
   const ids=Array.from(($id('taskAssigneesContainer')||{querySelectorAll:()=>[]}).querySelectorAll('input:checked')).map(c=>c.value);
   const labels=Array.from(($id('taskLabelsContainer')||{querySelectorAll:()=>[]}).querySelectorAll('input:checked')).map(c=>c.value);
   const dados={ id:$id('taskId').value, status:$id('taskStatus').value||'Backlog', title:titulo, description:$id('taskDesc').value||'', assigneeId:JSON.stringify(ids), priority:$id('taskPriority').value||'Media', labels:JSON.stringify(labels), deadline:$id('taskDeadline').value||'', creationDate:$id('taskCreation').value||'', completionDate:$id('taskCompletion').value||'', startDate:$id('taskStartDate').value||'', activities:JSON.stringify(currentActivities) };
-  google.script.run.withSuccessHandler(()=>{ btn.disabled=false; btn.innerText='Salvar Cartão'; fecharModal('modal-task'); recarregarKanban(renderTasks); })
-    .withFailureHandler(falha(btn,'Salvar Cartão',null)).saveTask(dados);
+  google.script.run.withSuccessHandler(r=>{
+    btn.disabled=false; btn.innerText='Salvar Cartão';
+    if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível salvar o cartão.'); return; }
+    fecharModal('modal-task'); recarregarKanban(renderTasks);
+  }).withFailureHandler(falha(btn,'Salvar Cartão',null)).saveTask(dados);
 }
 function confirmarExcluirTarefa() {
   showConfirm('Excluir este cartão e todo o seu histórico?', ()=>{
     const id=$id('taskId').value;
-    google.script.run.withSuccessHandler(()=>{ fecharModal('modal-task'); recarregarKanban(renderTasks); })
-      .withFailureHandler(e=>showAlerta(String(e))).deleteTask(id);
+    google.script.run.withSuccessHandler(r=>{
+      if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível excluir o cartão.'); return; }
+      fecharModal('modal-task'); recarregarKanban(renderTasks);
+    }).withFailureHandler(e=>showAlerta(String(e))).deleteTask(id);
   });
 }
 
@@ -319,10 +353,13 @@ function renderGraficosKanban(fid) {
 
   const sc = { 'Backlog':0, 'A Fazer':0, 'Em Andamento':0, 'Em Revisão':0, 'Concluído':0 };
   const pc = { 'Alta':0, 'Media':0, 'Baixa':0 };
-  // Demandas em andamento por membro: só tarefas com status "Em Andamento"
-  let mc = {}; state.members.forEach(m => mc[m.name] = 0);
-  // Demandas concluídas por membro: só tarefas com status "Concluído"
-  let mcConcluido = {}; state.members.forEach(m => mcConcluido[m.name] = 0);
+  // Contagens por ID de membro (não por nome) para não somar juntos dois
+  // membros homônimos. Os rótulos do gráfico resolvem o nome na exibição.
+  // Eixo só com membros ATIVOS (inativos saem das telas); tarefas atribuídas a
+  // inativos simplesmente não entram nas barras.
+  const membrosGrafico = state.members.filter(m => m.ativo !== false);
+  const mc = {}; membrosGrafico.forEach(m => mc[m.id] = 0);          // Em Andamento
+  const mcConcluido = {}; membrosGrafico.forEach(m => mcConcluido[m.id] = 0); // Concluído
 
   tasks.forEach(t => {
     const st = t.status || 'Backlog';
@@ -332,13 +369,18 @@ function renderGraficosKanban(fid) {
     const ids = parseIdsResponsaveis(t.assigneeId);
 
     if (st === 'Concluído') {
-      ids.forEach(id => { const m = state.members.find(x => String(x.id) === String(id)); if (m) mcConcluido[m.name]++; });
+      ids.forEach(id => { if (id in mcConcluido) mcConcluido[id]++; });
     } else if (st === 'Em Andamento') {
       // Demandas em andamento por membro: só conta quando o status é
       // exatamente "Em Andamento" (não Backlog/A Fazer/Em Revisão)
-      ids.forEach(id => { const m = state.members.find(x => String(x.id) === String(id)); if (m) mc[m.name]++; });
+      ids.forEach(id => { if (id in mc) mc[id]++; });
     }
   });
+
+  // Rótulos (nomes) e dados na mesma ordem dos membros ativos
+  const nomesMembros_ = membrosGrafico.map(m => m.name);
+  const dadosMc = membrosGrafico.map(m => mc[m.id]);
+  const dadosMcConcluido = membrosGrafico.map(m => mcConcluido[m.id]);
 
   // Destroi gráficos anteriores
   [statusChartInst, priorityChartInst, memberChartInst, memberConcluidoChartInst].forEach(c => { if (c) c.destroy(); });
@@ -376,12 +418,12 @@ function renderGraficosKanban(fid) {
   if (cM) memberChartInst = new Chart(cM.getContext('2d'), {
     type: 'bar',
     data: {
-      labels: Object.keys(mc),
+      labels: nomesMembros_,
       datasets: [{
         label: 'Em Andamento',
-        data: Object.values(mc),
-        backgroundColor: Object.values(mc).map(v => v === 0 ? '#e2e8f0' : 'rgba(59,130,246,0.85)'),
-        borderColor:     Object.values(mc).map(v => v === 0 ? '#cbd5e1' : '#2563eb'),
+        data: dadosMc,
+        backgroundColor: dadosMc.map(v => v === 0 ? '#e2e8f0' : 'rgba(59,130,246,0.85)'),
+        borderColor:     dadosMc.map(v => v === 0 ? '#cbd5e1' : '#2563eb'),
         borderWidth: 1, borderRadius: 5, borderSkipped: false, maxBarThickness: 42
       }]
     },
@@ -397,12 +439,12 @@ function renderGraficosKanban(fid) {
   if (cMC) memberConcluidoChartInst = new Chart(cMC.getContext('2d'), {
     type: 'bar',
     data: {
-      labels: Object.keys(mcConcluido),
+      labels: nomesMembros_,
       datasets: [{
         label: 'Concluídas',
-        data: Object.values(mcConcluido),
-        backgroundColor: Object.values(mcConcluido).map(v => v === 0 ? '#e2e8f0' : 'rgba(16,185,129,0.85)'),
-        borderColor:     Object.values(mcConcluido).map(v => v === 0 ? '#cbd5e1' : '#059669'),
+        data: dadosMcConcluido,
+        backgroundColor: dadosMcConcluido.map(v => v === 0 ? '#e2e8f0' : 'rgba(16,185,129,0.85)'),
+        borderColor:     dadosMcConcluido.map(v => v === 0 ? '#cbd5e1' : '#059669'),
         borderWidth: 1, borderRadius: 5, borderSkipped: false, maxBarThickness: 42
       }]
     },

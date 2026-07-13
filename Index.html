@@ -275,6 +275,11 @@
 
     <!-- ======================== MÓDULO 1: MEMBROS ======================== -->
     <section id="view-members" class="view-section">
+      <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+        <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:#475569; cursor:pointer;">
+          <input type="checkbox" id="chk-membros-inativos" onchange="renderMembers()"> Mostrar inativos
+        </label>
+      </div>
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th>Nome do Membro</th><th>Função / Cargo</th><th>E-mail Funcional</th><th>E-mail Pessoal</th><th style="text-align:right;">Ações</th></tr></thead>

@@ -91,8 +91,12 @@ function falha(btn, orig, statusEl) {
 // ---------- Helpers de membros (compartilhados por Kanban, Dashboard, Pessoas) ----------
 // Cópia ordenada por nome (pt-BR) — a ordem original de state.members é
 // preservada porque os botões de editar/excluir usam o índice original.
+// Só membros ATIVOS, ordenados por nome — usado em seletores de responsável,
+// filtros, escala e afastamentos. Para resolver NOMES de qualquer membro
+// (inclusive inativos, em cartões/gráficos antigos) use nomesMembros/state.members.
 function membrosOrdenados() {
-  return [...state.members].sort((a, b) => (a.name||'').localeCompare(b.name||'', 'pt-BR', { sensitivity: 'base' }));
+  return state.members.filter(m => m.ativo !== false)
+    .sort((a, b) => (a.name||'').localeCompare(b.name||'', 'pt-BR', { sensitivity: 'base' }));
 }
 // A coluna Responsável_ID guarda um JSON de ids ("[\"MEM-1\"]"), mas dados
 // antigos podem ter um id solto — os dois formatos são aceitos aqui.
@@ -418,17 +422,26 @@ document.addEventListener('click', function(e) {
     'restore-task'    : () => restaurarTarefa(alvo.dataset.id),
     // Membros
     'edit-membro'     : () => abrirEditarMembro(state.members[idx]),
-    'del-membro'      : () => showConfirm('Excluir este membro?', () => excluirMembro(state.members[idx].id)),
+    'inativar-membro' : () => {
+      const m = state.members[idx];
+      showConfirm(`Inativar "${m.name}"? Ele perde o acesso ao sistema e sai das telas, mas o histórico é preservado e você pode reativá-lo depois.`,
+        () => inativarMembro(m.id), { tone: 'warning', title: 'Confirmar Inativação', confirmLabel: 'Inativar' });
+    },
+    'reativar-membro' : () => {
+      const m = state.members[idx];
+      showConfirm(`Reativar "${m.name}"? Ele volta a ter acesso e a aparecer nas telas.`,
+        () => reativarMembro(m.id), { tone: 'warning', title: 'Confirmar Reativação', confirmLabel: 'Reativar' });
+    },
     // Pessoas — Escala e Afastamentos
     'edit-escala'     : () => abrirModalEscala(state.members[idx]),
     'edit-ferias'     : () => abrirModalFerias(state.members[idx]),
     // Unidades
     'edit-unidade'    : () => abrirEditarUnidade(state.units[idx]),
-    'del-unidade'     : () => showConfirm(`Excluir a unidade "${state.units[idx].sigla}"?`, () => excluirUnidade(state.units[idx].id, state.units[idx].sigla)),
+    'del-unidade'     : () => showConfirm(`Excluir a unidade "${state.units[idx].sigla}"?`, () => excluirUnidade(state.units[idx].idRow, state.units[idx].sigla)),
     // Documentos
     'edit-doc'        : () => abrirEditarDoc(idx),
     'rev-doc'         : () => abrirRevisaoDoc(idx),
-    'del-doc'         : () => { const d=state.docs[idx]; showConfirm(`Excluir "${d.codigo}"?`, ()=>excluirDoc(d.idRow, d.codigo)); },
+    'del-doc'         : () => { const d=state.docs[idx]; showConfirm(`Excluir "${d.codigo}"?`, (fechar)=>excluirDoc(d.idRow, d.codigo, fechar)); },
     // Riscos
     'edit-risco'      : () => abrirEditarRisco(idx),
     'del-risco'       : () => { const r=state.risks[idx]; showConfirm(`Excluir R${r.id}?`, ()=>excluirRisco(r.id)); },
@@ -454,7 +467,16 @@ document.addEventListener('click', function(e) {
   if(e.target.id === 'btn-salvar-plano') salvarPlano();
   if(e.target.id === 'btn-confirmar-plano') confirmarEdicaoPlano();
   if(e.target.id === 'btn-salvar-acomp-entregas') salvarAcompEntregas();
-  if(e.target.id === 'btn-confirmar-excluir') { if(itemExcluir){ fecharModal('modal-confirmar'); itemExcluir(); itemExcluir=null; } }
+  if(e.target.id === 'btn-confirmar-excluir') {
+    if(itemExcluir) {
+      if(itemExcluir.length > 0) {
+        const btn = e.target; const orig = btn.innerText; btn.innerText = 'A excluir...'; btn.disabled = true;
+        itemExcluir(() => { btn.innerText = orig; btn.disabled = false; fecharModal('modal-confirmar'); itemExcluir = null; });
+      } else {
+        fecharModal('modal-confirmar'); itemExcluir(); itemExcluir=null;
+      }
+    }
+  }
   if(e.target.id === 'btn-fechar-alerta') fecharModal('modal-alerta');
   if(e.target.id === 'btn-novo-membro') abrirModalMembro();
   if(e.target.id === 'btn-nova-unidade') abrirModalUnidade();

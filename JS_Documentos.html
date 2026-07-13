@@ -40,11 +40,13 @@ function renderDocumentos(modo) {
 
   if (!filtrados.length) { msgTabela(tbodyId, cols, 'Nenhum documento encontrado.'); return; }
 
-  // Encontra o índice original do doc em state.docs para ações
-  const docOrigIdx = d => state.docs.findIndex(x => x.idRow === d.idRow);
+  // Índice original de cada doc em state.docs, pré-computado uma vez
+  // (idRow → posição). Antes era um findIndex por linha DENTRO do map,
+  // o que tornava a renderização O(n²) conforme a lista de documentos crescia.
+  const idxPorIdRow = new Map(state.docs.map((x, i) => [x.idRow, i]));
 
   $id(tbodyId).innerHTML = filtrados.map(d => {
-    const oi = docOrigIdx(d);
+    const oi = idxPorIdRow.get(d.idRow);
     const aux = [linkA(d.docAuxiliar,'Anexo 1','#64748b'), linkA(d.docAuxiliar2,'Anexo 2','#64748b')].filter(x=>x!=='-').join('<br>') || '-';
     const base = `<td style="font-weight:700; white-space:nowrap;">${esc(d.codigo)}</td><td style="text-align:center;">v${esc(d.versao)}</td><td>${esc(d.tipo)}</td><td><span style="display:inline-block; font-weight:600; color:#1e293b; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; background:#f8fafc;">${esc(d.titulo)}</span></td><td>${esc(formatUnidadeUI(d.responsavel))}</td><td>${fmtBr(d.dataAprovacao)}</td>`;
     if (modo === 'mestra') return `<tr>${base}
@@ -78,11 +80,9 @@ function abrirModalNovoDocumento() {
 function salvarDocumento() {
   const btn = $id('btn-salvar-doc');
   const respSel = $id('d-resp').value;
-  const respObj = state.units.find(u => `${u.sigla} - ${u.unidade}` === respSel);
   const dados = {
     tipo: $id('d-tipo').value, titulo: ($id('d-titulo').value||'').trim(),
     dataAprovacao: $id('d-data-aprov').value, responsavel: respSel,
-    email: respObj ? respObj.email : '',
     linkDoc: ($id('d-link').value||'').trim(),
     docAuxiliar: ($id('d-link-aux1').value||'').trim(),
     docAuxiliar2: ($id('d-link-aux2').value||'').trim()
@@ -90,7 +90,7 @@ function salvarDocumento() {
   if (!dados.tipo || !dados.titulo || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha todos os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A guardar...';
   google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Documento', () => { fecharModal('modal-doc-novo'); recarregarResto(() => renderDocumentos('mestra')); });
+    if (r.sucesso) { recarregarDocs(() => renderDocumentos('mestra')); feedbackBtn(btn, '✅ Salvo!', 'Salvar Documento', () => fecharModal('modal-doc-novo')); }
     else { btn.disabled=false; btn.innerText='Salvar Documento'; showAlerta(r.mensagem); }
   }).withFailureHandler(falha(btn,'Salvar Documento',null)).salvarDocumento(dados);
 }
@@ -108,12 +108,10 @@ function abrirEditarDoc(idx) {
 function confirmarEdicaoDoc() {
   const btn = $id('btn-confirmar-doc');
   const respSel = $id('ed-resp').value;
-  const respObj = state.units.find(u => `${u.sigla} - ${u.unidade}` === respSel);
   const dados = {
     idRow: $id('ed-idrow').value, codigo: $id('ed-codigo').value,
     tipo: $id('ed-tipo').value, titulo: $id('ed-titulo').value.trim(),
     dataAprovacao: $id('ed-data').value, responsavel: respSel,
-    email: respObj ? respObj.email : '',
     linkDoc: $id('ed-link').value.trim(),
     docAuxiliar: $id('ed-aux1').value.trim(),
     docAuxiliar2: $id('ed-aux2').value.trim()
@@ -121,7 +119,7 @@ function confirmarEdicaoDoc() {
   if (!dados.titulo || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
   google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-doc-editar'); recarregarResto(()=>renderDocumentos('mestra')); });
+    if (r.sucesso) { recarregarDocs(()=>renderDocumentos('mestra')); feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>fecharModal('modal-doc-editar')); }
     else { btn.disabled=false; btn.innerText='Confirmar'; showAlerta(r.mensagem); }
   }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarDocumento(dados);
 }
@@ -138,6 +136,7 @@ function publicarRevisaoDoc() {
   const btn = $id('btn-publicar-doc');
   const dados = {
     idRow: $id('rev-doc-idrow').value, versaoAtual: $id('rev-doc-versao-hidden').value,
+    codigo: ($id('rev-doc-cod').innerText || '').trim(),
     dataAprovacao: $id('rev-doc-data').value, motivo: $id('rev-doc-motivo').value.trim(),
     linkDoc: $id('rev-doc-link').value.trim(),
     docAuxiliar: $id('rev-doc-aux1').value.trim(),
@@ -146,12 +145,33 @@ function publicarRevisaoDoc() {
   if (!dados.dataAprovacao || !dados.motivo || !dados.linkDoc) return showAlerta('Informe a nova data de aprovação, a descrição e o link.');
   btn.disabled = true; btn.innerText = 'A publicar...';
   google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Publicado!','Publicar Revisão',()=>{ fecharModal('modal-doc-revisao'); recarregarResto(()=>renderDocumentos('mestra')); });
+    if (r.sucesso) { recarregarDocs(()=>renderDocumentos('mestra')); feedbackBtn(btn,'✅ Publicado!','Publicar Revisão',()=>fecharModal('modal-doc-revisao')); }
     else { btn.disabled=false; btn.innerText='Publicar Revisão'; showAlerta(r.mensagem); }
   }).withFailureHandler(falha(btn,'Publicar Revisão',null)).salvarRevisaoDocumento(dados);
 }
-function excluirDoc(idRow, codigo) {
-  google.script.run.withSuccessHandler(r => { if(r.sucesso) recarregarResto(()=>renderDocumentos('mestra')); else showAlerta(r.mensagem); })
-    .withFailureHandler(e=>showAlerta(String(e))).excluirDocumento(idRow, codigo);
+function excluirDoc(idRow, codigo, fechar) {
+  google.script.run.withSuccessHandler(r => {
+    if(fechar) fechar();
+    if(r.sucesso) {
+      // Reflete a exclusão na tela na hora (o servidor já confirmou), sem
+      // esperar a recarga — depois ressincroniza idRow/KPIs em 2º plano.
+      const idx = state.docs.findIndex(d => d.idRow === idRow);
+      if (idx > -1) state.docs.splice(idx, 1);
+      renderDocumentos('mestra');
+      recarregarDocs(() => renderDocumentos('mestra'));
+    } else showAlerta(r.mensagem);
+  }).withFailureHandler(e=>{ if(fechar) fechar(); showAlerta(String(e)); }).excluirDocumento(idRow, codigo);
+}
+
+// Recarga LEVE do módulo de Documentos: lê só Unidades + Documentos
+// (getDocsData) em vez das 7 abas de recarregarResto. Usada após cada ação
+// de documento para "efetivar" a mudança sem o custo da recarga total.
+function recarregarDocs(cb) {
+  google.script.run.withSuccessHandler(resto => {
+    state.units = resto.units;
+    state.docs = resto.docs;
+    sincronizarSelectsUnidade();
+    if (cb) cb();
+  }).withFailureHandler(e => showAlerta('Falha ao sincronizar: ' + String(e))).getDocsData();
 }
 </script>

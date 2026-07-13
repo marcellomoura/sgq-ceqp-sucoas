@@ -7,6 +7,20 @@
 function salvarEscala(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
+    // Validação de integridade no servidor (defense-in-depth — o cliente já
+    // valida, mas uma chamada direta poderia gravar escala incoerente).
+    const diasTrab = Array.isArray(dados.diasSemana) ? dados.diasSemana : [];
+    const presenciais = String(dados.diaPresencial || '').split(',').map(s => s.trim()).filter(x => x);
+    for (const p of presenciais) {
+      if (diasTrab.indexOf(p) === -1)
+        return { sucesso: false, mensagem: 'Dia presencial "' + p + '" não está entre os dias trabalhados.' };
+    }
+    if (dados.horarios) {
+      for (const k in dados.horarios) {
+        if (String(dados.horarios[k]).indexOf(',') !== -1)
+          return { sucesso: false, mensagem: 'O horário não pode conter vírgula.' };
+      }
+    }
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
       const C = colIdx_(CABECALHOS_MEMBROS);

@@ -14,14 +14,17 @@ const SHEET_CAPACITACOES = 'Capacitações';
 
 // Layouts de colunas usados em vários pontos (setup, leitura e escrita).
 // Uma única fonte de verdade evita que uma migração futura esqueça algum lugar.
-const CABECALHOS_MEMBROS = ['ID','Nome','Cargo','Email Funcional','Dias Semana','Dia Presencial','E-mail Pessoal'];
+// 'Ativo' (Sim/Não) controla se o membro tem acesso ao sistema e aparece nas
+// telas. Em branco = ativo (compatível com linhas anteriores à coluna). Membro
+// inativo preserva o histórico (tarefas/afastamentos/logs) mas perde o login.
+const CABECALHOS_MEMBROS = ['ID','Nome','Cargo','Email Funcional','E-mail Pessoal','Dias Semana','Dia Presencial','Ativo'];
 // Uma linha por (Membro + Ano) — permite manter vários anos abertos ao
 // mesmo tempo sem perder histórico (ver Modulo_Pessoas.js).
 const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio','Demais Afastamentos'];
 // Demais abas — mesma ideia de fonte única de verdade para o layout.
 const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas'];
 const CABECALHOS_UNIDADES = ['ID Unidade', 'Nome da Unidade','Sigla','E-mail Funcional','Link do Drive'];
-const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','E-mail','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
+const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
 const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável'];
 const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status'];
 const CABECALHOS_ENTREGAS = ['Risco Vinculado','Unidade','Status','Data Entrega','SEI'];
@@ -62,9 +65,17 @@ function include(filename) {
 // ==========================================
 // UTILITÁRIOS COMPARTILHADOS
 // ==========================================
+// Serializa operações de escrita para evitar corrida entre usuários. Espera
+// até 30s pela trava (antes eram 10s, que sob contenção — ex.: migração de
+// setup ou auto-arquivamento rodando em paralelo — estourava e mostrava um
+// erro cru "Tempo limite do bloqueio..."). Se ainda assim não obtiver, lança
+// uma mensagem clara e acionável em vez da exceção nativa.
 function comBloqueio(operacao) {
   const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  let obteve = false;
+  try { lock.waitLock(30000); obteve = true; } catch (e) { obteve = false; }
+  if (!obteve)
+    throw new Error('O sistema está ocupado processando outra operação. Aguarde alguns segundos e tente novamente.');
   try { return operacao(); } finally { lock.releaseLock(); }
 }
 
@@ -154,6 +165,10 @@ function membrosParaAuth_() {
     const C = colIdx_(CABECALHOS_MEMBROS);
     const mData = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS).getDataRange().getValues();
     for (let i = 1; i < mData.length; i++) {
+      // Membro inativo (Ativo === 'Não') não entra na lista de autenticação:
+      // perde o acesso ao sistema, mantendo o registro na planilha.
+      const at = String(mData[i][C('Ativo')] || '').trim().toLowerCase();
+      if (at === 'não' || at === 'nao') continue;
       lista.push([
         String(mData[i][C('Email Funcional')] || '').trim().toLowerCase(),
         String(mData[i][C('E-mail Pessoal')] || '').trim().toLowerCase(),
@@ -171,7 +186,7 @@ function membrosParaAuth_() {
 }
 
 // Remove o cache compartilhado de membros. Chamada após qualquer escrita na
-// aba Membros (saveMember/deleteMember) para que membership e nomes fiquem
+// aba Membros (saveMember/inativarMembro/reativarMembro) para que membership e nomes fiquem
 // atualizados na hora, sem esperar o TTL de 6h.
 function invalidarCacheMembros_() {
   try { CacheService.getScriptCache().remove('membros_auth'); } catch (e) {}
@@ -254,6 +269,14 @@ function setupDatabaseKanban() {
   try { if (CacheService.getScriptCache().get('setup_kanban_ok')) return; } catch (e) {}
   conectarAba(SHEET_TASKS, CABECALHOS_TAREFAS);
   const abaMembros = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
+  try {
+    const atualParaMig = abaMembros.getRange(1, 1, 1, abaMembros.getLastColumn()).getValues()[0];
+    const idxP = atualParaMig.indexOf('E-mail Pessoal');
+    const idxF = atualParaMig.indexOf('Email Funcional');
+    if (idxP > -1 && idxF > -1 && idxP > idxF + 1) {
+      abaMembros.moveColumns(abaMembros.getRange(1, idxP + 1), idxF + 2);
+    }
+  } catch(e) {}
   // Corrige o texto do cabeçalho apenas se estiver divergente — evita uma
   // escrita na planilha a cada carregamento do sistema.
   const atual = abaMembros.getRange(1, 1, 1, CABECALHOS_MEMBROS.length).getValues()[0];
@@ -301,16 +324,40 @@ function setupDatabaseResto() {
   // Mesma lógica de setupDatabaseKanban: conectar 7 abas + migração de
   // Documentos custava ~8 round-trips à planilha em TODA primeira visita a
   // uma aba do SGQ. Roda no máximo 1x a cada 6h; os dados seguem lidos frescos.
-  try { if (CacheService.getScriptCache().get('setup_resto_ok')) return; } catch (e) {}
+  // Chave versionada (v2): ao subir a remoção da coluna E-mail dos Documentos,
+  // o bump força o setup (e a migração nova) a rodar uma vez no próximo
+  // carregamento, sem esperar o TTL de 6h da chave antiga.
+  try { if (CacheService.getScriptCache().get('setup_resto_ok_v2')) return; } catch (e) {}
   conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
   migrarRemoverCarimboDocumentos();
+  migrarRemoverColunaEmailDocumentos_();
   conectarAba(SHEET_DOCS,     CABECALHOS_DOCS);
   conectarAba(SHEET_RISKS,    CABECALHOS_RISCOS);
   conectarAba(SHEET_PLANS,    CABECALHOS_PLANOS);
   conectarAba(SHEET_DELIVERY, CABECALHOS_ENTREGAS);
   conectarAba(SHEET_LOGS,     CABECALHOS_LOGS);
   conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
-  try { CacheService.getScriptCache().put('setup_resto_ok', '1', 21600); } catch (e) {}
+  try { CacheService.getScriptCache().put('setup_resto_ok_v2', '1', 21600); } catch (e) {}
+}
+
+// Migração única e segura: remove a coluna "E-mail" da aba Documentos (deixou
+// de ser usada). Localiza a coluna pelo CABEÇALHO FÍSICO da planilha e a
+// exclui inteira, deslocando as demais uma posição à esquerda, sem perder
+// dados. Idempotente: depois de removida, indexOf devolve -1 e nada acontece.
+// Roda ANTES de conectarAba(SHEET_DOCS, ...) e de qualquer leitura no novo
+// layout — getRestoData chama setupDatabaseResto antes de ler; getDocsData só
+// é acionado depois que getRestoData já rodou na sessão.
+function migrarRemoverColunaEmailDocumentos_() {
+  if (!isMembro_()) return;
+  try {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DOCS);
+    if (!aba || aba.getLastColumn() < 1) return; // aba ainda não existe
+    const cab = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0].map(v => String(v).trim());
+    const idx = cab.indexOf('E-mail');
+    if (idx > -1) aba.deleteColumn(idx + 1);
+  } catch (e) {
+    console.error('Falha na migração de remoção da coluna E-mail (Documentos): ' + e);
+  }
 }
 
 // Migração única e segura: se a aba Documentos já existir de uma versão
@@ -353,7 +400,6 @@ function getKanbanData() {
   if (tData.length <= 1) return { tasks: [], members: getKanbanData_members_() };
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const linhasParaArquivar = []; // índices (0-based, relativos aos dados sem cabeçalho) a marcar 'Sim'
 
   const tasks = tData.slice(1).map((r, idx) => {
     const status = String(r[C('Status')]);
@@ -365,15 +411,17 @@ function getKanbanData() {
     // EM BRANCO (nunca decidido). Se o valor for 'Não', significa que o
     // usuário restaurou esse cartão manualmente — respeita a decisão dele
     // e não volta a arquivar sozinho, mesmo que a data de conclusão seja antiga.
+    // Calculado apenas EM MEMÓRIA (para exibição) — não grava 'Sim' na planilha
+    // durante a leitura, para o carregamento do quadro nunca disputar a trava
+    // (comBloqueio) com uma escrita de outra ação. O cálculo é idempotente e
+    // determinístico, então o cartão aparece arquivado de forma consistente a
+    // cada carga; a persistência só ocorre quando o usuário arquiva/restaura.
     if (arquivadoRaw === '' && status === 'Concluído' && completionDate) {
       const p = completionDate.split('-');
       if (p.length === 3) {
         const dtConclusao = new Date(+p[0], +p[1]-1, +p[2]);
         const diasPassados = Math.floor((hoje - dtConclusao) / 86400000);
-        if (diasPassados >= DIAS_PARA_ARQUIVAR) {
-          archived = true;
-          linhasParaArquivar.push(idx);
-        }
+        if (diasPassados >= DIAS_PARA_ARQUIVAR) archived = true;
       }
     }
 
@@ -385,16 +433,6 @@ function getKanbanData() {
       labels: String(r[C('Etiquetas')] || '[]'), archived: archived
     };
   });
-
-  // Grava as marcações novas em UMA única escrita (independente de quantas linhas mudaram)
-  if (linhasParaArquivar.length > 0) {
-    comBloqueio(() => {
-      const colArq = C('Arquivado') + 1; // getRange usa base 1
-      const colArquivado = sheet.getRange(2, colArq, tData.length - 1, 1).getValues();
-      linhasParaArquivar.forEach(idx => { colArquivado[idx][0] = 'Sim'; });
-      sheet.getRange(2, colArq, colArquivado.length, 1).setValues(colArquivado);
-    });
-  }
 
   return { tasks: tasks, members: getKanbanData_members_() };
 }
@@ -422,31 +460,38 @@ function getKanbanData_members_() {
     // ('E-mail Pessoal', 7ª col), mas saveMember() grava na 13ª coluna —
     // divergência pré-existente que faz o e-mail pessoal aparecer vazio
     // após recarregar. Mantido como está aqui; reconciliar em saveMember.
+    // ativo: em branco/'Sim' = ativo; só 'Não' inativa. Todos os membros são
+    // retornados (inclusive inativos) para que os nomes continuem resolvendo em
+    // cartões/gráficos/afastamentos antigos; a flag é usada no cliente para
+    // filtrar quem aparece nas telas/seletores.
+    const at = String(r[C('Ativo')] || '').trim().toLowerCase();
     return {
       id: String(r[C('ID')]), name: String(r[C('Nome')]), role: String(r[C('Cargo')]), email: String(r[C('Email Funcional')]||''), emailPessoal: String(r[C('E-mail Pessoal')]||''),
       diasSemana: diasSemana, diaPresencial: String(r[C('Dia Presencial')]||''),
-      horarios: horarios
+      horarios: horarios, ativo: !(at === 'não' || at === 'nao')
     };
   }) : [];
 }
 
-function getRestoData() {
-  if (!isMembro_()) throw new Error('Acesso Negado.');
-  setupDatabaseResto();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  // --- Unidades (usadas por Documentos, Riscos e Entregas) ---
+// Leitura da aba Unidades → array de objetos para o cliente. Extraída de
+// getRestoData para poder ser reaproveitada pelo endpoint leve getDocsData().
+function _lerUnidades_(ss) {
   const CU = colIdx_(CABECALHOS_UNIDADES);
   const uData = safeGetSheetData(ss, SHEET_UNITS);
-  const units = uData.length > 1 ? uData.slice(1).map((r, i) => ({
+  return uData.length > 1 ? uData.slice(1).map((r, i) => ({
     idRow: i + 2, id: String(r[CU('ID Unidade')] || ''), unidade: String(r[CU('Nome da Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('E-mail Funcional')] || ''), linkDrive: String(r[CU('Link do Drive')] || '')
   })) : [];
+}
 
-  // --- Documentos ---
+// Leitura + normalização da aba Documentos (cálculo de status Vigente/Vencido/
+// Próximo da Revisão/Em Elaboração). Extraída de getRestoData para ser
+// reaproveitada por getDocsData() — a recarga leve usada após cada escrita
+// de documento, que evita reler as 7 abas do sistema inteiro.
+function _lerDocumentos_(ss) {
   const CD = colIdx_(CABECALHOS_DOCS);
   const dData = safeGetSheetData(ss, SHEET_DOCS);
   const hoje  = new Date(); hoje.setHours(0,0,0,0);
-  const docs  = dData.length > 1 ? dData.slice(1).map((r, i) => {
+  return dData.length > 1 ? dData.slice(1).map((r, i) => {
     const statusOrig = String(r[CD('Status')] || 'Vigente').trim();
     const isObsoleto = statusOrig.toUpperCase() === 'OBSOLETO';
     let proxRevStr   = formatarDataParaUI(r[CD('Próxima Revisão')]);
@@ -473,11 +518,45 @@ function getRestoData() {
     return {
       idRow: i + 2, codigo: String(r[CD('Código')] || ''), versao: versao.toFixed(1), tipo: String(r[CD('Tipo')] || ''),
       titulo: String(r[CD('Título')] || ''), dataAprovacao: dataAprovacaoStr, proximaRevisao: proxRevStr,
-      status: statusCalc, responsavel: String(r[CD('Responsável')] || ''), email: String(r[CD('E-mail')] || ''),
+      status: statusCalc, responsavel: String(r[CD('Responsável')] || ''),
       linkDoc: String(r[CD('Link Principal')] || ''), docAuxiliar: String(r[CD('Doc Auxiliar 1')] || ''), docAuxiliar2: String(r[CD('Doc Auxiliar 2')] || ''),
       obsoleto: isObsoleto, motivo: String(r[CD('Revisão')] || '')
     };
   }) : [];
+}
+
+// Endpoint LEVE para o módulo de Documentos: lê apenas Unidades + Documentos
+// (as duas abas de que a aba de Documentos precisa), em vez de reler as 7 abas
+// do sistema como getRestoData(). Usado por recarregarDocs() no cliente depois
+// de cadastrar/editar/revisar/excluir um documento — é a principal correção da
+// lentidão para "efetivar" essas ações. Não dispara setupDatabaseResto (as
+// abas já existem quando este caminho é alcançado).
+function getDocsData() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return { units: _lerUnidades_(ss), docs: _lerDocumentos_(ss) };
+}
+
+// Endpoint LEVE para o módulo de Unidades: lê apenas a aba Unidades em vez das
+// 7 abas de getRestoData(). Usado por recarregarUnidades() após cadastrar/
+// editar/excluir uma unidade. Como Documentos/Riscos/Planos resolvem a unidade
+// por id em tempo de renderização (formatUnidadeUI), atualizar só state.units
+// já mantém os selects e as telas consistentes.
+function getUnitsData() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  return { units: _lerUnidades_(SpreadsheetApp.getActiveSpreadsheet()) };
+}
+
+function getRestoData() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  setupDatabaseResto();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // --- Unidades (usadas por Documentos, Riscos e Entregas) ---
+  const units = _lerUnidades_(ss);
+
+  // --- Documentos ---
+  const docs = _lerDocumentos_(ss);
 
   // --- Riscos ---
   const CR = colIdx_(CABECALHOS_RISCOS);
