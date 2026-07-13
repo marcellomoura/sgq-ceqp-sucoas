@@ -19,7 +19,7 @@ const CABECALHOS_MEMBROS = ['ID','Nome','Cargo','Email Funcional','Dias Semana',
 const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio','Demais Afastamentos'];
 // Demais abas — mesma ideia de fonte única de verdade para o layout.
 const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas'];
-const CABECALHOS_UNIDADES = ['Nome da Unidade','Sigla','E-mail Funcional','Link do Drive'];
+const CABECALHOS_UNIDADES = ['ID Unidade', 'Nome da Unidade','Sigla','E-mail Funcional','Link do Drive'];
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','E-mail','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
 const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável'];
 const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status'];
@@ -350,7 +350,7 @@ function getRestoData() {
   const CU = colIdx_(CABECALHOS_UNIDADES);
   const uData = ss.getSheetByName(SHEET_UNITS).getDataRange().getValues();
   const units = uData.length > 1 ? uData.slice(1).map((r, i) => ({
-    id: i + 1, unidade: String(r[CU('Nome da Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('E-mail Funcional')] || ''), linkDrive: String(r[CU('Link do Drive')] || '')
+    idRow: i + 2, id: String(r[CU('ID Unidade')] || ''), unidade: String(r[CU('Nome da Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('E-mail Funcional')] || ''), linkDrive: String(r[CU('Link do Drive')] || '')
   })) : [];
 
   // --- Documentos ---
@@ -446,14 +446,15 @@ function getRestoData() {
 // de auditoria e precisa refletir o estado atual a cada visita.
 // Retorna só os N registros mais recentes para não pesar com o tempo.
 // ==========================================
-function buscarLogs() {
-  const LIMITE_REGISTROS = 20;
+function buscarLogs(filtros) {
+  const LIMITE_REGISTROS = 30;
+  filtros = filtros || {};
   const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
   const dados = aba.getDataRange().getValues();
-  if (dados.length <= 1) return [];
+  if (dados.length <= 1) return { logs: [], temMais: false, acoesUnicas: [] };
 
   const CL = colIdx_(CABECALHOS_LOGS);
-  const linhas = dados.slice(1).map(r => ({
+  let linhas = dados.slice(1).map(r => ({
     dataHora: r[CL('Data/Hora')] instanceof Date
       ? Utilities.formatDate(r[CL('Data/Hora')], Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
       : String(r[CL('Data/Hora')] || ''),
@@ -461,14 +462,43 @@ function buscarLogs() {
     acao: String(r[CL('Ação')] || ''),
     referencia: String(r[CL('Referência')] || ''),
     detalhes: String(r[CL('Detalhes')] || ''),
-    // Mantém a data crua (não formatada) só para poder ordenar corretamente
     _ordenacao: r[CL('Data/Hora')] instanceof Date ? r[CL('Data/Hora')].getTime() : 0
   }));
 
+  // Extrai as ações únicas ANTES de filtrar (para popular o dropdown no frontend na primeira carga)
+  const acoesUnicas = Array.from(new Set(linhas.map(l => l.acao).filter(a => a))).sort();
+
+  // Filtros no servidor
+  if (filtros.acao) linhas = linhas.filter(l => l.acao === filtros.acao);
+  if (filtros.usuario) linhas = linhas.filter(l => l.usuario === filtros.usuario);
+  
+  if (filtros.dataIni || filtros.dataFim) {
+    const tsIni = filtros.dataIni ? new Date(filtros.dataIni + 'T00:00:00').getTime() : 0;
+    const tsFim = filtros.dataFim ? new Date(filtros.dataFim + 'T23:59:59').getTime() : Infinity;
+    linhas = linhas.filter(l => l._ordenacao >= tsIni && l._ordenacao <= tsFim);
+  }
+
+  if (filtros.busca) {
+    const buscaStr = String(filtros.busca).toLowerCase().trim();
+    linhas = linhas.filter(l =>
+      (l.referencia || '').toLowerCase().includes(buscaStr) || (l.detalhes || '').toLowerCase().includes(buscaStr)
+    );
+  }
+
   linhas.sort((a, b) => b._ordenacao - a._ordenacao);
-  return linhas.slice(0, LIMITE_REGISTROS).map(l => ({
-    dataHora: l.dataHora, usuario: l.usuario, acao: l.acao, referencia: l.referencia, detalhes: l.detalhes
-  }));
+
+  // Paginação
+  const offset = parseInt(filtros.offset, 10) || 0;
+  const resultados = linhas.slice(offset, offset + LIMITE_REGISTROS);
+  const temMais = (offset + LIMITE_REGISTROS) < linhas.length;
+
+  return {
+    logs: resultados.map(l => ({
+      dataHora: l.dataHora, usuario: l.usuario, acao: l.acao, referencia: l.referencia, detalhes: l.detalhes
+    })),
+    temMais: temMais,
+    acoesUnicas: acoesUnicas
+  };
 }
 
 // ==========================================

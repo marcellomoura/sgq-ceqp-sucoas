@@ -46,6 +46,11 @@ function linkA(url, txt, cor) {
   if (!/^https?:\/\//i.test(String(url).trim())) return esc(url);
   return `<a href="${esc(url)}" target="_blank" style="color:${cor||'#2563eb'};font-weight:600;text-decoration:none;">${txt}</a>`;
 }
+function formatUnidadeUI(val) {
+  if (!val || val === '-') return val || '';
+  const u = state.units.find(x => String(x.id) === String(val));
+  return u ? `${u.sigla} - ${u.unidade}` : val;
+}
 function iconBtn(cls, acao, title, attrs) { return `<button type="button" class="btn-icon ${cls}" title="${title}" data-acao="${acao}" ${attrs||''}>${ICON[cls] || ICON.del}</button>`; }
 function msgTabela(tbodyId, cols, txt, err) { $id(tbodyId).innerHTML = `<tr><td colspan="${cols}" class="${err?'msg-error':'msg-empty'}">${txt}</td></tr>`; }
 function feedbackBtn(btn, ok, orig, cb) { btn.disabled=false; btn.innerText=ok; setTimeout(()=>{ btn.innerText=orig; if(cb) cb(); }, 1400); }
@@ -115,14 +120,14 @@ function fecharModal(id) { const el=$id(id); if(el) el.classList.remove('open');
 function gerarOptsUnidades(comTodas) {
   let html = '<option value="" disabled selected>Selecione...</option>';
   const ordenadas = [...state.units].sort((a, b) => a.unidade.localeCompare(b.unidade, 'pt-BR', { sensitivity: 'base' }));
-  ordenadas.forEach(u => { const v=`${esc(u.sigla)} - ${esc(u.unidade)}`; html+=`<option value="${v}">${v}</option>`; });
+  ordenadas.forEach(u => { const label=`${esc(u.sigla)} - ${esc(u.unidade)}`; html+=`<option value="${esc(u.id)}">${label}</option>`; });
   if (comTodas) html += '<option value="Todas as Subcomissões">Todas as Subcomissões</option>';
   return html;
 }
 function optsUnidFiltro() {
   let h='<option value="">Todas as Unidades</option>';
   const ordenadas = [...state.units].sort((a, b) => a.unidade.localeCompare(b.unidade, 'pt-BR', { sensitivity: 'base' }));
-  ordenadas.forEach(u=>{ const v=`${esc(u.sigla)} - ${esc(u.unidade)}`; h+=`<option value="${v}">${v}</option>`; });
+  ordenadas.forEach(u=>{ const label=`${esc(u.sigla)} - ${esc(u.unidade)}`; h+=`<option value="${esc(u.id)}">${label}</option>`; });
   return h;
 }
 function sincronizarSelectsUnidade() {
@@ -413,6 +418,7 @@ document.addEventListener('click', function(e) {
   if(e.target.id === 'btn-confirmar-escala')     confirmarEscala();
   if(e.target.id === 'btn-confirmar-ferias')     confirmarFerias();
   if(e.target.id === 'btn-enviar-pdf') dispararEnvioPdf();
+  if(e.target.id === 'btn-load-more-logs') carregarLogs(true);
   if(e.target.id === 'assignee-display') $id('taskAssigneesContainer').classList.toggle('show');
   if(e.target.id === 'labels-display') $id('taskLabelsContainer').classList.toggle('show');
   // Botões add-card (têm data-add-card)
@@ -433,11 +439,15 @@ document.addEventListener('change', function(e) {
   if (id === 'f-rev-unidade') renderDocumentos('revisoes');
   if (id === 'f-acomp-unidade' || id === 'f-acomp-status') renderAcompanhamento();
   if (id === 'f-archived-membro') renderArquivados();
-  if (id === 'f-log-acao' || id === 'f-log-usuario' || id === 'f-log-data-ini' || id === 'f-log-data-fim') renderLogs();
+  if (id === 'f-log-acao' || id === 'f-log-usuario' || id === 'f-log-data-ini' || id === 'f-log-data-fim') carregarLogs();
 });
 
+var _debounceLogBusca;
 document.addEventListener('input', function(e) {
-  if (e.target.id === 'f-log-busca') renderLogs();
+  if (e.target.id === 'f-log-busca') {
+    clearTimeout(_debounceLogBusca);
+    _debounceLogBusca = setTimeout(function() { carregarLogs(); }, 600);
+  }
 });
 
 // ==========================================
@@ -650,61 +660,102 @@ function _capturarElementoComoImg(el) {
 // Nunca fica em cache — busca sempre que a aba é visitada, já que é
 // uma trilha de auditoria e precisa refletir o estado mais recente.
 // ==========================================
-var logsCache = [];
+var currentLogsOffset = 0;
+var currentLogsHasMore = false;
 
-function carregarLogs() {
-  msgTabela('lista-logs', 5, 'A carregar...');
-  google.script.run
-    .withFailureHandler(function(e) { msgTabela('lista-logs', 5, 'Falha ao carregar: ' + (e.message || String(e)), true); })
-    .withSuccessHandler(function(logs) {
-      logsCache = logs || [];
-      const selAcao = $id('f-log-acao');
-      if (selAcao) {
-        const v = selAcao.value;
-        const acoesUnicas = Array.from(new Set(logsCache.map(l => l.acao))).sort();
-        selAcao.innerHTML = '<option value="">Todas</option>' + acoesUnicas.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
-        if (v) selAcao.value = v;
-      }
-      const selUsuario = $id('f-log-usuario');
-      if (selUsuario) {
-        const v = selUsuario.value;
-        const usuariosUnicos = membrosOrdenados().map(m => m.name);
-        selUsuario.innerHTML = '<option value="">Todos</option>' + usuariosUnicos.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
-        if (v) selUsuario.value = v;
-      }
-      renderLogs();
-    }).buscarLogs();
+function getFiltrosLogs() {
+  return {
+    acao: ($id('f-log-acao') || {value:''}).value,
+    usuario: ($id('f-log-usuario') || {value:''}).value,
+    dataIni: ($id('f-log-data-ini') || {value:''}).value,
+    dataFim: ($id('f-log-data-fim') || {value:''}).value,
+    busca: (($id('f-log-busca') || {value:''}).value || '').trim()
+  };
 }
 
-function renderLogs() {
-  const fAcao = ($id('f-log-acao') || {value:''}).value;
-  const fUsuario = ($id('f-log-usuario') || {value:''}).value;
-  const fDataIni = ($id('f-log-data-ini') || {value:''}).value;
-  const fDataFim = ($id('f-log-data-fim') || {value:''}).value;
-  const fBusca = (($id('f-log-busca') || {value:''}).value || '').toLowerCase().trim();
+function carregarLogs(isLoadMore = false) {
+  if (typeof isLoadMore !== 'boolean') isLoadMore = false; // Tratar chamadas de evento
 
-  let filtrados = logsCache;
-  if (fAcao) filtrados = filtrados.filter(l => l.acao === fAcao);
-  if (fUsuario) filtrados = filtrados.filter(l => l.usuario === fUsuario);
-  
-  if (fDataIni || fDataFim) {
-    const tsIni = fDataIni ? new Date(fDataIni + 'T00:00:00').getTime() : 0;
-    const tsFim = fDataFim ? new Date(fDataFim + 'T23:59:59').getTime() : Infinity;
-    filtrados = filtrados.filter(l => l._ordenacao >= tsIni && l._ordenacao <= tsFim);
+  if (!isLoadMore) {
+    currentLogsOffset = 0;
+    msgTabela('lista-logs', 5, 'A carregar...');
+    const btnMais = $id('btn-load-more-logs');
+    if (btnMais) btnMais.style.display = 'none';
+  } else {
+    const btnMais = $id('btn-load-more-logs');
+    if (btnMais) { btnMais.innerText = 'A carregar...'; btnMais.disabled = true; }
   }
 
-  if (fBusca) filtrados = filtrados.filter(l =>
-    (l.referencia || '').toLowerCase().includes(fBusca) || (l.detalhes || '').toLowerCase().includes(fBusca)
-  );
+  const filtros = getFiltrosLogs();
+  filtros.offset = currentLogsOffset;
 
-  if (!filtrados.length) { msgTabela('lista-logs', 5, 'Nenhum registro encontrado.'); return; }
+  google.script.run
+    .withFailureHandler(function(e) {
+      if (!isLoadMore) {
+        msgTabela('lista-logs', 5, 'Falha ao carregar: ' + (e.message || String(e)), true);
+      } else {
+        showAlerta('Falha ao carregar mais registros: ' + (e.message || String(e)));
+        const btnMais = $id('btn-load-more-logs');
+        if (btnMais) { btnMais.innerText = 'Carregar mais'; btnMais.disabled = false; }
+      }
+    })
+    .withSuccessHandler(function(result) {
+      const logs = result.logs || [];
+      currentLogsHasMore = result.temMais || false;
+      const acoesUnicas = result.acoesUnicas || [];
 
-  $id('lista-logs').innerHTML = filtrados.map(l => `<tr>
+      if (!isLoadMore && currentLogsOffset === 0) {
+        const selAcao = $id('f-log-acao');
+        if (selAcao && acoesUnicas.length > 0) {
+          const v = selAcao.value;
+          selAcao.innerHTML = '<option value="">Todas</option>' + acoesUnicas.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+          if (v) selAcao.value = v;
+        }
+        const selUsuario = $id('f-log-usuario');
+        if (selUsuario) {
+          const v = selUsuario.value;
+          const usuariosUnicos = membrosOrdenados().map(m => m.name);
+          selUsuario.innerHTML = '<option value="">Todos</option>' + usuariosUnicos.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
+          if (v) selUsuario.value = v;
+        }
+      }
+
+      if (!isLoadMore) {
+        logsCache = logs;
+      } else {
+        logsCache = logsCache.concat(logs);
+      }
+      currentLogsOffset += logs.length;
+      
+      renderLogsHTML();
+    }).buscarLogs(filtros);
+}
+
+function renderLogsHTML() {
+  if (!logsCache.length) {
+    msgTabela('lista-logs', 5, 'Nenhum registro encontrado.');
+    const btnMais = $id('btn-load-more-logs');
+    if (btnMais) btnMais.style.display = 'none';
+    return;
+  }
+
+  $id('lista-logs').innerHTML = logsCache.map(l => `<tr>
     <td style="white-space:nowrap; font-size:12px; color:#64748b;">${esc(l.dataHora)}</td>
     <td style="font-size:12px;">${esc(l.usuario)}</td>
     <td><span class="status-badge" style="background:#eef2f7; color:#334155;">${esc(l.acao)}</span></td>
     <td style="font-weight:600; color:#2563eb;">${esc(l.referencia)}</td>
     <td style="font-size:12.5px;">${esc(l.detalhes)}</td>
   </tr>`).join('');
+
+  const btnMais = $id('btn-load-more-logs');
+  if (btnMais) {
+    if (currentLogsHasMore) {
+      btnMais.style.display = 'block';
+      btnMais.innerText = 'Carregar mais';
+      btnMais.disabled = false;
+    } else {
+      btnMais.style.display = 'none';
+    }
+  }
 }
 </script>
