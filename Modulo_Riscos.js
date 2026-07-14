@@ -13,8 +13,9 @@ function salvarRisco(dados) {
         !String(dados.causa||'').trim() || !String(dados.consequencia||'').trim() ||
         !dados.tipoTratamento || !dados.responsavel)
       return { sucesso: false, mensagem: 'Preencha todos os campos do risco.' };
-    if (isNaN(dados.probabilidade) || isNaN(dados.impacto) || dados.probabilidade < 1 || dados.impacto < 1)
-      return { sucesso: false, mensagem: 'Probabilidade e impacto são obrigatórios e devem ser válidos.' };
+    if (isNaN(dados.probabilidade) || isNaN(dados.impacto) ||
+        dados.probabilidade < 1 || dados.probabilidade > 5 || dados.impacto < 1 || dados.impacto > 5)
+      return { sucesso: false, mensagem: 'Probabilidade e impacto devem ser números entre 1 e 5.' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_RISKS);
       const CR = colIdx_(CABECALHOS_RISCOS);
@@ -43,8 +44,9 @@ function atualizarRisco(dados) {
         !String(dados.causa||'').trim() || !String(dados.consequencia||'').trim() ||
         !dados.tipoTratamento || !dados.responsavel)
       return { sucesso: false, mensagem: 'Preencha todos os campos do risco.' };
-    if (isNaN(dados.probabilidade) || isNaN(dados.impacto) || dados.probabilidade < 1 || dados.impacto < 1)
-      return { sucesso: false, mensagem: 'Probabilidade e impacto são obrigatórios e devem ser válidos.' };
+    if (isNaN(dados.probabilidade) || isNaN(dados.impacto) ||
+        dados.probabilidade < 1 || dados.probabilidade > 5 || dados.impacto < 1 || dados.impacto > 5)
+      return { sucesso: false, mensagem: 'Probabilidade e impacto devem ser números entre 1 e 5.' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_RISKS);
       const CR = colIdx_(CABECALHOS_RISCOS);

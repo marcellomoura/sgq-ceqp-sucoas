@@ -77,7 +77,7 @@ function badge(st) { const c = CORES_STATUS[st] || ['#f1f5f9','#475569']; return
 function linkA(url, txt, cor) {
   if (!url || url === '-') return '-';
   if (!/^https?:\/\//i.test(String(url).trim())) return esc(url);
-  return `<a href="${esc(url)}" target="_blank" style="color:${cor||'#2563eb'};font-weight:600;text-decoration:none;">${txt}</a>`;
+  return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:${cor||'#2563eb'};font-weight:600;text-decoration:none;">${txt}</a>`;
 }
 function formatUnidadeUI(val) {
   if (!val || val === '-') return val || '';

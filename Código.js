@@ -85,7 +85,14 @@ function safeGetSheet(ss, sheetName) {
     const normalize = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const target = normalize(sheetName);
     sheet = ss.getSheets().find(s => normalize(s.getName()) === target);
-    if (sheet) sheet.setName(sheetName); // Padroniza o nome
+    if (sheet) {
+      const nomeAntigo = sheet.getName();
+      sheet.setName(sheetName); // Padroniza o nome
+      // Rename autom\u00e1tico \u00e9 raro (s\u00f3 quando o nome da aba diverge por
+      // acento/mai\u00fascula) mas acontecia em sil\u00eancio \u2014 registra para ficar
+      // rastre\u00e1vel na auditoria caso um dia isso pegue uma aba errada por coincid\u00eancia.
+      try { registrarLog('Sistema', sheetName, 'Aba renomeada automaticamente de "' + nomeAntigo + '" para "' + sheetName + '" (normaliza\u00e7\u00e3o de nome).'); } catch (e) {}
+    }
   }
   return sheet;
 }
@@ -130,6 +137,16 @@ function _dataLocalISO_(d) {
 function formatarDataParaUI(campo) {
   if (campo instanceof Date) return _dataLocalISO_(campo);
   return campo ? campo.toString() : '';
+}
+
+// Aceita apenas links http(s). Usado ao gravar qualquer campo de link
+// (Documentos, Unidades) — o cliente já bloqueia esquemas perigosos
+// (ex.: 'javascript:') na exibição, mas a validação também precisa existir
+// aqui: o servidor não deve confiar apenas no que o cliente faz antes de
+// enviar (defesa em profundidade).
+function linkPermitido_(url) {
+  const v = String(url || '').trim();
+  return !v || /^https?:\/\//i.test(v);
 }
 
 function getNowTimestamp() {
@@ -230,15 +247,33 @@ function dataParaISO_(val) {
   return String(val || '').trim();
 }
 
+// Gera o próximo ID sequencial de um prefixo (TAR-, MEM-, UN-, CAP-, AF-),
+// guardando um contador em PropertiesService em vez de reler a coluna de IDs
+// inteira a cada gravação. Todos os chamadores já rodam dentro de um
+// comBloqueio (ver saveTask/saveMember/salvarUnidade/salvarCapacitacao/
+// salvarAfastamento) — por isso o incremento aqui não precisa de lock
+// próprio, já está serializado por quem chama.
+// Na primeira chamada para um prefixo (contador ainda não existe), calcula a
+// partir do maior ID já gravado na aba — mesma conta que o código antigo
+// fazia sempre — para não colidir com IDs existentes; das próximas em diante
+// só lê/grava o contador, sem reler a planilha.
 function getNextId_(sheet, prefixo) {
-  if (!sheet || sheet.getLastRow() <= 1) return prefixo + '1';
-  const ids = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
-  let max = 0;
-  ids.forEach(r => {
-    const n = parseInt(String(r[0]).replace(/\D/g,''), 10);
-    if (!isNaN(n) && n > max) max = n;
-  });
-  return prefixo + (max + 1);
+  const props = PropertiesService.getScriptProperties();
+  const chave = 'nextid_' + prefixo;
+  let atual = parseInt(props.getProperty(chave), 10);
+  if (isNaN(atual)) {
+    atual = 0;
+    if (sheet && sheet.getLastRow() > 1) {
+      const ids = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+      ids.forEach(r => {
+        const n = parseInt(String(r[0]).replace(/\D/g,''), 10);
+        if (!isNaN(n) && n > atual) atual = n;
+      });
+    }
+  }
+  const proximo = atual + 1;
+  props.setProperty(chave, String(proximo));
+  return prefixo + proximo;
 }
 
 function calcularNivelRisco(p, i) {
@@ -290,53 +325,18 @@ function setupDatabaseKanban() {
     abaMembros.getRange(1, 1, 1, CABECALHOS_MEMBROS.length)
       .setValues([CABECALHOS_MEMBROS]).setFontWeight('bold').setBackground('#f1f5f9');
   }
-  migrarEmailPessoalMembros_(abaMembros);
   try { CacheService.getScriptCache().put('setup_kanban_ok', '1', 21600); } catch (e) {}
-}
-
-// Migração única e segura: versões antigas do saveMember gravavam o e-mail
-// pessoal na 13ª coluna, enquanto a leitura sempre usou a coluna do
-// cabeçalho ('E-mail Pessoal', 7ª) — o que fazia o e-mail sumir ao recarregar.
-// Traz o valor legado da col 13 para a 7ª quando esta está vazia e limpa a
-// col 13. Idempotente e sem perda de dados (só escreve quando há o que migrar).
-function migrarEmailPessoalMembros_(abaMembros) {
-  try {
-    const COL_LEGADO = 13; // posição usada pela versão antiga (fora do layout atual)
-    const nLin = abaMembros.getLastRow() - 1;
-    if (nLin < 1 || abaMembros.getLastColumn() < COL_LEGADO) return; // sem coluna legada
-    const colCorreta = colIdx_(CABECALHOS_MEMBROS)('E-mail Pessoal') + 1;
-    const legado = abaMembros.getRange(2, COL_LEGADO, nLin, 1).getValues();
-    const atual  = abaMembros.getRange(2, colCorreta, nLin, 1).getValues();
-    let mudou = false;
-    for (let i = 0; i < nLin; i++) {
-      const val = String(legado[i][0] || '').trim();
-      if (val && !String(atual[i][0] || '').trim()) {
-        atual[i][0] = val;
-        legado[i][0] = ''; // já preservado na coluna correta
-        mudou = true;
-      }
-    }
-    if (mudou) {
-      abaMembros.getRange(2, colCorreta, nLin, 1).setValues(atual);
-      abaMembros.getRange(2, COL_LEGADO, nLin, 1).setValues(legado);
-    }
-  } catch (e) {
-    console.error('Falha na migração de e-mail pessoal: ' + e);
-  }
 }
 
 function setupDatabaseResto() {
   if (!isMembro_()) return; // idem: bloqueia disparo direto por não-membro
-  // Mesma lógica de setupDatabaseKanban: conectar 7 abas + migração de
-  // Documentos custava ~8 round-trips à planilha em TODA primeira visita a
-  // uma aba do SGQ. Roda no máximo 1x a cada 6h; os dados seguem lidos frescos.
-  // Chave versionada (v2): ao subir a remoção da coluna E-mail dos Documentos,
-  // o bump força o setup (e a migração nova) a rodar uma vez no próximo
-  // carregamento, sem esperar o TTL de 6h da chave antiga.
+  // Mesma lógica de setupDatabaseKanban: conectar 7 abas custava ~8 round-trips
+  // à planilha em TODA primeira visita a uma aba do SGQ. Roda no máximo 1x a
+  // cada 6h; os dados seguem lidos frescos. Chave versionada (v2): mantida por
+  // compatibilidade com o cache já distribuído — o "v2" foi um bump histórico
+  // (removido da versão atual: migração de coluna já concluída em produção).
   try { if (CacheService.getScriptCache().get('setup_resto_ok_v2')) return; } catch (e) {}
   conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
-  migrarRemoverCarimboDocumentos();
-  migrarRemoverColunaEmailDocumentos_();
   conectarAba(SHEET_DOCS,     CABECALHOS_DOCS);
   conectarAba(SHEET_RISKS,    CABECALHOS_RISCOS);
   conectarAba(SHEET_PLANS,    CABECALHOS_PLANOS);
@@ -344,45 +344,6 @@ function setupDatabaseResto() {
   conectarAba(SHEET_LOGS,     CABECALHOS_LOGS);
   conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
   try { CacheService.getScriptCache().put('setup_resto_ok_v2', '1', 21600); } catch (e) {}
-}
-
-// Migração única e segura: remove a coluna "E-mail" da aba Documentos (deixou
-// de ser usada). Localiza a coluna pelo CABEÇALHO FÍSICO da planilha e a
-// exclui inteira, deslocando as demais uma posição à esquerda, sem perder
-// dados. Idempotente: depois de removida, indexOf devolve -1 e nada acontece.
-// Roda ANTES de conectarAba(SHEET_DOCS, ...) e de qualquer leitura no novo
-// layout — getRestoData chama setupDatabaseResto antes de ler; getDocsData só
-// é acionado depois que getRestoData já rodou na sessão.
-function migrarRemoverColunaEmailDocumentos_() {
-  if (!isMembro_()) return;
-  try {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DOCS);
-    if (!aba || aba.getLastColumn() < 1) return; // aba ainda não existe
-    const cab = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0].map(v => String(v).trim());
-    const idx = cab.indexOf('E-mail');
-    if (idx > -1) aba.deleteColumn(idx + 1);
-  } catch (e) {
-    console.error('Falha na migração de remoção da coluna E-mail (Documentos): ' + e);
-  }
-}
-
-// Migração única e segura: se a aba Documentos já existir de uma versão
-// anterior com a coluna "Carimbo" na posição A, remove essa coluna
-// inteira da planilha (desloca tudo uma posição à esquerda, sem perder
-// nenhum dado) para o layout novo, sem essa coluna, ficar consistente
-// com os documentos que já estavam cadastrados.
-function migrarRemoverCarimboDocumentos() {
-  if (!isMembro_()) return; // migração só roda para membro autenticado
-  try {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DOCS);
-    if (!aba || aba.getLastColumn() < 1) return; // aba ainda não existe — nada a migrar
-    const primeiraColuna = String(aba.getRange(1, 1).getValue() || '').trim();
-    if (primeiraColuna === 'Carimbo') {
-      aba.deleteColumn(1);
-    }
-  } catch (e) {
-    console.error('Falha na migração de remoção do Carimbo: ' + e);
-  }
 }
 
 // ==========================================
@@ -556,18 +517,11 @@ function getUnitsData() {
   return { units: _lerUnidades_(SpreadsheetApp.getActiveSpreadsheet()) };
 }
 
-function getRestoData() {
-  if (!isMembro_()) throw new Error('Acesso Negado.');
-  setupDatabaseResto();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  // --- Unidades (usadas por Documentos, Riscos e Entregas) ---
-  const units = _lerUnidades_(ss);
-
-  // --- Documentos ---
-  const docs = _lerDocumentos_(ss);
-
-  // --- Riscos ---
+// Leitura + normalização de Riscos/Planos/Entregas — extraída de getRestoData
+// para ser reaproveitada por getRiscosData(), o endpoint leve usado ao
+// recarregar só a aba de Riscos/Planos depois de salvar/editar/excluir (evita
+// reler também Documentos e Capacitações, que essa tela não usa).
+function _lerRiscosPlanosEntregas_(ss) {
   const CR = colIdx_(CABECALHOS_RISCOS);
   const CP = colIdx_(CABECALHOS_PLANOS);
   const rData = safeGetSheetData(ss, SHEET_RISKS);
@@ -594,7 +548,6 @@ function getRestoData() {
       };
     }) : [];
 
-  // --- Planos ---
   const plans = planosRows.map(r => ({
     riscoVinculado: String(r[CP('ID Risco')]||''), what: String(r[CP('O Que')]||''), why: String(r[CP('Por Que')]||''),
     who: String(r[CP('Quem')]||''), where: String(r[CP('Onde')]||''),
@@ -603,7 +556,6 @@ function getRestoData() {
     status: String(r[CP('Status')]||'Em Andamento')
   }));
 
-  // --- Entregas ---
   const CE = colIdx_(CABECALHOS_ENTREGAS);
   const eData = safeGetSheetData(ss, SHEET_DELIVERY);
   const deliveries = eData.length > 1 ? eData.slice(1)
@@ -612,6 +564,37 @@ function getRestoData() {
       entregue: String(r[CE('Status')]||''), dataEntrega: formatarDataParaUI(r[CE('Data Entrega')]),
       processoSei: String(r[CE('SEI')]||'')
     })) : [];
+
+  return { risks: risks, plans: plans, deliveries: deliveries };
+}
+
+// Endpoint LEVE para a tela de Riscos/Acompanhamento: lê só Unidades +
+// Riscos + Planos + Entregas, em vez das 7 abas de getRestoData(). Usado por
+// recarregarRiscosPlanos() no cliente após salvar/editar/excluir um
+// risco/plano/entrega — mesma lógica de getDocsData()/getUnitsData(), que já
+// evitam reler Documentos/Capacitações nessas telas.
+function getRiscosData() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const units = _lerUnidades_(ss);
+  const rpe = _lerRiscosPlanosEntregas_(ss);
+  return { units: units, risks: rpe.risks, plans: rpe.plans, deliveries: rpe.deliveries };
+}
+
+function getRestoData() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  setupDatabaseResto();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // --- Unidades (usadas por Documentos, Riscos e Entregas) ---
+  const units = _lerUnidades_(ss);
+
+  // --- Documentos ---
+  const docs = _lerDocumentos_(ss);
+
+  // --- Riscos, Planos e Entregas ---
+  const rpe = _lerRiscosPlanosEntregas_(ss);
+  const risks = rpe.risks, plans = rpe.plans, deliveries = rpe.deliveries;
 
   // --- Capacitações ---
   const CCAP = colIdx_(CABECALHOS_CAPACITACOES);
@@ -657,46 +640,6 @@ function getCapacitacoesData() {
     // Participantes na UI até um reload completo.
     participantes: String(r[CCAP('Participantes')]||'')
   })) : [];
-}
-
-// Migração única: remove colunas Código e Última Atualização da aba de
-// Capacitações preservando todos os dados. Executar uma vez pelo editor do
-// Apps Script após o deploy e depois pode apagar esta função.
-function migrarCapacitacoes() {
-  if (!isMembro_()) return 'Acesso Negado.'; // migração manual: exige membro autenticado
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const aba = safeGetSheet(ss, SHEET_CAPACITACOES);
-  if (!aba) return 'Aba Capacitações não encontrada.';
-
-  const dados = aba.getDataRange().getValues();
-  if (dados.length < 1) return 'Aba vazia, nada para migrar.';
-
-  const cab = dados[0].map(String);
-  const idx = n => cab.indexOf(n);
-
-  const novosDados = dados.slice(1).map(r => [
-    r[idx('ID')],
-    r[idx('Título da Capacitação')],
-    r[idx('Tema')],
-    r[idx('Público-alvo')],
-    r[idx('Modalidade')],
-    r[idx('Data Prevista')],
-    r[idx('Data Realizada')],
-    r[idx('Status')],
-    r[idx('Materiais')]
-  ]);
-
-  aba.clearContents();
-  aba.getRange(1, 1, 1, CABECALHOS_CAPACITACOES.length)
-    .setValues([CABECALHOS_CAPACITACOES])
-    .setFontWeight('bold').setBackground('#f1f5f9');
-  aba.setFrozenRows(1);
-
-  if (novosDados.length > 0) {
-    aba.getRange(2, 1, novosDados.length, CABECALHOS_CAPACITACOES.length).setValues(novosDados);
-  }
-
-  return 'Migração concluída: ' + novosDados.length + ' registros reorganizados.';
 }
 
 // ==========================================
@@ -779,13 +722,25 @@ function buscarLogs(filtros) {
 // terceiros — mais leve e sem os cortes/páginas em branco que a captura
 // via html2canvas causava.
 // ==========================================
+// Blocklist reforçada (não é um parser de verdade — o runtime do Apps
+// Script não tem um parser de HTML nativo utilizável aqui). Antes só cobria
+// atributos de evento entre aspas; agora também cobre a versão sem aspas
+// (ex.: <img onerror=alert(1)>) e esquemas 'javascript:' em href/src, que
+// escapavam da checagem original. O destino é sempre um PDF estático — não
+// há HTML "ao vivo" no navegador consumindo este retorno — então o risco
+// prático já era baixo, mas a proteção não deveria depender só disso.
 function sanitizarHtml_(html) {
-  // Remove tags perigosas e atributos event handlers inline
   return String(html || '')
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/<(object|embed|link|base|meta)\b[^>]*>/gi, '')
+    // Atributos de evento (onclick, onerror, onload...) com aspas duplas, simples ou sem aspas
     .replace(/\s+on\w+="[^"]*"/gi, '')
-    .replace(/\s+on\w+='[^']*'/gi, '');
+    .replace(/\s+on\w+='[^']*'/gi, '')
+    .replace(/\s+on\w+=[^\s>]+/gi, '')
+    // Esquema 'javascript:' em href/src (com ou sem aspas) — preserva http(s)/data:
+    .replace(/\s+(href|src)\s*=\s*["']\s*javascript:[^"']*["']/gi, '')
+    .replace(/\s+(href|src)\s*=\s*javascript:[^\s>]*/gi, '');
 }
 
 function gerarPdfDeHtml(htmlContent, nomeArquivo) {
@@ -798,9 +753,25 @@ function gerarPdfDeHtml(htmlContent, nomeArquivo) {
   } catch (e) { return { sucesso: false, mensagem: e.toString() }; }
 }
 
+// Evita que um clique duplo (ou um script repetindo a chamada) dispare vários
+// e-mails em sequência e consuma a cota diária do MailApp. Por usuário (não
+// global), com uma janela curta — não é para impedir uso normal, só rajadas.
+const RATE_LIMIT_ENVIO_PDF_SEGUNDOS = 10;
+function limiteEnvioPdfExcedido_() {
+  try {
+    const cache = CacheService.getUserCache();
+    if (!cache) return false; // sem cache disponível: não bloqueia por segurança
+    if (cache.get('envio_pdf_rate')) return true;
+    cache.put('envio_pdf_rate', '1', RATE_LIMIT_ENVIO_PDF_SEGUNDOS);
+    return false;
+  } catch (e) { return false; }
+}
+
 function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
+    if (limiteEnvioPdfExcedido_())
+      return { sucesso: false, mensagem: 'Aguarde alguns segundos antes de enviar outro relatório.' };
     if (!destinatario || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario.trim()))
       return { sucesso: false, mensagem: 'E-mail do destinatário inválido.' };
       
@@ -822,7 +793,10 @@ function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
       body: 'Segue em anexo o relatório gerado pelo Sistema de Gestão da Qualidade.\n\nEnvio automático — não responda.',
       attachments: [pdf]
     });
-    registrarLog('Envio de PDF', titulo || 'Relatório', 'Destinatário: ' + destinatario);
+    // Único ponto do sistema em que registrarLog roda fora de um comBloqueio
+    // já existente — protegido aqui para não colidir com outra escrita
+    // concorrente na aba Logs (ver auditoria H03).
+    comBloqueio(() => registrarLog('Envio de PDF', titulo || 'Relatório', 'Destinatário: ' + destinatario));
     return { sucesso: true, mensagem: 'Relatório enviado com sucesso!' };
   } catch (e) { return { sucesso: false, mensagem: e.toString() }; }
 }

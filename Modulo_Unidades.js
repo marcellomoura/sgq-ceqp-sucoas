@@ -6,6 +6,8 @@ function salvarUnidade(dados) {
   try {
     if (!dados || !String(dados.unidade||'').trim() || !String(dados.sigla||'').trim() || !String(dados.email||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos da Unidade.' };
+    if (!linkPermitido_(dados.linkDrive))
+      return { sucesso: false, mensagem: 'O link do Drive deve começar com http:// ou https://' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
       const C = colIdx_(CABECALHOS_UNIDADES);
@@ -26,6 +28,8 @@ function salvarUnidade(dados) {
 function atualizarUnidade(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
+    if (!linkPermitido_(dados.linkDrive))
+      return { sucesso: false, mensagem: 'O link do Drive deve começar com http:// ou https://' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_UNITS);
       const C = colIdx_(CABECALHOS_UNIDADES);

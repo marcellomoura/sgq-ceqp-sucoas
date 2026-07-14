@@ -499,4 +499,17 @@ function recarregarResto(cb) {
     if (cb) cb();
   }).withFailureHandler(e => showAlerta('Falha ao sincronizar: ' + String(e))).getRestoData();
 }
+
+// Recarrega só Unidades/Riscos/Planos/Entregas (usado após ações da tela de
+// Riscos/Acompanhamento) — evita reler Documentos e Capacitações, que essa
+// tela não usa. Mesma ideia de recarregarDocs()/recarregarUnidades(), só que
+// para o módulo de Riscos. Não mexe em restoDataLoaded/state.docs/state.trainings.
+function recarregarRiscosPlanos(cb) {
+  google.script.run.withSuccessHandler(data => {
+    state.units = data.units; state.risks = data.risks;
+    state.plans = data.plans; state.deliveries = data.deliveries;
+    sincronizarSelectsUnidade();
+    if (cb) cb();
+  }).withFailureHandler(e => showAlerta('Falha ao sincronizar: ' + String(e))).getRiscosData();
+}
 </script>

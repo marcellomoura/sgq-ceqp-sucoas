@@ -26,7 +26,7 @@ function renderCapacitacoes() {
     else                                { statusColor = '#d97706'; statusBg = '#fef3c7'; }
 
     const materiaisLink = c.materiais
-      ? `<a href="${c.materiais.startsWith('http') ? esc(c.materiais) : 'https://' + esc(c.materiais)}" target="_blank" style="color:#2563eb; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
+      ? `<a href="${c.materiais.startsWith('http') ? esc(c.materiais) : 'https://' + esc(c.materiais)}" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
       : '<span style="color:#cbd5e1;">-</span>';
 
     const nomes = c.participantes ? nomesMembros(parseIdsResponsaveis(c.participantes)) : '';

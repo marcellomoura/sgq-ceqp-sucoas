@@ -60,7 +60,7 @@ function salvarRisco() {
   if (!dados.macroetapa || !dados.categoria || !dados.nome || !dados.causa || !dados.consequencia || !dados.tipoTratamento || !dados.responsavel) return showAlerta('Preencha todos os campos do risco.');
   btn.disabled = true; btn.innerText = 'A guardar...';
   google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Mapeado!','Salvar Risco',()=>{ fecharModal('modal-risco-novo'); recarregarResto(renderMatriz); });
+    if (r.sucesso) feedbackBtn(btn,'✅ Mapeado!','Salvar Risco',()=>{ fecharModal('modal-risco-novo'); recarregarRiscosPlanos(renderMatriz); });
     else { btn.disabled=false; btn.innerText='Salvar Risco'; showAlerta(r.mensagem); }
   }).withFailureHandler(falha(btn,'Salvar Risco',null)).salvarRisco(dados);
 }
@@ -86,13 +86,13 @@ function confirmarEdicaoRisco() {
   if (!dados.nome || !dados.causa || !dados.consequencia) return showAlerta('Preencha os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
   google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-risco-editar'); recarregarResto(renderMatriz); });
+    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-risco-editar'); recarregarRiscosPlanos(renderMatriz); });
     else { btn.disabled=false; btn.innerText='Confirmar'; showAlerta(r.mensagem); }
   }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarRisco(dados);
 }
 
 function excluirRisco(id) {
-  google.script.run.withSuccessHandler(() => recarregarResto(renderMatriz))
+  google.script.run.withSuccessHandler(() => recarregarRiscosPlanos(renderMatriz))
     .withFailureHandler(e => showAlerta(String(e))).excluirRisco(id);
 }
 
@@ -145,7 +145,7 @@ function salvarPlano() {
   if (!dados.riscoVinculado || !dados.what || !dados.why || !dados.who || !dados.where || !dados.whenPrevisto || !dados.how) return showAlerta('Preencha todos os campos do plano.');
   btn.disabled = true; btn.innerText = 'A guardar...';
   google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Registrado!','Salvar Plano de Ação',()=>{ fecharModal('modal-plano-novo'); recarregarResto(renderAcompanhamento); });
+    if (r.sucesso) feedbackBtn(btn,'✅ Registrado!','Salvar Plano de Ação',()=>{ fecharModal('modal-plano-novo'); recarregarRiscosPlanos(renderAcompanhamento); });
     else { btn.disabled=false; btn.innerText='Salvar Plano de Ação'; showAlerta(r.mensagem); }
   }).withFailureHandler(falha(btn,'Salvar Plano de Ação',null)).salvarPlano(dados);
 }
@@ -195,13 +195,13 @@ function confirmarEdicaoPlano() {
   if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
   google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-plano-editar'); recarregarResto(renderAcompanhamento); });
+    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-plano-editar'); recarregarRiscosPlanos(renderAcompanhamento); });
     else { btn.disabled=false; btn.innerText='Confirmar'; showAlerta(r.mensagem); }
   }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarPlano(dados);
 }
 
 function excluirPlano(riscoVinculado) {
-  google.script.run.withSuccessHandler(() => recarregarResto(renderAcompanhamento))
+  google.script.run.withSuccessHandler(() => recarregarRiscosPlanos(renderAcompanhamento))
     .withFailureHandler(e => showAlerta(String(e))).excluirPlano(riscoVinculado);
 }
 
@@ -337,7 +337,7 @@ function salvarAcompEntregas() {
     .withSuccessHandler(function(r) {
       if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Registros', function() {
         fecharModal('modal-acomp-entregas');
-        recarregarResto(renderAcompanhamento);
+        recarregarRiscosPlanos(renderAcompanhamento);
       });
       else { btn.disabled = false; btn.innerText = 'Salvar Registros'; showAlerta(r.mensagem); }
     })
