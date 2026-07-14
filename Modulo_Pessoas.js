@@ -147,7 +147,7 @@ function salvarAfastamento(dados) {
         }
       }
       // Não existia registro deste membro para este ano — cria um novo
-      const id = getNextId(SHEET_AFASTAMENTOS, 'AF-');
+      const id = getNextId_(aba, 'AF-');
       aba.appendRow([id, dados.ano, dados.membroId, dados.membroNome].concat(valores));
       registrarLog('Cadastro de Afastamentos', dados.membroNome + ' (' + dados.ano + ')', 'Novo registro anual criado.');
       return { sucesso: true };

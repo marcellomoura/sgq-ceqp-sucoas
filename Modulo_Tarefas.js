@@ -54,7 +54,7 @@ function saveTask(task) {
         }
       }
     } else {
-      const newId = getNextId(SHEET_TASKS, 'TAR-');
+      const newId = getNextId_(sheet, 'TAR-');
       const dateNow = _dataLocalISO_(new Date());
       // Coerência de datas na criação (mesma regra do updateTaskStatus):
       // - fora do Backlog, Data Início assume hoje se não veio preenchida;
@@ -91,20 +91,22 @@ function updateTaskStatus(id, newStatus) {
         const oldStatus = String(data[i][C('Status')]);
         if (oldStatus === newStatus) { SpreadsheetApp.flush(); return { sucesso: true }; }
 
-        sheet.getRange(i+1, C('Status')+1).setValue(newStatus);
+        const row = data[i];
+        row[C('Status')] = newStatus;
+        
         let acts = [];
-        try { acts = JSON.parse(String(data[i][C('Atividades')] || '[]')); } catch(e) {}
+        try { acts = JSON.parse(String(row[C('Atividades')] || '[]')); } catch(e) {}
         acts.push({ type: 'log', text: `Moveu de "${oldStatus}" para "${newStatus}"`, date: timeNow, author: autor });
-        sheet.getRange(i+1, C('Atividades')+1).setValue(JSON.stringify(acts));
+        row[C('Atividades')] = JSON.stringify(acts);
 
-        if (newStatus === 'Concluído') sheet.getRange(i+1, C('Data Conclusão')+1).setValue(dateNow);
-        else sheet.getRange(i+1, C('Data Conclusão')+1).setValue('');
-        if (newStatus !== 'Backlog' && !String(data[i][C('Data Início')] || '')) sheet.getRange(i+1, C('Data Início')+1).setValue(dateNow);
+        if (newStatus === 'Concluído') row[C('Data Conclusão')] = dateNow;
+        else row[C('Data Conclusão')] = '';
+        
+        if (newStatus !== 'Backlog' && !String(row[C('Data Início')] || '')) row[C('Data Início')] = dateNow;
 
-        // Qualquer mudança de status reseta o arquivamento (recomeça o
-        // contador de 15 dias caso o cartão volte a ser concluído depois)
-        sheet.getRange(i+1, C('Arquivado')+1).setValue('');
+        row[C('Arquivado')] = '';
 
+        sheet.getRange(i+1, 1, 1, row.length).setValues([row]);
         SpreadsheetApp.flush();
         return { sucesso: true };
       }
@@ -214,7 +216,7 @@ function saveMember(member) {
         }
       }
     } else {
-      const newId = getNextId(SHEET_MEMBERS, 'MEM-');
+      const newId = getNextId_(sheet, 'MEM-');
       // Nova linha no layout de CABECALHOS_MEMBROS (Dias Semana / Dia
       // Presencial ficam vazios até a edição da Escala; nasce Ativo = 'Sim')
       const row = [newId, member.name, member.role, member.email || '', member.emailPessoal || '', '', '', 'Sim'];

@@ -16,7 +16,7 @@ function salvarCapacitacao(dados) {
 
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
-      const id  = getNextId(SHEET_CAPACITACOES, 'CAP-');
+      const id  = getNextId_(aba, 'CAP-');
       const dp  = dados.dataPrevista  ? new Date(dados.dataPrevista  + 'T12:00:00') : '';
       const dr  = dados.dataRealizada ? new Date(dados.dataRealizada + 'T12:00:00') : '';
       const st  = calcularStatusCapacitacao_(dados.dataPrevista, dados.dataRealizada);
@@ -54,7 +54,10 @@ function atualizarCapacitacao(dados) {
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Registro não localizado.' };
 
-      const idAtual = aba.getRange(linha, C('ID')+1).getValue();
+      const idAtual = aba.getRange(linha, C('ID')+1).getValue().toString();
+      if (dados.idEsperado && idAtual !== dados.idEsperado.toString())
+        return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
+
       const dp  = dados.dataPrevista  ? new Date(dados.dataPrevista  + 'T12:00:00') : '';
       const dr  = dados.dataRealizada ? new Date(dados.dataRealizada + 'T12:00:00') : '';
       const st  = calcularStatusCapacitacao_(dados.dataPrevista, dados.dataRealizada);
@@ -78,7 +81,7 @@ function atualizarCapacitacao(dados) {
   } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
 }
 
-function excluirCapacitacao(idRow) {
+function excluirCapacitacao(idRow, idEsperado) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
@@ -89,7 +92,10 @@ function excluirCapacitacao(idRow) {
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Registro não localizado.' };
 
-      const id = aba.getRange(linha, C('ID')+1).getValue();
+      const id = aba.getRange(linha, C('ID')+1).getValue().toString();
+      if (idEsperado && id !== idEsperado.toString())
+        return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
+
       aba.deleteRow(linha);
       registrarLog('Exclusão de Capacitação', id, 'Capacitação removida.');
       return { sucesso: true, mensagem: 'Capacitação excluída com sucesso!' };

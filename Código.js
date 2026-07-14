@@ -23,7 +23,7 @@ const CABECALHOS_MEMBROS = ['ID','Nome','Cargo','Email Funcional','E-mail Pessoa
 const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio','Demais Afastamentos'];
 // Demais abas — mesma ideia de fonte única de verdade para o layout.
 const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas'];
-const CABECALHOS_UNIDADES = ['ID Unidade', 'Nome da Unidade','Sigla','E-mail Funcional','Link do Drive'];
+const CABECALHOS_UNIDADES = ['ID Unidade', 'Nome da Unidade','Sigla','E-mail Funcional','Link do Drive', 'Ativo'];
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
 const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável'];
 const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status'];
@@ -54,11 +54,11 @@ function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('SGQ · CEQP')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-function include(filename) {
+function include_(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
@@ -160,22 +160,29 @@ function membrosParaAuth_() {
     const bruto = cache.get('membros_auth');
     if (bruto) { try { return JSON.parse(bruto); } catch (e) {} }
   }
-  const lista = [];
-  try {
-    const C = colIdx_(CABECALHOS_MEMBROS);
-    const mData = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS).getDataRange().getValues();
-    for (let i = 1; i < mData.length; i++) {
-      // Membro inativo (Ativo === 'Não') não entra na lista de autenticação:
-      // perde o acesso ao sistema, mantendo o registro na planilha.
-      const at = String(mData[i][C('Ativo')] || '').trim().toLowerCase();
-      if (at === 'não' || at === 'nao') continue;
-      lista.push([
-        String(mData[i][C('Email Funcional')] || '').trim().toLowerCase(),
-        String(mData[i][C('E-mail Pessoal')] || '').trim().toLowerCase(),
-        String(mData[i][C('Nome')] || '')
-      ]);
+  let lista = [];
+  let tentativas = 3;
+  while (tentativas-- > 0) {
+    try {
+      const C = colIdx_(CABECALHOS_MEMBROS);
+      const mData = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS).getDataRange().getValues();
+      for (let i = 1; i < mData.length; i++) {
+        const at = String(mData[i][C('Ativo')] || '').trim().toLowerCase();
+        if (at === 'não' || at === 'nao') continue;
+        lista.push([
+          String(mData[i][C('Email Funcional')] || '').trim().toLowerCase(),
+          String(mData[i][C('E-mail Pessoal')] || '').trim().toLowerCase(),
+          String(mData[i][C('Nome')] || '')
+        ]);
+      }
+      break; // sucesso na leitura
+    } catch (e) {
+      if (tentativas === 0) {
+        console.error('membrosParaAuth_ falhou após retries: ' + e);
+      }
+      Utilities.sleep(500);
     }
-  } catch (e) {}
+  }
   // Só cacheia listas NÃO vazias: uma lista vazia quase sempre significa
   // leitura falha (erro transitório do Sheets) ou aba ainda não populada.
   // Cachear [] por 6h travaria TODO o sistema — isMembro_ retornaria false
@@ -223,8 +230,7 @@ function dataParaISO_(val) {
   return String(val || '').trim();
 }
 
-function getNextId(sheetName, prefixo) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+function getNextId_(sheet, prefixo) {
   if (!sheet || sheet.getLastRow() <= 1) return prefixo + '1';
   const ids = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
   let max = 0;
@@ -478,9 +484,12 @@ function getKanbanData_members_() {
 function _lerUnidades_(ss) {
   const CU = colIdx_(CABECALHOS_UNIDADES);
   const uData = safeGetSheetData(ss, SHEET_UNITS);
-  return uData.length > 1 ? uData.slice(1).map((r, i) => ({
-    idRow: i + 2, id: String(r[CU('ID Unidade')] || ''), unidade: String(r[CU('Nome da Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('E-mail Funcional')] || ''), linkDrive: String(r[CU('Link do Drive')] || '')
-  })) : [];
+  return uData.length > 1 ? uData.slice(1).map((r, i) => {
+    const at = String(r[CU('Ativo')] || '').trim().toLowerCase();
+    return {
+      idRow: i + 2, id: String(r[CU('ID Unidade')] || ''), unidade: String(r[CU('Nome da Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('E-mail Funcional')] || ''), linkDrive: String(r[CU('Link do Drive')] || ''), ativo: !(at === 'não' || at === 'nao')
+    };
+  }) : [];
 }
 
 // Leitura + normalização da aba Documentos (cálculo de status Vigente/Vencido/
@@ -702,11 +711,19 @@ function buscarLogs(filtros) {
   const LIMITE_REGISTROS = 30;
   filtros = filtros || {};
   const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
-  const dados = aba.getDataRange().getValues();
-  if (dados.length <= 1) return { logs: [], temMais: false, acoesUnicas: [] };
+  if (aba.getLastRow() <= 1) return { logs: [], temMais: false, acoesUnicas: [] };
 
   const CL = colIdx_(CABECALHOS_LOGS);
-  let linhas = dados.slice(1).map(r => ({
+  
+  const MAX_ROWS_TO_READ = 2000;
+  const lastRow = aba.getLastRow();
+  const startRow = Math.max(2, lastRow - MAX_ROWS_TO_READ + 1);
+  const numRows = lastRow - startRow + 1;
+  const colCount = CABECALHOS_LOGS.length;
+  
+  const linhasLidas = aba.getRange(startRow, 1, numRows, colCount).getValues();
+
+  let linhas = linhasLidas.map(r => ({
     dataHora: r[CL('Data/Hora')] instanceof Date
       ? Utilities.formatDate(r[CL('Data/Hora')], Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
       : String(r[CL('Data/Hora')] || ''),
@@ -762,10 +779,20 @@ function buscarLogs(filtros) {
 // terceiros — mais leve e sem os cortes/páginas em branco que a captura
 // via html2canvas causava.
 // ==========================================
+function sanitizarHtml_(html) {
+  // Remove tags perigosas e atributos event handlers inline
+  return String(html || '')
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/\s+on\w+="[^"]*"/gi, '')
+    .replace(/\s+on\w+='[^']*'/gi, '');
+}
+
 function gerarPdfDeHtml(htmlContent, nomeArquivo) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    const blob = Utilities.newBlob(htmlContent, MimeType.HTML, 'relatorio.html');
+    const htmlSeguro = sanitizarHtml_(htmlContent);
+    const blob = Utilities.newBlob(htmlSeguro, MimeType.HTML, 'relatorio.html');
     const pdf = blob.getAs(MimeType.PDF).setName(nomeArquivo);
     return { sucesso: true, base64: Utilities.base64Encode(pdf.getBytes()) };
   } catch (e) { return { sucesso: false, mensagem: e.toString() }; }
@@ -776,7 +803,18 @@ function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
   try {
     if (!destinatario || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario.trim()))
       return { sucesso: false, mensagem: 'E-mail do destinatário inválido.' };
-    const blob = Utilities.newBlob(htmlContent, MimeType.HTML, 'relatorio.html');
+      
+    // C04: Restringe o envio exclusivamente para membros cadastrados
+    const alvo = destinatario.trim().toLowerCase();
+    const lista = membrosParaAuth_();
+    const isDestinatarioMembro = lista.some(m => alvo === m[0] || alvo === m[1]);
+    
+    if (!isDestinatarioMembro) {
+      return { sucesso: false, mensagem: 'O destinatário deve ser um membro cadastrado no sistema.' };
+    }
+
+    const htmlSeguro = sanitizarHtml_(htmlContent);
+    const blob = Utilities.newBlob(htmlSeguro, MimeType.HTML, 'relatorio.html');
     const pdf = blob.getAs(MimeType.PDF).setName(nomeArquivo);
     MailApp.sendEmail({
       to: destinatario.trim(),

@@ -8,12 +8,13 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
   <script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.0/DragDropTouch.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0" defer></script>
   <!-- Só a captura de elemento (não o pacote html2pdf/jsPDF completo, removido
        por ser pesado) — usada apenas para a Matriz de Risco no PDF, para
        reaproveitar a imagem exata da tela (cores, fonte, badges) em vez de
        redesenhar, já que o conversor de PDF do Apps Script não pinta fundo. -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
-  <?!= include('CSS'); ?>
+  <?!= include_('CSS'); ?>
 </head>
 <body>
 <div class="app-layout">
@@ -360,27 +361,44 @@
         <h2>Painel de Indicadores</h2>
       </div>
 
+      <div class="kpi-grid" style="margin-bottom:20px;" id="dash-kpis-geral">
+        <div class="kpi-card" style="border-top:3px solid #3b82f6;"><div class="kpi-icon icon-blue">📋</div><div><div class="kpi-label">Tarefas em Andamento</div><div class="kpi-value" id="kpi-dash-tarefas" style="color:#3b82f6;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #10b981;"><div class="kpi-icon icon-green">✅</div><div><div class="kpi-label">Tarefas Concluídas</div><div class="kpi-value" id="kpi-dash-tarefas-conc" style="color:#10b981;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #8b5cf6;"><div class="kpi-icon icon-purple">📚</div><div><div class="kpi-label">Capacitações Ativas</div><div class="kpi-value" id="kpi-dash-cap" style="color:#8b5cf6;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #059669;"><div class="kpi-icon icon-green">🎓</div><div><div class="kpi-label">Capac. Realizadas</div><div class="kpi-value" id="kpi-dash-cap-conc" style="color:#059669;">0</div></div></div>
+      </div>
+
+      <h3 style="font-size:15px; font-weight:700; color:#1e293b; margin:28px 0 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;">Gestão de Tarefas</h3>
+      <div class="dashboard-grid" style="margin-bottom: 30px;">
+        <div class="dash-row two-cols">
+          <div class="chart-box"><h3>Distribuição por Status</h3><div class="chart-wrap" style="height:320px;"><canvas id="statusChart"></canvas></div></div>
+          <div class="chart-box"><h3>Distribuição por Prioridade</h3><div class="chart-wrap" style="height:320px;"><canvas id="priorityChart"></canvas></div></div>
+        </div>
+        <div class="dash-row two-cols">
+          <div class="chart-box"><h3>Em Andamento por Membro</h3><div class="chart-wrap" style="height:320px;"><canvas id="memberChart"></canvas></div></div>
+          <div class="chart-box"><h3>Concluídas por Membro</h3><div class="chart-wrap" style="height:320px;"><canvas id="memberConcluidoChart"></canvas></div></div>
+        </div>
+      </div>
+
+      <h3 style="font-size:15px; font-weight:700; color:#1e293b; margin:28px 0 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;">Gestão de Capacitações</h3>
       <div class="dashboard-grid">
-        <div class="dash-row two-cols">
-          <div class="chart-box"><h3>Distribuição por Status</h3><div class="chart-wrap"><canvas id="statusChart"></canvas></div></div>
-          <div class="chart-box"><h3>Distribuição por Prioridade</h3><div class="chart-wrap"><canvas id="priorityChart"></canvas></div></div>
-        </div>
-        <div class="dash-row two-cols">
-          <div class="chart-box"><h3>Em Andamento por Membro</h3><div class="chart-wrap" style="height:230px;"><canvas id="memberChart"></canvas></div></div>
-          <div class="chart-box"><h3>Concluídas por Membro</h3><div class="chart-wrap" style="height:230px;"><canvas id="memberConcluidoChart"></canvas></div></div>
-        </div>
         <div class="dash-row one-col">
-          <div class="chart-box"><h3>Capacitações por Mês</h3><div class="chart-wrap" style="height:230px;"><canvas id="capMesChart"></canvas></div></div>
+          <div class="chart-box"><h3>Capacitações por Mês</h3><div class="chart-wrap" style="height:320px;"><canvas id="capMesChart"></canvas></div></div>
         </div>
         <div class="dash-row two-cols">
-          <div class="chart-box"><h3>Capacitações por Modalidade</h3><div class="chart-wrap"><canvas id="capModalidadeChart"></canvas></div></div>
-          <div class="chart-box"><h3>Capacitações por Membro</h3><div class="chart-wrap" style="height:230px;"><canvas id="capMembroChart"></canvas></div></div>
+          <div class="chart-box"><h3>Capacitações por Modalidade</h3><div class="chart-wrap" style="height:320px;"><canvas id="capModalidadeChart"></canvas></div></div>
+          <div class="chart-box"><h3>Capacitações por Membro</h3><div class="chart-wrap" style="height:320px;"><canvas id="capMembroChart"></canvas></div></div>
         </div>
       </div>
     </section>
 
     <!-- ======================== MÓDULO 2: UNIDADES ======================== -->
     <section id="view-unidades" class="view-section">
+      <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+        <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:#475569; cursor:pointer;">
+          <input type="checkbox" id="chk-unidades-inativas" onchange="renderUnidades()"> Mostrar inativas
+        </label>
+      </div>
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th style="width:140px; padding-right:6px;">Sigla</th><th style="padding-left:6px;">Nome</th><th>E-mail</th><th style="width:250px;">Link do Drive</th><th style="text-align:center; width:90px;">Ações</th></tr></thead>
@@ -488,7 +506,7 @@
 
     <!-- ======================== MÓDULO 6: CAPACITAÇÕES ======================== -->
     <section id="view-capacitacoes-lista" class="view-section">
-      <div class="kpi-grid" id="dash-kpis-capacitacoes" style="margin-bottom:16px;">
+      <div class="kpi-grid compact-view" id="dash-kpis-capacitacoes" style="margin-bottom:16px;">
         <div class="kpi-card" style="border-top:3px solid #2563eb;"><div class="kpi-icon icon-blue">📚</div><div><div class="kpi-label">Total</div><div class="kpi-value" id="kpi-cap-total" style="color:#2563eb;">0</div></div></div>
         <div class="kpi-card" style="border-top:3px solid #eab308;"><div class="kpi-icon icon-yellow">⏳</div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-cap-andamento" style="color:#eab308;">0</div></div></div>
         <div class="kpi-card" style="border-top:3px solid #059669;"><div class="kpi-icon icon-green">✅</div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="kpi-cap-concluidas" style="color:#059669;">0</div></div></div>
@@ -1013,12 +1031,12 @@
   </div>
 </div>
 
-<?!= include('JS_Utilitarios'); ?>
-<?!= include('JS_Kanban'); ?>
-<?!= include('JS_Unidades'); ?>
-<?!= include('JS_Documentos'); ?>
-<?!= include('JS_Riscos'); ?>
-<?!= include('JS_Pessoas'); ?>
-<?!= include('JS_Capacitacoes'); ?>
+<?!= include_('JS_Utilitarios'); ?>
+<?!= include_('JS_Kanban'); ?>
+<?!= include_('JS_Unidades'); ?>
+<?!= include_('JS_Documentos'); ?>
+<?!= include_('JS_Riscos'); ?>
+<?!= include_('JS_Pessoas'); ?>
+<?!= include_('JS_Capacitacoes'); ?>
 </body>
 </html>

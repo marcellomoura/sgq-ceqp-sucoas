@@ -52,12 +52,12 @@ function salvarRisco() {
   const btn = $id('btn-salvar-risco');
   const dados = {
     macroetapa: $id('r-macro').value, categoria: $id('r-cat').value,
-    nomeRisco: ($id('r-nome').value||'').trim(), causa: ($id('r-causa').value||'').trim(),
+    nome: ($id('r-nome').value||'').trim(), causa: ($id('r-causa').value||'').trim(),
     consequencia: ($id('r-conseq').value||'').trim(),
     probabilidade: Number($id('r-prob').value), impacto: Number($id('r-imp').value),
     tipoTratamento: $id('r-trat').value, responsavel: $id('r-resp').value
   };
-  if (!dados.macroetapa || !dados.categoria || !dados.nomeRisco || !dados.causa || !dados.consequencia || !dados.tipoTratamento || !dados.responsavel) return showAlerta('Preencha todos os campos do risco.');
+  if (!dados.macroetapa || !dados.categoria || !dados.nome || !dados.causa || !dados.consequencia || !dados.tipoTratamento || !dados.responsavel) return showAlerta('Preencha todos os campos do risco.');
   btn.disabled = true; btn.innerText = 'A guardar...';
   google.script.run.withSuccessHandler(r => {
     if (r.sucesso) feedbackBtn(btn,'✅ Mapeado!','Salvar Risco',()=>{ fecharModal('modal-risco-novo'); recarregarResto(renderMatriz); });
@@ -208,7 +208,7 @@ function excluirPlano(riscoVinculado) {
 // ==========================================
 // ACOMPANHAMENTO DE ENTREGAS (modal inline no Plano de Ação)
 // ==========================================
-var acompEntregasPlanoCtx = null;
+// ==========================================
 
 function abrirModalAcompEntregas(idx) {
   const p = state.plans[idx]; if (!p) return;
@@ -238,12 +238,12 @@ function abrirModalAcompEntregas(idx) {
     $id('acomp-ent-lista').innerHTML =
       '<p class="msg-empty">Nenhuma Subcomissão encontrada. ' +
       'Cadastre unidades com "Subcomissão" no nome para acompanhar entregas aqui.</p>';
-    acompEntregasPlanoCtx = p;
+    $id('modal-acomp-entregas').dataset.idx = idx;
     abrirModal('modal-acomp-entregas');
     return;
   }
 
-  acompEntregasPlanoCtx = p;
+  $id('modal-acomp-entregas').dataset.idx = idx;
 
   $id('acomp-ent-lista').innerHTML = unidadesCobradas.map(function(u, i) {
     const chave = u.id || (u.sigla ? (u.sigla + ' - ' + u.unidade) : u.unidade);
@@ -300,7 +300,8 @@ function abrirModalAcompEntregas(idx) {
 
 function salvarAcompEntregas() {
   const btn = $id('btn-salvar-acomp-entregas');
-  const p = acompEntregasPlanoCtx; if (!p) return;
+  const idxModal = $id('modal-acomp-entregas').dataset.idx;
+  const p = state.plans[idxModal]; if (!p) return;
 
   const rows = $id('acomp-ent-lista').querySelectorAll('.acomp-ent-row');
   const entregas = [];

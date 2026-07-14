@@ -19,14 +19,22 @@ const CHART_TOOLTIP_BASE = {
   titleColor: '#f8fafc', bodyColor: '#cbd5e1'
 };
 const CHART_LEGEND_BASE = {
-  position: 'right',
+  position: 'bottom',
   labels: { usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 11, family: "'Inter',sans-serif" }, color: '#475569' }
+};
+
+const CHART_DATALABELS_BASE = {
+  color: '#ffffff',
+  font: { weight: 'bold', family: "'Inter',sans-serif", size: 11 },
+  formatter: function(value, context) {
+    return value > 0 ? value : '';
+  }
 };
 const CHART_SCALES_BASE = {
   y: {
     beginAtZero: true,
     ticks: { precision: 0, font: { family: "'Inter',sans-serif", size: 11 }, color: '#94a3b8' },
-    grid: { color: '#f1f5f9' }, border: { display: false }
+    grid: { color: '#f1f5f9', borderDash: [4, 4] }, border: { display: false }
   },
   x: {
     grid: { display: false }, border: { display: false },
@@ -148,7 +156,7 @@ function fecharModal(id) { const el=$id(id); if(el) el.classList.remove('open');
 // Dropdowns de unidade (opts pré-gerados para não refazer a cada chamada)
 function gerarOptsUnidades(comTodas) {
   let html = '<option value="" disabled selected>Selecione...</option>';
-  const ordenadas = [...state.units].sort((a, b) => a.unidade.localeCompare(b.unidade, 'pt-BR', { sensitivity: 'base' }));
+  const ordenadas = [...state.units].filter(u => u.ativo !== false).sort((a, b) => a.unidade.localeCompare(b.unidade, 'pt-BR', { sensitivity: 'base' }));
   ordenadas.forEach(u => { const label=`${esc(u.sigla)} - ${esc(u.unidade)}`; html+=`<option value="${esc(u.id)}">${label}</option>`; });
   if (comTodas) html += '<option value="Todas as Subcomissões">Todas as Subcomissões</option>';
   return html;
@@ -156,7 +164,11 @@ function gerarOptsUnidades(comTodas) {
 function optsUnidFiltro() {
   let h='<option value="">Todas as Unidades</option>';
   const ordenadas = [...state.units].sort((a, b) => a.unidade.localeCompare(b.unidade, 'pt-BR', { sensitivity: 'base' }));
-  ordenadas.forEach(u=>{ const label=`${esc(u.sigla)} - ${esc(u.unidade)}`; h+=`<option value="${esc(u.id)}">${label}</option>`; });
+  ordenadas.forEach(u=>{ 
+    const isInactive = u.ativo === false ? ' (Inativa)' : '';
+    const label=`${esc(u.sigla)} - ${esc(u.unidade)}${isInactive}`; 
+    h+=`<option value="${esc(u.id)}">${label}</option>`; 
+  });
   return h;
 }
 function sincronizarSelectsUnidade() {
@@ -177,6 +189,7 @@ function sincronizarSelectsUnidade() {
 var restoDataLoaded = false;
 var restoDataLoading = false;
 var restoDataFilaCallbacks = [];
+var logsCache = []; // B17: Declaração global explícita
 
 function garantirRestoData(callback) {
   if (restoDataLoaded) { callback(); return; }
@@ -309,6 +322,9 @@ function atualizarTopBar() {
 // (Módulo 6), sob um único filtro de membro (dashMemberFilter).
 // ==========================================
 function renderIndicadores() {
+  if (typeof ChartDataLabels !== 'undefined') {
+    Chart.register(ChartDataLabels);
+  }
   const fid = ($id('dashMemberFilter')||{value:''}).value;
   renderGraficosKanban(fid);
   renderGraficosCapacitacoes(fid);
@@ -318,7 +334,9 @@ function renderIndicadores() {
 // imagem estática (Chart.js não existe fora do navegador); cada módulo
 // monta apenas a parte que lhe pertence.
 function montarHtmlIndicadoresPdf() {
-  return graficosKanbanPdfHtml() + graficosCapacitacoesPdfHtml();
+  const tKanban = _pdfSecaoTitulo('Gestão de Tarefas');
+  const tCap    = `<div style="page-break-before: always;">${_pdfSecaoTitulo('Gestão de Capacitações')}</div>`;
+  return tKanban + graficosKanbanPdfHtml() + tCap + graficosCapacitacoesPdfHtml();
 }
 
 // ==========================================
@@ -378,6 +396,44 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!restoDataLoaded && !restoDataLoading) garantirRestoData(function() {});
       }, 400);
     }).getKanbanData();
+
+  // A13: Acessibilidade - Injetar ARIA roles nos modais e configurar Focus Trap
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.setAttribute('role', 'dialog');
+    m.setAttribute('aria-modal', 'true');
+  });
+});
+
+document.addEventListener('keydown', function(e) {
+  // Focus Trap e fechamento via ESC para modais
+  if (e.key === 'Escape') {
+    const openModals = document.querySelectorAll('.modal-overlay.open');
+    if (openModals.length > 0) {
+      fecharModal(openModals[openModals.length - 1].id);
+    }
+    return;
+  }
+  if (e.key === 'Tab') {
+    const openModals = document.querySelectorAll('.modal-overlay.open');
+    if (openModals.length === 0) return;
+    const modal = openModals[openModals.length - 1];
+    const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        last.focus();
+        e.preventDefault();
+      }
+    } else {
+      if (document.activeElement === last) {
+        first.focus();
+        e.preventDefault();
+      }
+    }
+  }
 });
 
 document.addEventListener('click', function(e) {
@@ -438,6 +494,16 @@ document.addEventListener('click', function(e) {
     // Unidades
     'edit-unidade'    : () => abrirEditarUnidade(state.units[idx]),
     'del-unidade'     : () => showConfirm(`Excluir a unidade "${state.units[idx].sigla}"?`, () => excluirUnidade(state.units[idx].idRow, state.units[idx].sigla)),
+    'inativar-unidade': () => {
+      const u = state.units[idx];
+      showConfirm(`Inativar a unidade "${u.sigla}"? Ela não aparecerá em novos cadastros, mas o histórico é preservado.`,
+        () => inativarUnidade(u.idRow, u.sigla), { tone: 'warning', title: 'Confirmar Inativação', confirmLabel: 'Inativar' });
+    },
+    'reativar-unidade': () => {
+      const u = state.units[idx];
+      showConfirm(`Reativar a unidade "${u.sigla}"? Ela voltará a estar disponível para novos cadastros.`,
+        () => reativarUnidade(u.idRow, u.sigla), { tone: 'warning', title: 'Confirmar Reativação', confirmLabel: 'Reativar' });
+    },
     // Documentos
     'edit-doc'        : () => abrirEditarDoc(idx),
     'rev-doc'         : () => abrirRevisaoDoc(idx),
@@ -469,11 +535,14 @@ document.addEventListener('click', function(e) {
   if(e.target.id === 'btn-salvar-acomp-entregas') salvarAcompEntregas();
   if(e.target.id === 'btn-confirmar-excluir') {
     if(itemExcluir) {
+      const btn = e.target;
+      btn.disabled = true; // A03: Proteção imediata contra clique duplo
       if(itemExcluir.length > 0) {
-        const btn = e.target; const orig = btn.innerText; btn.innerText = 'A excluir...'; btn.disabled = true;
+        const orig = btn.innerText; btn.innerText = 'A excluir...';
         itemExcluir(() => { btn.innerText = orig; btn.disabled = false; fecharModal('modal-confirmar'); itemExcluir = null; });
       } else {
         fecharModal('modal-confirmar'); itemExcluir(); itemExcluir=null;
+        setTimeout(() => btn.disabled = false, 300); // restaura após o modal fechar
       }
     }
   }
@@ -618,9 +687,13 @@ function _imgDeCanvas(canvasId) {
   try { const c = $id(canvasId); return c ? c.toDataURL('image/png') : ''; } catch(e) { return ''; }
 }
 function _pdfGraficoCel(titulo, canvasId, largura) {
-  return `<td style="border:none;width:${largura||'50%'};padding:8px;">
-    <span style="font-size:10px;font-weight:700;color:#64748b;">${esc(titulo)}</span><br>
-    <img src="${_imgDeCanvas(canvasId)}" style="width:100%;max-width:340px;margin-top:4px;">
+  return `<td style="width:${largura||'50%'};padding:12px;vertical-align:top;box-sizing:border-box;">
+    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background-color:#ffffff;">
+      <span style="font-size:11.5px;font-weight:700;color:#334155;display:block;margin-bottom:12px;text-align:center;">${esc(titulo)}</span>
+      <div style="text-align:center;">
+        <img src="${_imgDeCanvas(canvasId)}" style="width:100%;max-width:100%;height:auto;">
+      </div>
+    </div>
   </td>`;
 }
 

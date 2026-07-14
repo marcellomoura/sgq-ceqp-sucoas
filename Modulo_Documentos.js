@@ -12,19 +12,19 @@ function salvarDocumento(dados) {
     // serializava desnecessariamente cadastros concorrentes.
     const mapa = { 'Instrução de Trabalho':'IT','Plano de Fiscalização':'PF','Procedimento':'PRO','Política':'POL','Regimento Interno':'RI','Manual':'MAN','Guia':'GUI','Formulário':'FOR' };
     const siglaTipo = mapa[dados.tipo] || 'DOC';
-    let siglaUnd = 'UND';
-    if (dados.responsavel) {
-      const uData = conectarAba(SHEET_UNITS).getDataRange().getValues();
-      const C_UN = colIdx_(CABECALHOS_UNIDADES);
-      const unRow = uData.slice(1).find(r => String(r[C_UN('ID Unidade')]) === String(dados.responsavel));
-      if (unRow) {
-        siglaUnd = String(unRow[C_UN('Sigla')] || 'UND').trim();
-      } else {
-        siglaUnd = dados.responsavel.split(' - ')[0];
-      }
-    }
-    const prefixo   = `${siglaTipo}-${siglaUnd}-`;
     return comBloqueio(() => {
+      let siglaUnd = 'UND';
+      if (dados.responsavel) {
+        const uData = conectarAba(SHEET_UNITS).getDataRange().getValues();
+        const C_UN = colIdx_(CABECALHOS_UNIDADES);
+        const unRow = uData.slice(1).find(r => String(r[C_UN('ID Unidade')]) === String(dados.responsavel));
+        if (unRow) {
+          siglaUnd = String(unRow[C_UN('Sigla')] || 'UND').trim();
+        } else {
+          siglaUnd = dados.responsavel.split(' - ')[0];
+        }
+      }
+      const prefixo   = `${siglaTipo}-${siglaUnd}-`;
       const aba = conectarAba(SHEET_DOCS);
       const C = colIdx_(CABECALHOS_DOCS);
       const rows = aba.getDataRange().getValues();

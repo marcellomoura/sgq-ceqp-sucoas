@@ -15,8 +15,8 @@ function salvarUnidade(dados) {
         if ((rows[i][C('Sigla')]||'').toString().trim().toUpperCase() === siglaNova)
           return { sucesso: false, mensagem: "Já existe uma unidade com a sigla '" + dados.sigla + "'." };
       }
-      const id = getNextId(SHEET_UNITS, 'UN-');
-      aba.appendRow([id, dados.unidade.trim(), dados.sigla.trim(), dados.email.trim(), (dados.linkDrive||'').trim()]);
+      const id = getNextId_(aba, 'UN-');
+      aba.appendRow([id, dados.unidade.trim(), dados.sigla.trim(), dados.email.trim(), (dados.linkDrive||'').trim(), 'Sim']);
       registrarLog('Cadastro de Unidade', dados.sigla, 'Unidade incluída: ' + dados.unidade);
       return { sucesso: true, mensagem: 'Unidade cadastrada com sucesso!' };
     });
@@ -110,3 +110,27 @@ function contarReferenciasUnidade_(idUnidade, sigla, nome) {
   if (planos) partes.push(planos + (planos === 1 ? ' plano de ação' : ' planos de ação'));
   return { total: docs + riscos + planos, descricao: partes.join(', ') };
 }
+
+function _definirStatusUnidade_(idRow, siglaEsperada, statusAtivo) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
+  try {
+    return comBloqueio(() => {
+      const aba = conectarAba(SHEET_UNITS);
+      const C = colIdx_(CABECALHOS_UNIDADES);
+      const linha = parseInt(idRow, 10);
+      if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
+        return { sucesso: false, mensagem: 'Registro não localizado.' };
+      
+      const sigla = aba.getRange(linha, C('Sigla')+1).getValue();
+      if (siglaEsperada && sigla.toString().trim() !== String(siglaEsperada).trim())
+        return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
+        
+      aba.getRange(linha, C('Ativo')+1).setValue(statusAtivo ? 'Sim' : 'Não');
+      registrarLog(statusAtivo ? 'Reativação de Unidade' : 'Inativação de Unidade', sigla, statusAtivo ? 'Unidade reativada.' : 'Unidade inativada.');
+      return { sucesso: true, mensagem: statusAtivo ? 'Unidade reativada com sucesso!' : 'Unidade inativada com sucesso!' };
+    });
+  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+}
+
+function inativarUnidade(idRow, sigla) { return _definirStatusUnidade_(idRow, sigla, false); }
+function reativarUnidade(idRow, sigla) { return _definirStatusUnidade_(idRow, sigla, true); }

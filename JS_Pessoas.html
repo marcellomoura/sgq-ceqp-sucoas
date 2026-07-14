@@ -163,11 +163,12 @@ function confirmarEscala() {
 // acessíveis normalmente, só trocando o ano no dropdown.
 
 var afastamentosCache = [];         // todos os registros, de todos os anos
+var afastamentosCarregados = false; // flag de otimização de cache
 var anoAfastamentoAtual = new Date().getFullYear();
 var anosExtras = [];                // anos adicionados manualmente nesta sessão, ainda sem registro salvo
 var feriasFiltersInitialized = false;
 
-function carregarFerias() {
+function carregarFerias(forceReload) {
   if (!feriasFiltersInitialized) {
     feriasFiltersInitialized = true;
     var el = $id('f-ferias-membro');
@@ -179,11 +180,19 @@ function carregarFerias() {
   // usuário navega livremente pelos anos já cadastrados no dropdown.
   anoAfastamentoAtual = new Date().getFullYear();
   fecharNovoAno();
+  
+  if (!forceReload && afastamentosCarregados) {
+    renderAnoTabs();
+    renderFerias();
+    return;
+  }
+  
   msgTabela('lista-ferias', 9, 'A carregar...');
   google.script.run
     .withFailureHandler(function(e) { msgTabela('lista-ferias', 9, 'Falha ao carregar: ' + String(e), true); })
     .withSuccessHandler(function(data) {
       afastamentosCache = data || [];
+      afastamentosCarregados = true;
       renderAnoTabs();
       renderFerias();
     })
@@ -597,7 +606,7 @@ function confirmarFerias() {
   btn.disabled = true; btn.innerText = 'A guardar...';
   google.script.run
     .withSuccessHandler(function(r) {
-      if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',function(){ fecharModal('modal-ferias'); carregarFerias(); });
+      if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',function(){ fecharModal('modal-ferias'); carregarFerias(true); });
       else { btn.disabled = false; btn.innerText = 'Confirmar'; showAlerta(r.mensagem); }
     })
     .withFailureHandler(falha(btn,'Confirmar',null))

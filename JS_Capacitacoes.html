@@ -115,9 +115,21 @@ function renderGraficosCapacitacoes(fid) {
     caps = caps.filter(c => c.participantes && parseIdsResponsaveis(c.participantes).includes(String(fid)));
   }
 
-  let pMes = {}, pModalidade = {}, pMembro = {};
+  let pMes = {}, pModalidade = {};
+  
+  // Contagens por ID de membro (apenas ativos) para não somar juntos membros homônimos.
+  const membrosGrafico = state.members.filter(m => m.ativo !== false);
+  const pMembro = {}; 
+  membrosGrafico.forEach(m => pMembro[m.id] = 0);
+
+  let qtdEmAndamento = 0, qtdConcluidas = 0;
 
   caps.forEach(c => {
+    // KPIs do Dashboard Geral
+    const status = c.dataRealizada ? 'Concluída' : (c.dataPrevista ? 'Em Andamento' : 'Planejada');
+    if (status === 'Em Andamento') qtdEmAndamento++;
+    else if (status === 'Concluída') qtdConcluidas++;
+
     // Mês — datas em YYYY-MM-DD
     const dataRef = c.dataRealizada || c.dataPrevista;
     if (dataRef) {
@@ -132,15 +144,19 @@ function renderGraficosCapacitacoes(fid) {
     const mod = c.modalidade || 'Não Definida';
     pModalidade[mod] = (pModalidade[mod] || 0) + 1;
 
-    // Participantes → contar capacitações por membro
+    // Participantes → contar capacitações por membro ATIVO
     if (c.participantes) {
       parseIdsResponsaveis(c.participantes).forEach(id => {
-        const m = state.members.find(x => String(x.id) === String(id));
-        const nome = m ? m.name : 'ID:' + id;
-        pMembro[nome] = (pMembro[nome] || 0) + 1;
+        if (id in pMembro) pMembro[id]++;
       });
     }
   });
+
+  // Atualizar KPIs do Painel Geral
+  const elDashCap = $id('kpi-dash-cap');
+  if (elDashCap) elDashCap.innerText = qtdEmAndamento;
+  const elDashCapConc = $id('kpi-dash-cap-conc');
+  if (elDashCapConc) elDashCapConc.innerText = qtdConcluidas;
 
   [capMesChartInst, capModalidadeChartInst, capMembroChartInst].forEach(c => { if (c) c.destroy(); });
 
@@ -163,7 +179,7 @@ function renderGraficosCapacitacoes(fid) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } } },
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: CHART_DATALABELS_BASE },
       scales: CHART_SCALES_BASE
     }
   });
@@ -178,26 +194,31 @@ function renderGraficosCapacitacoes(fid) {
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
-      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} capacitação(ões)` } } }
+      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} capacitação(ões)` } }, datalabels: CHART_DATALABELS_BASE }
     }
   });
 
   // Gráfico: Capacitações por Membro
+  // Mapeamos de volta para os Nomes usando membrosGrafico
+  const nomesMembros = membrosGrafico.map(m => m.name);
+  const dadosMembros = membrosGrafico.map(m => pMembro[m.id]);
+
   const cMembro = $id('capMembroChart');
   if (cMembro) capMembroChartInst = new Chart(cMembro.getContext('2d'), {
     type: 'bar',
     data: {
-      labels: Object.keys(pMembro),
+      labels: nomesMembros,
       datasets: [{
         label: 'Capacitações',
-        data: Object.values(pMembro),
-        backgroundColor: 'rgba(139,92,246,0.85)', borderColor: '#7c3aed',
+        data: dadosMembros,
+        backgroundColor: dadosMembros.map(v => v === 0 ? '#e2e8f0' : 'rgba(139,92,246,0.85)'),
+        borderColor:     dadosMembros.map(v => v === 0 ? '#cbd5e1' : '#7c3aed'),
         borderWidth: 1, borderRadius: 5, borderSkipped: false, maxBarThickness: 42
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } } },
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: ctx => ctx.dataset.data[ctx.dataIndex] === 0 ? '#64748b' : '#fff' } },
       scales: CHART_SCALES_BASE
     }
   });
@@ -227,8 +248,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+let capIdOriginal = '';
+
 function abrirModalCapacitacaoNova() {
   $id('cap-idrow').value          = '';
+  capIdOriginal                   = '';
   $id('cap-titulo').value         = '';
   $id('cap-tema').value           = '';
   $id('cap-modalidade').value     = '';
@@ -244,6 +268,7 @@ function abrirModalCapacitacaoNova() {
 
 function abrirEditarCapacitacao(obj) {
   $id('cap-idrow').value          = obj.idRow;
+  capIdOriginal                   = obj.id;
   $id('cap-titulo').value         = obj.titulo;
   $id('cap-tema').value           = obj.tema      || '';
   $id('cap-modalidade').value     = obj.modalidade || '';
@@ -263,6 +288,7 @@ function salvarFormCapacitacao() {
 
   const dados = {
     idRow,
+    idEsperado:    capIdOriginal,
     titulo:        $id('cap-titulo').value.trim(),
     tema:          $id('cap-tema').value,
     publico:       $id('cap-publico').value.trim(),
@@ -307,7 +333,7 @@ function excluirCapacitacaoConfirm(idRow, id) {
       recarregarCapacitacoes(() => { renderCapacitacoes(); renderKpisCapacitacoes(); if (currentTab === 'indicadores') renderIndicadores(); });
     })
     .withFailureHandler(e => showAlerta(String(e)))
-    .excluirCapacitacao(idRow);
+    .excluirCapacitacao(idRow, id);
 }
 
 </script>

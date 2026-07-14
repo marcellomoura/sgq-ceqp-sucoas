@@ -8,7 +8,8 @@ function salvarRisco(dados) {
   try {
     // Validação no servidor (espelha a do cliente) — protege contra dados
     // incompletos mesmo que a checagem da tela seja contornada.
-    if (!dados || !dados.macroetapa || !dados.categoria || !String(dados.nomeRisco||'').trim() ||
+    const nomeR = String(dados.nome || dados.nomeRisco || '').trim();
+    if (!dados || !dados.macroetapa || !dados.categoria || !nomeR ||
         !String(dados.causa||'').trim() || !String(dados.consequencia||'').trim() ||
         !dados.tipoTratamento || !dados.responsavel)
       return { sucesso: false, mensagem: 'Preencha todos os campos do risco.' };
@@ -25,10 +26,10 @@ function salvarRisco(dados) {
       });
       const id = 'R' + (max + 1);
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
-      aba.appendRow([id, dados.macroetapa, dados.nomeRisco, dados.causa, dados.consequencia,
+      aba.appendRow([id, dados.macroetapa, nomeR, dados.causa, dados.consequencia,
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel,
         dados.tipoTratamento, dados.responsavel]);
-      registrarLog('Cadastro de Risco', id, 'Risco criado: ' + dados.nomeRisco);
+      registrarLog('Cadastro de Risco', id, 'Risco criado: ' + nomeR);
       return { sucesso: true, mensagem: 'Risco mapeado com sucesso!' };
     });
   } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
@@ -37,6 +38,11 @@ function salvarRisco(dados) {
 function atualizarRisco(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
+    const nomeR = String(dados.nome || dados.nomeRisco || '').trim();
+    if (!dados || !dados.macroetapa || !dados.categoria || !nomeR ||
+        !String(dados.causa||'').trim() || !String(dados.consequencia||'').trim() ||
+        !dados.tipoTratamento || !dados.responsavel)
+      return { sucesso: false, mensagem: 'Preencha todos os campos do risco.' };
     if (isNaN(dados.probabilidade) || isNaN(dados.impacto) || dados.probabilidade < 1 || dados.impacto < 1)
       return { sucesso: false, mensagem: 'Probabilidade e impacto são obrigatórios e devem ser válidos.' };
     return comBloqueio(() => {
@@ -51,7 +57,7 @@ function atualizarRisco(dados) {
       if (linha === -1) return { sucesso: false, mensagem: 'Risco não localizado.' };
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
       // Bloco contíguo Macroetapa → Responsável (10 colunas)
-      aba.getRange(linha, CR('Macroetapa')+1, 1, 10).setValues([[dados.macroetapa, dados.nome, dados.causa, dados.consequencia,
+      aba.getRange(linha, CR('Macroetapa')+1, 1, 10).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia,
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel, dados.tipoTratamento, dados.responsavel]]);
       registrarLog('Edição de Risco', ref, 'Metadados atualizados.');
       return { sucesso: true, mensagem: 'Risco atualizado!' };
@@ -136,6 +142,9 @@ function salvarPlano(dados) {
 function atualizarPlano(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
+    if (!dados || !dados.riscoVinculado || !String(dados.what||'').trim() || !String(dados.why||'').trim() ||
+        !dados.who || !String(dados.where||'').trim() || !dados.whenPrevisto || !String(dados.how||'').trim())
+      return { sucesso: false, mensagem: 'Preencha todos os campos do plano.' };
     return comBloqueio(() => {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
       const aba = conectarAba(SHEET_PLANS);
@@ -194,9 +203,8 @@ function _ehSubcomissao_(nomeUnidade) { const n = String(nomeUnidade||'').toLowe
 
 // A reavaliação da baixa automática do plano e a gravação de entregas em
 // lote (via modal de Acompanhamento) são o único fluxo de entregas em uso.
-function _reavaliarBaixa(refRisco) {
+function _reavaliarBaixa(refRisco, cacheRowsE) {
   const abaP = conectarAba(SHEET_PLANS);
-  const abaE = conectarAba(SHEET_DELIVERY);
   const CP = colIdx_(CABECALHOS_PLANOS);
   const CE = colIdx_(CABECALHOS_ENTREGAS);
   const rowsP = abaP.getDataRange().getValues();
@@ -210,7 +218,11 @@ function _reavaliarBaixa(refRisco) {
   }
   if (indexPlano === -1) return;
   const statusAtualPlano = String(rowsP[indexPlano-1][CP('Status')] || '');
-  const rowsE = abaE.getDataRange().getValues();
+  let rowsE = cacheRowsE;
+  if (!rowsE) {
+    const abaE = conectarAba(SHEET_DELIVERY);
+    rowsE = abaE.getDataRange().getValues();
+  }
   let darBaixa = false;
   if (planoGlobal) {
     const CU = colIdx_(CABECALHOS_UNIDADES);
@@ -259,17 +271,25 @@ function salvarEntregasEmLote(riscoVinculado, entregas) {
           }
         }
         if (linhaExistente > 0) {
-          // Bloco contíguo Status → SEI (3 colunas)
-          aba.getRange(linhaExistente, CE('Status')+1, 1, 3).setValues([[ent.entregue, ent.dataEntrega||'',
-            ent.processoSei||'']]);
+          rows[linhaExistente][CE('Status')] = ent.entregue;
+          rows[linhaExistente][CE('Data Entrega')] = ent.dataEntrega||'';
+          rows[linhaExistente][CE('SEI')] = ent.processoSei||'';
         } else {
-          aba.appendRow([riscoVinculado, ent.unidade, ent.entregue,
-            ent.dataEntrega||'', ent.processoSei||'']);
-          rows.push(new Array(CABECALHOS_ENTREGAS.length).fill(''));
+          let novaRow = new Array(CABECALHOS_ENTREGAS.length).fill('');
+          novaRow[CE('Risco Vinculado')] = riscoVinculado;
+          novaRow[CE('Unidade')] = ent.unidade;
+          novaRow[CE('Status')] = ent.entregue;
+          novaRow[CE('Data Entrega')] = ent.dataEntrega||'';
+          novaRow[CE('SEI')] = ent.processoSei||'';
+          rows.push(novaRow);
         }
       });
 
-      _reavaliarBaixa(riscoVinculado);
+      if (rows.length > 0) {
+        aba.getRange(1, 1, rows.length, CABECALHOS_ENTREGAS.length).setValues(rows);
+      }
+
+      _reavaliarBaixa(riscoVinculado, rows);
       registrarLog('Acompanhamento de Entregas', riscoVinculado, 'Entregas atualizadas em lote. Registros: ' + entregas.length);
       return { sucesso: true, mensagem: 'Registros salvos com sucesso!' };
     });

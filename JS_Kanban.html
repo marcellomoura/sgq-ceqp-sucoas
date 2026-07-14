@@ -382,6 +382,12 @@ function renderGraficosKanban(fid) {
   const dadosMc = membrosGrafico.map(m => mc[m.id]);
   const dadosMcConcluido = membrosGrafico.map(m => mcConcluido[m.id]);
 
+  // Atualizar KPIs do Painel Geral
+  const elDashTar = $id('kpi-dash-tarefas');
+  if (elDashTar) elDashTar.innerText = sc['Em Andamento'] || 0;
+  const elDashTarConc = $id('kpi-dash-tarefas-conc');
+  if (elDashTarConc) elDashTarConc.innerText = sc['Concluído'] || 0;
+
   // Destroi gráficos anteriores
   [statusChartInst, priorityChartInst, memberChartInst, memberConcluidoChartInst].forEach(c => { if (c) c.destroy(); });
 
@@ -395,7 +401,7 @@ function renderGraficosKanban(fid) {
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
-      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } } }
+      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } }, datalabels: CHART_DATALABELS_BASE }
     }
   });
 
@@ -409,7 +415,7 @@ function renderGraficosKanban(fid) {
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
-      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } } }
+      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } }, datalabels: CHART_DATALABELS_BASE }
     }
   });
 
@@ -429,7 +435,7 @@ function renderGraficosKanban(fid) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} em andamento` } } },
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} em andamento` } }, datalabels: CHART_DATALABELS_BASE },
       scales: CHART_SCALES_BASE
     }
   });
@@ -450,7 +456,7 @@ function renderGraficosKanban(fid) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} concluída(s)` } } },
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} concluída(s)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: ctx => ctx.dataset.data[ctx.dataIndex] === 0 ? '#64748b' : '#fff' } },
       scales: CHART_SCALES_BASE
     }
   });
