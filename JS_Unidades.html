@@ -71,18 +71,39 @@ function excluirUnidade(idRow, sigla) {
   }).withFailureHandler(e => showAlerta(String(e))).excluirUnidade(idRow, sigla || '');
 }
 
+// Atualização otimista: a tela reflete a mudança na hora; só reverte se o servidor falhar.
 function inativarUnidade(idRow, sigla) {
+  const u = state.units.find(x => String(x.idRow) === String(idRow));
+  if (u) u.ativo = false;
+  renderUnidades(); sincronizarSelectsUnidade();
   google.script.run.withSuccessHandler(r => {
-    if (r && r.sucesso === false) { showAlerta(r.mensagem); return; }
-    recarregarUnidades(renderUnidades);
-  }).withFailureHandler(e => showAlerta(String(e))).inativarUnidade(idRow, sigla || '');
+    if (r && r.sucesso === false) {
+      if (u) u.ativo = true;
+      renderUnidades(); sincronizarSelectsUnidade();
+      showAlerta(r.mensagem);
+    }
+  }).withFailureHandler(e => {
+    if (u) u.ativo = true;
+    renderUnidades(); sincronizarSelectsUnidade();
+    showAlerta(String(e));
+  }).inativarUnidade(idRow, sigla || '');
 }
 
 function reativarUnidade(idRow, sigla) {
+  const u = state.units.find(x => String(x.idRow) === String(idRow));
+  if (u) u.ativo = true;
+  renderUnidades(); sincronizarSelectsUnidade();
   google.script.run.withSuccessHandler(r => {
-    if (r && r.sucesso === false) { showAlerta(r.mensagem); return; }
-    recarregarUnidades(renderUnidades);
-  }).withFailureHandler(e => showAlerta(String(e))).reativarUnidade(idRow, sigla || '');
+    if (r && r.sucesso === false) {
+      if (u) u.ativo = false;
+      renderUnidades(); sincronizarSelectsUnidade();
+      showAlerta(r.mensagem);
+    }
+  }).withFailureHandler(e => {
+    if (u) u.ativo = false;
+    renderUnidades(); sincronizarSelectsUnidade();
+    showAlerta(String(e));
+  }).reativarUnidade(idRow, sigla || '');
 }
 
 // Recarga LEVE do módulo de Unidades: lê só a aba Unidades (getUnitsData) em

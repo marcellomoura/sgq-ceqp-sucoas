@@ -612,4 +612,173 @@
 
   #f-log-busca::placeholder { font-size: 11px; }
   #f-log-data-ini, #f-log-data-fim { font-size: 11.5px; }
+/* ==========================================================================
+   NOVO DESIGN SYSTEM - PAINEL DE INDICADORES (TRACKLINE DASHBOARD)
+   ========================================================================== */
+#view-indicadores {
+  /* Tokens Base */
+  --tl-primary: #6c5dd3;
+  --tl-primary-light: #ece9fb;
+  --tl-blue: #3f8cff;
+  --tl-blue-light: #e1efff;
+  --tl-green: #34c759;
+  --tl-green-light: #e5f8ed;
+  --tl-orange: #ff9500;
+  --tl-orange-light: #fff2e0;
+  --tl-cyan: #32ade6;
+  
+  --tl-bg-card: #ffffff;
+  --tl-bg-page: #fbfbfd;
+  --tl-text-main: #11142d;
+  --tl-text-secondary: #6f767e;
+  --tl-border: #f0f0f0;
+  --tl-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  --tl-radius: 16px;
+  --tl-radius-icon: 12px;
+  
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  background-color: var(--tl-bg-page);
+  color: var(--tl-text-main);
+  padding: 16px;
+  border-radius: 12px;
+  min-height: calc(100vh - 100px);
+}
+
+/* Header do PDF/Dashboard */
+#view-indicadores .tl-header {
+  margin-bottom: 32px;
+}
+#view-indicadores .tl-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--tl-text-main);
+  margin: 0 0 4px 0;
+}
+#view-indicadores .tl-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--tl-primary);
+  margin: 0 0 8px 0;
+}
+#view-indicadores .tl-header .tl-sub {
+  font-size: 13px;
+  color: var(--tl-text-secondary);
+}
+
+/* Grid de KPIs */
+#view-indicadores .tl-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+#view-indicadores .tl-kpi-card {
+  background: var(--tl-bg-card);
+  border-radius: var(--tl-radius);
+  padding: 24px;
+  box-shadow: var(--tl-shadow);
+  border: 1px solid var(--tl-border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+#view-indicadores .tl-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+#view-indicadores .tl-kpi-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--tl-radius-icon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+#view-indicadores .tl-kpi-info {
+  display: flex;
+  flex-direction: column;
+}
+#view-indicadores .tl-kpi-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tl-text-secondary);
+  margin-bottom: 4px;
+}
+#view-indicadores .tl-kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--tl-text-main);
+  line-height: 1;
+}
+
+/* Seções e Gráficos */
+#view-indicadores .tl-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tl-text-main);
+  margin: 16px 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#view-indicadores .tl-section-title::before {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 16px;
+  background: var(--tl-primary);
+  border-radius: 4px;
+}
+#view-indicadores .tl-section-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--tl-border);
+}
+
+#view-indicadores .tl-chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+#view-indicadores .tl-chart-grid.full {
+  grid-template-columns: 1fr;
+}
+@media (max-width: 900px) {
+  #view-indicadores .tl-chart-grid { grid-template-columns: 1fr; }
+}
+
+#view-indicadores .tl-chart-card {
+  background: var(--tl-bg-card);
+  border-radius: var(--tl-radius);
+  padding: 24px;
+  box-shadow: var(--tl-shadow);
+  border: 1px solid var(--tl-border);
+  display: flex;
+  flex-direction: column;
+}
+
+#view-indicadores .tl-chart-header {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tl-text-main);
+  margin-bottom: 12px;
+}
+
+#view-indicadores .tl-chart-wrap {
+  height: 250px;
+  width: 100%;
+  position: relative;
+}
+
+/* Cores Utilitárias */
+#view-indicadores .c-blue { background: var(--tl-blue-light); color: var(--tl-blue); }
+#view-indicadores .c-green { background: var(--tl-green-light); color: var(--tl-green); }
+#view-indicadores .c-purple { background: var(--tl-primary-light); color: var(--tl-primary); }
+#view-indicadores .c-orange { background: var(--tl-orange-light); color: var(--tl-orange); }
 </style>

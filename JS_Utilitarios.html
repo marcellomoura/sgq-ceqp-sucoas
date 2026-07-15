@@ -292,7 +292,7 @@ var TAB_TITULOS = {
   'risco-matriz': 'Matriz de Risco',
   'plano-acomp':  'Plano de Ação',
   'escala':       'Escala Semanal',
-  'ferias':       'Mapa de Férias',
+  'ferias':       'Afastamentos',
   'logs':         'Atividades e Log do Sistema',
   'capacitacoes-lista': 'Lista de Capacitações'
 };
@@ -334,9 +334,17 @@ function renderIndicadores() {
 // imagem estática (Chart.js não existe fora do navegador); cada módulo
 // monta apenas a parte que lhe pertence.
 function montarHtmlIndicadoresPdf() {
+  const getTxt = id => { const e = document.getElementById(id); return e ? e.innerText : '0'; };
+  const kpis = `<table style="margin-bottom:20px;"><tr>
+    ${_pdfKpiCell('Tarefas em Andamento', getTxt('kpi-dash-tarefas'), '#3f8cff')}
+    ${_pdfKpiCell('Tarefas Concluídas', getTxt('kpi-dash-tarefas-conc'), '#34c759')}
+    ${_pdfKpiCell('Capacitações Ativas', getTxt('kpi-dash-cap'), '#6c5dd3')}
+    ${_pdfKpiCell('Capacitações Realizadas', getTxt('kpi-dash-cap-conc'), '#34c759')}
+  </tr></table>`;
+
   const tKanban = _pdfSecaoTitulo('Gestão de Tarefas');
   const tCap    = `<div style="page-break-before: always;">${_pdfSecaoTitulo('Gestão de Capacitações')}</div>`;
-  return tKanban + graficosKanbanPdfHtml() + tCap + graficosCapacitacoesPdfHtml();
+  return kpis + tKanban + graficosKanbanPdfHtml() + tCap + graficosCapacitacoesPdfHtml();
 }
 
 // ==========================================
@@ -671,13 +679,13 @@ function _tbodyParaPdf(tbodyId) {
 // Título de seção — tabela de uma célula sem borda (mais confiável no
 // conversor do que um <div> solto).
 function _pdfSecaoTitulo(texto) {
-  return `<table style="margin:10px 0 6px;"><tr><td style="border:none;padding:0;font-size:13px;font-weight:700;color:#1e293b;">${esc(texto)}</td></tr></table>`;
+  return `<table style="margin:16px 0 8px;"><tr><td style="border:none;padding:0;font-size:14px;font-weight:700;color:#1e293b;">${esc(texto)}</td></tr></table>`;
 }
 
 function _pdfKpiCell(label, valor, cor) {
-  return `<td bgcolor="#f8fafc" style="background:#f8fafc;width:25%;padding:10px 12px;border:1px solid #e2e8f0;">
-    <span style="font-size:9.5px;font-weight:700;color:#64748b;">${esc(label)}</span><br>
-    <span style="font-size:20px;font-weight:700;color:${cor};">${esc(String(valor))}</span>
+  return `<td bgcolor="#ffffff" style="background:#ffffff;width:25%;padding:14px 16px;border:1px solid #cbd5e1;">
+    <span style="font-size:10.5px;font-weight:700;color:#64748b;">${esc(label)}</span><br>
+    <div style="font-size:24px;font-weight:700;color:${cor};margin-top:8px;">${esc(String(valor))}</div>
   </td>`;
 }
 
@@ -687,28 +695,23 @@ function _imgDeCanvas(canvasId) {
   try { const c = $id(canvasId); return c ? c.toDataURL('image/png') : ''; } catch(e) { return ''; }
 }
 function _pdfGraficoCel(titulo, canvasId, largura) {
-  return `<td style="width:${largura||'50%'};padding:12px;vertical-align:top;box-sizing:border-box;">
-    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:16px; background-color:#ffffff;">
-      <span style="font-size:11.5px;font-weight:700;color:#334155;display:block;margin-bottom:12px;text-align:center;">${esc(titulo)}</span>
+  return `<td style="width:${largura||'50%'};padding:0 4px;vertical-align:top;border:none;">
+    <div style="border:1px solid #cbd5e1; border-radius:6px; padding:8px; background-color:#ffffff;">
+      <span style="font-size:11px;font-weight:700;color:#334155;display:block;margin-bottom:8px;text-align:center;">${esc(titulo)}</span>
       <div style="text-align:center;">
-        <img src="${_imgDeCanvas(canvasId)}" style="width:100%;max-width:100%;height:auto;">
+        <img src="${_imgDeCanvas(canvasId)}" style="max-height:165px; width:auto; max-width:100%;">
       </div>
     </div>
   </td>`;
 }
 
-// Cabeçalho institucional — montado com <table> (não <div>): o teste
-// real mostrou que um <div> com padding+border-left simplesmente some
-// no PDF gerado, enquanto tabelas renderizam de forma previsível.
+// Cabeçalho institucional (sem fundo para alinhar com a margem 0 perfeitamente)
 function _cabecalhoPdfHtml(cfg) {
-  return `<table style="margin-bottom:22px;"><tr>
-    <td bgcolor="#2563eb" width="4" style="background:#2563eb;padding:0;border:none;"></td>
-    <td bgcolor="#f8fafc" style="background:#f8fafc;padding:14px 20px;border:none;">
-      <table style="margin:0;"><tr><td style="border:none;padding:0;font-size:12px;font-weight:800;color:#0f172a;">SISTEMA DE GESTÃO DA QUALIDADE</td></tr>
-      <tr><td style="border:none;padding:0;color:#64748b;font-size:9.5px;">COMISSÃO ESPECIAL DE QUALIDADE E PADRONIZAÇÃO · CEQP | SUCOAS - SES/DF</td></tr>
-      <tr><td style="border:none;padding:2px 0 0;font-size:19px;font-weight:700;color:#2563eb;">${esc(cfg.title)}</td></tr></table>
-    </td>
-  </tr></table>`;
+  return `<table style="margin-bottom:20px; border-collapse: collapse;">
+    <tr><td style="border:none;padding:0 0 6px 0;font-size:12px;font-weight:800;color:#0f172a;">SISTEMA DE GESTÃO DA QUALIDADE</td></tr>
+    <tr><td style="border:none;padding:0 0 16px 0;color:#64748b;font-size:9.5px;border-bottom:1px solid #e2e8f0;">COMISSÃO ESPECIAL DE QUALIDADE E PADRONIZAÇÃO · CEQP | SUCOAS - SES/DF</td></tr>
+    <tr><td style="border:none;padding:16px 0 0;font-size:24px;font-weight:700;color:#2563eb;">${esc(cfg.title)}</td></tr>
+  </table>`;
 }
 
 // Envelope HTML completo (documento válido, com <style> próprio — não

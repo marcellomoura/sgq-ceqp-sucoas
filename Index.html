@@ -355,39 +355,80 @@
 
     <!-- ======================== MÓDULO 5: PAINEL DE INDICADORES ======================== -->
     <section id="view-indicadores" class="view-section print-target">
-      <div class="pdf-header" id="pdf-header-indicadores">
-        <h1>Sistema de Gestão da Qualidade</h1>
-        <div class="pdf-sub">Comissão Especial de Qualidade e Padronização · CEQP | SUCOAS - SES/DF</div>
-        <h2>Painel de Indicadores</h2>
+      <div class="tl-kpi-grid" id="dash-kpis-geral">
+        <div class="tl-kpi-card">
+          <div class="tl-kpi-icon c-blue">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+          </div>
+          <div class="tl-kpi-info">
+            <div class="tl-kpi-title">Tarefas em Andamento</div>
+            <div class="tl-kpi-value" id="kpi-dash-tarefas">0</div>
+          </div>
+        </div>
+        <div class="tl-kpi-card">
+          <div class="tl-kpi-icon c-green">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </div>
+          <div class="tl-kpi-info">
+            <div class="tl-kpi-title">Tarefas Concluídas</div>
+            <div class="tl-kpi-value" id="kpi-dash-tarefas-conc">0</div>
+          </div>
+        </div>
+        <div class="tl-kpi-card">
+          <div class="tl-kpi-icon c-purple">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          </div>
+          <div class="tl-kpi-info">
+            <div class="tl-kpi-title">Capacitações Ativas</div>
+            <div class="tl-kpi-value" id="kpi-dash-cap">0</div>
+          </div>
+        </div>
+        <div class="tl-kpi-card">
+          <div class="tl-kpi-icon c-green">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+          </div>
+          <div class="tl-kpi-info">
+            <div class="tl-kpi-title">Capacitações Realizadas</div>
+            <div class="tl-kpi-value" id="kpi-dash-cap-conc">0</div>
+          </div>
+        </div>
       </div>
 
-      <div class="kpi-grid" style="margin-bottom:20px;" id="dash-kpis-geral">
-        <div class="kpi-card" style="border-top:3px solid #3b82f6;"><div class="kpi-icon icon-blue">📋</div><div><div class="kpi-label">Tarefas em Andamento</div><div class="kpi-value" id="kpi-dash-tarefas" style="color:#3b82f6;">0</div></div></div>
-        <div class="kpi-card" style="border-top:3px solid #10b981;"><div class="kpi-icon icon-green">✅</div><div><div class="kpi-label">Tarefas Concluídas</div><div class="kpi-value" id="kpi-dash-tarefas-conc" style="color:#10b981;">0</div></div></div>
-        <div class="kpi-card" style="border-top:3px solid #8b5cf6;"><div class="kpi-icon icon-purple">📚</div><div><div class="kpi-label">Capacitações Ativas</div><div class="kpi-value" id="kpi-dash-cap" style="color:#8b5cf6;">0</div></div></div>
-        <div class="kpi-card" style="border-top:3px solid #059669;"><div class="kpi-icon icon-green">🎓</div><div><div class="kpi-label">Capac. Realizadas</div><div class="kpi-value" id="kpi-dash-cap-conc" style="color:#059669;">0</div></div></div>
+      <h3 class="tl-section-title">Gestão de Tarefas</h3>
+      <div class="tl-chart-grid">
+        <div class="tl-chart-card">
+          <div class="tl-chart-header">Volume de Tarefas por Status</div>
+          <div class="tl-chart-wrap"><canvas id="statusChart"></canvas></div>
+        </div>
+        <div class="tl-chart-card">
+          <div class="tl-chart-header">Nível de Prioridade das Tarefas</div>
+          <div class="tl-chart-wrap"><canvas id="priorityChart"></canvas></div>
+        </div>
+        <div class="tl-chart-card">
+          <div class="tl-chart-header">Tarefas em Andamento por Membro</div>
+          <div class="tl-chart-wrap"><canvas id="memberChart"></canvas></div>
+        </div>
+        <div class="tl-chart-card">
+          <div class="tl-chart-header">Tarefas Concluídas por Membro</div>
+          <div class="tl-chart-wrap"><canvas id="memberConcluidoChart"></canvas></div>
+        </div>
       </div>
 
-      <h3 style="font-size:15px; font-weight:700; color:#1e293b; margin:28px 0 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;">Gestão de Tarefas</h3>
-      <div class="dashboard-grid" style="margin-bottom: 30px;">
-        <div class="dash-row two-cols">
-          <div class="chart-box"><h3>Distribuição por Status</h3><div class="chart-wrap" style="height:320px;"><canvas id="statusChart"></canvas></div></div>
-          <div class="chart-box"><h3>Distribuição por Prioridade</h3><div class="chart-wrap" style="height:320px;"><canvas id="priorityChart"></canvas></div></div>
-        </div>
-        <div class="dash-row two-cols">
-          <div class="chart-box"><h3>Em Andamento por Membro</h3><div class="chart-wrap" style="height:320px;"><canvas id="memberChart"></canvas></div></div>
-          <div class="chart-box"><h3>Concluídas por Membro</h3><div class="chart-wrap" style="height:320px;"><canvas id="memberConcluidoChart"></canvas></div></div>
+      <h3 class="tl-section-title">Gestão de Capacitações</h3>
+      <div class="tl-chart-grid full">
+        <div class="tl-chart-card">
+          <div class="tl-chart-header">Volume de Capacitações ao Longo do Ano</div>
+          <div class="tl-chart-wrap"><canvas id="capMesChart"></canvas></div>
         </div>
       </div>
-
-      <h3 style="font-size:15px; font-weight:700; color:#1e293b; margin:28px 0 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;">Gestão de Capacitações</h3>
-      <div class="dashboard-grid">
-        <div class="dash-row one-col">
-          <div class="chart-box"><h3>Capacitações por Mês</h3><div class="chart-wrap" style="height:320px;"><canvas id="capMesChart"></canvas></div></div>
+      <div class="tl-chart-grid">
+        <div class="tl-chart-card">
+          <div class="tl-chart-header">Distribuição por Modalidade de Treinamento</div>
+          <div class="tl-chart-wrap"><canvas id="capModalidadeChart"></canvas></div>
         </div>
-        <div class="dash-row two-cols">
-          <div class="chart-box"><h3>Capacitações por Modalidade</h3><div class="chart-wrap" style="height:320px;"><canvas id="capModalidadeChart"></canvas></div></div>
-          <div class="chart-box"><h3>Capacitações por Membro</h3><div class="chart-wrap" style="height:320px;"><canvas id="capMembroChart"></canvas></div></div>
+        <div class="tl-chart-card">
+          <div class="tl-chart-header">Total de Participações por Membro</div>
+          <div class="tl-chart-wrap"><canvas id="capMembroChart"></canvas></div>
         </div>
       </div>
     </section>
@@ -411,11 +452,11 @@
     <!-- ======================== MÓDULO 3: LISTA MESTRA ======================== -->
     <section id="view-doc-lista" class="view-section compact-view">
       <div class="kpi-grid" style="margin-bottom:16px;">
-        <div class="kpi-card" style="border-top:3px solid #2563eb;"><div class="kpi-icon icon-blue">📄</div><div><div class="kpi-label">Total</div><div class="kpi-value" id="kpi-d-total" style="color:#2563eb;">0</div></div></div>
-        <div class="kpi-card" style="border-top:3px solid #8b5cf6;"><div class="kpi-icon icon-purple">✏️</div><div><div class="kpi-label">Em Elaboração</div><div class="kpi-value" id="kpi-d-elab" style="color:#8b5cf6;">0</div></div></div>
-        <div class="kpi-card" style="border-top:3px solid #059669;"><div class="kpi-icon icon-green">✅</div><div><div class="kpi-label">Vigentes</div><div class="kpi-value" id="kpi-d-vig" style="color:#059669;">0</div></div></div>
-        <div class="kpi-card" style="border-top:3px solid #eab308;"><div class="kpi-icon icon-yellow">🔔</div><div><div class="kpi-label">Próximos da Revisão</div><div class="kpi-value" id="kpi-d-prox" style="color:#eab308;">0</div></div></div>
-        <div class="kpi-card" style="border-top:3px solid #ef4444;"><div class="kpi-icon icon-red">⚠️</div><div><div class="kpi-label">Vencidos</div><div class="kpi-value" id="kpi-d-ven" style="color:#ef4444;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #2563eb;"><div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div><div><div class="kpi-label">Total</div><div class="kpi-value" id="kpi-d-total" style="color:#2563eb;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #8b5cf6;"><div class="kpi-icon icon-purple"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></div><div><div class="kpi-label">Em Elaboração</div><div class="kpi-value" id="kpi-d-elab" style="color:#8b5cf6;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #059669;"><div class="kpi-icon icon-green"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div><div class="kpi-label">Vigentes</div><div class="kpi-value" id="kpi-d-vig" style="color:#059669;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #eab308;"><div class="kpi-icon icon-yellow"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div><div><div class="kpi-label">Próximos da Revisão</div><div class="kpi-value" id="kpi-d-prox" style="color:#eab308;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #ef4444;"><div class="kpi-icon icon-red"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div><div class="kpi-label">Vencidos</div><div class="kpi-value" id="kpi-d-ven" style="color:#ef4444;">0</div></div></div>
       </div>
       <div class="table-wrap">
         <table class="data-table">
@@ -478,9 +519,9 @@
           <h2>Painel de Acompanhamento de Ações</h2>
         </div>
         <div class="kpi-grid" style="margin-bottom:14px;">
-          <div class="kpi-card" style="border-top:3px solid #059669;"><div class="kpi-icon icon-green">✅</div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="kpi-p-conc" style="color:#059669;">0</div></div></div>
-          <div class="kpi-card" style="border-top:3px solid #eab308;"><div class="kpi-icon icon-yellow">⏳</div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-p-and" style="color:#eab308;">0</div></div></div>
-          <div class="kpi-card" style="border-top:3px solid #ef4444;"><div class="kpi-icon icon-red">⚠️</div><div><div class="kpi-label">Atrasadas</div><div class="kpi-value" id="kpi-p-atr" style="color:#ef4444;">0</div></div></div>
+          <div class="kpi-card" style="border-top:3px solid #059669;"><div class="kpi-icon icon-green"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="kpi-p-conc" style="color:#059669;">0</div></div></div>
+          <div class="kpi-card" style="border-top:3px solid #eab308;"><div class="kpi-icon icon-yellow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-p-and" style="color:#eab308;">0</div></div></div>
+          <div class="kpi-card" style="border-top:3px solid #ef4444;"><div class="kpi-icon icon-red"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div><div class="kpi-label">Atrasadas</div><div class="kpi-value" id="kpi-p-atr" style="color:#ef4444;">0</div></div></div>
         </div>
         <div class="table-wrap">
           <table class="data-table">
@@ -507,13 +548,13 @@
     <!-- ======================== MÓDULO 6: CAPACITAÇÕES ======================== -->
     <section id="view-capacitacoes-lista" class="view-section">
       <div class="kpi-grid compact-view" id="dash-kpis-capacitacoes" style="margin-bottom:16px;">
-        <div class="kpi-card" style="border-top:3px solid #2563eb;"><div class="kpi-icon icon-blue">📚</div><div><div class="kpi-label">Total</div><div class="kpi-value" id="kpi-cap-total" style="color:#2563eb;">0</div></div></div>
-        <div class="kpi-card" style="border-top:3px solid #eab308;"><div class="kpi-icon icon-yellow">⏳</div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-cap-andamento" style="color:#eab308;">0</div></div></div>
-        <div class="kpi-card" style="border-top:3px solid #059669;"><div class="kpi-icon icon-green">✅</div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="kpi-cap-concluidas" style="color:#059669;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #2563eb;"><div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div><div><div class="kpi-label">Total</div><div class="kpi-value" id="kpi-cap-total" style="color:#2563eb;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #eab308;"><div class="kpi-icon icon-yellow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-cap-andamento" style="color:#eab308;">0</div></div></div>
+        <div class="kpi-card" style="border-top:3px solid #059669;"><div class="kpi-icon icon-green"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="kpi-cap-concluidas" style="color:#059669;">0</div></div></div>
       </div>
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th style="width:230px;">Título da Capacitação</th><th style="width:130px;">Tema</th><th style="width:110px;">Público-alvo</th><th style="width:100px;">Modalidade</th><th style="width:95px;">Data Prevista</th><th style="width:95px;">Data Realizada</th><th style="width:95px;">Status</th><th style="width:160px;">Participantes</th><th style="width:70px; text-align:center;">Materiais</th><th style="width:80px; text-align:center;">Ações</th></tr></thead>
+          <thead><tr><th style="width:230px;">Título da Capacitação</th><th style="width:130px;">Tema</th><th style="width:110px;">Público-alvo</th><th style="width:100px;">Modalidade</th><th style="width:95px;">Data Prevista</th><th style="width:95px;">Data Realizada</th><th style="width:95px;">Status</th><th style="width:160px;">Responsáveis</th><th style="width:70px; text-align:center;">Lista de Presença</th><th style="width:80px; text-align:center;">Ações</th></tr></thead>
           <tbody id="lista-capacitacoes"><tr><td colspan="10" class="msg-empty">A carregar...</td></tr></tbody>
         </table>
       </div>
@@ -553,7 +594,7 @@
       <div class="modal-sidebar-actions">
         <h4 id="sidebar-add-title" style="font-size:11px; font-weight:600; color:#5e6c84; text-transform:uppercase;">Adicionar ao cartão</h4>
         <div class="sidebar-field-group">
-          <label>Responsáveis</label>
+          <label><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Responsáveis</label>
           <div class="custom-select-wrapper">
             <div class="custom-select-display" id="assignee-display">Selecionar...</div>
             <div class="custom-select-options" id="taskAssigneesContainer"></div>
@@ -561,11 +602,11 @@
           <div class="selected-tags" id="selected-assignees-tags"></div>
         </div>
         <div class="sidebar-field-group">
-          <label>Prioridade</label>
+          <label><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>Prioridade</label>
           <select id="taskPriority" class="sidebar-select"><option value="" disabled selected>Selecionar...</option><option value="Baixa">Baixa</option><option value="Media">Média</option><option value="Alta">Alta</option></select>
         </div>
         <div class="sidebar-field-group">
-          <label>Etiquetas</label>
+          <label><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>Etiquetas</label>
           <div class="custom-select-wrapper">
             <div class="custom-select-display" id="labels-display">Selecionar...</div>
             <div class="custom-select-options" id="taskLabelsContainer"></div>
@@ -573,7 +614,7 @@
           <div class="selected-tags" id="selected-labels-tags"></div>
         </div>
         <div class="sidebar-field-group">
-          <label>Prazo de Entrega</label>
+          <label><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Prazo de Entrega</label>
           <input type="date" id="taskDeadline" class="sidebar-date">
         </div>
         <div style="margin-top:18px;">
@@ -1011,18 +1052,18 @@
       <div style="flex:1;"><label class="field-label" for="cap-data-realizada">Data Realizada</label><input type="date" id="cap-data-realizada" class="field-input"></div>
     </div>
     
-    <label class="field-label">Participantes</label>
+    <label class="field-label">Responsáveis</label>
     <div class="custom-select-wrapper" style="position:relative;">
       <div id="cap-participantes-trigger" style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13.5px; background:#f8fafc; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:space-between; user-select:none; box-sizing:border-box; transition:border-color 0.15s;">
-        <span id="cap-participantes-label" style="color:#94a3b8;">Selecionar participantes...</span>
+        <span id="cap-participantes-label" style="color:#94a3b8;">Selecionar responsáveis...</span>
         <span style="font-size:9px; color:#94a3b8; pointer-events:none;">▼</span>
       </div>
       <div id="cap-participantes-options" class="custom-select-options"></div>
     </div>
     <div class="selected-tags" id="cap-participantes-tags" style="margin-top:6px;"></div>
 
-    <label class="field-label" for="cap-materiais" style="margin-top:8px;">Materiais (Link)</label>
-    <input type="text" id="cap-materiais" class="field-input" placeholder="Link para apresentação, vídeo, pasta no Drive, etc.">
+    <label class="field-label" for="cap-materiais" style="margin-top:8px;">Lista de Presença (Link)</label>
+    <input type="text" id="cap-materiais" class="field-input" placeholder="Link para a lista de presença, pasta no Drive, etc.">
     
     <div class="modal-footer">
       <button class="btn secondary" data-close="modal-capacitacao">Cancelar</button>

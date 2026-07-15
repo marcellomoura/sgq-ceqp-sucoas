@@ -173,7 +173,7 @@ function renderGraficosCapacitacoes(fid) {
       datasets: [{
         label: 'Capacitações',
         data: chavesMes.map(k => pMes[k]),
-        backgroundColor: 'rgba(14,165,233,0.85)', borderColor: '#0284c7',
+        backgroundColor: 'rgba(50,173,230,0.85)', borderColor: '#32ade6',
         borderWidth: 1, borderRadius: 5, borderSkipped: false, maxBarThickness: 42
       }]
     },
@@ -190,7 +190,7 @@ function renderGraficosCapacitacoes(fid) {
     type: 'doughnut',
     data: {
       labels: Object.keys(pModalidade),
-      datasets: [{ data: Object.values(pModalidade), backgroundColor: ['#0ea5e9','#8b5cf6','#f97316','#10b981','#f43f5e'], borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }]
+      datasets: [{ data: Object.values(pModalidade), backgroundColor: ['#32ade6','#6c5dd3','#ff9500','#34c759','#ef4444'], borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
@@ -211,8 +211,8 @@ function renderGraficosCapacitacoes(fid) {
       datasets: [{
         label: 'Capacitações',
         data: dadosMembros,
-        backgroundColor: dadosMembros.map(v => v === 0 ? '#e2e8f0' : 'rgba(139,92,246,0.85)'),
-        borderColor:     dadosMembros.map(v => v === 0 ? '#cbd5e1' : '#7c3aed'),
+        backgroundColor: dadosMembros.map(v => v === 0 ? '#f0f2f5' : 'rgba(108,93,211,0.85)'),
+        borderColor:     dadosMembros.map(v => v === 0 ? '#e4e4e5' : '#6c5dd3'),
         borderWidth: 1, borderRadius: 5, borderSkipped: false, maxBarThickness: 42
       }]
     },
@@ -227,8 +227,8 @@ function renderGraficosCapacitacoes(fid) {
 // Fragmento do relatório do Painel de Indicadores com os 3 gráficos de
 // Capacitações (viram imagem estática, já que Chart.js não roda no servidor).
 function graficosCapacitacoesPdfHtml() {
-  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Capacitações por Mês','capMesChart','100%')}</tr></table>` +
-    `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Capacitações por Modalidade','capModalidadeChart')}${_pdfGraficoCel('Capacitações por Membro','capMembroChart')}</tr></table>`;
+  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Volume de Capacitações ao Longo do Ano','capMesChart','100%')}</tr></table>` +
+    `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Distribuição por Modalidade de Treinamento','capModalidadeChart')}${_pdfGraficoCel('Total de Participações por Membro','capMembroChart')}</tr></table>`;
 }
 
 // ------------------------------------------

@@ -29,7 +29,7 @@ const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequên
 const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status'];
 const CABECALHOS_ENTREGAS = ['Risco Vinculado','Unidade','Status','Data Entrega','SEI'];
 const CABECALHOS_LOGS     = ['Data/Hora','Usuário','Ação','Referência','Detalhes'];
-const CABECALHOS_CAPACITACOES = ['ID', 'Título da Capacitação', 'Tema', 'Público-alvo', 'Modalidade', 'Data Prevista', 'Data Realizada', 'Status', 'Materiais', 'Participantes'];
+const CABECALHOS_CAPACITACOES = ['ID', 'Título da Capacitação', 'Tema', 'Público-alvo', 'Modalidade', 'Data Prevista', 'Data Realizada', 'Status', 'Lista de Presença', 'Responsáveis'];
 
 // Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
 // (a mesma fonte única usada no setup da planilha). Elimina os índices
@@ -333,9 +333,8 @@ function setupDatabaseResto() {
   // Mesma lógica de setupDatabaseKanban: conectar 7 abas custava ~8 round-trips
   // à planilha em TODA primeira visita a uma aba do SGQ. Roda no máximo 1x a
   // cada 6h; os dados seguem lidos frescos. Chave versionada (v2): mantida por
-  // compatibilidade com o cache já distribuído — o "v2" foi um bump histórico
-  // (removido da versão atual: migração de coluna já concluída em produção).
-  try { if (CacheService.getScriptCache().get('setup_resto_ok_v2')) return; } catch (e) {}
+  // compatibilidade com o cache já distribuído — o "v3" garante a migração.
+  try { if (CacheService.getScriptCache().get('setup_resto_ok_v3')) return; } catch (e) {}
   conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
   conectarAba(SHEET_DOCS,     CABECALHOS_DOCS);
   conectarAba(SHEET_RISKS,    CABECALHOS_RISCOS);
@@ -343,7 +342,8 @@ function setupDatabaseResto() {
   conectarAba(SHEET_DELIVERY, CABECALHOS_ENTREGAS);
   conectarAba(SHEET_LOGS,     CABECALHOS_LOGS);
   conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
-  try { CacheService.getScriptCache().put('setup_resto_ok_v2', '1', 21600); } catch (e) {}
+
+  try { CacheService.getScriptCache().put('setup_resto_ok_v3', '1', 21600); } catch (e) {}
 }
 
 // ==========================================
@@ -406,7 +406,11 @@ function getKanbanData() {
 
 function getKanbanData_members_() {
   const C = colIdx_(CABECALHOS_MEMBROS);
-  const mData = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS).getDataRange().getValues();
+  // Sem passar cabecalhos: a validação/migração de colunas de Membros já é
+  // garantida (e cacheada por 6h) por setupDatabaseKanban() logo acima em
+  // getKanbanData(). Repeti-la aqui só custaria um getLastColumn() extra
+  // por carga, sem necessidade.
+  const mData = conectarAba(SHEET_MEMBERS).getDataRange().getValues();
 
   return mData.length > 1 ? mData.slice(1).map(r => {
     let rawDias = String(r[C('Dias Semana')] || '').trim();
@@ -611,8 +615,8 @@ function getRestoData() {
       dataPrevistaRaw: r[CCAP('Data Prevista')] instanceof Date ? r[CCAP('Data Prevista')].getTime() : null,
       dataRealizada: formatarDataParaUI(r[CCAP('Data Realizada')]),
       status: String(r[CCAP('Status')]||'Planejada'),
-      materiais: String(r[CCAP('Materiais')]||''),
-      participantes: String(r[CCAP('Participantes')]||'')
+      materiais: String(r[CCAP('Lista de Presença')]||''),
+      participantes: String(r[CCAP('Responsáveis')]||'')
     })) : [];
 
   return { units: units, docs: docs, risks: risks, plans: plans, deliveries: deliveries, trainings: trainings };
@@ -634,11 +638,11 @@ function getCapacitacoesData() {
     dataPrevistaRaw: r[CCAP('Data Prevista')] instanceof Date ? r[CCAP('Data Prevista')].getTime() : null,
     dataRealizada: formatarDataParaUI(r[CCAP('Data Realizada')]),
     status: String(r[CCAP('Status')]||'Planejada'),
-    materiais: String(r[CCAP('Materiais')]||''),
+    materiais: String(r[CCAP('Lista de Presença')]||''),
     // Incluído para casar com o shape de getRestoData(): sem este campo,
     // recarregarCapacitacoes() (após salvar/editar/excluir) zerava a coluna
-    // Participantes na UI até um reload completo.
-    participantes: String(r[CCAP('Participantes')]||'')
+    // Responsáveis na UI até um reload completo.
+    participantes: String(r[CCAP('Responsáveis')]||'')
   })) : [];
 }
 
