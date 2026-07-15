@@ -52,13 +52,17 @@ function salvarEscala(dados) {
 // ter vários anos abertos simultaneamente (nada é arquivado/apagado ao virar
 // o ano) — a tela troca de ano só filtrando quais linhas exibir/editar.
 
-function getAfastamentos() {
-  if (!isMembro_()) throw new Error('Acesso Negado.');
-  try {
-    const aba = conectarAba(SHEET_AFASTAMENTOS, CABECALHOS_AFASTAMENTOS);
-    const CA = colIdx_(CABECALHOS_AFASTAMENTOS);
-    const rows = aba.getDataRange().getValues();
-    if (rows.length <= 1) return [];
+// Leitura + normalização da aba Afastamentos. Busca própria (getAfastamentos),
+// disparada em paralelo com getKanbanData logo na abertura do sistema — não
+// entra em getKanbanData nem em getRestoData de propósito: a primeira é
+// relida a cada ação de cartão (recarregarKanban) e a segunda só chega em
+// segundo plano junto com 6 outras abas; qualquer uma das duas faria
+// Afastamentos pesar num caminho que não é o dela.
+function _lerAfastamentos_() {
+  const aba = conectarAba(SHEET_AFASTAMENTOS, CABECALHOS_AFASTAMENTOS);
+  const CA = colIdx_(CABECALHOS_AFASTAMENTOS);
+  const rows = aba.getDataRange().getValues();
+  if (rows.length <= 1) return [];
 
     // Mais estrito que o parsePeriod de getKanbanData_members_: aqui um
     // texto sem ' a ' é descartado (null) em vez de virar período de 1 dia.
@@ -110,6 +114,12 @@ function getAfastamentos() {
         demais: demais
       };
     });
+}
+
+function getAfastamentos() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  try {
+    return _lerAfastamentos_();
   } catch(e) {
     console.error('getAfastamentos falhou: ' + e);
     return [];

@@ -22,7 +22,11 @@ const CABECALHOS_MEMBROS = ['ID','Nome','Cargo','Email Funcional','E-mail Pessoa
 // mesmo tempo sem perder histórico (ver Modulo_Pessoas.js).
 const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio','Demais Afastamentos'];
 // Demais abas — mesma ideia de fonte única de verdade para o layout.
-const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas'];
+// 'Última Atualização' (carimbo de milissegundos) sustenta a trava otimista de
+// saveTask(): detecta quando o cartão foi alterado por outra pessoa entre o
+// momento em que o editor foi aberto e o clique em Salvar, evitando que uma
+// edição desatualizada sobrescreva em silêncio o que já foi salvo por outra pessoa.
+const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas','Última Atualização'];
 const CABECALHOS_UNIDADES = ['ID Unidade', 'Nome da Unidade','Sigla','E-mail Funcional','Link do Drive', 'Ativo'];
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
 const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável'];
@@ -350,7 +354,10 @@ function setupDatabaseResto() {
 // CARREGAMENTO EM DUAS ETAPAS
 // Etapa 1 (getKanbanData): só Tarefas + Membros — usada para o quadro
 // Kanban aparecer imediatamente ao abrir o sistema, sem esperar a
-// leitura de Unidades/Documentos/Riscos/Planos/Entregas.
+// leitura de Unidades/Documentos/Riscos/Planos/Entregas. Chamada de novo a
+// cada ação de cartão (recarregarKanban) — por isso fica restrita só a
+// Tarefas+Membros; Afastamentos tem sua própria busca (getAfastamentos),
+// em paralelo, para não pesar nessa releitura frequente.
 // Etapa 2 (getRestoData): as demais abas, buscadas em segundo plano
 // logo depois que o Kanban já está na tela.
 // ==========================================
@@ -397,7 +404,8 @@ function getKanbanData() {
       assigneeId: String(r[C('Responsável_ID')]), priority: String(r[C('Prioridade')]), creationDate: formatarDataParaUI(r[C('Data Criação')]),
       startDate: formatarDataParaUI(r[C('Data Início')]), deadline: formatarDataParaUI(r[C('Prazo')]),
       completionDate: completionDate, activities: String(r[C('Atividades')] || '[]'),
-      labels: String(r[C('Etiquetas')] || '[]'), archived: archived
+      labels: String(r[C('Etiquetas')] || '[]'), archived: archived,
+      updatedAt: String(r[C('Última Atualização')] || '')
     };
   });
 

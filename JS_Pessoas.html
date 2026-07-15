@@ -162,13 +162,13 @@ function confirmarEscala() {
 // Escala Semanal. Nada é excluído/arquivado: anos antigos continuam
 // acessíveis normalmente, só trocando o ano no dropdown.
 
-var afastamentosCache = [];         // todos os registros, de todos os anos
-var afastamentosCarregados = false; // flag de otimização de cache
+var afastamentosCache = [];         // mirror de state.afastamentos (pré-carregado em segundo
+                                     // plano junto com o resto do SGQ), mantido em sincronia após salvar
 var anoAfastamentoAtual = new Date().getFullYear();
 var anosExtras = [];                // anos adicionados manualmente nesta sessão, ainda sem registro salvo
 var feriasFiltersInitialized = false;
 
-function carregarFerias(forceReload) {
+function carregarFerias() {
   if (!feriasFiltersInitialized) {
     feriasFiltersInitialized = true;
     var el = $id('f-ferias-membro');
@@ -180,23 +180,14 @@ function carregarFerias(forceReload) {
   // usuário navega livremente pelos anos já cadastrados no dropdown.
   anoAfastamentoAtual = new Date().getFullYear();
   fecharNovoAno();
-  
-  if (!forceReload && afastamentosCarregados) {
-    renderAnoTabs();
-    renderFerias();
-    return;
-  }
-  
-  msgTabela('lista-ferias', 9, 'A carregar...');
-  google.script.run
-    .withFailureHandler(function(e) { msgTabela('lista-ferias', 9, 'Falha ao carregar: ' + String(e), true); })
-    .withSuccessHandler(function(data) {
-      afastamentosCache = data || [];
-      afastamentosCarregados = true;
-      renderAnoTabs();
-      renderFerias();
-    })
-    .getAfastamentos();
+
+  // Os dados já chegam prontos em state.afastamentos: getKanbanData() traz
+  // Tarefas+Membros+Afastamentos num único pacote logo na abertura do
+  // sistema (igual a Membros/Escala), então não há round-trip aqui — a aba
+  // abre na hora.
+  afastamentosCache = state.afastamentos || [];
+  renderAnoTabs();
+  renderFerias();
 }
 
 function preencherDropdownMembrosFerias() {
@@ -284,22 +275,6 @@ function renderFerias() {
   var registrosDoAno = afastamentosCache.filter(function(r){ return parseInt(r.ano, 10) === anoAfastamentoAtual; });
   var porMembro = {};
   registrosDoAno.forEach(function(r){ porMembro[r.membroId] = r; });
-
-  // KPI — calculado só sobre o ano selecionado
-  var emFerias = 0;
-  registrosDoAno.forEach(function(r) {
-    var list = [];
-    (r.ferias || []).forEach(function(f){ if (f && f.inicio && f.fim) list.push(f); });
-    (r.abonosFixos || []).forEach(function(d){ if (d) list.push({inicio: d, fim: d}); });
-    if (r.abonoAniv && r.abonoAniv.inicio) list.push(r.abonoAniv);
-    (r.licencas || []).forEach(function(lc){ if (lc && lc.inicio && lc.fim) list.push(lc); });
-    (r.demais || []).forEach(function(d){ if (d && d.inicio && d.fim) list.push({inicio: d.inicio, fim: d.fim}); });
-    list.some(function(p) {
-      var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim || p.inicio);
-      return ini && fim && ini <= hoje && fim >= hoje;
-    }) && emFerias++;
-  });
-  var kpiEl = $id('kpi-f-agora'); if (kpiEl) kpiEl.innerText = emFerias;
 
   // Filtro por membro (mesmo select do cabeçalho)
   var fM = ($id('f-ferias-membro') || {value:''}).value;
@@ -606,7 +581,23 @@ function confirmarFerias() {
   btn.disabled = true; btn.innerText = 'A guardar...';
   google.script.run
     .withSuccessHandler(function(r) {
-      if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',function(){ fecharModal('modal-ferias'); carregarFerias(true); });
+      if (r.sucesso) {
+        // Atualiza o cache local em memória em vez de reler a aba inteira do
+        // servidor (mesmo padrão de confirmarEscala) — evita um round-trip
+        // completo só para refletir os dados que o próprio cliente enviou.
+        var registro = {
+          membroId: membroId, ano: String(anoAfastamentoAtual), membroNome: membro.name,
+          ferias: ferias,
+          abonosFixos: abonos,
+          abonoAniv: abonoAniversario ? { inicio: abonoAniversario, fim: abonoAniversario } : null,
+          licencas: licencas,
+          demais: demais
+        };
+        var idx = afastamentosCache.findIndex(function(x){ return String(x.membroId) === String(membroId) && String(x.ano) === String(anoAfastamentoAtual); });
+        if (idx !== -1) afastamentosCache[idx] = registro; else afastamentosCache.push(registro);
+        state.afastamentos = afastamentosCache;
+        feedbackBtn(btn,'✅ Salvo!','Confirmar',function(){ fecharModal('modal-ferias'); renderAnoTabs(); renderFerias(); });
+      }
       else { btn.disabled = false; btn.innerText = 'Confirmar'; showAlerta(r.mensagem); }
     })
     .withFailureHandler(falha(btn,'Confirmar',null))

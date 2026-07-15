@@ -16,6 +16,18 @@ function saveTask(task) {
       const data = sheet.getDataRange().getValues();
       for (let i = 1; i < data.length; i++) {
         if (String(data[i][C('ID')]) === String(task.id)) {
+          // Trava otimista: se o carimbo que o cliente tinha ao abrir o editor
+          // não bate com o que está na planilha agora, alguém mais salvou este
+          // cartão nesse meio-tempo. Sem isso, esta gravação sobrescreveria em
+          // silêncio título/descrição/responsáveis/prioridade/prazo/etiquetas
+          // com os valores desatualizados que o cliente carregou antes.
+          // Vazio de qualquer lado (linha migrada sem o carimbo ainda, ou
+          // cartão recém-criado) não bloqueia — só a divergência real bloqueia.
+          const versaoAtual = String(data[i][C('Última Atualização')] || '');
+          const versaoCliente = String(task.updatedAt || '');
+          if (versaoCliente && versaoAtual && versaoCliente !== versaoAtual) {
+            return { sucesso: false, conflito: true, mensagem: 'Este cartão foi alterado por outra pessoa enquanto você editava. Recarregue a página para ver a versão mais recente e refaça sua edição.' };
+          }
           // Histórico: a fonte da verdade é o que está NA PLANILHA agora, não o
           // snapshot que o cliente carregou. Do payload aproveitamos apenas os
           // comentários novos (marcados _novo) e os anexamos ao histórico atual.
@@ -49,6 +61,7 @@ function saveTask(task) {
           sheet.getRange(i+1, C('Prazo')+1).setValue(task.deadline || '');
           sheet.getRange(i+1, C('Atividades')+1).setValue(JSON.stringify(acts));
           sheet.getRange(i+1, C('Etiquetas')+1).setValue(task.labels || '[]');
+          sheet.getRange(i+1, C('Última Atualização')+1).setValue(String(new Date().getTime()));
           SpreadsheetApp.flush();
           return { sucesso: true };
         }
@@ -67,7 +80,7 @@ function saveTask(task) {
       const hist = [{ type: 'log', text: `Criou este cartão na lista "${task.status}"`, date: timeNow, author: autor }];
       sheet.appendRow([
         newId, task.status, task.title, task.description, task.assigneeId,
-        task.priority, dateNow, startDate, task.deadline, completionDate, JSON.stringify(hist), '', task.labels || '[]'
+        task.priority, dateNow, startDate, task.deadline, completionDate, JSON.stringify(hist), '', task.labels || '[]', String(new Date().getTime())
       ]);
       SpreadsheetApp.flush();
       return { sucesso: true };

@@ -269,7 +269,7 @@ function atualizarTagsAssignee() {
   tags.innerHTML=checked.map(c=>{ const m=state.members.find(x=>String(x.id)===c.value); return m?`<span class="assignee-tag">${esc(m.name)}</span>`:''; }).join('');
 }
 function abrirModalTarefa(status) {
-  ['taskId','taskTitle','taskDesc','taskDeadline','taskCreation','taskCompletion','taskStartDate'].forEach(id=>{ const el=$id(id); if(el) el.value=''; });
+  ['taskId','taskTitle','taskDesc','taskDeadline','taskCreation','taskCompletion','taskStartDate','taskUpdatedAt'].forEach(id=>{ const el=$id(id); if(el) el.value=''; });
   if($id('taskStatus')) $id('taskStatus').value=status;
   if($id('taskStatusDisplay')) $id('taskStatusDisplay').innerText=status;
   if($id('taskPriority')) $id('taskPriority').value='';
@@ -288,6 +288,9 @@ function abrirEditarTarefa(task) {
   $id('taskId').value=task.id; $id('taskStatus').value=task.status; $id('taskStatusDisplay').innerText=task.status;
   $id('taskTitle').value=task.title; $id('taskDesc').value=task.description; $id('taskPriority').value=task.priority;
   $id('taskDeadline').value=task.deadline||''; $id('taskCreation').value=task.creationDate||''; $id('taskCompletion').value=task.completionDate||''; $id('taskStartDate').value=task.startDate||'';
+  // Carimbo capturado agora: usado por salvarTarefa() para o servidor detectar
+  // se este cartão foi alterado por outra pessoa enquanto o editor ficou aberto.
+  $id('taskUpdatedAt').value=task.updatedAt||'';
   if($id('taskNewComment')) $id('taskNewComment').value='';
   if($id('btn-delete-task')) $id('btn-delete-task').style.display='block';
   if($id('btn-archive-task')) {
@@ -324,11 +327,13 @@ function salvarTarefa() {
   const btn=$id('btn-save-task'); btn.disabled=true; btn.innerText='Salvando...';
   const ids=Array.from(($id('taskAssigneesContainer')||{querySelectorAll:()=>[]}).querySelectorAll('input:checked')).map(c=>c.value);
   const labels=Array.from(($id('taskLabelsContainer')||{querySelectorAll:()=>[]}).querySelectorAll('input:checked')).map(c=>c.value);
-  const dados={ id:$id('taskId').value, status:$id('taskStatus').value||'Backlog', title:titulo, description:$id('taskDesc').value||'', assigneeId:JSON.stringify(ids), priority:$id('taskPriority').value||'Media', labels:JSON.stringify(labels), deadline:$id('taskDeadline').value||'', creationDate:$id('taskCreation').value||'', completionDate:$id('taskCompletion').value||'', startDate:$id('taskStartDate').value||'', activities:JSON.stringify(currentActivities) };
+  const dados={ id:$id('taskId').value, status:$id('taskStatus').value||'Backlog', title:titulo, description:$id('taskDesc').value||'', assigneeId:JSON.stringify(ids), priority:$id('taskPriority').value||'Media', labels:JSON.stringify(labels), deadline:$id('taskDeadline').value||'', creationDate:$id('taskCreation').value||'', completionDate:$id('taskCompletion').value||'', startDate:$id('taskStartDate').value||'', activities:JSON.stringify(currentActivities), updatedAt:$id('taskUpdatedAt').value||'' };
   google.script.run.withSuccessHandler(r=>{
-    btn.disabled=false; btn.innerText='Salvar Cartão';
-    if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível salvar o cartão.'); return; }
-    fecharModal('modal-task'); recarregarKanban(renderTasks);
+    if (r && r.sucesso === false) { btn.disabled=false; btn.innerText='Salvar Cartão'; showAlerta(r.mensagem || 'Não foi possível salvar o cartão.'); return; }
+    // Só fecha o modal depois que o quadro já foi atualizado — antes disso o
+    // modal sumia primeiro e o cartão só aparecia depois da releitura da
+    // planilha, dando a impressão de que o cartão tinha sumido.
+    recarregarKanban(()=>{ renderTasks(); btn.disabled=false; btn.innerText='Salvar Cartão'; fecharModal('modal-task'); });
   }).withFailureHandler(falha(btn,'Salvar Cartão',null)).saveTask(dados);
 }
 function confirmarExcluirTarefa() {
@@ -336,7 +341,12 @@ function confirmarExcluirTarefa() {
     const id=$id('taskId').value;
     google.script.run.withSuccessHandler(r=>{
       if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível excluir o cartão.'); return; }
-      fecharModal('modal-task'); recarregarKanban(renderTasks);
+      // Atualiza o estado local direto — evita uma segunda ida ao servidor
+      // (mesmo padrão de confirmarArquivarTarefa/restaurarTarefa, logo acima)
+      const idx = state.tasks.findIndex(t => String(t.id) === String(id));
+      if (idx >= 0) state.tasks.splice(idx, 1);
+      fecharModal('modal-task');
+      renderTasks();
     }).withFailureHandler(e=>showAlerta(String(e))).deleteTask(id);
   });
 }
