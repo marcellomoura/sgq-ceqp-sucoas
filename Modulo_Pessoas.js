@@ -93,10 +93,11 @@ function _lerAfastamentos_() {
         }
       }
 
-      const ferias = [];
-      if (p1) ferias.push(parsePeriod(p1));
-      if (p2) ferias.push(parsePeriod(p2));
-      if (p3) ferias.push(parsePeriod(p3));
+      // Testa o RESULTADO do parse, não a string: parsePeriod devolve null de
+      // propósito para texto sem ' a ', e o `if (p1)` antigo (que testava a
+      // string) empurrava esse null para a lista — qualquer leitura de
+      // f.inicio no cliente estourava. Mesma guarda já usada em `licencas`.
+      const ferias = [p1, p2, p3].map(parsePeriod).filter(Boolean);
 
       // Demais afastamentos: lista livre gravada como JSON (descrição + período)
       let demais = [];

@@ -3,10 +3,16 @@
 // JS_Utilitarios.html
 // Helpers, navegação, delegação de eventos
 // ==========================================
-var state = { tasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [] };
+// tasks = só os cartões ATIVOS do quadro. archivedTasks tem busca própria e sob
+// demanda (getTarefasArquivadas), como trainings/history — declarados aqui para
+// que nenhum consumidor dependa de uma chave que "aparece" só após a carga.
+var state = { tasks: [], archivedTasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [], history: [], trainings: [] };
 var currentTab  = 'kanban';
 var itemExcluir = null, tipoPdfAtual = null;
 var currentActivities = [];
+// Id do cartão cuja busca de histórico está em voo — descarta respostas de um
+// cartão que não é mais o aberto (ver abrirModalTarefa).
+var atividadesTaskId = null;
 var statusChartInst = null, memberChartInst = null, priorityChartInst = null, memberConcluidoChartInst = null;
 var capMesChartInst = null, capModalidadeChartInst = null, capMembroChartInst = null;
 
@@ -85,7 +91,10 @@ function formatUnidadeUI(val) {
   return u ? u.sigla : val;
 }
 function iconBtn(cls, acao, title, attrs) { return `<button type="button" class="btn-icon ${cls}" title="${title}" data-acao="${acao}" ${attrs||''}>${ICON[cls] || ICON.del}</button>`; }
-function msgTabela(tbodyId, cols, txt, err) { $id(tbodyId).innerHTML = `<tr><td colspan="${cols}" class="${err?'msg-error':'msg-empty'}">${txt}</td></tr>`; }
+// esc(txt): as mensagens de erro carregam texto de exceção vindo do servidor
+// (buscarLogs etc.). Não é vetor explorável hoje, mas era o único innerHTML do
+// arquivo que interpolava texto sem escapar.
+function msgTabela(tbodyId, cols, txt, err) { $id(tbodyId).innerHTML = `<tr><td colspan="${cols}" class="${err?'msg-error':'msg-empty'}">${esc(txt)}</td></tr>`; }
 function feedbackBtn(btn, ok, orig, cb) { btn.disabled=false; btn.innerText=ok; setTimeout(()=>{ btn.innerText=orig; if(cb) cb(); }, 1400); }
 function falha(btn, orig, statusEl) {
   return function(e) {
@@ -206,8 +215,9 @@ function sincronizarSelectsUnidade() {
 // (Unidades, Documentos, Riscos, Planos, Entregas). Só dispara na
 // primeira vez que o usuário visita uma dessas abas — nunca é buscado
 // automaticamente. Depois de carregado uma vez, fica em cache no
-// `state` e não busca de novo (até uma ação de escrita chamar
-// recarregarResto(), disparada após qualquer ação de escrita no SGQ).
+// `state` e não busca de novo. Cada módulo ressincroniza o próprio estado
+// após uma escrita pelo seu endpoint leve (recarregarDocs/recarregarUnidades/
+// recarregarRiscosPlanos/recarregarCapacitacoes), sem reler as 7 abas.
 // ==========================================
 var restoDataLoaded = false;
 var restoDataLoading = false;
@@ -236,6 +246,11 @@ function garantirRestoData(callback) {
         state.plans = resto.plans;
         state.deliveries = resto.deliveries;
         state.trainings = resto.trainings;
+        // Sem isto a Matriz de Risco plota probabilidade/impacto ORIGINAIS até
+        // que alguma escrita dispare recarregarRiscosPlanos(), e o modal de
+        // reavaliação pré-preenche com os valores antigos (salvar "manter"
+        // regredia o risco para a avaliação anterior).
+        state.history = resto.history || [];
         sincronizarSelectsUnidade();
       } catch (err) {
         // Um erro aqui não pode travar o carregamento para sempre —
@@ -270,9 +285,16 @@ function mudarTab(tab, botao) {
 
   const rotinas = {
     'kanban': ()=>renderTasks(),
-    'archived': ()=>renderArquivados(),
+    // Arquivados têm busca própria e sob demanda (não vêm mais no payload do
+    // quadro) — a msgTabela evita a tabela vazia piscando durante a carga.
+    'archived': ()=>{
+      if (!archivedLoaded) msgTabela('archived-list', 7, 'A carregar...');
+      garantirArquivados(()=>renderArquivados(true));
+    },
     'members': ()=>renderMembers(),
-    'indicadores': ()=>setTimeout(renderIndicadores, 50),
+    // Os gráficos do Kanban no Painel somam ativos + arquivados (métrica
+    // histórica), então os arquivados precisam estar carregados antes.
+    'indicadores': ()=>garantirArquivados(()=>setTimeout(renderIndicadores, 50)),
     'escala': ()=>renderEscala(),
     'unidades': ()=>renderUnidades(),
     'doc-lista': ()=>renderDocumentos('mestra'),
@@ -413,9 +435,14 @@ document.addEventListener('DOMContentLoaded', function() {
       // chegar, essa aba renderizou vazia e nunca era atualizada sozinha —
       // precisava trocar de aba e voltar para os dados aparecerem. Re-renderiza
       // a aba que estiver ativa neste momento para corrigir isso.
+      // 'archived' continua aqui: a tabela de arquivados tem busca própria, mas
+      // resolve os nomes dos responsáveis por state.members, que vem daqui.
+      // 'indicadores' precisa dos arquivados (métrica histórica) — ver
+      // renderGraficosKanban.
       const rotinasPosCargaInicial = {
         'members': renderMembers, 'escala': renderEscala,
-        'ferias': carregarFerias, 'indicadores': renderIndicadores,
+        'ferias': carregarFerias,
+        'indicadores': ()=>garantirArquivados(renderIndicadores),
         'archived': renderArquivados, 'risco-arquivado': renderRiscosArquivados
       };
       if (rotinasPosCargaInicial[currentTab]) rotinasPosCargaInicial[currentTab]();
@@ -636,8 +663,14 @@ document.addEventListener('click', function(e) {
   if(e.target.dataset.addCard) abrirModalTarefa(e.target.dataset.addCard);
 });
 
-// Delegação de drop nas colunas do Kanban
+// Delegação de dragstart/drop nas colunas do Kanban. O dragstart era
+// registrado por cartão dentro do loop de renderTasks; delegado aqui, é
+// anexado uma única vez por coluna e sobrevive à recriação dos cartões.
 document.querySelectorAll('.list-cards').forEach(el => {
+  el.addEventListener('dragstart', function(e) {
+    const card = e.target.closest ? e.target.closest('.card') : null;
+    if (card && card.dataset.id) e.dataTransfer.setData('text/plain', card.dataset.id);
+  });
   el.addEventListener('dragover', e => e.preventDefault());
   el.addEventListener('drop', function(e) { e.preventDefault(); drop(e, this.dataset.status); });
 });
@@ -682,7 +715,8 @@ const CFG_PDF = {
   'dashboard': { file: 'Painel_Indicadores_SGQ.pdf',   title: 'Painel de Indicadores',                ori: 'landscape', montarFn: 'montarHtmlIndicadoresPdf' },
   'archived' : { file: 'Cartoes_Arquivados_SGQ.pdf',   title: 'Cartões Arquivados',                  ori: 'portrait',  montarFn: 'montarHtmlArquivadosPdf' },
   'matriz'   : { file: 'Matriz_Risco_SGQ.pdf',         title: 'Matriz de Risco',                     ori: 'landscape', montarFn: 'montarHtmlMatrizPdf' },
-  'acomp'    : { file: 'Acompanhamento_Acoes_SGQ.pdf', title: 'Acompanhamento de Ações',             ori: 'landscape', montarFn: 'montarHtmlAcompanhamentoPdf' }
+  'acomp'    : { file: 'Acompanhamento_Acoes_SGQ.pdf', title: 'Acompanhamento de Ações',             ori: 'landscape', montarFn: 'montarHtmlAcompanhamentoPdf' },
+  'risco-arquivado': { file: 'Riscos_Arquivados_SGQ.pdf', title: 'Riscos e Planos Arquivados',       ori: 'landscape', montarFn: 'montarHtmlRiscoArquivadoPdf' }
 };
 
 // O conversor de HTML→PDF do Apps Script (Utilities.newBlob().getAs(PDF))
@@ -797,7 +831,7 @@ function gerarPdfLocal(tipo) {
   // demanda). Se o usuário clicar em "Baixar PDF" antes desses dados
   // terminarem de chegar, o PDF sai com "A carregar..." nas tabelas —
   // por isso esperamos a confirmação de que já estão prontos.
-  if (tipo === 'matriz' || tipo === 'acomp') {
+  if (tipo === 'matriz' || tipo === 'acomp' || tipo === 'risco-arquivado') {
     garantirRestoData(function() { _gerarPdfReal(tipo); });
   } else {
     _gerarPdfReal(tipo);
@@ -811,7 +845,7 @@ function gerarPdfLocal(tipo) {
 // da mesma forma, sem exigir mudança nos relatórios que já são síncronos.
 function _gerarPdfReal(tipo) {
   const cfg = CFG_PDF[tipo];
-  const btnMap = { dashboard: 'btn-download-pdf', archived: 'btn-pdf-archived', matriz: 'btn-pdf-matriz', acomp: 'btn-pdf-acomp' };
+  const btnMap = { dashboard: 'btn-download-pdf', archived: 'btn-pdf-archived', matriz: 'btn-pdf-matriz', acomp: 'btn-pdf-acomp', 'risco-arquivado': 'btn-pdf-risco-arquivado' };
   const btn = $id(btnMap[tipo]);
   if (btn) { btn.innerText = 'A gerar...'; btn.disabled = true; }
 
@@ -843,7 +877,7 @@ function dispararEnvioPdf() {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAlerta('Informe um e-mail válido.'); return; }
   const btn = $id('btn-enviar-pdf');
   if (btn) { btn.innerText = 'A gerar PDF...'; btn.disabled = true; }
-  if (tipoPdfAtual === 'matriz' || tipoPdfAtual === 'acomp') {
+  if (tipoPdfAtual === 'matriz' || tipoPdfAtual === 'acomp' || tipoPdfAtual === 'risco-arquivado') {
     garantirRestoData(function() { _dispararEnvioPdfReal(email); });
   } else {
     _dispararEnvioPdfReal(email);

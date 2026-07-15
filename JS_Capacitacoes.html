@@ -32,7 +32,11 @@ function renderCapacitacoes(resetPage = false) {
     return;
   }
 
-  const ordenadas = caps.map((c, i) => ({ c, i })).sort((a, b) => b.c.idRow - a.c.idRow);
+  // data-idx precisa ser o índice em state.trainings (a fonte que o delegate
+  // resolve), NÃO em `caps` — que aqui já pode estar filtrado por data. Com o
+  // filtro ativo os dois divergem e editar/excluir atingia o registro errado.
+  // Mesmo padrão de renderMembers/renderUnidades.
+  const ordenadas = caps.map(c => ({ c, i: state.trainings.indexOf(c) })).sort((a, b) => b.c.idRow - a.c.idRow);
   const exibidas = ordenadas.slice(0, capPage * capLimit);
   
   if (btnMore) btnMore.style.display = (ordenadas.length > exibidas.length) ? 'inline-block' : 'none';
@@ -344,10 +348,18 @@ function salvarFormCapacitacao() {
         state.trainings.push({ ...dados, idRow: r.novaLinha, id: r.novoId });
       }
       fecharModal('modal-capacitacao');
-      renderCapacitacoes(); 
-      renderKpisCapacitacoes(); 
-      if (currentTab === 'indicadores') renderIndicadores(); 
-      recarregarCapacitacoes();
+      // Render otimista imediato e, quando o dado real do servidor chegar,
+      // re-render (o merge otimista não tem os campos normalizados pelo
+      // servidor). Sem o callback, state.trainings era substituído por baixo da
+      // tabela sem redesenhá-la. Mesmo padrão de excluirCapacitacaoConfirm.
+      renderCapacitacoes();
+      renderKpisCapacitacoes();
+      if (currentTab === 'indicadores') renderIndicadores();
+      recarregarCapacitacoes(() => {
+        renderCapacitacoes();
+        renderKpisCapacitacoes();
+        if (currentTab === 'indicadores') renderIndicadores();
+      });
       feedbackBtn(btn, '✅ Salvo!', 'Salvar', null);
     }
     else { btn.disabled = false; btn.innerText = 'Salvar'; showAlerta(r.mensagem); }

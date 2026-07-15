@@ -14,19 +14,21 @@ function salvarDocumento(dados) {
     // serializava desnecessariamente cadastros concorrentes.
     const mapa = { 'Instrução de Trabalho':'IT','Plano de Fiscalização':'PF','Procedimento':'PRO','Política':'POL','Regimento Interno':'RI','Manual':'MAN','Guia':'GUI','Formulário':'FOR' };
     const siglaTipo = mapa[dados.tipo] || 'DOC';
+    // A leitura de Unidades estava DENTRO do comBloqueio, ao contrário do que o
+    // comentário acima descrevia: cada cadastro segurava o ScriptLock durante um
+    // getDataRange() extra. Movida para fora — Unidades não é alterada aqui, e o
+    // prefixo só depende dela e do payload. A numeração sequencial do código
+    // (que precisa de serialização) continua dentro do lock.
+    let siglaUnd = 'UND';
+    if (dados.responsavel) {
+      const uData = conectarAba(SHEET_UNITS).getDataRange().getValues();
+      const C_UN = colIdx_(CABECALHOS_UNIDADES);
+      const unRow = uData.slice(1).find(r => String(r[C_UN('ID Unidade')]) === String(dados.responsavel));
+      siglaUnd = unRow ? String(unRow[C_UN('Sigla')] || 'UND').trim()
+                       : dados.responsavel.split(' - ')[0];
+    }
+    const prefixo = `${siglaTipo}-${siglaUnd}-`;
     return comBloqueio(() => {
-      let siglaUnd = 'UND';
-      if (dados.responsavel) {
-        const uData = conectarAba(SHEET_UNITS).getDataRange().getValues();
-        const C_UN = colIdx_(CABECALHOS_UNIDADES);
-        const unRow = uData.slice(1).find(r => String(r[C_UN('ID Unidade')]) === String(dados.responsavel));
-        if (unRow) {
-          siglaUnd = String(unRow[C_UN('Sigla')] || 'UND').trim();
-        } else {
-          siglaUnd = dados.responsavel.split(' - ')[0];
-        }
-      }
-      const prefixo   = `${siglaTipo}-${siglaUnd}-`;
       const aba = conectarAba(SHEET_DOCS);
       const C = colIdx_(CABECALHOS_DOCS);
       const rows = aba.getDataRange().getValues();
@@ -53,6 +55,11 @@ function salvarDocumento(dados) {
 function atualizarDocumento(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
+    // Mesma guarda de salvarDocumento (defense-in-depth). linkPermitido_ aceita
+    // string vazia por design, então sem esta checagem uma chamada direta
+    // gravava título/link em branco por cima de um documento vigente.
+    if (!dados || !dados.tipo || !String(dados.titulo||'').trim() || !dados.responsavel || !String(dados.linkDoc||'').trim())
+      return { sucesso: false, mensagem: 'Preencha todos os campos obrigatórios.' };
     if (!linkPermitido_(dados.linkDoc) || !linkPermitido_(dados.docAuxiliar) || !linkPermitido_(dados.docAuxiliar2))
       return { sucesso: false, mensagem: 'Os links devem começar com http:// ou https://' };
     return comBloqueio(() => {
@@ -76,6 +83,12 @@ function atualizarDocumento(dados) {
 function salvarRevisaoDocumento(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
+    // Espelha a validação do cliente (JS_Documentos.html). Tipo/Título/
+    // Responsável vêm da versão antiga, então só estes três campos do payload
+    // precisam existir — publicar uma revisão sem eles obsoletaria a versão
+    // vigente e criaria uma nova sem data, link nem justificativa.
+    if (!dados || !dados.dataAprovacao || !String(dados.motivo||'').trim() || !String(dados.linkDoc||'').trim())
+      return { sucesso: false, mensagem: 'Informe a nova data de aprovação, a descrição e o link.' };
     if (!linkPermitido_(dados.linkDoc) || !linkPermitido_(dados.docAuxiliar) || !linkPermitido_(dados.docAuxiliar2))
       return { sucesso: false, mensagem: 'Os links devem começar com http:// ou https://' };
     return comBloqueio(() => {

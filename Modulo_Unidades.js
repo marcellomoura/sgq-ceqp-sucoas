@@ -6,8 +6,10 @@ function salvarUnidade(dados) {
   try {
     if (!dados || !String(dados.unidade||'').trim() || !String(dados.sigla||'').trim() || !String(dados.email||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos da Unidade.' };
-    if (!linkPermitido_(dados.linkDrive))
-      return { sucesso: false, mensagem: 'O link do Drive deve começar com http:// ou https://' };
+    // 'Link do Drive' aceita texto livre (unidades sem Drive registram algo como
+    // 'Não possui'). Por isso NÃO passa por linkPermitido_ — ao contrário dos
+    // links de Documentos. A tela só transforma em link clicável o que for
+    // http(s) de verdade (ver renderUnidades); o resto aparece como texto.
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
       const C = colIdx_(CABECALHOS_UNIDADES);
@@ -28,25 +30,32 @@ function salvarUnidade(dados) {
 function atualizarUnidade(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    if (!linkPermitido_(dados.linkDrive))
-      return { sucesso: false, mensagem: 'O link do Drive deve começar com http:// ou https://' };
+    // Mesma guarda de salvarUnidade (defense-in-depth): sem ela, uma chamada
+    // direta gravava sigla vazia — que passa batido na checagem de duplicidade
+    // abaixo e quebra a geração de código de documento (Modulo_Documentos.js),
+    // que assume Sigla preenchida.
+    if (!dados || !String(dados.unidade||'').trim() || !String(dados.sigla||'').trim() || !String(dados.email||'').trim())
+      return { sucesso: false, mensagem: 'Preencha todos os campos da Unidade.' };
+    // 'Link do Drive' aceita texto livre — ver salvarUnidade.
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_UNITS);
       const C = colIdx_(CABECALHOS_UNIDADES);
       const linha = parseInt(dados.idRow, 10);
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Registro não localizado.' };
+      // Uma leitura só: o getDataRange() abaixo já contém a sigla original que
+      // antes era buscada com um getValue() dedicado logo acima.
+      const rows = aba.getDataRange().getValues();
       // Confere a sigla original antes de escrever, para não atualizar a linha
       // errada se a lista do usuário estiver desatualizada.
       if (dados.siglaOriginal) {
-        const atual = aba.getRange(linha, C('Sigla')+1).getValue().toString().trim();
+        const atual = String(rows[linha-1][C('Sigla')]||'').trim();
         if (atual !== String(dados.siglaOriginal).trim())
           return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
       }
       // Impede renomear a sigla para uma já usada por OUTRA unidade (a criação
       // já bloqueia duplicatas; a edição não bloqueava). Ignora a própria linha.
       const siglaNova = String(dados.sigla||'').trim().toUpperCase();
-      const rows = aba.getDataRange().getValues();
       for (let i = 1; i < rows.length; i++) {
         if (i === linha - 1) continue; // a própria linha (rows[i] = linha da planilha i+1)
         if ((rows[i][C('Sigla')]||'').toString().trim().toUpperCase() === siglaNova)
@@ -68,7 +77,10 @@ function excluirUnidade(idRow, siglaEsperada) {
       const linha = parseInt(idRow, 10);
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Registro não localizado.' };
-      const sigla = aba.getRange(linha, C('Sigla')+1).getValue();
+      // Linha inteira em uma leitura: sigla, ID e nome saíam de três getValue()
+      // separados (três round-trips à API, dentro do lock).
+      const linhaAtual = aba.getRange(linha, 1, 1, CABECALHOS_UNIDADES.length).getValues()[0];
+      const sigla = linhaAtual[C('Sigla')];
       // Confere a sigla antes de excluir
       if (siglaEsperada && sigla.toString().trim() !== String(siglaEsperada).trim())
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
@@ -77,8 +89,8 @@ function excluirUnidade(idRow, siglaEsperada) {
       // referências órfãs (passariam a exibir o id cru na tela). Bloqueia a
       // exclusão enquanto houver itens vinculados. Dentro do lock, garante que
       // nada passe a referenciá-la entre a checagem e a remoção.
-      const idUnidade   = aba.getRange(linha, C('ID Unidade')+1).getValue().toString().trim();
-      const nomeUnidade = aba.getRange(linha, C('Nome da Unidade')+1).getValue().toString().trim();
+      const idUnidade   = String(linhaAtual[C('ID Unidade')]||'').trim();
+      const nomeUnidade = String(linhaAtual[C('Nome da Unidade')]||'').trim();
       const refs = contarReferenciasUnidade_(idUnidade, sigla.toString().trim(), nomeUnidade);
       if (refs.total > 0)
         return { sucesso: false, mensagem: 'Não é possível excluir: a unidade ainda é responsável por ' + refs.descricao + '. Reatribua ou remova esses itens antes.' };

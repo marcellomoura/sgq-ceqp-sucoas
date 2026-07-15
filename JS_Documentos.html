@@ -164,7 +164,7 @@ function excluirDoc(idRow, codigo, fechar) {
 }
 
 // Recarga LEVE do módulo de Documentos: lê só Unidades + Documentos
-// (getDocsData) em vez das 7 abas de recarregarResto. Usada após cada ação
+// (getDocsData) em vez das 7 abas de getRestoData. Usada após cada ação
 // de documento para "efetivar" a mudança sem o custo da recarga total.
 function recarregarDocs(cb) {
   google.script.run.withSuccessHandler(resto => {

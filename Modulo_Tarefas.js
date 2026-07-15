@@ -28,16 +28,29 @@ function saveTask(task) {
           if (versaoCliente && versaoAtual && versaoCliente !== versaoAtual) {
             return { sucesso: false, conflito: true, mensagem: 'Este cartão foi alterado por outra pessoa enquanto você editava. Recarregue a página para ver a versão mais recente e refaça sua edição.' };
           }
-          // Histórico: a fonte da verdade é o que está NA PLANILHA agora, não o
-          // snapshot que o cliente carregou. Do payload aproveitamos apenas os
-          // comentários novos (marcados _novo) e os anexamos ao histórico atual.
-          // Assim, comentários/logs criados por outros usuários (ou o log de
-          // "Moveu" gerado por um drag) entre abrir e salvar não são perdidos.
-          let acts = [];
-          try { acts = JSON.parse(String(data[i][C('Atividades')] || '[]')); if (!Array.isArray(acts)) acts = []; } catch(e) { acts = []; }
+          // Histórico: o cliente manda APENAS os comentários novos (marcados
+          // _novo) — o histórico existente vive na aba Atividades e nunca
+          // trafega no salvamento. Isso torna impossível uma edição
+          // desatualizada sobrescrever comentários criados por outra pessoa
+          // nesse meio-tempo: nada é reescrito, só acrescentado.
+          // O erro ainda é fatal aqui: estes comentários só existem neste
+          // payload, então engolir a falha devolveria "sucesso" com o
+          // comentário do usuário descartado.
           let novos = [];
-          try { const arr = JSON.parse(task.activities); if (Array.isArray(arr)) novos = arr.filter(a => a && a._novo); } catch(e) {}
-          novos.forEach(a => { a.author = autor; delete a._novo; acts.push(a); });
+          try {
+            const arr = JSON.parse(task.activities || '[]');
+            if (Array.isArray(arr)) novos = arr.filter(a => a && a._novo);
+          } catch (e) {
+            console.error('Payload de atividades inválido na tarefa ' + task.id + ': ' + e);
+            return { sucesso: false, mensagem: 'Não foi possível ler os comentários enviados. Recarregue a página e tente novamente.' };
+          }
+          // A data é carimbada pelo SERVIDOR (timeNow), não pela do payload: o
+          // relógio do cliente não é confiável, e o formato dele ('15/07/2026 às
+          // 14:15') divergia do dos logs ('15/07/2026 14:15') — dois formatos na
+          // mesma coluna. O autor já era carimbado aqui pelo mesmo motivo.
+          const novasAtividades = novos.map(a => ({
+            tarefaId: task.id, tipo: 'comment', texto: String(a.text || ''), data: timeNow, autor: autor
+          }));
           // Detecta quais campos mudaram comparando a linha atual da planilha
           // com o payload. Status/datas ficam de fora de propósito (ver abaixo).
           const campos = [
@@ -51,7 +64,9 @@ function saveTask(task) {
           const alterados = campos.filter(c => c.antes.trim() !== c.depois.trim()).map(c => c.label);
           // Só registra log de alteração se algum campo realmente mudou (se o
           // usuário só adicionou um comentário, não gera ruído no histórico).
-          if (alterados.length) acts.push({ type: 'log', text: 'Alterou: ' + alterados.join(', '), date: timeNow, author: autor });
+          if (alterados.length) novasAtividades.push({
+            tarefaId: task.id, tipo: 'log', texto: 'Alterou: ' + alterados.join(', '), data: timeNow, autor: autor
+          });
           // A edição grava SOMENTE os campos editáveis no modal. Status, Data
           // Início, Data Conclusão e Data Criação NÃO são tocados aqui — são
           // controlados por updateTaskStatus/drag. Sem isso, salvar o cartão
@@ -59,9 +74,17 @@ function saveTask(task) {
           // Título→Prioridade são contíguos (cols Título..Prioridade).
           sheet.getRange(i+1, C('Título')+1, 1, 4).setValues([[task.title, task.description, task.assigneeId, task.priority]]);
           sheet.getRange(i+1, C('Prazo')+1).setValue(task.deadline || '');
-          sheet.getRange(i+1, C('Atividades')+1).setValue(JSON.stringify(acts));
-          sheet.getRange(i+1, C('Etiquetas')+1).setValue(task.labels || '[]');
-          sheet.getRange(i+1, C('Última Atualização')+1).setValue(String(new Date().getTime()));
+          // Etiquetas..Última Atualização em uma escrita só. 'Arquivado' está no
+          // meio do intervalo e NÃO é editável aqui — reescreve-se o valor que
+          // veio da planilha (lido dentro deste mesmo lock), preservando-o.
+          // Sem esse cuidado, o carimbo de tempo cairia dentro de 'Arquivado' e
+          // a trava otimista nunca mais seria gravada.
+          sheet.getRange(i+1, C('Etiquetas')+1, 1, 3).setValues([[
+            task.labels || '[]',
+            data[i][C('Arquivado')],
+            String(new Date().getTime())
+          ]]);
+          _registrarAtividades_(novasAtividades);
           SpreadsheetApp.flush();
           return { sucesso: true };
         }
@@ -77,11 +100,19 @@ function saveTask(task) {
       if (task.status !== 'Backlog' && !startDate) startDate = dateNow;
       let completionDate = task.completionDate || '';
       if (task.status === 'Concluído' && !completionDate) completionDate = dateNow;
-      const hist = [{ type: 'log', text: `Criou este cartão na lista "${task.status}"`, date: timeNow, author: autor }];
       sheet.appendRow([
         newId, task.status, task.title, task.description, task.assigneeId,
-        task.priority, dateNow, startDate, task.deadline, completionDate, JSON.stringify(hist), '', task.labels || '[]', String(new Date().getTime())
+        // `|| ''` alinhado ao caminho de edição: sem ele, um deadline undefined
+        // gravava a string "undefined" na célula de Prazo.
+        // 13 valores, na ordem de CABECALHOS_TAREFAS (sem 'Atividades', que saiu
+        // do layout — o histórico vive na aba Atividades). Ordem do fim:
+        // Etiquetas, Arquivado, Última Atualização. O '' é 'Arquivado' — o
+        // cartão nasce sem decisão de arquivamento.
+        task.priority, dateNow, startDate, task.deadline || '', completionDate, task.labels || '[]', '', String(new Date().getTime())
       ]);
+      _registrarAtividades_([{
+        tarefaId: newId, tipo: 'log', texto: `Criou este cartão na lista "${task.status}"`, data: timeNow, autor: autor
+      }]);
       SpreadsheetApp.flush();
       return { sucesso: true };
     }
@@ -106,12 +137,11 @@ function updateTaskStatus(id, newStatus) {
 
         const row = data[i];
         row[C('Status')] = newStatus;
-        
-        let acts = [];
-        try { acts = JSON.parse(String(row[C('Atividades')] || '[]')); } catch(e) {}
-        acts.push({ type: 'log', text: `Moveu de "${oldStatus}" para "${newStatus}"`, date: timeNow, author: autor });
-        row[C('Atividades')] = JSON.stringify(acts);
 
+        // A coluna 'Atividades' não é mais lida nem alterada — o log do
+        // movimento vira uma linha na aba Atividades. O valor legado que
+        // porventura exista na célula é reescrito como está pelo setValues
+        // abaixo (preservado, nunca reinterpretado).
         if (newStatus === 'Concluído') row[C('Data Conclusão')] = dateNow;
         else row[C('Data Conclusão')] = '';
         
@@ -120,6 +150,9 @@ function updateTaskStatus(id, newStatus) {
         row[C('Arquivado')] = '';
 
         sheet.getRange(i+1, 1, 1, row.length).setValues([row]);
+        _registrarAtividades_([{
+          tarefaId: id, tipo: 'log', texto: `Moveu de "${oldStatus}" para "${newStatus}"`, data: timeNow, autor: autor
+        }]);
         SpreadsheetApp.flush();
         return { sucesso: true };
       }
@@ -137,6 +170,10 @@ function deleteTask(id) {
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][C('ID')]) === String(id)) {
         sheet.deleteRow(i+1);
+        // O histórico do cartão vive na aba Atividades: sem esta limpeza, as
+        // linhas dele ficariam órfãs para sempre (e um TAR- reaproveitado no
+        // futuro herdaria os comentários do cartão excluído).
+        _excluirAtividadesDaTarefa_(id);
         SpreadsheetApp.flush();
         registrarLog('Exclusão de Tarefa', id, 'Cartão removido do Kanban.');
         return { sucesso: true };

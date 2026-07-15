@@ -12,6 +12,7 @@ const SHEET_LOGS     = 'Logs';
 const SHEET_AFASTAMENTOS = 'Afastamentos';
 const SHEET_CAPACITACOES = 'Capacitações';
 const SHEET_HISTORICO    = 'Histórico_Reavaliacoes';
+const SHEET_ATIVIDADES   = 'Atividades';
 
 // Layouts de colunas usados em vários pontos (setup, leitura e escrita).
 // Uma única fonte de verdade evita que uma migração futura esqueça algum lugar.
@@ -27,7 +28,25 @@ const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1
 // saveTask(): detecta quando o cartão foi alterado por outra pessoa entre o
 // momento em que o editor foi aberto e o clique em Salvar, evitando que uma
 // edição desatualizada sobrescreva em silêncio o que já foi salvo por outra pessoa.
-const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas','Última Atualização'];
+// A coluna 'Atividades' saiu deste layout: o histórico do cartão virou a aba
+// Atividades (uma linha por item). A remoção da coluna física é feita por
+// _migrarEremoverColunaAtividades_ DENTRO do setup, antes de qualquer leitura —
+// fazer isso à mão criaria uma janela em que a planilha e esta constante
+// discordam, e todo campo depois de 'Atividades' gravaria na coluna errada.
+// 'Arquivado' vem depois de 'Etiquetas'. A ordem física é alinhada a esta
+// constante por _reordenarColunasTarefas_, no setup, antes de qualquer leitura.
+const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Etiquetas','Arquivado','Última Atualização'];
+// Histórico do cartão NORMALIZADO: uma linha por comentário/log, em vez de um
+// blob JSON na coluna 'Atividades' de Tarefas. Motivo: uma célula do Sheets
+// comporta 50.000 caracteres — um cartão muito comentado estourava esse teto,
+// o JSON truncava e o histórico corrompia. Aqui não há teto: cada item é uma
+// linha. De quebra, saveTask passa a ACRESCENTAR só o que é novo em vez de
+// reescrever o histórico inteiro (menos tempo segurando o ScriptLock), e o
+// payload do quadro deixa de carregar o histórico de todos os cartões.
+// Append-only e nunca referenciada por id — por isso não tem coluna 'ID'.
+// A antiga coluna 'Atividades' de Tarefas foi removida do layout: o dado legado
+// é migrado para cá e a coluna excluída por _migrarEremoverColunaAtividades_.
+const CABECALHOS_ATIVIDADES = ['Tarefa ID','Tipo','Texto','Data','Autor'];
 const CABECALHOS_UNIDADES = ['ID Unidade', 'Nome da Unidade','Sigla','E-mail Funcional','Link do Drive', 'Ativo'];
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
 const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status'];
@@ -157,6 +176,17 @@ function linkPermitido_(url) {
 
 function getNowTimestamp() {
   return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+}
+
+// Data+hora vinda de uma célula para exibição, no formato de getNowTimestamp().
+// O Sheets converte sozinho em Date qualquer texto que PAREÇA data ao ser
+// gravado — então a mesma coluna pode devolver ora Date, ora string, e ler sem
+// guarda entrega o toString cru do JS na tela. Contraparte de
+// formatarDataParaUI() (que é só data) para os campos com hora.
+function _dataHoraParaUI_(val) {
+  if (Object.prototype.toString.call(val) === '[object Date]')
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+  return String(val || '');
 }
 
 // E-mail do usuário ativo, com fallback seguro (contas sem permissão de
@@ -307,13 +337,215 @@ function registrarLog(acao, ref, detalhe) {
   } catch(e) { console.error('Log falhou: ' + e); }
 }
 
+// ==========================================
+// ATIVIDADES (histórico dos cartões)
+// ==========================================
+// Ponte do layout legado → atual: migra o que restar do JSON da coluna
+// 'Atividades' de Tarefas para a aba Atividades e então REMOVE a coluna,
+// alinhando a planilha ao CABECALHOS_TAREFAS (que não a lista mais).
+//
+// Roda dentro do setup, ANTES de qualquer leitura de Tarefas. É o único jeito
+// seguro: enquanto a planilha tiver a coluna e a constante não, todo campo
+// depois dela (Arquivado, Etiquetas, Última Atualização) desalinha em uma
+// posição — em silêncio. Fazer a remoção à mão abriria exatamente essa janela.
+//
+// O cabeçalho é lido da PLANILHA, não da constante — a constante já não conhece
+// 'Atividades', e é justamente a planilha que pode estar defasada.
+// Idempotente por PropertiesService (permanente; o cache de 6h do setup não
+// serviria de guarda) e re-checado dentro do lock, para dois usuários abrindo
+// o sistema ao mesmo tempo não migrarem em paralelo e duplicarem o histórico.
+// Tolera a coluna já ter sido removida à mão: nesse caso é um no-op.
+function _migrarEremoverColunaAtividades_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('coluna_atividades_removida_v1') === 'ok') return;
+  comBloqueio(() => {
+    if (props.getProperty('coluna_atividades_removida_v1') === 'ok') return;
+    const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_TASKS);
+    if (!aba || aba.getLastColumn() < 1) return;
+
+    const cabecalho = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const idxAtiv = cabecalho.indexOf('Atividades');
+    if (idxAtiv === -1) { // já removida (à mão ou por uma execução anterior)
+      props.setProperty('coluna_atividades_removida_v1', 'ok');
+      return;
+    }
+    const idxId = cabecalho.indexOf('ID');
+    // A migração anterior (_migrarAtividadesParaAba_) pode JÁ ter copiado este
+    // histórico para a aba Atividades. Se copiar de novo, duplica tudo — por
+    // isso a varredura abaixo só MIGRA quando essa flag ainda não existe. O
+    // rastreio de JSON ilegível acontece nos dois casos: a migração antiga
+    // pulava os ilegíveis e os deixava na coluna, e são exatamente eles que
+    // impedem a exclusão.
+    const jaMigrado = props.getProperty('migracao_atividades_v1') === 'ok';
+
+    let migrados = 0, ilegiveis = 0;
+    if (aba.getLastRow() > 1 && idxId !== -1) {
+      const dados = aba.getRange(2, 1, aba.getLastRow() - 1, aba.getLastColumn()).getValues();
+      const linhas = [];
+      dados.forEach(r => {
+        const bruto = String(r[idxAtiv] || '').trim();
+        if (!bruto || bruto === '[]') return;
+        let arr;
+        try { arr = JSON.parse(bruto); } catch (e) { ilegiveis++; return; }
+        if (!Array.isArray(arr)) { ilegiveis++; return; }
+        if (jaMigrado) return; // legível e já copiado — nada a fazer
+        const tarefaId = String(r[idxId]);
+        arr.forEach(a => {
+          if (!a) return;
+          linhas.push([tarefaId, String(a.type || 'log'), String(a.text || ''), String(a.date || ''), String(a.author || '')]);
+        });
+      });
+      if (linhas.length) {
+        const abaA = conectarAba(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
+        abaA.getRange(abaA.getLastRow() + 1, 1, linhas.length, CABECALHOS_ATIVIDADES.length).setValues(linhas);
+        migrados = linhas.length;
+      }
+    }
+
+    // JSON ilegível = histórico que NÃO pôde ser migrado (o cartão corrompido
+    // pelo antigo teto de 50k, por exemplo). Apagar a coluna aqui destruiria o
+    // único lugar onde esse dado ainda existe — então para tudo e pede olho
+    // humano. O sistema continua funcionando: a coluna sobrando é inerte.
+    if (ilegiveis > 0) {
+      registrarLog('Sistema', 'Tarefas', 'ATENÇÃO: coluna "Atividades" NÃO removida — ' + ilegiveis +
+        ' cartão(ões) com JSON ilegível que não pôde ser migrado. ' + migrados +
+        ' registro(s) migrado(s). Inspecione esses cartões manualmente antes de excluir a coluna.');
+      return; // sem marcar a flag: tenta de novo no próximo setup
+    }
+
+    aba.deleteColumn(idxAtiv + 1);
+    props.setProperty('coluna_atividades_removida_v1', 'ok');
+    props.setProperty('migracao_atividades_v1', 'ok'); // encerra a migração antiga
+    registrarLog('Sistema', 'Tarefas', 'Coluna "Atividades" removida do layout de Tarefas. ' +
+      migrados + ' registro(s) de histórico migrado(s) para a aba Atividades.');
+  });
+}
+
+// Acrescenta itens de histórico em lote. `itens` = [{tarefaId, tipo, texto,
+// data, autor}]. Uma escrita só, independentemente da quantidade — appendRow
+// em laço custaria um round-trip por item, dentro do lock.
+function _registrarAtividades_(itens) {
+  if (!itens || !itens.length) return;
+  const aba = conectarAba(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
+  const linhas = itens.map(a => [String(a.tarefaId), String(a.tipo || 'log'), String(a.texto || ''), String(a.data || ''), String(a.autor || '')]);
+  aba.getRange(aba.getLastRow() + 1, 1, linhas.length, CABECALHOS_ATIVIDADES.length).setValues(linhas);
+}
+
+// Remove todo o histórico de uma tarefa (usado ao excluir o cartão). Itera de
+// trás para frente porque cada deleteRow desloca as linhas seguintes.
+function _excluirAtividadesDaTarefa_(tarefaId) {
+  const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
+  if (!aba || aba.getLastRow() <= 1) return;
+  const CA = colIdx_(CABECALHOS_ATIVIDADES);
+  const alvo = String(tarefaId || '').trim();
+  if (!alvo) return;
+  const dados = aba.getDataRange().getValues();
+  for (let i = dados.length - 1; i >= 1; i--) {
+    if (String(dados[i][CA('Tarefa ID')]).trim() === alvo) aba.deleteRow(i + 1);
+  }
+}
+
+// Contagem de COMENTÁRIOS por tarefa, para o badge do cartão no quadro.
+// Lê apenas as colunas 'Tarefa ID' e 'Tipo' (2 de 5) — o texto dos comentários
+// é o campo pesado e não é necessário para contar.
+function _contarComentariosPorTarefa_() {
+  const contagem = {};
+  const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
+  if (!aba || aba.getLastRow() <= 1) return contagem;
+  const CA = colIdx_(CABECALHOS_ATIVIDADES);
+  const dados = aba.getRange(2, CA('Tarefa ID') + 1, aba.getLastRow() - 1, 2).getValues();
+  dados.forEach(r => {
+    if (String(r[1]).trim() !== 'comment') return;
+    const id = String(r[0]).trim();
+    if (id) contagem[id] = (contagem[id] || 0) + 1;
+  });
+  return contagem;
+}
+
+// Histórico de UM cartão — buscado só ao abrir o cartão (ver abrirModalTarefa).
+// É o que permite o quadro não trafegar o histórico de todos os cartões.
+function getAtividadesTarefa(tarefaId) {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
+  if (!aba || aba.getLastRow() <= 1) return [];
+  const CA = colIdx_(CABECALHOS_ATIVIDADES);
+  const alvo = String(tarefaId || '').trim();
+  if (!alvo) return [];
+  return aba.getDataRange().getValues().slice(1)
+    .filter(r => String(r[CA('Tarefa ID')]).trim() === alvo)
+    .map(r => ({
+      type: String(r[CA('Tipo')] || 'log'),
+      text: String(r[CA('Texto')] || ''),
+      // Gravamos 'dd/MM/yyyy HH:mm' como TEXTO, mas o Sheets reconhece esse
+      // formato e converte a célula em Date por conta própria. Sem esta guarda,
+      // String(umDate) devolvia o toString cru do JS ("Wed Jul 15 2026
+      // 14:15:00 GMT-0300 (Horário Padrão de Brasília)") direto na tela.
+      // Mesmo tratamento que buscarLogs já faz na coluna Data/Hora.
+      date: _dataHoraParaUI_(r[CA('Data')]),
+      author: String(r[CA('Autor')] || '')
+    }));
+}
+
+// Alinha a ORDEM FÍSICA das colunas de Tarefas ao CABECALHOS_TAREFAS. Roda no
+// setup, antes de qualquer leitura — enquanto planilha e constante discordarem,
+// todo acesso por colIdx_ cai na coluna errada, sem erro.
+//
+// Remonta cada linha em memória pelo NOME da coluna (lido do cabeçalho real) e
+// sobrescreve. Não usa moveColumns: uma única escrita, resultado determinístico
+// e sem depender da semântica de índice pré/pós-movimento. Não usa
+// clearContents: se o script morresse entre limpar e escrever, a aba inteira
+// iria junto — o setValues sobrescreve as mesmas células, sem janela de perda.
+// Idempotente (sai na hora se já estiver alinhado) e re-checado dentro do lock.
+function _reordenarColunasTarefas_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('ordem_tarefas_v1') === 'ok') return;
+  comBloqueio(() => {
+    if (props.getProperty('ordem_tarefas_v1') === 'ok') return;
+    const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_TASKS);
+    if (!aba || aba.getLastColumn() < 1) return;
+
+    const largura = aba.getLastColumn();
+    const cabecalho = aba.getRange(1, 1, 1, largura).getValues()[0].map(h => String(h).trim());
+    const alinhado = cabecalho.length === CABECALHOS_TAREFAS.length &&
+                     CABECALHOS_TAREFAS.every((c, i) => cabecalho[i] === c);
+    if (alinhado) { props.setProperty('ordem_tarefas_v1', 'ok'); return; }
+
+    // Só reordena se TODAS as colunas do layout existirem na aba. Faltando
+    // alguma, remontar embaralharia o dado — melhor não tocar e pedir olho
+    // humano (o conectarAba cria as faltantes no fim; o próximo setup alinha).
+    const faltando = CABECALHOS_TAREFAS.filter(c => cabecalho.indexOf(c) === -1);
+    if (faltando.length) {
+      registrarLog('Sistema', 'Tarefas', 'Reordenação de colunas adiada — ausente(s) na aba: ' + faltando.join(', '));
+      return;
+    }
+
+    const nLinhas = aba.getLastRow();
+    const dados = aba.getRange(1, 1, nLinhas, largura).getValues();
+    const novos = dados.map(r => CABECALHOS_TAREFAS.map(nome => r[cabecalho.indexOf(nome)]));
+    novos[0] = CABECALHOS_TAREFAS.slice(); // cabeçalho na ordem nova
+    aba.getRange(1, 1, nLinhas, CABECALHOS_TAREFAS.length).setValues(novos);
+    aba.getRange(1, 1, 1, CABECALHOS_TAREFAS.length).setFontWeight('bold').setBackground('#f1f5f9');
+    props.setProperty('ordem_tarefas_v1', 'ok');
+    registrarLog('Sistema', 'Tarefas', 'Colunas reordenadas para o layout atual: ' + CABECALHOS_TAREFAS.join(' | '));
+  });
+}
+
 function setupDatabaseKanban() {
   if (!isMembro_()) return; // não-membros não disparam setup/migração (proteção contra chamada direta via F12)
   // O setup só cria abas faltantes e roda migrações idempotentes — não
   // precisa executar em TODA carga do Kanban. Sem esta guarda, cada abertura
   // do sistema pagava ~5 round-trips à planilha (getSheetByName/getLastColumn/
   // leitura de cabeçalho/migração). Roda no máximo 1x a cada 6h por deploy.
-  try { if (CacheService.getScriptCache().get('setup_kanban_ok')) return; } catch (e) {}
+  // Chave versionada (_v2): o cache antigo faria o setup pular a remoção da
+  // coluna 'Atividades' por até 6h — e nesse meio-tempo a planilha (com a
+  // coluna) e CABECALHOS_TAREFAS (sem ela) estariam desalinhados.
+  try { if (CacheService.getScriptCache().get('setup_kanban_ok_v2')) return; } catch (e) {}
+  // PRIMEIRA coisa: alinhar a planilha ao layout atual. Tem de vir antes do
+  // conectarAba abaixo — com a coluna ainda presente, a aba tem 14 colunas e a
+  // constante 13, e qualquer leitura/escrita de Arquivado, Etiquetas ou Última
+  // Atualização cairia uma coluna adiante, sem erro nenhum.
+  _migrarEremoverColunaAtividades_(); // 1) tira a coluna que saiu do layout
+  _reordenarColunasTarefas_();        // 2) põe as que restaram na ordem certa
   conectarAba(SHEET_TASKS, CABECALHOS_TAREFAS);
   const abaMembros = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
   try {
@@ -331,7 +563,8 @@ function setupDatabaseKanban() {
     abaMembros.getRange(1, 1, 1, CABECALHOS_MEMBROS.length)
       .setValues([CABECALHOS_MEMBROS]).setFontWeight('bold').setBackground('#f1f5f9');
   }
-  try { CacheService.getScriptCache().put('setup_kanban_ok', '1', 21600); } catch (e) {}
+  conectarAba(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
+  try { CacheService.getScriptCache().put('setup_kanban_ok_v2', '1', 21600); } catch (e) {}
 }
 
 function setupDatabaseResto() {
@@ -367,6 +600,50 @@ function setupDatabaseResto() {
 // Dias após a conclusão para um cartão ser arquivado automaticamente
 const DIAS_PARA_ARQUIVAR = 15;
 
+// Regra ÚNICA de "este cartão está arquivado?", compartilhada pelo quadro e
+// pela aba Arquivados — as duas telas precisam concordar, e duplicar a regra
+// era o caminho mais curto para elas divergirem.
+// Arquivamento automático: só entra em jogo quando a coluna está EM BRANCO
+// (nunca decidido). Se o valor for 'Não', o usuário restaurou o cartão
+// manualmente — respeita a decisão dele e não volta a arquivar sozinho, mesmo
+// com data de conclusão antiga. Calculado apenas EM MEMÓRIA: não grava 'Sim'
+// durante a leitura, para o carregamento nunca disputar a trava (comBloqueio)
+// com uma escrita de outra ação. É idempotente e determinístico, então o
+// resultado é consistente a cada carga; a persistência só ocorre quando o
+// usuário arquiva/restaura.
+function _tarefaArquivada_(r, C, hoje) {
+  const arquivadoRaw = String(r[C('Arquivado')] || '').trim();
+  if (arquivadoRaw === 'Sim') return true;
+  if (arquivadoRaw !== '') return false;
+  if (String(r[C('Status')]) !== 'Concluído') return false;
+  const completionDate = formatarDataParaUI(r[C('Data Conclusão')]);
+  if (!completionDate) return false;
+  const p = completionDate.split('-');
+  if (p.length !== 3) return false;
+  const dtConclusao = new Date(+p[0], +p[1]-1, +p[2]);
+  return Math.floor((hoje - dtConclusao) / 86400000) >= DIAS_PARA_ARQUIVAR;
+}
+
+function _mapearTarefa_(r, C) {
+  return {
+    id: String(r[C('ID')]), status: String(r[C('Status')]), title: String(r[C('Título')]), description: String(r[C('Descrição')]),
+    assigneeId: String(r[C('Responsável_ID')]), priority: String(r[C('Prioridade')]), creationDate: formatarDataParaUI(r[C('Data Criação')]),
+    startDate: formatarDataParaUI(r[C('Data Início')]), deadline: formatarDataParaUI(r[C('Prazo')]),
+    completionDate: formatarDataParaUI(r[C('Data Conclusão')]),
+    labels: String(r[C('Etiquetas')] || '[]'),
+    updatedAt: String(r[C('Última Atualização')] || '')
+  };
+}
+
+// Quadro Kanban: SÓ os cartões ativos, e SEM o histórico de atividades.
+// Antes devolvia todos os cartões já criados (os arquivados iam junto, para a
+// aba Arquivados filtrar no cliente) e, dentro de cada um, o histórico completo
+// de comentários — o campo mais pesado do sistema. Como esta função é chamada
+// a cada ação de cartão (recarregarKanban), o payload crescia para sempre e
+// era pago a cada arrastar. Arquivados agora têm endpoint próprio
+// (getTarefasArquivadas) e o histórico é buscado ao abrir o cartão
+// (getAtividadesTarefa); aqui vai apenas a CONTAGEM, que é o que o cartão
+// exibe no badge.
 function getKanbanData() {
   if (!isMembro_()) throw new Error('Acesso Negado.');
   setupDatabaseKanban();
@@ -377,42 +654,37 @@ function getKanbanData() {
   if (tData.length <= 1) return { tasks: [], members: getKanbanData_members_() };
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const contagem = _contarComentariosPorTarefa_();
 
-  const tasks = tData.slice(1).map((r, idx) => {
-    const status = String(r[C('Status')]);
-    const completionDate = formatarDataParaUI(r[C('Data Conclusão')]);
-    let arquivadoRaw = String(r[C('Arquivado')] || '').trim();
-    let archived = arquivadoRaw === 'Sim';
-
-    // Arquivamento automático: só entra em jogo quando a coluna está
-    // EM BRANCO (nunca decidido). Se o valor for 'Não', significa que o
-    // usuário restaurou esse cartão manualmente — respeita a decisão dele
-    // e não volta a arquivar sozinho, mesmo que a data de conclusão seja antiga.
-    // Calculado apenas EM MEMÓRIA (para exibição) — não grava 'Sim' na planilha
-    // durante a leitura, para o carregamento do quadro nunca disputar a trava
-    // (comBloqueio) com uma escrita de outra ação. O cálculo é idempotente e
-    // determinístico, então o cartão aparece arquivado de forma consistente a
-    // cada carga; a persistência só ocorre quando o usuário arquiva/restaura.
-    if (arquivadoRaw === '' && status === 'Concluído' && completionDate) {
-      const p = completionDate.split('-');
-      if (p.length === 3) {
-        const dtConclusao = new Date(+p[0], +p[1]-1, +p[2]);
-        const diasPassados = Math.floor((hoje - dtConclusao) / 86400000);
-        if (diasPassados >= DIAS_PARA_ARQUIVAR) archived = true;
-      }
-    }
-
-    return {
-      id: String(r[C('ID')]), status: status, title: String(r[C('Título')]), description: String(r[C('Descrição')]),
-      assigneeId: String(r[C('Responsável_ID')]), priority: String(r[C('Prioridade')]), creationDate: formatarDataParaUI(r[C('Data Criação')]),
-      startDate: formatarDataParaUI(r[C('Data Início')]), deadline: formatarDataParaUI(r[C('Prazo')]),
-      completionDate: completionDate, activities: String(r[C('Atividades')] || '[]'),
-      labels: String(r[C('Etiquetas')] || '[]'), archived: archived,
-      updatedAt: String(r[C('Última Atualização')] || '')
-    };
+  const tasks = [];
+  tData.slice(1).forEach(r => {
+    if (_tarefaArquivada_(r, C, hoje)) return;
+    const t = _mapearTarefa_(r, C);
+    t.commentCount = contagem[t.id] || 0;
+    tasks.push(t);
   });
 
   return { tasks: tasks, members: getKanbanData_members_() };
+}
+
+// Aba Arquivados — busca própria e sob demanda (só na primeira visita à aba),
+// no mesmo espírito de getAfastamentos(). Não devolve commentCount: a tabela
+// de arquivados não exibe comentários, então contar seria custo sem uso.
+function getTarefasArquivadas() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  const sheet = conectarAba(SHEET_TASKS);
+  const tData = sheet.getDataRange().getValues();
+  if (tData.length <= 1) return [];
+  const C = colIdx_(CABECALHOS_TAREFAS);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const arquivadas = [];
+  tData.slice(1).forEach(r => {
+    if (!_tarefaArquivada_(r, C, hoje)) return;
+    const t = _mapearTarefa_(r, C);
+    t.archived = true;
+    arquivadas.push(t);
+  });
+  return arquivadas;
 }
 
 function getKanbanData_members_() {
@@ -438,10 +710,6 @@ function getKanbanData_members_() {
        });
     }
 
-    // ATENÇÃO: a leitura do e-mail pessoal usa a coluna do cabeçalho
-    // ('E-mail Pessoal', 7ª col), mas saveMember() grava na 13ª coluna —
-    // divergência pré-existente que faz o e-mail pessoal aparecer vazio
-    // após recarregar. Mantido como está aqui; reconciliar em saveMember.
     // ativo: em branco/'Sim' = ativo; só 'Não' inativa. Todos os membros são
     // retornados (inclusive inativos) para que os nomes continuem resolvendo em
     // cartões/gráficos/afastamentos antigos; a flag é usada no cliente para
@@ -542,18 +810,24 @@ function _lerRiscosPlanosEntregas_(ss) {
   const rData = safeGetSheetData(ss, SHEET_RISKS);
   const pData = safeGetSheetData(ss, SHEET_PLANS);
   const planosRows = pData.length > 1 ? pData.slice(1) : [];
+
+  // Índice ref do risco → 'O Que' do primeiro plano vinculado, montado UMA vez.
+  // Antes era um for sobre todos os planos DENTRO do map dos riscos (O(n²)):
+  // 200 riscos × 200 planos = 40 mil comparações a cada carga do sistema.
+  // A chave normaliza os dois formatos aceitos de 'ID Risco' ('R5' e
+  // 'R5 - descrição') para 'R5'; o primeiro plano encontrado vence, como o
+  // `break` original garantia.
+  const planoPorRef = new Map();
+  for (const p of planosRows) {
+    const base = String(p[CP('ID Risco')]||'').split(' -')[0].trim();
+    if (base && !planoPorRef.has(base)) planoPorRef.set(base, String(p[CP('O Que')]||'-'));
+  }
+
   const risks = rData.length > 1 ? rData.slice(1)
     .map((r, i) => {
       const idRisco = parseInt(String(r[CR('ID Risco')]||'').replace('R',''), 10) || (i+1);
       const ref = 'R' + idRisco;
-      let planoAcao = '-';
-      for (const p of planosRows) {
-        const rRef = String(p[CP('ID Risco')]||'');
-        const statusP = String(p[CP('Status')]||'').trim();
-        if (rRef === ref || rRef.startsWith(ref + ' -')) {
-          planoAcao = String(p[CP('O Que')]||'-'); break;
-        }
-      }
+      const planoAcao = planoPorRef.get(ref) || '-';
       return {
         id: idRisco, macroetapa: String(r[CR('Macroetapa')]||''), nome: String(r[CR('Risco')]||''), causa: String(r[CR('Causa')]||''),
         consequencia: String(r[CR('Consequência')]||''), categoria: String(r[CR('Categoria')]||''),
@@ -584,7 +858,11 @@ function _lerRiscosPlanosEntregas_(ss) {
   const CH = colIdx_(CABECALHOS_HISTORICO);
   const hData = safeGetSheetData(ss, SHEET_HISTORICO);
   const historico = hData.length > 1 ? hData.slice(1).map(r => ({
-    id: String(r[CH('ID')]||''), tipo: String(r[CH('Tipo')]||''), data: _dataLocalISO_(r[CH('Data')]),
+    // Modulo_Riscos grava esta coluna como STRING ('yyyy-MM-dd'); o Sheets às
+    // vezes a converte em Date. formatarDataParaUI cobre os dois casos — chamar
+    // _dataLocalISO_ direto quebrava com célula vazia/texto ('getFullYear is not
+    // a function'), e a exceção derrubava getRiscosData() E getRestoData().
+    id: String(r[CH('ID')]||''), tipo: String(r[CH('Tipo')]||''), data: formatarDataParaUI(r[CH('Data')]),
     prob: parseInt(r[CH('Nova Probabilidade')],10)||null,
     impacto: parseInt(r[CH('Novo Impacto')],10)||null, nivel: String(r[CH('Novo Nível')]||''),
     justificativa: String(r[CH('Justificativa da Mudança')]||''),

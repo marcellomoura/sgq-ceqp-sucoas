@@ -82,7 +82,12 @@ function reativarMembro(id) {
 function renderTasks() {
   const listas = { 'Backlog':'list-backlog','A Fazer':'list-todo','Em Andamento':'list-inprogress','Em Revisão':'list-review','Concluído':'list-done' };
   const counts = {};
-  Object.keys(listas).forEach(s => { const el=$id(listas[s]); if(el) el.innerHTML=''; counts[s]=0; });
+  // Um innerHTML por COLUNA no fim, em vez de um createElement + innerHTML +
+  // appendChild por CARTÃO (que fazia um parse de HTML e uma inserção na árvore
+  // viva por cartão, a cada troca de aba, filtro e arrastar). Os containers são
+  // resolvidos uma única vez aqui.
+  const els = {}, htmlPorLista = {};
+  Object.keys(listas).forEach(s => { els[s]=$id(listas[s]); htmlPorLista[s]=''; counts[s]=0; });
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const filterId = (() => { const el=$id('memberFilterSelect'); return el?el.value:''; })();
 
@@ -98,27 +103,29 @@ function renderTasks() {
     if(task.deadline){ const p=task.deadline.split('-'); if(p.length===3){ const d=new Date(+p[0],+p[1]-1,+p[2]); d.setHours(0,0,0,0); dtDisplay=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}); if(d<hoje && status!=='Concluído') vencido=true; } }
     let age='Fila (0d)';
     if(status!=='Backlog'){ const ref=task.startDate||task.creationDate; if(ref){ const p=ref.split('-'); if(p.length===3){ const s=new Date(+p[0],+p[1]-1,+p[2]); s.setHours(0,0,0,0); let end=hoje; if(status==='Concluído'&&task.completionDate){ const cp=task.completionDate.split('-'); if(cp.length===3){end=new Date(+cp[0],+cp[1]-1,+cp[2]); end.setHours(0,0,0,0);} } const d=Math.floor((end-s)/86400000); age=d<=0?(status==='Concluído'?'Fechado hoje':'Iniciado hoje'):(status==='Concluído'?`Fechado em ${d}d`:`Correndo há ${d}d`); } } }
-    const div=document.createElement('div');
-    div.className='card prio-'+esc(task.priority)+(vencido?' overdue':'');
-    div.draggable=true; div.dataset.id=task.id; div.dataset.idx=i;
-    div.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',task.id));
     const chips=labelChipsHTML(parseLabels(task.labels));
-    let nComments=0; try{ const a=JSON.parse(task.activities||'[]'); if(Array.isArray(a)) nComments=a.filter(x=>x&&x.type==='comment').length; }catch(e){}
+    // commentCount vem pronto do servidor: o quadro não recebe mais o histórico
+    // dos cartões (só a contagem), então não há JSON para parsear aqui.
+    const nComments = task.commentCount || 0;
     const comentariosHtml = nComments>0 ? `<span class="card-comments" title="${nComments} comentário(s)">${ICON.comment}${nComments}</span>` : '';
-    div.innerHTML=`<button class="btn-edit-card" data-acao="edit-card" data-idx="${i}" title="Abrir cartão">${ICON.edit}</button>`+
-      `${chips?`<div class="card-labels">${chips}</div>`:''}`+
-      `<div class="card-title">${esc(task.title)}</div>`+
-      `<div class="card-assignee">${ICON.user} ${esc(nomes)}</div>`+
-      `<div class="card-meta">`+
-        `<span class="card-meta-left"><span class="meta-item">${ICON.clock} ${age}</span>${vencido?`<span class="meta-item meta-overdue">${ICON.alert} Atrasado</span>`:''}</span>`+
-        `<span class="card-meta-right">${comentariosHtml}${dtDisplay?`<span class="meta-item">${ICON.calendar} ${dtDisplay}</span>`:''}</span>`+
+    // dragstart é delegado em .list-cards (ver JS_Utilitarios) — o cartão só
+    // precisa carregar data-id, como o drop já esperava.
+    htmlPorLista[status] +=
+      `<div class="card prio-${esc(task.priority)}${vencido?' overdue':''}" draggable="true" data-id="${esc(task.id)}" data-idx="${i}">`+
+        `<button class="btn-edit-card" data-acao="edit-card" data-idx="${i}" title="Abrir cartão">${ICON.edit}</button>`+
+        `${chips?`<div class="card-labels">${chips}</div>`:''}`+
+        `<div class="card-title">${esc(task.title)}</div>`+
+        `<div class="card-assignee">${ICON.user} ${esc(nomes)}</div>`+
+        `<div class="card-meta">`+
+          `<span class="card-meta-left"><span class="meta-item">${ICON.clock} ${age}</span>${vencido?`<span class="meta-item meta-overdue">${ICON.alert} Atrasado</span>`:''}</span>`+
+          `<span class="card-meta-right">${comentariosHtml}${dtDisplay?`<span class="meta-item">${ICON.calendar} ${dtDisplay}</span>`:''}</span>`+
+        `</div>`+
       `</div>`;
-    $id(listas[status]).appendChild(div);
   });
+  Object.keys(listas).forEach(s => { if(els[s]) els[s].innerHTML = htmlPorLista[s]; });
   Object.keys(counts).forEach(s => { const cnt=$id('cnt-'+{'Backlog':'backlog','A Fazer':'todo','Em Andamento':'inprogress','Em Revisão':'review','Concluído':'done'}[s]); if(cnt) cnt.innerText=counts[s]; });
 }
 
-function allowDrop(e){ e.preventDefault(); }
 function drop(e, newStatus) {
   e.preventDefault();
   const id=e.dataTransfer.getData('text/plain');
@@ -160,8 +167,11 @@ function renderArquivados(resetPage = false) {
   const ini = $id('f-archived-data-ini') ? $id('f-archived-data-ini').value : '';
   const fim = $id('f-archived-data-fim') ? $id('f-archived-data-fim').value : '';
 
-  let arquivados = state.tasks.filter(t => t.archived);
-  
+  // state.archivedTasks tem busca própria (getTarefasArquivadas), sob demanda
+  // na primeira visita a esta aba. Antes saía de state.tasks.filter(archived),
+  // o que obrigava o quadro a trafegar TODOS os cartões já criados a cada ação.
+  let arquivados = (state.archivedTasks || []).slice();
+
   if (filtroMembro) {
     arquivados = arquivados.filter(t => parseIdsResponsaveis(t.assigneeId).includes(String(filtroMembro)));
   }
@@ -225,8 +235,11 @@ function confirmarArquivarTarefa() {
     if (btn) { btn.disabled = true; btn.innerText = 'A arquivar...'; }
     google.script.run.withSuccessHandler(function(r) {
       if (r.sucesso) {
+        // O cartão sai do quadro (state.tasks) e a lista de arquivados passa a
+        // estar desatualizada — invalidar faz a próxima visita à aba relê-la.
         const idx = state.tasks.findIndex(t => String(t.id) === String(id));
-        if (idx >= 0) state.tasks[idx].archived = true;
+        if (idx >= 0) state.tasks.splice(idx, 1);
+        invalidarArquivados();
         fecharModal('modal-task');
         renderTasks();
       } else {
@@ -241,11 +254,13 @@ function restaurarTarefa(id) {
   showConfirm('Restaurar este cartão de volta ao quadro Kanban?', function(fechar) {
     google.script.run.withSuccessHandler(function(r) {
       if (r.sucesso) {
-        // Atualiza o estado local direto — evita uma segunda ida ao servidor
-        const idx = state.tasks.findIndex(t => String(t.id) === String(id));
-        if (idx >= 0) state.tasks[idx].archived = false;
-        renderTasks();
+        // Sai da lista de arquivados na hora (sem nova ida ao servidor); o
+        // quadro precisa reler porque o cartão restaurado não está em
+        // state.tasks — getKanbanData só devolve os ativos.
+        const idx = (state.archivedTasks || []).findIndex(t => String(t.id) === String(id));
+        if (idx >= 0) state.archivedTasks.splice(idx, 1);
         renderArquivados();
+        recarregarKanban(renderTasks);
         fechar('Restaurado!');
       } else {
         showAlerta(r.mensagem);
@@ -335,20 +350,48 @@ function abrirEditarTarefa(task) {
   let sel=[]; try{ sel=JSON.parse(task.assigneeId); if(!Array.isArray(sel)) sel=[task.assigneeId]; }catch(e){ sel=task.assigneeId?[String(task.assigneeId)]:[];}
   populateAssignees(sel);
   populateLabels(parseLabels(task.labels));
-  currentActivities=[]; try{ if(task.activities&&task.activities!=='[]') currentActivities=JSON.parse(task.activities); }catch(e){}
-  renderActividades();
+  // O histórico não vem mais no payload do quadro — é buscado agora, para este
+  // cartão só. atividadesTaskId guarda de qual cartão é a busca em voo: sem
+  // isso, abrir o cartão A e trocar rápido para o B faria a resposta (mais
+  // lenta) de A sobrescrever o histórico de B na tela.
+  currentActivities=[];
+  atividadesTaskId = task.id || null;
+  renderActividades('A carregar histórico...');
+  if (task.id) {
+    google.script.run
+      .withSuccessHandler(function(acts){
+        if (atividadesTaskId !== task.id) return; // outro cartão já foi aberto
+        currentActivities = Array.isArray(acts) ? acts : [];
+        renderActividades();
+      })
+      .withFailureHandler(function(e){
+        if (atividadesTaskId !== task.id) return;
+        renderActividades('Falha ao carregar o histórico: ' + String(e));
+      })
+      .getAtividadesTarefa(task.id);
+  } else {
+    renderActividades();
+  }
   abrirModal('modal-task');
   setTimeout(()=>{ const tf=$id('taskTitle'); if(tf){tf.style.height='auto';tf.style.height=tf.scrollHeight+'px';} },10);
 }
-function renderActividades() {
+// msgEstado: usado enquanto o histórico é buscado (ou se a busca falhar) —
+// sem isso, o feed mostraria "Nenhuma atividade registrada" durante a carga,
+// afirmando algo falso sobre o cartão.
+function renderActividades(msgEstado) {
   const feed=$id('activity-feed'); if(!feed) return;
+  if(msgEstado){ feed.innerHTML='<div style="font-size:12px;color:#5e6c84;padding-left:10px;">'+esc(msgEstado)+'</div>'; return; }
   if(!currentActivities.length){ feed.innerHTML='<div style="font-size:12px;color:#5e6c84;padding-left:10px;">Nenhuma atividade registrada.</div>'; return; }
   feed.innerHTML=[...currentActivities].reverse().map(a=>`<div class="hist-item"><div class="hist-date">${a.author?`<span class="hist-author">${esc(a.author)}</span> · `:''}${esc(a.date)}</div><div class="hist-action">${a.type==='comment'?'<strong>Comentou:</strong> ':''}${esc(a.text)}</div></div>`).join('');
 }
 function adicionarComentario() {
   const box=$id('taskNewComment'); if(!box) return;
   const txt=box.value.trim(); if(!txt) return;
-  const agora=new Date(); const dt=agora.toLocaleDateString('pt-BR')+' às '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  // Mesmo formato de getNowTimestamp() ('dd/MM/yyyy HH:mm'). Esta data é só
+  // para o feed mostrar o comentário na hora — quem grava é o servidor, com o
+  // carimbo dele. Antes usava ' às ' e o feed exibia um formato antes de salvar
+  // e outro ao reabrir o cartão.
+  const agora=new Date(); const dt=agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   // _novo sinaliza ao servidor que este comentário precisa receber o autor
   currentActivities.push({type:'comment',text:txt,date:dt,_novo:true});
   box.value=''; renderActividades();
@@ -360,7 +403,11 @@ function salvarTarefa() {
   const btn=$id('btn-save-task'); btn.disabled=true; btn.innerText='Salvando...';
   const ids=Array.from(($id('taskAssigneesContainer')||{querySelectorAll:()=>[]}).querySelectorAll('input:checked')).map(c=>c.value);
   const labels=Array.from(($id('taskLabelsContainer')||{querySelectorAll:()=>[]}).querySelectorAll('input:checked')).map(c=>c.value);
-  const dados={ id:$id('taskId').value, status:$id('taskStatus').value||'Backlog', title:titulo, description:$id('taskDesc').value||'', assigneeId:JSON.stringify(ids), priority:$id('taskPriority').value||'Media', labels:JSON.stringify(labels), deadline:$id('taskDeadline').value||'', creationDate:$id('taskCreation').value||'', completionDate:$id('taskCompletion').value||'', startDate:$id('taskStartDate').value||'', activities:JSON.stringify(currentActivities), updatedAt:$id('taskUpdatedAt').value||'' };
+  // Só os comentários NOVOS sobem: o histórico existente vive na aba
+  // Atividades e o servidor apenas acrescenta. Antes subia o histórico inteiro
+  // a cada salvamento, só para o servidor filtrar os _novo e descartar o resto.
+  const novosComentarios = currentActivities.filter(a => a && a._novo);
+  const dados={ id:$id('taskId').value, status:$id('taskStatus').value||'Backlog', title:titulo, description:$id('taskDesc').value||'', assigneeId:JSON.stringify(ids), priority:$id('taskPriority').value||'Media', labels:JSON.stringify(labels), deadline:$id('taskDeadline').value||'', creationDate:$id('taskCreation').value||'', completionDate:$id('taskCompletion').value||'', startDate:$id('taskStartDate').value||'', activities:JSON.stringify(novosComentarios), updatedAt:$id('taskUpdatedAt').value||'' };
   google.script.run.withSuccessHandler(r=>{
     if (r && r.sucesso === false) { btn.disabled=false; btn.innerText='Salvar Cartão'; showAlerta(r.mensagem || 'Não foi possível salvar o cartão.'); return; }
     // Só fecha o modal depois que o quadro já foi atualizado — antes disso o
@@ -389,7 +436,12 @@ function confirmarExcluirTarefa() {
 // os KPIs do quadro (Total, Concluídos, Em Atraso, Tempo Médio) ficam na
 // aba do próprio Kanban e NÃO usam esse filtro — ver renderKanbanKpis().
 function renderGraficosKanban(fid) {
-  let tasks = state.tasks;
+  // ATIVOS + ARQUIVADOS. O quadro (state.tasks) passou a trazer só os ativos,
+  // mas estes gráficos são métrica HISTÓRICA: sem os arquivados, "Tarefas
+  // Concluídas" e "Concluídas por Membro" encolheriam sozinhos a cada 15 dias,
+  // conforme o auto-arquivamento tirasse os cartões do quadro. Quem chama
+  // garante o carregamento via garantirArquivados (ver mostrarTab).
+  let tasks = state.tasks.concat(state.archivedTasks || []);
   if (fid) {
     tasks = tasks.filter(t => parseIdsResponsaveis(t.assigneeId).includes(String(fid)));
   }
@@ -523,6 +575,39 @@ function montarHtmlArquivadosPdf() {
 }
 
 // ---------- Helpers ----------
+// Carga sob demanda dos cartões arquivados — mesma ideia de garantirRestoData:
+// só busca na primeira visita à aba, e uma chamada concorrente entra na fila em
+// vez de disparar um segundo getTarefasArquivadas().
+var archivedLoaded = false;
+var archivedLoading = false;
+var archivedFilaCallbacks = [];
+function garantirArquivados(cb) {
+  if (archivedLoaded) { if (cb) cb(); return; }
+  if (cb) archivedFilaCallbacks.push(cb);
+  if (archivedLoading) return;
+  archivedLoading = true;
+  google.script.run
+    .withFailureHandler(function(e) {
+      archivedLoading = false;
+      archivedFilaCallbacks = [];
+      showAlerta('Falha ao carregar os cartões arquivados: ' + (e.message || String(e)));
+    })
+    .withSuccessHandler(function(lista) {
+      state.archivedTasks = Array.isArray(lista) ? lista : [];
+      archivedLoaded = true;
+      archivedLoading = false;
+      var fila = archivedFilaCallbacks; archivedFilaCallbacks = [];
+      fila.forEach(function(fn) {
+        try { fn(); } catch (err) { console.error('Erro ao renderizar arquivados:', err); }
+      });
+    })
+    .getTarefasArquivadas();
+}
+
+// Invalida o cache dos arquivados. Chamada após arquivar/restaurar — a lista
+// mudou no servidor e a próxima visita à aba precisa relê-la.
+function invalidarArquivados() { archivedLoaded = false; state.archivedTasks = []; }
+
 // Recarrega só Tarefas + Membros (usado após ações do Kanban/Membros)
 function recarregarKanban(cb) {
   google.script.run.withSuccessHandler(data => {
@@ -530,17 +615,6 @@ function recarregarKanban(cb) {
     sincronizarDropdownMembros();
     if (cb) cb();
   }).withFailureHandler(e => showAlerta('Falha ao sincronizar: ' + String(e))).getKanbanData();
-}
-
-// Recarrega Unidades/Documentos/Riscos/Planos/Entregas/Capacitações (usado após ações do SGQ)
-function recarregarResto(cb) {
-  google.script.run.withSuccessHandler(resto => {
-    state.units = resto.units; state.docs = resto.docs; state.risks = resto.risks;
-    state.plans = resto.plans; state.deliveries = resto.deliveries; state.trainings = resto.trainings;
-    sincronizarSelectsUnidade();
-    restoDataLoaded = true;
-    if (cb) cb();
-  }).withFailureHandler(e => showAlerta('Falha ao sincronizar: ' + String(e))).getRestoData();
 }
 
 // Recarrega só Unidades/Riscos/Planos/Entregas (usado após ações da tela de

@@ -21,11 +21,23 @@ function renderUnidades() {
       ? `<button type="button" class="btn-membro-status" data-acao="reativar-unidade" data-idx="${i}" title="Reativar unidade" style="color:#166534;border-color:#bbf7d0;">Reativar</button>`
       : `<button type="button" class="btn-membro-status" data-acao="inativar-unidade" data-idx="${i}" title="Inativar unidade" style="color:#b45309;border-color:#fde68a;">Inativar</button>`;
     
+    // O campo aceita texto livre (unidade sem Drive). Só vira o botão clicável
+    // "Acessar" quando é http(s) de verdade; qualquer outro texto (ex.: 'Não
+    // possui') aparece escapado, como texto puro. O teste é o mesmo regex de
+    // linkA() — mais estrito que o startsWith('http') antigo, que aceitava lixo
+    // como 'httpfoo' e ainda prefixava 'https://' em texto comum, gerando link
+    // quebrado.
+    const dv = String(u.linkDrive || '').trim();
+    const celulaDrive = !dv ? '-'
+      : /^https?:\/\//i.test(dv)
+        ? `<a href="${esc(dv)}" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:none; font-weight:500; font-size:12.5px; display:inline-flex; align-items:center; gap:4px;">Acessar <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>`
+        : `<span style="color:#64748b; font-size:12px;">${esc(dv)}</span>`;
+
     return `<tr>
     <td style="font-weight:700;color:#2563eb;padding-right:6px;${estiloInativo}">${esc(u.sigla)}</td>
     <td style="padding-left:6px; font-size:12px;${estiloInativo}">${esc(u.unidade)}</td>
     <td style="color:#64748b;${estiloInativo}">${esc(u.email)}</td>
-    <td style="${estiloInativo}">${u.linkDrive ? `<a href="${u.linkDrive.startsWith('http') ? esc(u.linkDrive) : 'https://' + esc(u.linkDrive)}" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:none; font-weight:500; font-size:12.5px; display:inline-flex; align-items:center; gap:4px;">Acessar <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>` : '-'}</td>
+    <td style="${estiloInativo}">${celulaDrive}</td>
     <td><div class="cell-actions" style="justify-content:center;">
       ${iconBtn('edit','edit-unidade','Editar',`data-idx="${i}"`)}
       ${acaoStatus}
@@ -107,7 +119,7 @@ function reativarUnidade(idRow, sigla) {
 }
 
 // Recarga LEVE do módulo de Unidades: lê só a aba Unidades (getUnitsData) em
-// vez das 7 abas de recarregarResto, e ressincroniza os selects de unidade.
+// vez das 7 abas de getRestoData, e ressincroniza os selects de unidade.
 function recarregarUnidades(cb) {
   google.script.run.withSuccessHandler(r => {
     state.units = r.units;

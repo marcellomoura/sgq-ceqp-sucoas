@@ -9,6 +9,17 @@
 function planoEhGlobal(quem) { return String(quem||'').toUpperCase().includes('TODAS'); }
 function ehSubcomissao(nomeUnidade) { const n = String(nomeUnidade||'').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); }
 
+// riscoVinculado → PRIMEIRA posição em state.plans. Substitui o
+// state.plans.findIndex(...) que era chamado por linha dentro dos map() de
+// render (O(n²)); o "primeiro vence" replica a semântica do findIndex.
+function _indicePlanosPorRisco() {
+  const idx = new Map();
+  (state.plans || []).forEach((x, i) => {
+    if (!idx.has(x.riscoVinculado)) idx.set(x.riscoVinculado, i);
+  });
+  return idx;
+}
+
 function renderMatriz() {
   msgTabela('lista-riscos', 12, 'A carregar...');
   for (let p=1;p<=5;p++) for(let i=1;i<=5;i++) { const el=$id(`cell-${p}-${i}`); if(el) el.innerHTML=''; }
@@ -50,8 +61,12 @@ function renderMatriz() {
   });
 
   if (!ativos.length) { msgTabela('lista-riscos', 12, 'Nenhum risco ativo mapeado.'); return; }
+  // Índice id → posição em state.risks, montado uma vez. Antes era um
+  // findIndex por linha DENTRO do map (O(n²)) — mesma correção já aplicada em
+  // renderDocumentos.
+  const idxPorIdRisco = new Map(state.risks.map((x, i) => [x.id, i]));
   $id('lista-riscos').innerHTML = ativos.map((r, i) => {
-    const origIdx = state.risks.findIndex(x => x.id === r.id);
+    const origIdx = idxPorIdRisco.has(r.id) ? idxPorIdRisco.get(r.id) : -1;
     return `<tr>
     <td style="text-align:center;font-weight:700;color:#64748b;">${i + 1}</td>
     <td style="text-align:center;font-weight:700;color:#2563eb;white-space:nowrap;">R-${r.id}</td>
@@ -247,9 +262,10 @@ function carregarRiscosLivres() {
   const idsComPlano = new Set(state.plans.map(p => p.riscoVinculado));
   const livres = state.risks.filter(r => !idsComPlano.has('R' + r.id));
   if (!livres.length) { sel.innerHTML = '<option value="">Nenhum risco sem plano de ação.</option>'; return; }
+  const idxPorIdRisco = new Map(state.risks.map((x, i) => [x.id, i]));
   sel.innerHTML = '<option value="" disabled selected>Selecione o risco...</option>' +
     livres.map(r => {
-      const idx = state.risks.findIndex(x => x.id === r.id);
+      const idx = idxPorIdRisco.has(r.id) ? idxPorIdRisco.get(r.id) : -1;
       return `<option value="R${r.id}">Risco ${idx + 1} — ${esc(r.nome)}</option>`;
     }).join('');
 }
@@ -294,10 +310,16 @@ function renderAcompanhamento() {
   const filtrados = state.plans.filter(p => ativosRiscosIds.has(p.riscoVinculado) && (!fU || p.who === fU) && (!fS || p.status === fS));
   if (!filtrados.length) { msgTabela('lista-acomp', 12, 'Nenhum plano ativo encontrado.'); return; }
 
+  // riscoVinculado → primeira posição em state.plans (mesma semântica do
+  // findIndex que estava dentro do map, sem o custo O(n²)).
+  const idxPorPlano = _indicePlanosPorRisco();
   $id('lista-acomp').innerHTML = filtrados.map((p) => {
-    const oi = state.plans.findIndex(x => x.riscoVinculado === p.riscoVinculado);
+    const oi = idxPorPlano.has(p.riscoVinculado) ? idxPorPlano.get(p.riscoVinculado) : -1;
     const alerta = p.revisaoPendente === 'Sim' ? '<span style="color:#eab308; margin-left:8px;" title="Revisão Pendente (Risco Reavaliado)">⚠️</span>' : '';
-    const acaoRev = p.revisaoPendente === 'Sim' ? iconBtn('warning','rev-plano','Revisar Plano',`onclick="abrirModalRevisarPlano(${oi})"`) : '';
+    // 'alert' (não 'warning', que não existe em ICON): o fallback de iconBtn
+    // para nome inexistente é ICON.del, então o botão de REVISAR aparecia com
+    // ícone de LIXEIRA.
+    const acaoRev = p.revisaoPendente === 'Sim' ? iconBtn('alert','rev-plano','Revisar Plano',`onclick="abrirModalRevisarPlano(${oi})"`) : '';
     return `<tr>
       <td style="font-weight:700;color:#2563eb;">${esc(formatRiscoUI(p.riscoVinculado))}${alerta}</td>
       <td>${esc(p.what)}</td><td>${esc(p.why)}</td><td>${esc(formatUnidadeUI(p.who))}</td>
@@ -641,8 +663,9 @@ function renderRiscosArquivados() {
   if (!planosArquivados.length) {
     msgTabela('lista-planos-arquivados', 9, 'Nenhum plano de ação associado a riscos arquivados.');
   } else {
+    const idxPorPlanoArq = _indicePlanosPorRisco();
     $id('lista-planos-arquivados').innerHTML = planosArquivados.map(p => {
-      const oi = state.plans.findIndex(x => x.riscoVinculado === p.riscoVinculado);
+      const oi = idxPorPlanoArq.has(p.riscoVinculado) ? idxPorPlanoArq.get(p.riscoVinculado) : -1;
       return `<tr>
         <td style="font-weight:700;color:#2563eb;">${esc(formatRiscoUI(p.riscoVinculado))}</td>
         <td>${esc(p.what)}</td><td>${esc(p.why)}</td><td>${esc(formatUnidadeUI(p.who))}</td>
@@ -681,19 +704,17 @@ function montarHtmlRiscoArquivadoPdf() {
   return riscosHtml + planosHtml;
 }
 
+// Mesmo padrão dos demais relatórios: o tipo 'risco-arquivado' está em
+// CFG_PDF e gerarPdfLocal/_gerarPdfReal cuidam do estado do botão e da espera
+// pelos dados. Os handlers antigos chamavam _gerarPdfReal/_dispararEnvioPdfReal
+// com a assinatura errada (passavam o HTML onde se espera o tipo) e encadeavam
+// .finally() num retorno undefined — o TypeError síncrono deixava o botão preso
+// em "A gerar..." até um F5.
 document.addEventListener('DOMContentLoaded', () => {
   const btnPdfRiscoArq = $id('btn-pdf-risco-arquivado');
-  if (btnPdfRiscoArq) btnPdfRiscoArq.addEventListener('click', () => {
-    btnPdfRiscoArq.disabled = true; const original = btnPdfRiscoArq.innerHTML; btnPdfRiscoArq.innerText = 'A gerar...';
-    _gerarPdfReal(montarHtmlRiscoArquivadoPdf(), 'Riscos_Arquivados_SGQ.pdf', 'landscape')
-      .finally(() => { btnPdfRiscoArq.disabled = false; btnPdfRiscoArq.innerHTML = original; });
-  });
+  if (btnPdfRiscoArq) btnPdfRiscoArq.addEventListener('click', () => gerarPdfLocal('risco-arquivado'));
 
   const btnEmailRiscoArq = $id('btn-email-risco-arquivado');
-  if (btnEmailRiscoArq) btnEmailRiscoArq.addEventListener('click', () => {
-    btnEmailRiscoArq.disabled = true; const original = btnEmailRiscoArq.innerHTML; btnEmailRiscoArq.innerText = 'A enviar...';
-    _dispararEnvioPdfReal('Riscos e Planos Arquivados', montarHtmlRiscoArquivadoPdf(), 'landscape')
-      .finally(() => { btnEmailRiscoArq.disabled = false; btnEmailRiscoArq.innerHTML = original; });
-  });
+  if (btnEmailRiscoArq) btnEmailRiscoArq.addEventListener('click', () => abrirModalEmail('risco-arquivado'));
 });
 </script>
