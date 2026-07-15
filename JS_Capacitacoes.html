@@ -3,19 +3,43 @@
 // MÓDULO 6 — GESTÃO DE CAPACITAÇÕES
 // ==========================================
 
-function renderCapacitacoes() {
+let capPage = 1;
+const capLimit = 20;
+
+function renderCapacitacoes(resetPage = false) {
+  if (resetPage) capPage = 1;
   const tbody = $id('lista-capacitacoes');
-  const caps  = Array.isArray(state.trainings) ? state.trainings : [];
+  let caps  = Array.isArray(state.trainings) ? state.trainings : [];
+
+  const ini = $id('f-cap-data-ini') ? $id('f-cap-data-ini').value : '';
+  const fim = $id('f-cap-data-fim') ? $id('f-cap-data-fim').value : '';
+  
+  if (ini || fim) {
+    caps = caps.filter(c => {
+      const d = c.dataRealizada || c.dataPrevista;
+      if (!d) return false;
+      if (ini && d < ini) return false;
+      if (fim && d > fim) return false;
+      return true;
+    });
+  }
+
+  const btnMore = $id('btn-load-more-cap');
 
   if (!caps.length) {
-    tbody.innerHTML = '<tr><td colspan="10" class="msg-empty">Nenhuma capacitação cadastrada.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="msg-empty">Nenhuma capacitação encontrada.</td></tr>';
+    if (btnMore) btnMore.style.display = 'none';
     return;
   }
 
   const ordenadas = caps.map((c, i) => ({ c, i })).sort((a, b) => b.c.idRow - a.c.idRow);
+  const exibidas = ordenadas.slice(0, capPage * capLimit);
+  
+  if (btnMore) btnMore.style.display = (ordenadas.length > exibidas.length) ? 'inline-block' : 'none';
+
   const fmtData   = s => (s && s !== '-') ? s.split('-').reverse().join('/') : '-';
 
-  tbody.innerHTML = ordenadas.map(({c, i}) => {
+  tbody.innerHTML = exibidas.map(({c, i}) => {
     const status = c.dataRealizada ? 'Concluída'
                  : c.dataPrevista  ? 'Em Andamento'
                  : 'Planejada';
@@ -241,6 +265,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSalvarCap = $id('btn-salvar-capacitacao');
   if (btnSalvarCap) btnSalvarCap.addEventListener('click', salvarFormCapacitacao);
 
+  const btnLoadMoreCap = $id('btn-load-more-cap');
+  if (btnLoadMoreCap) btnLoadMoreCap.addEventListener('click', () => { capPage++; renderCapacitacoes(); });
+
+  const fIni = $id('f-cap-data-ini'), fFim = $id('f-cap-data-fim');
+  if (fIni) fIni.addEventListener('change', () => renderCapacitacoes(true));
+  if (fFim) fFim.addEventListener('change', () => renderCapacitacoes(true));
+
   // Toggle dropdown de participantes
   const trigger = $id('cap-participantes-trigger');
   if (trigger) trigger.addEventListener('click', () => {
@@ -306,8 +337,17 @@ function salvarFormCapacitacao() {
 
   function tratarRespostaCap(r) {
     if (r.sucesso) {
+      if (idRow) {
+        const idx = state.trainings.findIndex(c => String(c.idRow) === String(idRow));
+        if (idx >= 0) state.trainings[idx] = { ...state.trainings[idx], ...dados };
+      } else {
+        state.trainings.push({ ...dados, idRow: r.novaLinha, id: r.novoId });
+      }
       fecharModal('modal-capacitacao');
-      recarregarCapacitacoes(() => { renderCapacitacoes(); renderKpisCapacitacoes(); if (currentTab === 'indicadores') renderIndicadores(); });
+      renderCapacitacoes(); 
+      renderKpisCapacitacoes(); 
+      if (currentTab === 'indicadores') renderIndicadores(); 
+      recarregarCapacitacoes();
       feedbackBtn(btn, '✅ Salvo!', 'Salvar', null);
     }
     else { btn.disabled = false; btn.innerText = 'Salvar'; showAlerta(r.mensagem); }

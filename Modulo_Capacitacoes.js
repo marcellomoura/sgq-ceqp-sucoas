@@ -35,7 +35,7 @@ function salvarCapacitacao(dados) {
       ]);
 
       registrarLog('Cadastro de Capacitação', id, 'Capacitação incluída: ' + dados.titulo);
-      return { sucesso: true, mensagem: 'Capacitação cadastrada com sucesso!' };
+      return { sucesso: true, mensagem: 'Capacitação cadastrada com sucesso!', novoId: id, novaLinha: aba.getLastRow() };
     });
   } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
 }

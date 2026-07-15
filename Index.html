@@ -49,7 +49,7 @@
       </button>
       <div class="nav-group-items" id="g-tarefas">
         <button class="menu-item" data-tab="kanban"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg></span>Quadro Kanban</button>
-        <button class="menu-item" data-tab="archived"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg></span>Arquivados</button>
+        <button class="menu-item" data-tab="archived"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg></span>Arquivados</button>
       </div>
 
       <!-- Módulo 6: Capacitações -->
@@ -157,9 +157,13 @@
         </button>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-archived">
-        <label>Filtrar por Membro:</label>
+      <div class="hdr-tab-controls" id="hdr-archived" style="flex-wrap:wrap;">
+        <label>Membro:</label>
         <select id="f-archived-membro" class="hdr-select"><option value="">Todos</option></select>
+        <label>Concluído em:</label>
+        <input type="date" id="f-archived-data-ini" class="hdr-input" style="width:135px;">
+        <span style="color:#64748b; font-size:11px;">até</span>
+        <input type="date" id="f-archived-data-fim" class="hdr-input" style="width:135px;">
         <button class="btn-pdf" id="btn-pdf-archived" type="button">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Baixar PDF
@@ -236,8 +240,12 @@
         <input type="text" id="f-log-busca" class="hdr-input" style="width:170px;" placeholder="Referência ou detalhes...">
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-capacitacoes-lista">
-        <button class="btn primary" id="btn-nova-capacitacao" type="button">+ Nova Capacitação</button>
+      <div class="hdr-tab-controls" id="hdr-capacitacoes-lista" style="flex-wrap:wrap;">
+        <label>Período (Data):</label>
+        <input type="date" id="f-cap-data-ini" class="hdr-input" style="width:135px;">
+        <span style="color:#64748b; font-size:11px;">até</span>
+        <input type="date" id="f-cap-data-fim" class="hdr-input" style="width:135px;">
+        <button class="btn primary" id="btn-nova-capacitacao" type="button" style="margin-left: auto;">+ Nova Capacitação</button>
       </div>
       
 
@@ -344,6 +352,9 @@
           <thead><tr><th style="width:34%;">Cartão</th><th style="width:15%;">Responsável(is)</th><th style="width:9%; text-align:center;">Prioridade</th><th style="width:10%;">Início</th><th style="width:10%;">Conclusão</th><th style="width:16%; text-align:center;">Tempo de Execução</th><th style="width:6%; text-align:center;" class="no-print">Ações</th></tr></thead>
           <tbody id="archived-list"><tr><td colspan="7" class="msg-empty">Nenhum cartão arquivado.</td></tr></tbody>
         </table>
+      </div>
+      <div style="text-align:center; margin-top:16px; margin-bottom: 20px;" class="no-print">
+        <button id="btn-load-more-archived" class="btn secondary" style="display:none; margin:0 auto;">Carregar mais</button>
       </div>
     </section>
 
@@ -496,8 +507,8 @@
         <h3 style="font-size:15px; font-weight:700; color:#1e293b; margin:28px 0 12px;">Mapeamento de Riscos</h3>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th style="width:55px; text-align:center;">Riscos</th><th style="width:120px;">Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th><th style="width:90px;">Categoria</th><th style="text-align:center; width:55px;">P×I</th><th style="text-align:center; width:90px;">Nível</th><th style="width:120px;">Tratamento</th><th style="width:130px;">Proprietário</th><th>Plano de Ação</th><th style="text-align:center; width:105px; " class="no-print">Ações</th></tr></thead>
-            <tbody id="lista-riscos"><tr><td colspan="12" class="msg-empty">A carregar...</td></tr></tbody>
+            <thead><tr><th style="width:40px; text-align:center;">#</th><th style="width:75px; text-align:center;">ID</th><th style="width:120px;">Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th><th style="width:90px;">Categoria</th><th style="text-align:center; width:55px;">P×I</th><th style="text-align:center; width:90px;">Nível</th><th style="width:120px;">Tratamento</th><th style="width:130px;">Proprietário</th><th>Plano de Ação</th><th style="text-align:center; width:105px; " class="no-print">Ações</th></tr></thead>
+            <tbody id="lista-riscos"><tr><td colspan="13" class="msg-empty">A carregar...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -551,6 +562,9 @@
           <thead><tr><th style="width:230px;">Título da Capacitação</th><th style="width:130px;">Tema</th><th style="width:110px;">Público-alvo</th><th style="width:100px;">Modalidade</th><th style="width:95px;">Data Prevista</th><th style="width:95px;">Data Realizada</th><th style="width:95px;">Status</th><th style="width:160px;">Responsáveis</th><th style="width:70px; text-align:center;">Lista de Presença</th><th style="width:80px; text-align:center;">Ações</th></tr></thead>
           <tbody id="lista-capacitacoes"><tr><td colspan="10" class="msg-empty">A carregar...</td></tr></tbody>
         </table>
+      </div>
+      <div style="text-align:center; margin-top:16px; margin-bottom: 20px;">
+        <button id="btn-load-more-cap" class="btn secondary" style="display:none; margin:0 auto;">Carregar mais</button>
       </div>
     </section>
 
@@ -727,8 +741,11 @@
       <div style="flex:1;"><label class="field-label" for="r-conseq">Consequência</label><input type="text" id="r-conseq" class="field-input" placeholder="Qual o impacto?"></div>
     </div>
     <div class="form-row">
-      <div style="flex:1;"><label class="field-label" for="r-prob">Probabilidade</label><select id="r-prob" class="field-select"><option value="1">1 - Raro</option><option value="2">2 - Pouco Provável</option><option value="3">3 - Provável</option><option value="4">4 - Muito Provável</option><option value="5">5 - Praticamente Certo</option></select></div>
-      <div style="flex:1;"><label class="field-label" for="r-imp">Impacto</label><select id="r-imp" class="field-select"><option value="1">1 - Muito Baixo</option><option value="2">2 - Baixo</option><option value="3">3 - Médio</option><option value="4">4 - Alto</option><option value="5">5 - Muito Alto</option></select></div>
+      <div style="flex:1;"><label class="field-label" for="r-prob">Probabilidade</label><select id="r-prob" class="field-select" onchange="atualizarLegendaRisco('r')"><option value="" disabled selected>Selecione...</option><option value="1">1 - Raro</option><option value="2">2 - Pouco Provável</option><option value="3">3 - Provável</option><option value="4">4 - Muito Provável</option><option value="5">5 - Praticamente Certo</option></select></div>
+      <div style="flex:1;"><label class="field-label" for="r-imp">Impacto</label><select id="r-imp" class="field-select" onchange="atualizarLegendaRisco('r')"><option value="" disabled selected>Selecione...</option><option value="1">1 - Muito Baixo</option><option value="2">2 - Baixo</option><option value="3">3 - Médio</option><option value="4">4 - Alto</option><option value="5">5 - Muito Alto</option></select></div>
+    </div>
+    <div id="r-nivel-legenda" style="margin-top:8px; margin-bottom:12px; font-size:13px; font-weight:600; text-align:center; padding:8px; border-radius:4px; background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; transition:all 0.2s;">
+      Nível de Risco: <span id="r-nivel-valor">--</span>
     </div>
     <div class="form-row">
       <div style="flex:1;"><label class="field-label" for="r-trat">Tipo de Tratamento</label><select id="r-trat" class="field-select"><option value="" disabled selected>Selecione...</option><option>Aceitar (Tolerar)</option><option>Compartilhar (Transferir)</option><option>Evitar</option><option>Mitigar (Reduzir)</option></select></div>
@@ -745,10 +762,15 @@
     <h3 class="modal-title">Editar Risco Mapeado</h3>
     <p id="label-risco-editar" style="font-weight:700; color:var(--primary); margin:8px 0 16px; font-size:14px;"></p>
     <input type="hidden" id="er-id">
+    <input type="hidden" id="er-prob-original">
+    <input type="hidden" id="er-imp-original">
     <div class="form-row"><div style="flex:1;"><label class="field-label" for="er-macro">Macroetapa</label><select id="er-macro" class="field-select"><option>Gestão/Fiscalização</option><option>Planejamento</option><option>Recursos Humanos</option></select></div><div style="flex:1;"><label class="field-label" for="er-cat">Categoria</label><select id="er-cat" class="field-select"><option>Operacional</option><option>Financeiro</option><option>Conformidade</option><option>Integridade</option><option>Pessoas</option></select></div></div>
     <label class="field-label" for="er-nome">Descrição do Risco</label><input type="text" id="er-nome" class="field-input">
     <div class="form-row"><div style="flex:1;"><label class="field-label" for="er-causa">Causa</label><input type="text" id="er-causa" class="field-input"></div><div style="flex:1;"><label class="field-label" for="er-conseq">Consequência</label><input type="text" id="er-conseq" class="field-input"></div></div>
-    <div class="form-row"><div style="flex:1;"><label class="field-label" for="er-prob">Probabilidade</label><select id="er-prob" class="field-select"><option value="1">1 - Raro</option><option value="2">2 - Pouco Provável</option><option value="3">3 - Provável</option><option value="4">4 - Muito Provável</option><option value="5">5 - Praticamente Certo</option></select></div><div style="flex:1;"><label class="field-label" for="er-imp">Impacto</label><select id="er-imp" class="field-select"><option value="1">1 - Muito Baixo</option><option value="2">2 - Baixo</option><option value="3">3 - Médio</option><option value="4">4 - Alto</option><option value="5">5 - Muito Alto</option></select></div></div>
+    <div class="form-row"><div style="flex:1;"><label class="field-label" for="er-prob">Probabilidade</label><select id="er-prob" class="field-select" onchange="atualizarLegendaRisco('er')"><option value="" disabled>Selecione...</option><option value="1">1 - Raro</option><option value="2">2 - Pouco Provável</option><option value="3">3 - Provável</option><option value="4">4 - Muito Provável</option><option value="5">5 - Praticamente Certo</option></select></div><div style="flex:1;"><label class="field-label" for="er-imp">Impacto</label><select id="er-imp" class="field-select" onchange="atualizarLegendaRisco('er')"><option value="" disabled>Selecione...</option><option value="1">1 - Muito Baixo</option><option value="2">2 - Baixo</option><option value="3">3 - Médio</option><option value="4">4 - Alto</option><option value="5">5 - Muito Alto</option></select></div></div>
+    <div id="er-nivel-legenda" style="margin-top:8px; margin-bottom:12px; font-size:13px; font-weight:600; text-align:center; padding:8px; border-radius:4px; background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; transition:all 0.2s;">
+      Nível de Risco: <span id="er-nivel-valor">--</span>
+    </div>
     <div class="form-row"><div style="flex:1;"><label class="field-label" for="er-trat">Tipo de Tratamento</label><select id="er-trat" class="field-select"><option>Aceitar (Tolerar)</option><option>Evitar</option><option>Compartilhar (Transferir)</option><option>Mitigar (Reduzir)</option></select></div><div style="flex:1;"><label class="field-label" for="er-resp">Proprietário do Risco</label><select id="er-resp" class="field-select"></select></div></div>
     <div class="modal-footer"><button class="btn secondary" data-close="modal-risco-editar">Cancelar</button><button class="btn success" id="btn-confirmar-risco">Confirmar</button></div>
   </div>
@@ -789,6 +811,128 @@
     <div class="form-row"><div style="flex:1;"><label class="field-label" for="ep-when">Data Prevista</label><input type="date" id="ep-when" class="field-input"></div><div style="flex:1;"><label class="field-label" for="ep-fin">Data Finalização</label><input type="date" id="ep-fin" class="field-input"></div></div>
     <div class="form-row"><div style="flex:1;"><label class="field-label" for="ep-how">Como? (How)</label><input type="text" id="ep-how" class="field-input"></div><div style="flex:1;"><label class="field-label" for="ep-cost">Custo</label><input type="text" id="ep-cost" class="field-input" placeholder="Sem custos"></div></div>
     <div class="modal-footer"><button class="btn secondary" data-close="modal-plano-editar">Cancelar</button><button class="btn success" id="btn-confirmar-plano">Confirmar</button></div>
+  </div>
+</div>
+
+<!-- Modal: Reavaliar Risco -->
+<div id="modal-reavaliar-risco" class="modal-overlay">
+  <div class="modal-box wide">
+    <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-reavaliar-risco" aria-label="Fechar">&times;</button></div>
+    <h3 class="modal-title">Reavaliar Risco</h3>
+    <input type="hidden" id="rev-id-risco">
+    <div class="modal-info" id="rev-info" style="margin-bottom:14px; background:#f1f5f9; padding:10px; border-radius:4px; font-size:14px;"></div>
+    
+    <div style="margin-bottom: 12px;">
+      <label class="field-label" for="rev-acao">Ação</label>
+      <select id="rev-acao" class="field-select" onchange="toggleCamposReavaliacao()">
+        <option value="reavaliar">Reavaliar Risco (Alterar Notas)</option>
+        <option value="manter">Manter Avaliação Atual</option>
+        <option value="superado">Marcar como Superado (Arquivar)</option>
+      </select>
+    </div>
+
+    <div id="rev-campos-notas">
+      <div class="form-row">
+      <div style="flex:1;">
+        <label class="field-label" for="rev-prob">Nova Probabilidade (1-5)</label>
+        <select id="rev-prob" class="field-select" onchange="atualizarLegendaRisco('rev')">
+          <option value="1">1 - Muito Baixa</option>
+          <option value="2">2 - Baixa</option>
+          <option value="3">3 - Média</option>
+          <option value="4">4 - Alta</option>
+          <option value="5">5 - Muito Alta</option>
+        </select>
+      </div>
+      <div style="flex:1;">
+        <label class="field-label" for="rev-imp">Novo Impacto (1-5)</label>
+        <select id="rev-imp" class="field-select" onchange="atualizarLegendaRisco('rev')">
+          <option value="1">1 - Muito Baixo</option>
+          <option value="2">2 - Baixo</option>
+          <option value="3">3 - Médio</option>
+          <option value="4">4 - Alto</option>
+          <option value="5">5 - Muito Alto</option>
+        </select>
+      </div>
+    </div>
+    
+    <div id="rev-nivel-legenda" style="margin-top:8px; margin-bottom:12px; font-size:13px; font-weight:600; text-align:center; padding:8px; border-radius:4px; background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; transition:all 0.2s;">
+      Nível de Avaliação: <span id="rev-nivel-valor">--</span>
+    </div>
+
+    <div class="form-row">
+      <div style="flex:1;">
+        <label class="field-label" for="rev-trat">Novo Tratamento</label>
+        <select id="rev-trat" class="field-select">
+          <option>Aceitar (Tolerar)</option>
+          <option>Evitar</option>
+          <option>Compartilhar (Transferir)</option>
+          <option>Mitigar (Reduzir)</option>
+        </select>
+      </div>
+      <div style="flex:1;">
+        <label class="field-label" for="rev-resp">Novo Proprietário</label>
+        <select id="rev-resp" class="field-select"></select>
+      </div>
+    </div>
+    </div> <!-- /rev-campos-notas -->
+    <div class="form-row">
+      <div style="flex:1;">
+        <label class="field-label" for="rev-justif">Justificativa da Mudança</label>
+        <input type="text" id="rev-justif" class="field-input" placeholder="Descreva os motivos da alteração, manutenção do nível ou superação">
+      </div>
+    </div>
+    
+    <div style="margin-top:16px;">
+      <h4 style="font-size:13px; margin-bottom:8px; color:#475569;">Histórico de Reavaliações deste Risco</h4>
+      <div class="table-wrap" style="max-height: 180px; overflow-y:auto;">
+        <table class="data-table" style="font-size:12px;">
+          <thead><tr><th>Data</th><th>Prob.</th><th>Imp.</th><th>Nível</th><th>Tratamento</th><th>Resp.</th><th>Justificativa</th></tr></thead>
+          <tbody id="rev-historico-lista"><tr><td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-reavaliar-risco">Cancelar</button><button class="btn success" id="btn-salvar-reaval">Salvar Reavaliação</button></div>
+  </div>
+</div>
+
+<!-- Modal: Revisar Plano de Ação -->
+<div id="modal-revisar-plano" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-revisar-plano" aria-label="Fechar">&times;</button></div>
+    <h3 class="modal-title">Revisão Pendente do Plano</h3>
+    <input type="hidden" id="revp-risco">
+    <p style="font-size:13px; margin-bottom:12px;">O risco vinculado a este plano foi reavaliado. Como você deseja prosseguir com as ações preventivas?</p>
+    
+    <div class="form-row" style="margin-bottom:16px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+        <input type="radio" name="revp-acao" value="manter" checked onchange="$id('revp-alterar-campos').style.display='none'">
+        <strong>Manter o plano atual:</strong> As ações atuais continuam válidas. O alerta de revisão será removido.
+      </label>
+    </div>
+    <div class="form-row" style="margin-bottom:16px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+        <input type="radio" name="revp-acao" value="alterar" onchange="$id('revp-alterar-campos').style.display='block'">
+        <strong>Alterar o plano:</strong> O plano atual e suas entregas serão arquivados no histórico, e você definirá um novo 5W2H para o risco.
+      </label>
+    </div>
+    
+    <div class="form-row">
+      <div style="flex:1;">
+        <label class="field-label" for="revp-justif">Justificativa da Decisão</label>
+        <input type="text" id="revp-justif" class="field-input" placeholder="Opcional. Ex: 'O plano original foi bem sucedido e mitigou o risco.'">
+      </div>
+    </div>
+
+    <div id="revp-alterar-campos" style="display:none; margin-top:16px; border-top:1px solid #e2e8f0; padding-top:16px;">
+      <h4 style="font-size:13px; margin-bottom:8px; color:#475569;">Novo Plano de Ação (5W2H)</h4>
+      <div class="form-row"><div style="flex:1;"><label class="field-label">O que? (What)</label><input type="text" id="revp-what" class="field-input"></div><div style="flex:1;"><label class="field-label">Por que? (Why)</label><input type="text" id="revp-why" class="field-input"></div></div>
+      <div class="form-row"><div style="flex:1;"><label class="field-label">Quem? (Who)</label><select id="revp-who" class="field-select"></select></div><div style="flex:1;"><label class="field-label">Onde? (Where)</label><input type="text" id="revp-where" class="field-input"></div></div>
+      <div class="form-row"><div style="flex:1;"><label class="field-label">Data Prevista</label><input type="date" id="revp-when" class="field-input"></div><div style="flex:1;"><label class="field-label">Data Finalização</label><input type="date" id="revp-fin" class="field-input"></div></div>
+      <div class="form-row"><div style="flex:1;"><label class="field-label">Como? (How)</label><input type="text" id="revp-how" class="field-input"></div><div style="flex:1;"><label class="field-label">Custo</label><input type="text" id="revp-cost" class="field-input" placeholder="Sem custos"></div></div>
+    </div>
+    
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-revisar-plano">Cancelar</button><button class="btn success" id="btn-salvar-revisar-plano">Confirmar</button></div>
   </div>
 </div>
 

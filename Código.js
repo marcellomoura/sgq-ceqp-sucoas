@@ -11,6 +11,7 @@ const SHEET_DELIVERY = 'Entregas_Acoes';
 const SHEET_LOGS     = 'Logs';
 const SHEET_AFASTAMENTOS = 'Afastamentos';
 const SHEET_CAPACITACOES = 'Capacitações';
+const SHEET_HISTORICO    = 'Histórico_Reavaliacoes';
 
 // Layouts de colunas usados em vários pontos (setup, leitura e escrita).
 // Uma única fonte de verdade evita que uma migração futura esqueça algum lugar.
@@ -29,11 +30,12 @@ const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1
 const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Atividades','Arquivado','Etiquetas','Última Atualização'];
 const CABECALHOS_UNIDADES = ['ID Unidade', 'Nome da Unidade','Sigla','E-mail Funcional','Link do Drive', 'Ativo'];
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
-const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável'];
-const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status'];
+const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status'];
+const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Revisão Pendente'];
 const CABECALHOS_ENTREGAS = ['Risco Vinculado','Unidade','Status','Data Entrega','SEI'];
 const CABECALHOS_LOGS     = ['Data/Hora','Usuário','Ação','Referência','Detalhes'];
 const CABECALHOS_CAPACITACOES = ['ID', 'Título da Capacitação', 'Tema', 'Público-alvo', 'Modalidade', 'Data Prevista', 'Data Realizada', 'Status', 'Lista de Presença', 'Responsáveis'];
+const CABECALHOS_HISTORICO = ['ID', 'Tipo', 'Data', 'Nova Probabilidade', 'Novo Impacto', 'Novo Nível', 'Novo Tratamento', 'Novo Responsável', 'Justificativa da Mudança'];
 
 // Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
 // (a mesma fonte única usada no setup da planilha). Elimina os índices
@@ -338,7 +340,7 @@ function setupDatabaseResto() {
   // à planilha em TODA primeira visita a uma aba do SGQ. Roda no máximo 1x a
   // cada 6h; os dados seguem lidos frescos. Chave versionada (v2): mantida por
   // compatibilidade com o cache já distribuído — o "v3" garante a migração.
-  try { if (CacheService.getScriptCache().get('setup_resto_ok_v3')) return; } catch (e) {}
+  try { if (CacheService.getScriptCache().get('setup_resto_ok_v4')) return; } catch (e) {}
   conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
   conectarAba(SHEET_DOCS,     CABECALHOS_DOCS);
   conectarAba(SHEET_RISKS,    CABECALHOS_RISCOS);
@@ -346,8 +348,9 @@ function setupDatabaseResto() {
   conectarAba(SHEET_DELIVERY, CABECALHOS_ENTREGAS);
   conectarAba(SHEET_LOGS,     CABECALHOS_LOGS);
   conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
+  conectarAba(SHEET_HISTORICO, CABECALHOS_HISTORICO);
 
-  try { CacheService.getScriptCache().put('setup_resto_ok_v3', '1', 21600); } catch (e) {}
+  try { CacheService.getScriptCache().put('setup_resto_ok_v4', '1', 21600); } catch (e) {}
 }
 
 // ==========================================
@@ -556,7 +559,8 @@ function _lerRiscosPlanosEntregas_(ss) {
         consequencia: String(r[CR('Consequência')]||''), categoria: String(r[CR('Categoria')]||''),
         probabilidade: parseInt(r[CR('Probabilidade')],10)||1, impacto: parseInt(r[CR('Impacto')],10)||1,
         nivel: String(r[CR('Nível')]||''), tipoTratamento: String(r[CR('Tipo Tratamento')]||''),
-        responsavel: String(r[CR('Responsável')]||'Não atribuído'), planoAcao: planoAcao
+        responsavel: String(r[CR('Responsável')]||'Não atribuído'), planoAcao: planoAcao,
+        status: String(r[CR('Status')]||'Ativo')
       };
     }) : [];
 
@@ -565,7 +569,7 @@ function _lerRiscosPlanosEntregas_(ss) {
     who: String(r[CP('Quem')]||''), where: String(r[CP('Onde')]||''),
     whenPrevisto: formatarDataParaUI(r[CP('Data Prevista')]), whenFinalizado: formatarDataParaUI(r[CP('Data Finalização')]),
     how: String(r[CP('Como')]||''), howMuch: String(r[CP('Quanto Custa')]||''),
-    status: String(r[CP('Status')]||'Em Andamento')
+    status: String(r[CP('Status')]||'Em Andamento'), revisaoPendente: String(r[CP('Revisão Pendente')]||'Não')
   }));
 
   const CE = colIdx_(CABECALHOS_ENTREGAS);
@@ -577,7 +581,17 @@ function _lerRiscosPlanosEntregas_(ss) {
       processoSei: String(r[CE('SEI')]||'')
     })) : [];
 
-  return { risks: risks, plans: plans, deliveries: deliveries };
+  const CH = colIdx_(CABECALHOS_HISTORICO);
+  const hData = safeGetSheetData(ss, SHEET_HISTORICO);
+  const historico = hData.length > 1 ? hData.slice(1).map(r => ({
+    id: String(r[CH('ID')]||''), tipo: String(r[CH('Tipo')]||''), data: _dataLocalISO_(r[CH('Data')]),
+    prob: parseInt(r[CH('Nova Probabilidade')],10)||null,
+    impacto: parseInt(r[CH('Novo Impacto')],10)||null, nivel: String(r[CH('Novo Nível')]||''),
+    justificativa: String(r[CH('Justificativa da Mudança')]||''),
+    tratamento: String(r[CH('Novo Tratamento')]||''), responsavel: String(r[CH('Novo Responsável')]||'')
+  })) : [];
+
+  return { risks: risks, plans: plans, deliveries: deliveries, history: historico };
 }
 
 // Endpoint LEVE para a tela de Riscos/Acompanhamento: lê só Unidades +
@@ -590,7 +604,7 @@ function getRiscosData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const units = _lerUnidades_(ss);
   const rpe = _lerRiscosPlanosEntregas_(ss);
-  return { units: units, risks: rpe.risks, plans: rpe.plans, deliveries: rpe.deliveries };
+  return { units: units, risks: rpe.risks, plans: rpe.plans, deliveries: rpe.deliveries, history: rpe.history };
 }
 
 function getRestoData() {
@@ -627,7 +641,15 @@ function getRestoData() {
       participantes: String(r[CCAP('Responsáveis')]||'')
     })) : [];
 
-  return { units: units, docs: docs, risks: risks, plans: plans, deliveries: deliveries, trainings: trainings };
+  return { 
+    units: units, 
+    docs: docs, 
+    risks: risks, 
+    plans: plans, 
+    deliveries: deliveries,
+    history: rpe.history,
+    trainings: trainings 
+  };
 }
 
 function getCapacitacoesData() {

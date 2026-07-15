@@ -140,7 +140,11 @@ function drop(e, newStatus) {
 }
 
 // ---------- Arquivados ----------
-function renderArquivados() {
+let archivedPage = 1;
+const archivedLimit = 20;
+
+function renderArquivados(resetPage = false) {
+  if (resetPage) archivedPage = 1;
   const tbody = $id('archived-list');
   if (!tbody) return;
 
@@ -153,18 +157,41 @@ function renderArquivados() {
   }
   const filtroMembro = selMembro ? selMembro.value : '';
 
+  const ini = $id('f-archived-data-ini') ? $id('f-archived-data-ini').value : '';
+  const fim = $id('f-archived-data-fim') ? $id('f-archived-data-fim').value : '';
+
   let arquivados = state.tasks.filter(t => t.archived);
+  
   if (filtroMembro) {
     arquivados = arquivados.filter(t => parseIdsResponsaveis(t.assigneeId).includes(String(filtroMembro)));
   }
 
-  if (!arquivados.length) { tbody.innerHTML = '<tr><td colspan="7" class="msg-empty">Nenhum cartão arquivado.</td></tr>'; return; }
+  if (ini || fim) {
+    arquivados = arquivados.filter(t => {
+      const d = t.completionDate;
+      if (!d) return false;
+      if (ini && d < ini) return false;
+      if (fim && d > fim) return false;
+      return true;
+    });
+  }
+
+  const btnMore = $id('btn-load-more-archived');
+
+  if (!arquivados.length) { 
+    tbody.innerHTML = '<tr><td colspan="7" class="msg-empty">Nenhum cartão arquivado encontrado.</td></tr>'; 
+    if (btnMore) btnMore.style.display = 'none';
+    return; 
+  }
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   // Mais recentemente concluídos primeiro
   arquivados.sort((a,b) => (b.completionDate||'').localeCompare(a.completionDate||''));
 
-  tbody.innerHTML = arquivados.map(task => {
+  const exibidos = arquivados.slice(0, archivedPage * archivedLimit);
+  if (btnMore) btnMore.style.display = (arquivados.length > exibidos.length) ? 'inline-block' : 'none';
+
+  tbody.innerHTML = exibidos.map(task => {
     const nomes = nomesMembros(parseIdsResponsaveis(task.assigneeId))||'Sem responsável';
 
     let duracao = '-';
@@ -198,7 +225,6 @@ function confirmarArquivarTarefa() {
     if (btn) { btn.disabled = true; btn.innerText = 'A arquivar...'; }
     google.script.run.withSuccessHandler(function(r) {
       if (r.sucesso) {
-        // Atualiza o estado local direto — evita uma segunda ida ao servidor
         const idx = state.tasks.findIndex(t => String(t.id) === String(id));
         if (idx >= 0) state.tasks[idx].archived = true;
         fecharModal('modal-task');
@@ -212,7 +238,7 @@ function confirmarArquivarTarefa() {
 }
 
 function restaurarTarefa(id) {
-  showConfirm('Restaurar este cartão de volta ao quadro Kanban?', function() {
+  showConfirm('Restaurar este cartão de volta ao quadro Kanban?', function(fechar) {
     google.script.run.withSuccessHandler(function(r) {
       if (r.sucesso) {
         // Atualiza o estado local direto — evita uma segunda ida ao servidor
@@ -220,9 +246,16 @@ function restaurarTarefa(id) {
         if (idx >= 0) state.tasks[idx].archived = false;
         renderTasks();
         renderArquivados();
-      } else showAlerta(r.mensagem);
-    }).withFailureHandler(e => showAlerta(String(e))).restaurarTarefaArquivada(id);
-  });
+        fechar('Restaurado!');
+      } else {
+        showAlerta(r.mensagem);
+        fechar();
+      }
+    }).withFailureHandler(e => {
+      showAlerta(String(e));
+      fechar();
+    }).restaurarTarefaArquivada(id);
+  }, { tone: 'restore', loadingText: 'A restaurar...' });
 }
 
 // ---------- Modal Tarefa ----------
@@ -518,8 +551,20 @@ function recarregarRiscosPlanos(cb) {
   google.script.run.withSuccessHandler(data => {
     state.units = data.units; state.risks = data.risks;
     state.plans = data.plans; state.deliveries = data.deliveries;
+    state.history = data.history || [];
     sincronizarSelectsUnidade();
     if (cb) cb();
   }).withFailureHandler(e => showAlerta('Falha ao sincronizar: ' + String(e))).getRiscosData();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btnLoadMoreArchived = $id('btn-load-more-archived');
+  if (btnLoadMoreArchived) btnLoadMoreArchived.addEventListener('click', () => { archivedPage++; renderArquivados(); });
+  
+  const fArchIni = $id('f-archived-data-ini');
+  if (fArchIni) fArchIni.addEventListener('change', () => renderArquivados(true));
+  
+  const fArchFim = $id('f-archived-data-fim');
+  if (fArchFim) fArchFim.addEventListener('change', () => renderArquivados(true));
+});
 </script>
