@@ -92,6 +92,7 @@
       <div class="nav-group-items" id="g-riscos">
         <button class="menu-item" data-tab="risco-matriz"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg></span>Matriz de Risco</button>
         <button class="menu-item" data-tab="plano-acomp"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>Plano de Ação</button>
+        <button class="menu-item" data-tab="risco-arquivado"><span class="menu-item-icon"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg></span>Arquivados</button>
       </div>
 
       <!-- Módulo 5: Rastreabilidade -->
@@ -221,6 +222,19 @@
             Baixar PDF
           </button>
           <button class="btn-pdf" style="background:#059669;" id="btn-email-acomp" type="button">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Enviar por E-mail
+          </button>
+        </div>
+      </div>
+
+      <div class="hdr-tab-controls" id="hdr-risco-arquivado" style="flex-direction: column; align-items: flex-end; gap: 8px;">
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-pdf" id="btn-pdf-risco-arquivado" type="button">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Baixar PDF
+          </button>
+          <button class="btn-pdf" style="background:#059669;" id="btn-email-risco-arquivado" type="button">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             Enviar por E-mail
           </button>
@@ -532,6 +546,35 @@
           <table class="data-table">
             <thead><tr><th style="width:95px;">Risco</th><th>Ação (What)</th><th style="width:180px;">Por que (Why)</th><th style="width:120px;">Quem (Who)</th><th style="width:75px;">Onde</th><th style="width:80px;">Prazo</th><th style="width:80px;">Finalização</th><th style="width:110px;">Como (How)</th><th style="width:65px;">Custo</th><th style="text-align:center; width:90px;">Status</th><th style="text-align:center; width:140px;" class="no-print">Ações</th></tr></thead>
             <tbody id="lista-acomp"><tr><td colspan="11" class="msg-empty">A carregar...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================== MÓDULO 4: ARQUIVADOS ======================== -->
+    <section id="view-risco-arquivado" class="view-section compact-view">
+      <div id="area-risco-arquivado" class="print-target">
+        <div class="pdf-header" id="pdf-header-risco-arquivado">
+          <h1>Sistema de Gestão da Qualidade</h1>
+          <div class="pdf-sub">Comissão Especial de Qualidade e Padronização · CEQP | SUCOAS - SES/DF</div>
+          <h2>Riscos e Planos Arquivados</h2>
+        </div>
+        
+        <h3 class="tl-section-title" style="margin-top: 0;">Riscos Superados / Arquivados</h3>
+        <p style="font-size:13px; color:#64748b; margin-bottom:10px;" class="no-print">Os riscos listados abaixo foram marcados como superados (arquivados).</p>
+        <div class="table-wrap" style="margin-bottom: 24px;">
+          <table class="data-table">
+            <thead><tr><th style="width:40px; text-align:center;">#</th><th style="width:75px; text-align:center;">ID</th><th style="width:120px;">Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th><th style="width:120px;">Tratamento</th><th style="width:130px;">Proprietário</th><th style="text-align:center; width:65px; " class="no-print">Ações</th></tr></thead>
+            <tbody id="lista-riscos-arquivados"><tr><td colspan="9" class="msg-empty">A carregar...</td></tr></tbody>
+          </table>
+        </div>
+
+        <h3 class="tl-section-title">Planos de Ação (5W2H) Arquivados</h3>
+        <p style="font-size:13px; color:#64748b; margin-bottom:10px;" class="no-print">Planos de ação vinculados aos riscos que foram arquivados.</p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th style="width:95px;">Risco</th><th>Ação (What)</th><th style="width:180px;">Por que (Why)</th><th style="width:120px;">Quem (Who)</th><th style="width:75px;">Onde</th><th style="width:80px;">Prazo</th><th style="width:80px;">Finalização</th><th style="text-align:center; width:90px;">Status</th><th style="text-align:center; width:90px;" class="no-print">Ações</th></tr></thead>
+            <tbody id="lista-planos-arquivados"><tr><td colspan="9" class="msg-empty">A carregar...</td></tr></tbody>
           </table>
         </div>
       </div>

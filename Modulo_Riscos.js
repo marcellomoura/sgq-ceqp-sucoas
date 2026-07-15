@@ -119,6 +119,28 @@ function excluirRisco(idRisco) {
   } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
 }
 
+function restaurarRisco(idRisco) {
+  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
+  try {
+    return comBloqueio(() => {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const ref = 'R' + idRisco;
+
+      const abaR = conectarAba(SHEET_RISKS);
+      const rowsR = abaR.getDataRange().getValues();
+      const colIdRisco = colIdx_(CABECALHOS_RISCOS)('ID Risco');
+      const colStatusRisco = colIdx_(CABECALHOS_RISCOS)('Status');
+      for (let i = rowsR.length - 1; i >= 1; i--) {
+        if (rowsR[i][colIdRisco].toString().trim() === ref) {
+          abaR.getRange(i+1, colStatusRisco + 1).setValue('Ativo');
+        }
+      }
+      registrarLog('Restauração de Risco', ref, 'Risco restaurado (ativo).');
+      return { sucesso: true, mensagem: 'Risco restaurado com sucesso!' };
+    });
+  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+}
+
 function reavaliarRisco(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {

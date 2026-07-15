@@ -279,6 +279,7 @@ function mudarTab(tab, botao) {
     'doc-revisoes': ()=>renderDocumentos('revisoes'),
     'risco-matriz': ()=>renderMatriz(),
     'plano-acomp': ()=>renderAcompanhamento(),
+    'risco-arquivado': ()=>renderRiscosArquivados(),
     'capacitacoes-lista': ()=>{ renderCapacitacoes(); renderKpisCapacitacoes(); },
     'ferias': ()=>carregarFerias()
   };
@@ -290,7 +291,8 @@ function mudarTab(tab, botao) {
   const MSG_TABELA_POR_ABA = {
     'unidades': ['lista-unidades', 4], 'doc-lista': ['lista-mestra', 12],
     'doc-revisoes': ['lista-revisoes', 10], 'risco-matriz': ['lista-riscos', 12],
-    'plano-acomp': ['lista-acomp', 11], 'capacitacoes-lista': ['lista-capacitacoes', 10]
+    'plano-acomp': ['lista-acomp', 11], 'capacitacoes-lista': ['lista-capacitacoes', 10],
+    'risco-arquivado': ['lista-riscos-arquivados', 9]
   };
 
   if (SGQ_TABS.indexOf(tab) !== -1) {
@@ -314,6 +316,7 @@ var TAB_TITULOS = {
   'doc-revisoes': 'Histórico de Revisões',
   'risco-matriz': 'Matriz de Risco',
   'plano-acomp':  'Plano de Ação',
+  'risco-arquivado': 'Riscos e Planos Arquivados',
   'escala':       'Escala Semanal',
   'ferias':       'Afastamentos',
   'logs':         'Atividades e Log do Sistema',
@@ -413,7 +416,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const rotinasPosCargaInicial = {
         'members': renderMembers, 'escala': renderEscala,
         'ferias': carregarFerias, 'indicadores': renderIndicadores,
-        'archived': renderArquivados
+        'archived': renderArquivados, 'risco-arquivado': renderRiscosArquivados
       };
       if (rotinasPosCargaInicial[currentTab]) rotinasPosCargaInicial[currentTab]();
 

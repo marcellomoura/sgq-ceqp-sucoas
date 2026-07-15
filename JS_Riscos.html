@@ -609,4 +609,91 @@ function atualizarLegendaRisco(prefix) {
     val.innerText = text;
   }
 }
+
+// ==========================================
+// ABA ARQUIVADOS (Riscos e Planos)
+// ==========================================
+function renderRiscosArquivados() {
+  const arquivadosRiscos = state.risks.filter(r => r.status === 'Arquivado');
+  
+  if (!arquivadosRiscos.length) {
+    msgTabela('lista-riscos-arquivados', 9, 'Nenhum risco arquivado.');
+    msgTabela('lista-planos-arquivados', 9, 'Nenhum plano de ação associado a riscos arquivados.');
+    return;
+  }
+  
+  $id('lista-riscos-arquivados').innerHTML = arquivadosRiscos.map((r, i) => {
+    return `<tr>
+      <td style="text-align:center;font-weight:700;color:#64748b;">${i + 1}</td>
+      <td style="text-align:center;font-weight:700;color:#2563eb;white-space:nowrap;">R-${r.id}</td>
+      <td>${esc(r.macroetapa)}</td><td><span style="display:inline-block; font-weight:600; color:#1e293b; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; background:#f8fafc;">${esc(r.nome)}</span></td><td>${esc(r.causa)}</td>
+      <td>${esc(r.consequencia)}</td>
+      <td>${esc(r.tipoTratamento)}</td><td>${esc(formatUnidadeUI(r.responsavel))}</td>
+      <td class="no-print"><div class="cell-actions" style="justify-content:center;">
+        <button type="button" class="btn secondary btn-sm" onclick="confirmarRestaurarRisco(${r.id})" title="Restaurar Risco">Restaurar</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  const idsArquivados = new Set(arquivadosRiscos.map(r => 'R' + r.id));
+  const planosArquivados = state.plans.filter(p => idsArquivados.has(p.riscoVinculado));
+
+  if (!planosArquivados.length) {
+    msgTabela('lista-planos-arquivados', 9, 'Nenhum plano de ação associado a riscos arquivados.');
+  } else {
+    $id('lista-planos-arquivados').innerHTML = planosArquivados.map(p => {
+      const oi = state.plans.findIndex(x => x.riscoVinculado === p.riscoVinculado);
+      return `<tr>
+        <td style="font-weight:700;color:#2563eb;">${esc(formatRiscoUI(p.riscoVinculado))}</td>
+        <td>${esc(p.what)}</td><td>${esc(p.why)}</td><td>${esc(formatUnidadeUI(p.who))}</td>
+        <td>${esc(p.where)}</td><td>${fmtBr(p.whenPrevisto)}</td><td>${fmtBr(p.whenFinalizado)}</td>
+        <td style="text-align:center;">${badge(p.status)}</td>
+        <td class="no-print"><div class="cell-actions" style="justify-content:center;">
+          ${iconBtn('history','acomp-entregas','Acompanhamento / Entregas',`data-idx="${oi}"`)}
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+function confirmarRestaurarRisco(id) {
+  showConfirm('Deseja restaurar este risco? Ele voltará a aparecer na Matriz de Risco como Ativo.', () => {
+    google.script.run.withSuccessHandler(r => {
+      if(r.sucesso) { recarregarRiscosPlanos(renderRiscosArquivados); }
+      else { showAlerta(r.mensagem); }
+    }).withFailureHandler(e => showAlerta(String(e))).restaurarRisco(id);
+  });
+}
+
+function montarHtmlRiscoArquivadoPdf() {
+  const riscosHtml = _pdfSecaoTitulo('Riscos Superados / Arquivados') +
+    `<table><thead><tr>
+      <th style="text-align:center;">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>
+      <th>Tratamento</th><th>Proprietário</th>
+    </tr></thead><tbody>${_tbodyParaPdf('lista-riscos-arquivados')}</tbody></table>`;
+  
+  const planosHtml = _pdfSecaoTitulo('Planos de Ação Arquivados') +
+    `<table><thead><tr>
+      <th>Risco</th><th>Ação (What)</th><th>Por que (Why)</th><th>Quem (Who)</th><th>Onde</th>
+      <th>Prazo</th><th>Finalização</th><th style="text-align:center;">Status</th>
+    </tr></thead><tbody>${_tbodyParaPdf('lista-planos-arquivados')}</tbody></table>`;
+
+  return riscosHtml + planosHtml;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btnPdfRiscoArq = $id('btn-pdf-risco-arquivado');
+  if (btnPdfRiscoArq) btnPdfRiscoArq.addEventListener('click', () => {
+    btnPdfRiscoArq.disabled = true; const original = btnPdfRiscoArq.innerHTML; btnPdfRiscoArq.innerText = 'A gerar...';
+    _gerarPdfReal(montarHtmlRiscoArquivadoPdf(), 'Riscos_Arquivados_SGQ.pdf', 'landscape')
+      .finally(() => { btnPdfRiscoArq.disabled = false; btnPdfRiscoArq.innerHTML = original; });
+  });
+
+  const btnEmailRiscoArq = $id('btn-email-risco-arquivado');
+  if (btnEmailRiscoArq) btnEmailRiscoArq.addEventListener('click', () => {
+    btnEmailRiscoArq.disabled = true; const original = btnEmailRiscoArq.innerHTML; btnEmailRiscoArq.innerText = 'A enviar...';
+    _dispararEnvioPdfReal('Riscos e Planos Arquivados', montarHtmlRiscoArquivadoPdf(), 'landscape')
+      .finally(() => { btnEmailRiscoArq.disabled = false; btnEmailRiscoArq.innerHTML = original; });
+  });
+});
 </script>
