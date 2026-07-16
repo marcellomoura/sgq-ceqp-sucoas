@@ -351,16 +351,8 @@ function excluirPlano(idPlano) {
         if (String(rows[i][CP('ID Risco')]||'') === idPlano) { aba.deleteRow(i+1); excluiu = true; }
       }
       if (!excluiu) return { sucesso: false, mensagem: 'Plano não localizado.' };
-      // Remove também as entregas vinculadas — sem isso, um plano novo criado
-      // para o mesmo risco "herdava" os registros de entrega do plano excluído.
-      const abaE = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_DELIVERY);
-      if (abaE) {
-        const CE = colIdx_(CABECALHOS_ENTREGAS);
-        const rowsE = abaE.getDataRange().getValues();
-        for (let i = rowsE.length - 1; i >= 1; i--) {
-          if (String(rowsE[i][CE('Risco Vinculado')]||'') === idPlano) abaE.deleteRow(i+1);
-        }
-      }
+      // As entregas do plano vivem na própria coluna 'Entregas' (JSON) da linha
+      // excluída acima — não há mais uma aba separada para limpar à parte.
       registrarLog('Exclusão de Plano', idPlano, 'Plano e entregas vinculadas removidos.');
       return { sucesso: true, mensagem: 'Plano excluído!' };
     });

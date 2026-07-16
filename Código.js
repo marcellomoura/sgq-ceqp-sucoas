@@ -7,11 +7,9 @@ const SHEET_UNITS    = 'Unidades';
 const SHEET_DOCS     = 'Documentos';
 const SHEET_RISKS    = 'Riscos';
 const SHEET_PLANS    = 'Planos_Acao';
-const SHEET_DELIVERY = 'Entregas_Acoes';
 const SHEET_LOGS     = 'Logs';
 const SHEET_AFASTAMENTOS = 'Afastamentos';
 const SHEET_CAPACITACOES = 'Capacitações';
-const SHEET_HISTORICO    = 'Histórico_Reavaliacoes';
 const SHEET_ATIVIDADES   = 'Atividades';
 
 // Layouts de colunas usados em vários pontos (setup, leitura e escrita).
@@ -51,10 +49,8 @@ const CABECALHOS_UNIDADES = ['ID Unidade', 'Nome da Unidade','Sigla','E-mail Fun
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
 const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status','Histórico'];
 const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Revisão Pendente','Histórico','Entregas'];
-const CABECALHOS_ENTREGAS = ['Risco Vinculado','Unidade','Status','Data Entrega','SEI'];
 const CABECALHOS_LOGS     = ['Data/Hora','Usuário','Ação','Referência','Detalhes'];
 const CABECALHOS_CAPACITACOES = ['ID', 'Título da Capacitação', 'Tema', 'Público-alvo', 'Modalidade', 'Data Prevista', 'Data Realizada', 'Status', 'Lista de Presença', 'Responsáveis'];
-const CABECALHOS_HISTORICO = ['ID', 'Tipo', 'Data', 'Nova Probabilidade', 'Novo Impacto', 'Novo Nível', 'Novo Tratamento', 'Novo Responsável', 'Justificativa da Mudança'];
 
 // Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
 // (a mesma fonte única usada no setup da planilha). Elimina os índices
@@ -578,10 +574,8 @@ function setupDatabaseResto() {
   conectarAba(SHEET_DOCS,     CABECALHOS_DOCS);
   conectarAba(SHEET_RISKS,    CABECALHOS_RISCOS);
   conectarAba(SHEET_PLANS,    CABECALHOS_PLANOS);
-  conectarAba(SHEET_DELIVERY, CABECALHOS_ENTREGAS);
   conectarAba(SHEET_LOGS,     CABECALHOS_LOGS);
   conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
-  conectarAba(SHEET_HISTORICO, CABECALHOS_HISTORICO);
 
   try { CacheService.getScriptCache().put('setup_resto_ok_v4', '1', 21600); } catch (e) {}
 }
@@ -1142,141 +1136,4 @@ function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
     comBloqueio(() => registrarLog('Envio de PDF', titulo || 'Relatório', 'Destinatário: ' + destinatario));
     return { sucesso: true, mensagem: 'Relatório enviado com sucesso!' };
   } catch (e) { return { sucesso: false, mensagem: e.toString() }; }
-}
-
-// SCRIPT TEMPORÁRIO DE MIGRAÇÃO - DE HISTÓRICO PARA JSON NAS ABAS
-function MIGRAR_HISTORICO_PARA_JSON() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const abaH = ss.getSheetByName('Histórico_Reavaliacoes');
-  if (!abaH) return 'Aba de histórico não encontrada.';
-  
-  const abaR = ss.getSheetByName('Riscos');
-  const abaP = ss.getSheetByName('Planos_Acao');
-  
-  const rowsH = abaH.getDataRange().getValues();
-  if (rowsH.length < 2) return 'Histórico vazio.';
-  
-  const CH = colIdx_(CABECALHOS_HISTORICO);
-  
-  // Agrupar histórico por ID e Tipo
-  const histRiscos = {};
-  const histPlanos = {};
-  
-  for (let i = 1; i < rowsH.length; i++) {
-    const r = rowsH[i];
-    const id = String(r[CH('ID')]||'').trim();
-    const tipo = String(r[CH('Tipo')]||'').trim();
-    if (!id || !tipo) continue;
-    
-    if (tipo === 'Risco') {
-      if (!histRiscos[id]) histRiscos[id] = [];
-      histRiscos[id].push({
-        data: formatarDataParaUI(r[CH('Data')]),
-        prob: parseInt(r[CH('Nova Probabilidade')],10)||null,
-        impacto: parseInt(r[CH('Novo Impacto')],10)||null,
-        nivel: String(r[CH('Novo Nível')]||''),
-        tratamento: String(r[CH('Novo Tratamento')]||''),
-        responsavel: String(r[CH('Novo Responsável')]||''),
-        justificativa: String(r[CH('Justificativa da Mudança')]||'')
-      });
-    } else if (tipo === 'Plano') {
-      if (!histPlanos[id]) histPlanos[id] = [];
-      histPlanos[id].push({
-        data: formatarDataParaUI(r[CH('Data')]),
-        justificativa: String(r[CH('Justificativa da Mudança')]||'')
-      });
-    }
-  }
-  
-  // Atualizar aba Riscos
-  const rowsR = abaR.getDataRange().getValues();
-  const CR = colIdx_(CABECALHOS_RISCOS);
-  for (let i = 1; i < rowsR.length; i++) {
-    const id = String(rowsR[i][CR('ID Risco')]||'').trim();
-    if (id && histRiscos[id]) {
-      abaR.getRange(i + 1, CR('Histórico') + 1).setValue(JSON.stringify(histRiscos[id]));
-    } else {
-      abaR.getRange(i + 1, CR('Histórico') + 1).setValue('[]');
-    }
-  }
-  
-  // Atualizar aba Planos
-  if (abaP) {
-    const rowsP = abaP.getDataRange().getValues();
-    const CP = colIdx_(CABECALHOS_PLANOS);
-    for (let i = 1; i < rowsP.length; i++) {
-      const id = String(rowsP[i][CP('ID Risco')]||'').trim();
-      if (id && histPlanos[id]) {
-        abaP.getRange(i + 1, CP('Histórico') + 1).setValue(JSON.stringify(histPlanos[id]));
-      } else {
-        abaP.getRange(i + 1, CP('Histórico') + 1).setValue('[]');
-      }
-    }
-  }
-  
-  return 'Migração concluída com sucesso!';
-}
-
-//==============================================================================
-// MIGRACÃO DE ENTREGAS
-// Função para ser executada manualmente no Editor de Script para migrar as
-// entregas da aba "Acompanhamento_Entregas" para a coluna "Entregas" em "Planos_Acao"
-//==============================================================================
-function MIGRAR_ENTREGAS_PARA_JSON() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const abaEntregas = ss.getSheetByName(SHEET_DELIVERY);
-  const abaPlanos = ss.getSheetByName(SHEET_PLANS);
-  
-  if (!abaEntregas || !abaPlanos) {
-    Logger.log("Aba de Entregas ou Planos não encontrada.");
-    return;
-  }
-  
-  const rowsE = abaEntregas.getDataRange().getValues();
-  const CE = colIdx_(CABECALHOS_ENTREGAS);
-  
-  // Agrupar entregas por ID Risco
-  const entregasPorRisco = {};
-  for (let i = 1; i < rowsE.length; i++) {
-    const rId = String(rowsE[i][CE('Risco Vinculado')] || '').trim();
-    if (!rId) continue;
-    if (!entregasPorRisco[rId]) entregasPorRisco[rId] = [];
-    
-    entregasPorRisco[rId].push({
-      unidade: String(rowsE[i][CE('Unidade')] || ''),
-      status: String(rowsE[i][CE('Status')] || ''),
-      data: String(rowsE[i][CE('Data Entrega')] || ''),
-      sei: String(rowsE[i][CE('SEI')] || '')
-    });
-  }
-  
-  const rowsP = abaPlanos.getDataRange().getValues();
-  const CP = colIdx_(CABECALHOS_PLANOS);
-  const updateData = []; // [linha, valor]
-  
-  // Para cada risco, encontramos o SEU ÚLTIMO PLANO e injetamos as entregas nele.
-  const planosPorRisco = {}; // { R1: [linhas...] }
-  for (let i = 1; i < rowsP.length; i++) {
-    const rId = String(rowsP[i][CP('ID Risco')] || '').trim();
-    if (!rId) continue;
-    if (!planosPorRisco[rId]) planosPorRisco[rId] = [];
-    planosPorRisco[rId].push(i + 1); // linha base 1
-  }
-  
-  for (const rId in entregasPorRisco) {
-    const linhasPlano = planosPorRisco[rId];
-    if (linhasPlano && linhasPlano.length > 0) {
-      // Pega o último plano daquele risco
-      const ultimaLinha = linhasPlano[linhasPlano.length - 1];
-      const jsonStr = JSON.stringify(entregasPorRisco[rId]);
-      updateData.push([ultimaLinha, jsonStr]);
-    }
-  }
-  
-  // Escrever de volta
-  updateData.forEach(upd => {
-    abaPlanos.getRange(upd[0], CP('Entregas') + 1).setValue(upd[1]);
-  });
-  
-  Logger.log("Migração de Entregas concluída! Registros migrados para " + updateData.length + " planos.");
 }
