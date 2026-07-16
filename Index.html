@@ -7,7 +7,11 @@
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
   <script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.0/DragDropTouch.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <!-- Versão FIXADA na major 4 (@4): mantém exatamente o comportamento atual
+       (o app já resolvia para a última 4.x) e fecha o risco de uma futura major
+       (v5) com breaking changes ser puxada em silêncio pelo 'latest'. O plugin
+       chartjs-plugin-datalabels@2.0.0 abaixo é compatível com Chart.js 3.x/4.x. -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0" defer></script>
   <!-- Só a captura de elemento (não o pacote html2pdf/jsPDF completo, removido
        por ser pesado) — usada apenas para a Matriz de Risco no PDF, para
