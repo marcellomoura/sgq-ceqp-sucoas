@@ -8,6 +8,9 @@ const SHEET_DOCS     = 'Documentos';
 const SHEET_RISKS    = 'Riscos';
 const SHEET_PLANS    = 'Planos_Acao';
 const SHEET_LOGS     = 'Logs';
+// Destino do arquivamento manual de Logs antigos (arquivarLogsAntigos_). Criada
+// sob demanda por conectarAba na primeira execução — NÃO entra no setup.
+const SHEET_LOGS_ARQUIVO = 'Logs_Arquivo';
 const SHEET_AFASTAMENTOS = 'Afastamentos';
 const SHEET_CAPACITACOES = 'Capacitações';
 const SHEET_ATIVIDADES   = 'Atividades';
@@ -248,6 +251,20 @@ function invalidarCacheMembros_() {
   try { CacheService.getScriptCache().remove('membros_auth'); } catch (e) {}
 }
 
+// Cache COMPARTILHADO do mapa {idTarefa: nº de comentários} usado no badge do
+// quadro. Sem ele, _contarComentariosPorTarefa_ relia a aba Atividades INTEIRA
+// (que cresce sem limite) a cada ação de cartão — o gargalo mais frequente do
+// carregamento. Invalidado só quando a contagem muda de verdade: ao adicionar um
+// comentário (_registrarAtividades_) ou excluir um cartão
+// (_excluirAtividadesDaTarefa_). Mover/editar cartão geram itens do tipo 'log',
+// que não mexem na contagem e NÃO invalidam — por isso a ação mais comum deixa
+// de reler Atividades. A correção vem da invalidação-na-escrita, não do TTL
+// (6h é só rede de segurança). Mesmo padrão de membros_auth/invalidarCacheMembros_.
+const CACHE_KEY_COMENTARIOS = 'contagem_comentarios_v1';
+function invalidarCacheComentarios_() {
+  try { CacheService.getScriptCache().remove(CACHE_KEY_COMENTARIOS); } catch (e) {}
+}
+
 function nomeUsuarioAtual_() {
   const email = usuarioAtual_();
   if (!email || email === 'Sistema') return 'Sistema';
@@ -331,6 +348,29 @@ function registrarLog(acao, ref, detalhe) {
     const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
     aba.appendRow([new Date(), nomeUsuarioAtual_(), acao, ref, detalhe]);
   } catch(e) { console.error('Log falhou: ' + e); }
+}
+
+// Exclui várias linhas de uma aba com o mínimo de chamadas à API: agrupa as
+// linhas em blocos CONTÍGUOS e usa deleteRows(início, quantidade) por bloco, em
+// vez de um deleteRow por linha (que custava N round-trips dentro do lock — um
+// gargalo para cartões muito comentados / documentos com muitas versões).
+// Recebe números de linha 1-based em qualquer ordem. Não reescreve a aba: mesma
+// semântica do deleteRow, apenas agrupada. Processa de baixo para cima (maior
+// linha primeiro) para que a exclusão de um bloco não desloque os índices dos
+// blocos ainda por excluir — só linhas ABAIXO do bloco removido se deslocam, e
+// essas já foram processadas.
+function _deleteRowsBatch_(sheet, rowNumbers) {
+  if (!sheet || !rowNumbers || !rowNumbers.length) return;
+  const rows = Array.from(new Set(rowNumbers.map(Number))).filter(n => n >= 1).sort((a, b) => b - a);
+  let i = 0;
+  while (i < rows.length) {
+    const fim = rows[i]; // maior número do bloco
+    let ini = rows[i];   // menor número do bloco (desce enquanto for contíguo)
+    let j = i;
+    while (j + 1 < rows.length && rows[j + 1] === ini - 1) { ini = rows[j + 1]; j++; }
+    sheet.deleteRows(ini, fim - ini + 1);
+    i = j + 1;
+  }
 }
 
 // ==========================================
@@ -425,10 +465,14 @@ function _registrarAtividades_(itens) {
   const aba = conectarAba(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
   const linhas = itens.map(a => [String(a.tarefaId), String(a.tipo || 'log'), String(a.texto || ''), String(a.data || ''), String(a.autor || '')]);
   aba.getRange(aba.getLastRow() + 1, 1, linhas.length, CABECALHOS_ATIVIDADES.length).setValues(linhas);
+  // Só 'comment' entra na contagem do badge; itens 'log' (mover/editar) não a
+  // alteram e por isso não invalidam o cache.
+  if (itens.some(a => a && a.tipo === 'comment')) invalidarCacheComentarios_();
 }
 
-// Remove todo o histórico de uma tarefa (usado ao excluir o cartão). Itera de
-// trás para frente porque cada deleteRow desloca as linhas seguintes.
+// Remove todo o histórico de uma tarefa (usado ao excluir o cartão). Coleta as
+// linhas do cartão e as exclui em lote via _deleteRowsBatch_ (blocos contíguos),
+// em vez de um deleteRow por comentário.
 function _excluirAtividadesDaTarefa_(tarefaId) {
   const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
   if (!aba || aba.getLastRow() <= 1) return;
@@ -436,25 +480,45 @@ function _excluirAtividadesDaTarefa_(tarefaId) {
   const alvo = String(tarefaId || '').trim();
   if (!alvo) return;
   const dados = aba.getDataRange().getValues();
-  for (let i = dados.length - 1; i >= 1; i--) {
-    if (String(dados[i][CA('Tarefa ID')]).trim() === alvo) aba.deleteRow(i + 1);
+  const linhas = [];
+  for (let i = 1; i < dados.length; i++) {
+    if (String(dados[i][CA('Tarefa ID')]).trim() === alvo) linhas.push(i + 1);
   }
+  _deleteRowsBatch_(aba, linhas);
+  // O cartão (e seus comentários) saíram — a contagem em cache ficou obsoleta.
+  if (linhas.length) invalidarCacheComentarios_();
 }
 
 // Contagem de COMENTÁRIOS por tarefa, para o badge do cartão no quadro.
 // Lê apenas as colunas 'Tarefa ID' e 'Tipo' (2 de 5) — o texto dos comentários
 // é o campo pesado e não é necessário para contar.
 function _contarComentariosPorTarefa_() {
+  let cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (e) {}
+  if (cache) {
+    const bruto = cache.get(CACHE_KEY_COMENTARIOS);
+    if (bruto) { try { return JSON.parse(bruto); } catch (e) {} }
+  }
   const contagem = {};
   const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
-  if (!aba || aba.getLastRow() <= 1) return contagem;
-  const CA = colIdx_(CABECALHOS_ATIVIDADES);
-  const dados = aba.getRange(2, CA('Tarefa ID') + 1, aba.getLastRow() - 1, 2).getValues();
-  dados.forEach(r => {
-    if (String(r[1]).trim() !== 'comment') return;
-    const id = String(r[0]).trim();
-    if (id) contagem[id] = (contagem[id] || 0) + 1;
-  });
+  if (aba && aba.getLastRow() > 1) {
+    const CA = colIdx_(CABECALHOS_ATIVIDADES);
+    const dados = aba.getRange(2, CA('Tarefa ID') + 1, aba.getLastRow() - 1, 2).getValues();
+    dados.forEach(r => {
+      if (String(r[1]).trim() !== 'comment') return;
+      const id = String(r[0]).trim();
+      if (id) contagem[id] = (contagem[id] || 0) + 1;
+    });
+  }
+  // Guarda de tamanho: ScriptCache tem teto de 100KB por chave. Um int por
+  // cartão dificilmente chega perto disso, mas se o JSON passar de ~90KB pula o
+  // cache e só devolve o valor calculado (a próxima chamada recalcula).
+  if (cache) {
+    try {
+      const json = JSON.stringify(contagem);
+      if (json.length <= 90000) cache.put(CACHE_KEY_COMENTARIOS, json, 21600);
+    } catch (e) {}
+  }
   return contagem;
 }
 
@@ -1048,6 +1112,104 @@ function buscarLogs(filtros) {
     temMais: temMais,
     acoesUnicas: acoesUnicas
   };
+}
+
+// ==========================================
+// MANUTENÇÃO / ADMIN
+// Rodar PELO EDITOR do Apps Script. O nome termina em '_' — então NÃO são
+// chamáveis pelo cliente via google.script.run (convenção "privada" do Apps
+// Script). Não usam isMembro_ de propósito: rodam como o DONO do projeto no
+// editor (não numa sessão de membro), e o dono pode não estar na aba Membros.
+// ==========================================
+
+// Relatório de uso das abas contra o teto de 10 milhões de células POR PLANILHA
+// (o limite é do documento inteiro, somando todas as abas). Só lê metadados
+// (getMaxRows/getLastRow) — NÃO altera nada. Rode pelo editor e leia o retorno
+// no log de execução.
+function diagnosticoAbas_() {
+  const LIMITE_CELULAS = 10000000; // teto do Google Sheets, por documento
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abas = ss.getSheets().map(sh => {
+    const gridLinhas = sh.getMaxRows();
+    const gridColunas = sh.getMaxColumns();
+    return {
+      aba: sh.getName(),
+      linhasComDados: sh.getLastRow(),
+      gridLinhas: gridLinhas,
+      gridColunas: gridColunas,
+      celulasGrid: gridLinhas * gridColunas
+    };
+  }).sort((a, b) => b.celulasGrid - a.celulasGrid);
+
+  const totalCelulas = abas.reduce((s, r) => s + r.celulasGrid, 0);
+  const pctTeto = Math.round((totalCelulas / LIMITE_CELULAS) * 10000) / 100;
+  const resumo = {
+    totalCelulasGrid: totalCelulas,
+    limiteCelulas: LIMITE_CELULAS,
+    pctDoTeto: pctTeto,
+    alerta: pctTeto >= 70
+      ? 'ATENÇÃO: acima de 70% do teto de células. Considere rodar arquivarLogsAntigos_.'
+      : 'OK',
+    abas: abas
+  };
+  console.log(JSON.stringify(resumo, null, 2));
+  return resumo;
+}
+
+// Move para a aba Logs_Arquivo os registros de Logs mais antigos que
+// `mesesRetencao` (padrão 12), SEMPRE preservando as últimas MIN_MANTER linhas
+// (2000 — a mesma janela que buscarLogs/UI exibe), de modo que o arquivamento
+// NUNCA reduz o que a tela mostra. Nunca APAGA sem antes salvar: copia para o
+// arquivo, dá flush para garantir a persistência e só então remove da aba Logs
+// (em lote, via _deleteRowsBatch_). Seguro rodar mais de uma vez. Rode pelo editor
+// (ex.: arquivarLogsAntigos_(12)).
+function arquivarLogsAntigos_(mesesRetencao) {
+  if (!mesesRetencao || mesesRetencao < 1) mesesRetencao = 12;
+  const MIN_MANTER = 2000; // nunca mexe na janela que buscarLogs mostra
+  return comBloqueio(() => {
+    const abaLogs = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_LOGS);
+    if (!abaLogs || abaLogs.getLastRow() <= 1) return { arquivadas: 0, mensagem: 'Sem logs para arquivar.' };
+
+    const CL = colIdx_(CABECALHOS_LOGS);
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - mesesRetencao);
+    const cutoffMs = cutoff.getTime();
+
+    const lastRow = abaLogs.getLastRow();
+    const limiteRowParaArquivar = lastRow - MIN_MANTER; // só linhas <= isto podem sair
+    if (limiteRowParaArquivar < 2)
+      return { arquivadas: 0, mensagem: 'Volume abaixo da retenção mínima (' + MIN_MANTER + ' linhas). Nada a arquivar.' };
+
+    // Logs são cronológicos (mais antigos no topo): assim que a linha entra na
+    // janela de retenção mínima, todas as seguintes também estão — daí o break.
+    const dados = abaLogs.getDataRange().getValues();
+    const registrosParaArquivo = [];
+    const linhasParaArquivar = [];
+    for (let k = 1; k < dados.length; k++) {
+      const sheetRow = k + 1;
+      if (sheetRow > limiteRowParaArquivar) break;
+      const dh = dados[k][CL('Data/Hora')];
+      if (Object.prototype.toString.call(dh) === '[object Date]' && dh.getTime() < cutoffMs) {
+        registrosParaArquivo.push(dados[k].slice(0, CABECALHOS_LOGS.length));
+        linhasParaArquivar.push(sheetRow);
+      }
+    }
+    if (!linhasParaArquivar.length)
+      return { arquivadas: 0, mensagem: 'Nenhum log anterior a ' + _dataLocalISO_(cutoff) + ' fora da janela de retenção.' };
+
+    // 1) grava no arquivo PRIMEIRO e força a persistência antes de qualquer remoção
+    const abaArq = conectarAba(SHEET_LOGS_ARQUIVO, CABECALHOS_LOGS);
+    abaArq.getRange(abaArq.getLastRow() + 1, 1, registrosParaArquivo.length, CABECALHOS_LOGS.length).setValues(registrosParaArquivo);
+    SpreadsheetApp.flush();
+    // 2) só então remove da aba Logs, em blocos contíguos
+    _deleteRowsBatch_(abaLogs, linhasParaArquivar);
+    SpreadsheetApp.flush();
+
+    registrarLog('Manutenção', 'Logs', 'Arquivados ' + linhasParaArquivar.length +
+      ' registro(s) anteriores a ' + _dataLocalISO_(cutoff) + ' para ' + SHEET_LOGS_ARQUIVO + '.');
+    return { arquivadas: linhasParaArquivar.length,
+      mensagem: 'Arquivados ' + linhasParaArquivar.length + ' registro(s) para ' + SHEET_LOGS_ARQUIVO + '.' };
+  });
 }
 
 // ==========================================

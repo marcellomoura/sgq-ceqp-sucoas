@@ -346,11 +346,12 @@ function excluirPlano(idPlano) {
       const aba = conectarAba(SHEET_PLANS);
       const CP = colIdx_(CABECALHOS_PLANOS);
       const rows = aba.getDataRange().getValues();
-      let excluiu = false;
-      for (let i = rows.length - 1; i >= 1; i--) {
-        if (String(rows[i][CP('ID Risco')]||'') === idPlano) { aba.deleteRow(i+1); excluiu = true; }
+      const linhasParaExcluir = [];
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][CP('ID Risco')]||'') === idPlano) linhasParaExcluir.push(i + 1);
       }
-      if (!excluiu) return { sucesso: false, mensagem: 'Plano não localizado.' };
+      if (!linhasParaExcluir.length) return { sucesso: false, mensagem: 'Plano não localizado.' };
+      _deleteRowsBatch_(aba, linhasParaExcluir);
       // As entregas do plano vivem na própria coluna 'Entregas' (JSON) da linha
       // excluída acima — não há mais uma aba separada para limpar à parte.
       registrarLog('Exclusão de Plano', idPlano, 'Plano e entregas vinculadas removidos.');

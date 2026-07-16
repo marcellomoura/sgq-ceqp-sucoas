@@ -148,8 +148,8 @@ function excluirDocumento(idRow, codigoEsperado) {
         }
       }
       if (!linhasParaExcluir.length) linhasParaExcluir = [linha]; // fallback: só a linha atual
-      // De baixo para cima, para os índices das linhas restantes não se deslocarem.
-      linhasParaExcluir.sort((a, b) => b - a).forEach(l => aba.deleteRow(l));
+      // Exclui em blocos contíguos (deleteRows) em vez de um deleteRow por linha.
+      _deleteRowsBatch_(aba, linhasParaExcluir);
       registrarLog('Exclusão de Documento', cod, 'Documento removido (' + linhasParaExcluir.length + ' versão(ões)).');
       return { sucesso: true, mensagem: 'Documento excluído com sucesso!' };
     });
