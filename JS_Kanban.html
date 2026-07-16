@@ -233,7 +233,7 @@ function renderArquivados(resetPage = false) {
         if (d >= 0) duracao = `${d} dia${d !== 1 ? 's' : ''}`;
       }
     }
-    const prioColor = task.priority==='Alta'?'#ef4444':task.priority==='Media'?'#f59e0b':'#22c55e';
+    const prioColor = task.priority==='Alta'?'#e0455e':task.priority==='Media'?'#dc8a00':'#17a673';
 
     return `<tr>
       <td style="font-weight:600;" title="${esc(task.title)}">${esc(task.title)}</td>
@@ -535,7 +535,7 @@ function renderGraficosKanban(fid) {
     type: 'doughnut',
     data: {
       labels: Object.keys(sc),
-      datasets: [{ data: Object.values(sc), backgroundColor: ['#b2b3bd','#3f8cff','#ff9500','#6c5dd3','#34c759'], borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }]
+      datasets: [{ data: Object.values(sc), backgroundColor: ['#b9b9cc','#3f8cff','#dc8a00','#6c5dd3','#17a673'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
@@ -549,7 +549,7 @@ function renderGraficosKanban(fid) {
     type: 'doughnut',
     data: {
       labels: ['Alta', 'Média', 'Baixa'],
-      datasets: [{ data: [pc['Alta'], pc['Media'], pc['Baixa']], backgroundColor: ['#ef4444','#ff9500','#34c759'], borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }]
+      datasets: [{ data: [pc['Alta'], pc['Media'], pc['Baixa']], backgroundColor: ['#e0455e','#dc8a00','#17a673'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
@@ -566,9 +566,9 @@ function renderGraficosKanban(fid) {
       datasets: [{
         label: 'Em Andamento',
         data: dadosMc,
-        backgroundColor: dadosMc.map(v => v === 0 ? '#f0f2f5' : 'rgba(63,140,255,0.85)'),
-        borderColor:     dadosMc.map(v => v === 0 ? '#e4e4e5' : '#3f8cff'),
-        borderWidth: 1, borderRadius: 5, borderSkipped: false, maxBarThickness: 42
+        backgroundColor: dadosMc.map(v => v === 0 ? '#f2f2f7' : 'rgba(63,140,255,0.85)'),
+        borderColor:     dadosMc.map(v => v === 0 ? '#eeeef5' : '#3f8cff'),
+        borderWidth: 1, borderRadius: 8, borderSkipped: false, maxBarThickness: 42
       }]
     },
     options: {
@@ -587,14 +587,14 @@ function renderGraficosKanban(fid) {
       datasets: [{
         label: 'Concluídas',
         data: dadosMcConcluido,
-        backgroundColor: dadosMcConcluido.map(v => v === 0 ? '#f0f2f5' : 'rgba(52,199,89,0.85)'),
-        borderColor:     dadosMcConcluido.map(v => v === 0 ? '#e4e4e5' : '#34c759'),
-        borderWidth: 1, borderRadius: 5, borderSkipped: false, maxBarThickness: 42
+        backgroundColor: dadosMcConcluido.map(v => v === 0 ? '#f2f2f7' : 'rgba(23,166,115,0.85)'),
+        borderColor:     dadosMcConcluido.map(v => v === 0 ? '#eeeef5' : '#17a673'),
+        borderWidth: 1, borderRadius: 8, borderSkipped: false, maxBarThickness: 42
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} concluída(s)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: ctx => ctx.dataset.data[ctx.dataIndex] === 0 ? '#64748b' : '#fff' } },
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} concluída(s)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: ctx => ctx.dataset.data[ctx.dataIndex] === 0 ? '#8b8d9c' : '#fff' } },
       scales: CHART_SCALES_BASE
     }
   });

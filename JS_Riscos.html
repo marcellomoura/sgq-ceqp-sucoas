@@ -712,10 +712,10 @@ function atualizarLegendaRisco(prefix) {
   const i = Number(impVal);
   const s = p * i;
   let text = '', bg = '', cor = '', border = '';
-  if (s >= 15) { text = 'Crítico (' + s + ')'; bg = '#fee2e2'; cor = '#dc2626'; border = '#f87171'; }
-  else if (s >= 10) { text = 'Alto (' + s + ')'; bg = '#ffedd5'; cor = '#ea580c'; border = '#fb923c'; }
-  else if (s >= 5) { text = 'Médio (' + s + ')'; bg = '#fef9c3'; cor = '#ca8a04'; border = '#facc15'; }
-  else { text = 'Baixo (' + s + ')'; bg = '#dcfce3'; cor = '#16a34a'; border = '#4ade80'; }
+  if (s >= 15) { text = 'Crítico (' + s + ')'; bg = '#fceef0'; cor = '#b1263d'; border = '#e17f8d'; }
+  else if (s >= 10) { text = 'Alto (' + s + ')'; bg = '#fdf1de'; cor = '#a8660a'; border = '#ec9f5c'; }
+  else if (s >= 5) { text = 'Médio (' + s + ')'; bg = '#fdf1de'; cor = '#a8660a'; border = '#edc768'; }
+  else { text = 'Baixo (' + s + ')'; bg = '#e6f7f0'; cor = '#0f7a56'; border = '#8fd6b4'; }
   
   if (leg && val) {
     leg.style.backgroundColor = bg;
