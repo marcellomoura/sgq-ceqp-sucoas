@@ -783,8 +783,6 @@ function renderRiscosArquivados() {
     let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
     let curTratamento = r.tipoTratamento, curResp = r.responsavel;
 
-    const histJson = String(r['Histórico']||'').trim(); // Wait, risks are mapped by _lerRiscosPlanosEntregas_
-    // Actually, state.history has the history arrays flattened!
     const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
     if (hist.length > 0) {
       const ultimo = hist[hist.length - 1];

@@ -6,7 +6,7 @@
 // tasks = só os cartões ATIVOS do quadro. archivedTasks tem busca própria e sob
 // demanda (getTarefasArquivadas), como trainings/history — declarados aqui para
 // que nenhum consumidor dependa de uma chave que "aparece" só após a carga.
-var state = { tasks: [], archivedTasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [], history: [], trainings: [] };
+var state = { tasks: [], archivedTasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [], history: [], trainings: [], afastamentos: [] };
 var currentTab  = 'kanban';
 var itemExcluir = null, tipoPdfAtual = null;
 var currentActivities = [];
