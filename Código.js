@@ -1244,6 +1244,8 @@ function sanitizarHtml_(html) {
 
 function gerarPdfDeHtml(htmlContent, nomeArquivo) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
+  if (limiteGerarPdfExcedido_())
+    return { sucesso: false, mensagem: 'Aguarde um instante antes de gerar outro relatório.' };
   try {
     const htmlSeguro = sanitizarHtml_(htmlContent);
     const blob = Utilities.newBlob(htmlSeguro, MimeType.HTML, 'relatorio.html');
@@ -1252,19 +1254,28 @@ function gerarPdfDeHtml(htmlContent, nomeArquivo) {
   } catch (e) { return { sucesso: false, mensagem: e.toString() }; }
 }
 
-// Evita que um clique duplo (ou um script repetindo a chamada) dispare vários
-// e-mails em sequência e consuma a cota diária do MailApp. Por usuário (não
-// global), com uma janela curta — não é para impedir uso normal, só rajadas.
+// Rate limit POR USUÁRIO (não global) para operações de PDF: evita que um clique
+// duplo — ou um script repetindo a chamada — dispare várias gerações pesadas em
+// sequência. Janelas curtas: não é para impedir uso normal, só rajadas.
+//  - Envio por e-mail: 10s, para proteger a cota diária do MailApp.
+//  - Download: 3s — curto de propósito para NÃO bloquear baixar relatórios
+//    diferentes em sequência (cada geração já leva alguns segundos, então a
+//    janela expira antes do próximo download legítimo), mas ainda barra rajadas.
+// Chaves separadas: baixar um relatório e, logo em seguida, enviar outro por
+// e-mail são ações distintas e não devem disputar o mesmo balde.
 const RATE_LIMIT_ENVIO_PDF_SEGUNDOS = 10;
-function limiteEnvioPdfExcedido_() {
+const RATE_LIMIT_GERAR_PDF_SEGUNDOS = 3;
+function _limitePdfExcedido_(chave, segundos) {
   try {
     const cache = CacheService.getUserCache();
     if (!cache) return false; // sem cache disponível: não bloqueia por segurança
-    if (cache.get('envio_pdf_rate')) return true;
-    cache.put('envio_pdf_rate', '1', RATE_LIMIT_ENVIO_PDF_SEGUNDOS);
+    if (cache.get(chave)) return true;
+    cache.put(chave, '1', segundos);
     return false;
   } catch (e) { return false; }
 }
+function limiteEnvioPdfExcedido_() { return _limitePdfExcedido_('envio_pdf_rate', RATE_LIMIT_ENVIO_PDF_SEGUNDOS); }
+function limiteGerarPdfExcedido_() { return _limitePdfExcedido_('gerar_pdf_rate', RATE_LIMIT_GERAR_PDF_SEGUNDOS); }
 
 function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
