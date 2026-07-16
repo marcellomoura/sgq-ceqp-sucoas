@@ -35,7 +35,7 @@ O SGQ é um **web app monolítico de página única (SPA)** sobre Google Apps Sc
 | P5 | `deleteRow` em laço (`_excluirAtividadesDaTarefa_`, `excluirDocumento`, `excluirPlano`) — O(n) chamadas de API dentro do lock | Performance | **Médio** — ✅ *Resolvido 2026-07-16 (Fase 2.2): helper `_deleteRowsBatch_` agrupa em blocos contíguos via `deleteRows`.* |
 | P6 | Regra de negócio **duplicada** cliente/servidor (nível de risco, `_statusPlano`, plano global) | Manutenção/DRY | **Médio** |
 | P7 | Acoplamento por **índice de array** (`data-idx`) entre render e handlers — frágil, já causou bug histórico | Robustez | **Médio** |
-| P8 | `Código.js` mistura responsabilidades (config + utils + auth + acesso a dados + PDF + endpoints) | Arquitetura/SoC | **Médio** |
+| P8 | `Código.js` mistura responsabilidades (config + utils + auth + acesso a dados + PDF + endpoints) | Arquitetura/SoC | **Médio** — ❌ *Descartado por decisão (2026-07-16): manter arquivo único.* |
 | P9 | Ausência total de **testes automatizados**, mesmo para lógica pura testável | Qualidade | **Médio** |
 | P10 | Sanitização de HTML por **regex** (reconhecidamente não é parser) | Segurança | **Baixo** |
 | P11 | Código morto: `histJson` em `renderRiscosArquivados`; `state.afastamentos` fora da inicialização de `state` | Clean Code | **Baixo** |
@@ -178,12 +178,12 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 6. Cache da contagem de comentários, invalidado em escrita (P2) — **✅ FEITO (Fase 2.3, 2026-07-16).** Novo `CACHE_KEY_COMENTARIOS` + `invalidarCacheComentarios_` (Código.js). `_contarComentariosPorTarefa_` virou cache-aware (lê o mapa do `ScriptCache`, calcula no miss, grava com guarda de 90KB). Invalidação **só** quando a contagem muda: `_registrarAtividades_` (apenas se houver item `comment`) e `_excluirAtividadesDaTarefa_`. Mover/editar cartão (itens `log`) não invalidam → deixam de reler a aba `Atividades`. Mesmo padrão de `membros_auth`. **Não** cacheado: payload do quadro (limite de 100KB) nem `Tarefas` (precisa vir fresco). Cache de Membros avaliado e descartado (aba pequena/limitada, ganho marginal, invalidação extra em `salvarEscala` fácil de esquecer).
 
 **Fase 3 — Arquitetura**
-7. Fatiar `Código.js` em `Config.gs`, `Auth.gs`, `DataAccess.gs`, `Pdf.gs`, `Logs.gs` (P8).
+7. Fatiar `Código.js` em `Config.gs`, `Auth.gs`, `DataAccess.gs`, `Pdf.gs`, `Logs.gs` (P8) — **❌ DESCARTADO (2026-07-16) por decisão.** Mantém-se `Código.js` como arquivo único.
 8. Centralizar regras duplicadas (P6) num único módulo servidor e expor os valores calculados ao cliente via payload, em vez de recalcular no JS.
 
-**Fase 4 — Clean Code**
-9. Extrair sub-funções de render longas; padronizar tudo em `data-acao` (eliminar `onclick=` inline).
-10. Mover estilos inline recorrentes para classes no CSS.
+**Fase 4 — Clean Code** — **⏭️ PULADA por decisão (2026-07-16).** Fase de menor valor (ganho só de manutenção, sem impacto para o usuário).
+9. Extrair sub-funções de render longas; padronizar tudo em `data-acao` (eliminar `onclick=` inline). — *Não feito. A parte de `data-acao` está entrelaçada com o 5.1 (o `onclick` inline existe para fugir da ambiguidade do `data-idx`); será tratada junto com o 5.1, em base `data-id`.*
+10. Mover estilos inline recorrentes para classes no CSS. — *Não feito (baixo valor, diff enorme, puramente cosmético).*
 
 **Fase 5 — Escalabilidade / robustez futura**
 11. Introduzir testes (ver §9).
