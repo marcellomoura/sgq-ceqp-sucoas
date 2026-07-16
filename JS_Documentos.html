@@ -47,7 +47,8 @@ function renderDocumentos(modo) {
 
   $id(tbodyId).innerHTML = filtrados.map(d => {
     const oi = idxPorIdRow.get(d.idRow);
-    const aux = [linkA(d.docAuxiliar,'Anexo 1','#64748b'), linkA(d.docAuxiliar2,'Anexo 2','#64748b')].filter(x=>x!=='-').join('<br>') || '-';
+    const auxList = [linkA(d.docAuxiliar,'Anexo 1','#64748b'), linkA(d.docAuxiliar2,'Anexo 2','#64748b')].filter(x=>x!=='-');
+    const aux = auxList.length > 0 ? `<div style="display:flex; flex-direction:column; gap:8px;">${auxList.join('')}</div>` : '-';
     const base = `<td style="font-weight:700; white-space:nowrap;">${esc(d.codigo)}</td><td style="text-align:center;">v${esc(d.versao)}</td><td>${esc(d.tipo)}</td><td><span style="display:inline-block; font-weight:600; color:#1e293b; border:1px solid #cbd5e1; border-radius:6px; padding:4px 10px; background:#f8fafc;">${esc(d.titulo)}</span></td><td>${esc(formatUnidadeUI(d.responsavel))}</td><td>${fmtBr(d.dataAprovacao)}</td>`;
     if (modo === 'mestra') return `<tr>${base}
       <td>${fmtBr(d.proximaRevisao)}</td>

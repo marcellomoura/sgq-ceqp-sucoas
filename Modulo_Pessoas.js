@@ -76,7 +76,8 @@ function _lerAfastamentos_() {
       const p1 = String(r[CA('Férias 1')] || '').trim();
       const p2 = String(r[CA('Férias 2')] || '').trim();
       const p3 = String(r[CA('Férias 3')] || '').trim();
-      const abonosSt = String(r[CA('Abonos')] || '').trim();
+      const abonosCell = r[CA('Abonos')];
+      const abonosSt = Object.prototype.toString.call(abonosCell) === '[object Date]' ? dataParaISO_(abonosCell) : String(abonosCell || '').trim();
       const aniversario = dataParaISO_(r[CA('Abono Aniversário')]);
       const licencaSt = String(r[CA('Licença Servidor/Prêmio')] || '').trim();
       const demaisSt = String(r[CA('Demais Afastamentos')] || '').trim();

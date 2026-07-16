@@ -300,8 +300,9 @@ const LABELS_DISPONIVEIS = [
   { id:'nc',           nome:'Não Conformidade', cor:'#dc2626' },
   { id:'melhoria',     nome:'Melhoria',         cor:'#16a34a' },
   { id:'documentacao', nome:'Documentação',     cor:'#7c3aed' },
+  { id:'processo',     nome:'Processo',         cor:'#f59e0b' },
   { id:'treinamento',  nome:'Treinamento',      cor:'#ea580c' },
-  { id:'urgente',      nome:'Urgente',          cor:'#db2777' }
+  { id:'urgente',      nome:'Urgente',          cor:'#ef4444' }
 ];
 function parseLabels(raw) {
   try { const a=JSON.parse(raw); return Array.isArray(a)?a.map(String):[]; } catch(e){ return []; }
@@ -311,8 +312,30 @@ function labelChipsHTML(ids) {
 }
 function populateLabels(selectedIds=[]) {
   const c=$id('taskLabelsContainer'); if(!c) return;
-  c.innerHTML=LABELS_DISPONIVEIS.map(l=>`<label class="checkbox-label"><input type="checkbox" value="${l.id}" ${selectedIds.includes(l.id)?'checked':''}><span class="tag-badge" style="background:${l.cor};">${esc(l.nome)}</span></label>`).join('');
-  c.querySelectorAll('input').forEach(i=>i.addEventListener('change',atualizarTagsLabels));
+  
+  c.innerHTML = LABELS_DISPONIVEIS.map(l=>{
+    const checked = selectedIds.includes(l.id);
+    const svgIcon = checked 
+      ? `<svg style="width:16px;height:16px;stroke:${l.cor};fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line><polyline points="9 11 12 14 22 4" stroke-width="3" style="stroke:${l.cor};"></polyline></svg>` 
+      : `<svg style="width:16px;height:16px;stroke:#94a3b8;fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
+
+    return `<label class="checkbox-label" style="display:flex; align-items:center; cursor:pointer; padding:4px 8px; margin-bottom:2px; border-radius:4px;">
+      <input type="checkbox" style="display:none;" value="${esc(l.id.replace(/"/g,'&quot;'))}" ${checked?'checked':''}>
+      <span class="label-svg-icon" data-color="${l.cor}" style="display:flex;">${svgIcon}</span>
+      <span class="tag-badge" style="background:${l.cor};">${esc(l.nome)}</span>
+    </label>`;
+  }).join('');
+  
+  c.querySelectorAll('input[type="checkbox"]').forEach(i=>i.addEventListener('change', (e) => {
+    const labelSvgSpan = e.target.closest('label').querySelector('.label-svg-icon');
+    const color = labelSvgSpan.getAttribute('data-color');
+    if(e.target.checked) {
+      labelSvgSpan.innerHTML = `<svg style="width:16px;height:16px;stroke:${color};fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line><polyline points="9 11 12 14 22 4" stroke-width="3" style="stroke:${color};"></polyline></svg>`;
+    } else {
+      labelSvgSpan.innerHTML = `<svg style="width:16px;height:16px;stroke:#94a3b8;fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
+    }
+    atualizarTagsLabels();
+  }));
   atualizarTagsLabels();
 }
 function atualizarTagsLabels() {
