@@ -1212,6 +1212,100 @@ function arquivarLogsAntigos_(mesesRetencao) {
   });
 }
 
+// Testes da LÓGICA PURA do sistema (não toca planilha nem serviços). Rode pelo
+// editor: o resumo e o detalhe de cada falha vão para o log de execução. Nome
+// com '_' final → não chamável pelo cliente. Serve de rede de segurança ao
+// refatorar: se algum cálculo (nível de risco, status de plano, próxima revisão,
+// arquivamento de cartão, sanitização...) mudar sem querer, uma FALHA aparece aqui.
+function runTests_() {
+  let ok = 0, fail = 0;
+  const detalhes = [];
+  function check(nome, esperado, obtido) {
+    const passou = JSON.stringify(esperado) === JSON.stringify(obtido);
+    passou ? ok++ : fail++;
+    detalhes.push((passou ? 'OK    ' : 'FALHA ') + nome +
+      (passou ? '' : ' | esperado=' + JSON.stringify(esperado) + ' obtido=' + JSON.stringify(obtido)));
+  }
+  function checkThrows(nome, fn) {
+    let lancou = false;
+    try { fn(); } catch (e) { lancou = true; }
+    lancou ? ok++ : fail++;
+    detalhes.push((lancou ? 'OK    ' : 'FALHA ') + nome + (lancou ? '' : ' | esperava exceção'));
+  }
+
+  // calcularNivelRisco (P×I -> Crítico>=15 / Alto>=10 / Médio>=5 / Baixo)
+  check('nivel 25', 'Crítico', calcularNivelRisco(5, 5));
+  check('nivel 15 (5x3)', 'Crítico', calcularNivelRisco(5, 3));
+  check('nivel 15 (3x5)', 'Crítico', calcularNivelRisco(3, 5));
+  check('nivel 10', 'Alto', calcularNivelRisco(2, 5));
+  check('nivel 9', 'Médio', calcularNivelRisco(3, 3));
+  check('nivel 5', 'Médio', calcularNivelRisco(1, 5));
+  check('nivel 4', 'Baixo', calcularNivelRisco(2, 2));
+  check('nivel 1', 'Baixo', calcularNivelRisco(1, 1));
+
+  // calcularProximaRevisao (+1 ano)
+  check('proxRev normal', '2027-07-16', calcularProximaRevisao('2026-07-16'));
+  check('proxRev vazio', '', calcularProximaRevisao(''));
+  check('proxRev inválido', '', calcularProximaRevisao('xx'));
+  check('proxRev bissexto', '2025-03-01', calcularProximaRevisao('2024-02-29'));
+
+  // _dataLocalISO_
+  check('dataLocalISO', '2026-01-05', _dataLocalISO_(new Date(2026, 0, 5)));
+
+  // linkPermitido_
+  check('link https', true, linkPermitido_('https://x.com'));
+  check('link http', true, linkPermitido_('http://x.com'));
+  check('link vazio', true, linkPermitido_(''));
+  check('link javascript', false, linkPermitido_('javascript:alert(1)'));
+  check('link texto livre', false, linkPermitido_('não possui'));
+
+  // colIdx_
+  const C = colIdx_(CABECALHOS_TAREFAS);
+  check('colIdx ID', 0, C('ID'));
+  check('colIdx Status', 1, C('Status'));
+  checkThrows('colIdx coluna inexistente lança', function () { C('Inexistente'); });
+
+  // _statusPlano
+  check('plano concluído', 'Concluído', _statusPlano('2020-01-01', '2020-02-02'));
+  check('plano atrasado', 'Atrasado', _statusPlano('2000-01-01', ''));
+  check('plano em andamento', 'Em Andamento', _statusPlano('2999-01-01', ''));
+
+  // calcularStatusCapacitacao_
+  check('cap concluída', 'Concluída', calcularStatusCapacitacao_('2026-01-01', '2026-02-02'));
+  check('cap em andamento', 'Em Andamento', calcularStatusCapacitacao_('2026-01-01', ''));
+  check('cap planejada', 'Planejada', calcularStatusCapacitacao_('', ''));
+
+  // regra "plano global" / subcomissão (espelho cliente/servidor)
+  check('global TODAS', true, _planoEhGlobal_('Todas as Subcomissões'));
+  check('global específico', false, _planoEhGlobal_('UN-3'));
+  check('subcomissão c/ acento', true, _ehSubcomissao_('Subcomissão de Obras'));
+  check('subcomissão s/ acento', true, _ehSubcomissao_('Subcomissao X'));
+  check('não subcomissão', false, _ehSubcomissao_('Diretoria'));
+
+  // sanitizarHtml_
+  check('sanitiza <script>', true, sanitizarHtml_('<b>ok</b><script>alert(1)</script>').indexOf('<script') === -1);
+  check('sanitiza onerror', true, sanitizarHtml_('<img src=x onerror=alert(1)>').indexOf('onerror') === -1);
+  check('sanitiza preserva http', true, sanitizarHtml_('<a href="https://x.com">x</a>').indexOf('https://x.com') !== -1);
+
+  // _tarefaArquivada_ (regra única de arquivamento)
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  function linha(over) {
+    const r = new Array(CABECALHOS_TAREFAS.length).fill('');
+    for (const k in over) r[C(k)] = over[k];
+    return r;
+  }
+  check('arquivada Sim', true, _tarefaArquivada_(linha({ 'Arquivado': 'Sim' }), C, hoje));
+  check('arquivada Não (restaurada)', false, _tarefaArquivada_(linha({ 'Arquivado': 'Não', 'Status': 'Concluído', 'Data Conclusão': '2000-01-01' }), C, hoje));
+  check('arquivada não-concluída', false, _tarefaArquivada_(linha({ 'Status': 'Em Andamento' }), C, hoje));
+  check('arquivada concluída antiga', true, _tarefaArquivada_(linha({ 'Status': 'Concluído', 'Data Conclusão': '2000-01-01' }), C, hoje));
+  check('arquivada concluída hoje', false, _tarefaArquivada_(linha({ 'Status': 'Concluído', 'Data Conclusão': _dataLocalISO_(hoje) }), C, hoje));
+
+  const resumo = { total: ok + fail, ok: ok, falhas: fail };
+  console.log('=== runTests_ === ' + resumo.ok + '/' + resumo.total + ' OK, ' + resumo.falhas + ' falha(s)');
+  detalhes.forEach(function (l) { console.log(l); });
+  return { resumo: resumo, detalhes: detalhes };
+}
+
 // ==========================================
 // GERAÇÃO DE PDF
 // O PDF é montado no servidor a partir de um HTML de impressão dedicado

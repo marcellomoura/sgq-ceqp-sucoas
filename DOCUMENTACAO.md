@@ -36,7 +36,7 @@ O SGQ é um **web app monolítico de página única (SPA)** sobre Google Apps Sc
 | P6 | Regra de negócio **duplicada** cliente/servidor (nível de risco, `_statusPlano`, plano global) | Manutenção/DRY | **Médio** |
 | P7 | Acoplamento por **índice de array** (`data-idx`) entre render e handlers — frágil, já causou bug histórico | Robustez | **Médio** |
 | P8 | `Código.js` mistura responsabilidades (config + utils + auth + acesso a dados + PDF + endpoints) | Arquitetura/SoC | **Médio** — ❌ *Descartado por decisão (2026-07-16): manter arquivo único.* |
-| P9 | Ausência total de **testes automatizados**, mesmo para lógica pura testável | Qualidade | **Médio** |
+| P9 | Ausência total de **testes automatizados**, mesmo para lógica pura testável | Qualidade | **Médio** — ⚙️ *Endereçado (Fase 5.2, 2026-07-16): `runTests_()` cobre a lógica pura (nível de risco, próxima revisão, status de plano/capacitação, arquivamento, sanitização, colIdx, links). 40 asserções. Rodar pelo editor.* |
 | P10 | Sanitização de HTML por **regex** (reconhecidamente não é parser) | Segurança | **Baixo** |
 | P11 | Código morto: `histJson` em `renderRiscosArquivados`; `state.afastamentos` fora da inicialização de `state` | Clean Code | **Baixo** |
 | P12 | `gerarPdfDeHtml` (download) **sem** rate limit (só o envio por e-mail tem) | Performance | **Baixo** — ✅ *Resolvido (Fase 5.3, 2026-07-16): helper `_limitePdfExcedido_` compartilhado; download com janela curta (3s) e chave própria, sem bloquear downloads sequenciais legítimos.* |
@@ -186,7 +186,7 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 10. Mover estilos inline recorrentes para classes no CSS. — *Não feito (baixo valor, diff enorme, puramente cosmético).*
 
 **Fase 5 — Escalabilidade / robustez futura**
-11. Introduzir testes (ver §9).
+11. Introduzir testes (ver §9) — **✅ FEITO (Fase 5.2, 2026-07-16).** `runTests_()` em `Código.js` (admin, roda pelo editor): harness próprio (sem dependência externa) com 40 asserções sobre a lógica pura. Expectativas auto-verificadas em Node antes de escrever. Não altera lógica de produção.
 12. Substituir acoplamento por índice (`data-idx`) por `data-id` + lookup por id (P7).
 
 ---
