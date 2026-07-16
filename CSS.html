@@ -117,7 +117,7 @@
     padding: 0 8px;
     border: 1px solid var(--border-color);
     border-radius: 5px;
-    font-size: 12px;
+    font-size: 11px;
     background: #f8fafc;
     color: var(--text-main);
     font-family: inherit;
@@ -132,7 +132,7 @@
     padding: 0 8px;
     border: 1px solid var(--border-color);
     border-radius: 5px;
-    font-size: 12px;
+    font-size: 11px;
     background: #f8fafc;
     color: var(--text-main);
     font-family: inherit;
@@ -141,9 +141,8 @@
     line-height: 1.3;
     flex-shrink: 0;
   }
+  .hdr-input::placeholder { font-size: 11px; color: #94a3b8; }
   .hdr-select:focus, .hdr-input:focus { border-color: var(--primary); background: #fff; }
-  .hdr-tab-controls .btn-pdf { height: 28px; padding: 0 10px; font-size: 11.5px; gap: 5px; flex-shrink: 0; }
-  .hdr-tab-controls .btn-pdf svg { width: 11px; height: 11px; }
   .hdr-tab-controls .btn.primary { height: 28px; padding: 0 12px; font-size: 12px; flex-shrink: 0; }
   .hdr-tab-controls .btn-outline { height: 28px; padding: 0 10px; font-size: 11.5px; flex-shrink: 0; }
 
@@ -298,6 +297,8 @@
   .data-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
   .data-table tbody tr:nth-child(even) td { background: #fcfdfe; }
   .data-table tbody tr:hover td { background: #eff6ff; }
+  .data-table tbody tr.row-warning td { background-color: #fef9c3 !important; }
+  .data-table tbody tr.row-cancelled td { background-color: #f8fafc !important; opacity: 0.6; }
   .group-row td { background: #f1f5f9 !important; font-weight: 700; color: #334155; font-size: 12px; }
 
   /* Tabela de Arquivados — larguras fixas para o título não dominar a linha */
@@ -383,12 +384,8 @@
   .btn-icon.rev  { color: var(--green); }  .btn-icon.rev:hover  { background: #d1fae5; border-color: #6ee7b7; }
   .btn-icon.del  { color: var(--red); }   .btn-icon.del:hover   { background: #fee2e2; border-color: #fca5a5; }
   .btn-icon.archive { color: #b45309; } .btn-icon.archive:hover { background: #fef3c7; border-color: #fcd34d; }
-  .btn-membro-status {
-    background: white; border: 1px solid var(--border-color); cursor: pointer;
-    height: 30px; padding: 0 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
-    display: inline-flex; align-items: center; transition: 0.15s;
-  }
-  .btn-membro-status:hover { background: #f8fafc; }
+  .btn-icon.ban { color: #b45309; } .btn-icon.ban:hover { background: #fef3c7; border-color: #fde68a; }
+  .btn-icon.check { color: var(--green); } .btn-icon.check:hover { background: #d1fae5; border-color: #a7f3d0; }
   .btn-icon.history { color: #6b7280; } .btn-icon.history:hover { background: #f1f5f9; border-color: #cbd5e1; }
   .btn-pdf { display: flex; align-items: center; gap: 7px; padding: 0 16px; height: 34px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; background: #475569; color: white; cursor: pointer; transition: 0.2s; white-space: nowrap; font-family: inherit; }
   .btn-pdf:hover { background: #334155; }
@@ -396,6 +393,13 @@
   .btn-pdf-email { display: flex; align-items: center; gap: 7px; padding: 0 16px; height: 34px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; background: #059669; color: white; cursor: pointer; transition: 0.2s; white-space: nowrap; font-family: inherit; }
   .btn-pdf-email:hover { filter: brightness(0.88); }
   .btn-pdf-email:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-action-icon { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: 6px; background: #475569; color: white; cursor: pointer; transition: 0.2s; flex-shrink: 0; outline: none; }
+  .btn-action-icon:hover { background: #334155; }
+  .btn-action-icon.email { background: #059669; }
+  .btn-action-icon.email:hover { background: #047857; }
+  .btn-action-icon:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-action-icon.loading { opacity: 0.5; pointer-events: none; }
+  .btn-action-icon svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
   .btn-outline { background: white; color: #334155; border: 1px solid var(--border-color); cursor: pointer; font-weight: 600; padding: 7px 14px; border-radius: 6px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 7px; transition: 0.2s; font-family: inherit; }
   .btn-outline:hover { background: #f8fafc; border-color: #94a3b8; }
   .action-btn-main { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s; margin-top: 22px; font-family: inherit; }

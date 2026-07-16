@@ -67,7 +67,14 @@ const ICON = {
   user: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
   calendar: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
-  alert: '<svg viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+  alert: '<svg viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  // "Inativar" (Unidades e Membros): círculo com barra diagonal, o símbolo
+  // universal de desativar/bloquear — funciona tanto para pessoa quanto para
+  // unidade organizacional, sem se confundir com excluir (del) ou arquivar.
+  ban: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>',
+  // "Reativar" — contraparte de ban: mesmo círculo, com um check em vez da
+  // barra diagonal. Mantém o par visualmente óbvio (mesma forma, ação oposta).
+  check: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="8.5 12.5 11 15 15.5 9.5"/></svg>'
 };
 
 function $id(id) { return document.getElementById(id); }
@@ -847,13 +854,13 @@ function _gerarPdfReal(tipo) {
   const cfg = CFG_PDF[tipo];
   const btnMap = { dashboard: 'btn-download-pdf', archived: 'btn-pdf-archived', matriz: 'btn-pdf-matriz', acomp: 'btn-pdf-acomp', 'risco-arquivado': 'btn-pdf-risco-arquivado' };
   const btn = $id(btnMap[tipo]);
-  if (btn) { btn.innerText = 'A gerar...'; btn.disabled = true; }
+  if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
   Promise.resolve(window[cfg.montarFn]()).then(function(corpoHtml) {
     const html = _envelopeHtml(cfg, corpoHtml);
     google.script.run
       .withSuccessHandler(function(r) {
-        if (btn) { btn.innerText = 'Baixar PDF'; btn.disabled = false; }
+        if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
         if (!r.sucesso) { showAlerta('Erro ao gerar PDF: ' + r.mensagem); return; }
         const link = document.createElement('a');
         link.href = 'data:application/pdf;base64,' + r.base64;
@@ -863,7 +870,7 @@ function _gerarPdfReal(tipo) {
         document.body.removeChild(link);
       })
       .withFailureHandler(function(e) {
-        if (btn) { btn.innerText = 'Baixar PDF'; btn.disabled = false; }
+        if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
         showAlerta('Erro ao gerar PDF: ' + String(e));
       })
       .gerarPdfDeHtml(html, cfg.file);

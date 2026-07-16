@@ -30,8 +30,8 @@ function renderMembers() {
   tbody.innerHTML = ordenados.map(({m, i}) => {
     const inativo = m.ativo === false;
     const btnStatus = inativo
-      ? `<button type="button" class="btn-membro-status" data-acao="reativar-membro" data-idx="${i}" title="Reativar membro" style="color:#059669;border-color:#a7f3d0;">Reativar</button>`
-      : `${iconBtn('edit','edit-membro','Editar',`data-idx="${i}"`)}<button type="button" class="btn-membro-status" data-acao="inativar-membro" data-idx="${i}" title="Inativar membro" style="color:#b45309;border-color:#fde68a;">Inativar</button>`;
+      ? iconBtn('check', 'reativar-membro', 'Reativar membro', `data-idx="${i}"`)
+      : `${iconBtn('edit','edit-membro','Editar',`data-idx="${i}"`)}${iconBtn('ban','inativar-membro','Inativar membro',`data-idx="${i}"`)}`;
     return `<tr${inativo?' style="opacity:0.6;"':''}>
     <td style="font-weight:600;">${esc(m.name)}${inativo?' <span class="tag-badge" style="background:#94a3b8;font-size:10px;margin-left:4px;">Inativo</span>':''}</td>
     <td><span class="member-role-badge">${esc(m.role)}</span></td>
@@ -65,17 +65,38 @@ function salvarMembro() {
   }).withFailureHandler(falha(btn,'Salvar Cadastro',null)).saveMember(dados);
 }
 // Membros são inativados/reativados (nunca excluídos), preservando o histórico.
+// Atualização otimista: a tela reflete a mudança na hora; só reverte se o servidor falhar.
 function inativarMembro(id) {
+  const m = state.members.find(x => String(x.id) === String(id));
+  if (m) m.ativo = false;
+  renderMembers(); sincronizarDropdownMembros();
   google.script.run.withSuccessHandler(r=>{
-    if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível inativar.'); return; }
-    recarregarKanban(()=>{ renderMembers(); sincronizarDropdownMembros(); });
-  }).withFailureHandler(e=>showAlerta(String(e))).inativarMembro(id);
+    if (r && r.sucesso === false) { 
+      if (m) m.ativo = true;
+      renderMembers(); sincronizarDropdownMembros();
+      showAlerta(r.mensagem || 'Não foi possível inativar.'); 
+    }
+  }).withFailureHandler(e=>{
+    if (m) m.ativo = true;
+    renderMembers(); sincronizarDropdownMembros();
+    showAlerta(String(e));
+  }).inativarMembro(id);
 }
 function reativarMembro(id) {
+  const m = state.members.find(x => String(x.id) === String(id));
+  if (m) m.ativo = true;
+  renderMembers(); sincronizarDropdownMembros();
   google.script.run.withSuccessHandler(r=>{
-    if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível reativar.'); return; }
-    recarregarKanban(()=>{ renderMembers(); sincronizarDropdownMembros(); });
-  }).withFailureHandler(e=>showAlerta(String(e))).reativarMembro(id);
+    if (r && r.sucesso === false) { 
+      if (m) m.ativo = false;
+      renderMembers(); sincronizarDropdownMembros();
+      showAlerta(r.mensagem || 'Não foi possível reativar.'); 
+    }
+  }).withFailureHandler(e=>{
+    if (m) m.ativo = false;
+    renderMembers(); sincronizarDropdownMembros();
+    showAlerta(String(e));
+  }).reativarMembro(id);
 }
 
 // ---------- Kanban Board ----------
@@ -141,8 +162,7 @@ function drop(e, newStatus) {
   google.script.run.withSuccessHandler(r=>{
     // Em falha de negócio (ex.: cartão excluído por outro usuário), desfaz a
     // mudança otimista recarregando o estado real do servidor.
-    if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível mover o cartão.'); recarregarKanban(renderTasks); return; }
-    recarregarKanban(renderTasks);
+    if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível mover o cartão.'); recarregarKanban(renderTasks); }
   }).withFailureHandler(e=>{ showAlerta(String(e)); recarregarKanban(renderTasks); }).updateTaskStatus(id, newStatus);
 }
 

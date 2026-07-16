@@ -115,7 +115,7 @@
          esquerda, no mesmo padrão em todas as telas. Cada aba tem seu
          próprio bloco de controles (hdr-*), escondido por padrão e
          mostrado só quando aquela aba está ativa. -->
-    <header class="page-header no-print">
+    <header class="page-header no-print" style="flex-wrap: wrap; position: relative;">
       <div class="page-tab-title" id="page-tab-title"></div>
 
       <div class="hdr-tab-controls" id="hdr-kanban">
@@ -131,63 +131,83 @@
         <!-- sem ação global; edição é por linha -->
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-ferias" style="flex-wrap:wrap;">
-        <label>Ano:</label>
-        <select id="f-ferias-ano" class="hdr-select" style="width:auto; min-width:88px;"></select>
-        <button class="btn secondary btn-sm" id="btn-add-ano-afastamento" type="button" style="height:28px;" title="Cadastrar um novo ano para lançar afastamentos com antecedência">+ Novo ano</button>
-        <span id="ano-novo-inline" style="display:none; align-items:center; gap:6px;">
-          <label>Ano a cadastrar:</label>
-          <input type="text" id="input-novo-ano" class="hdr-input" style="width:88px;" inputmode="numeric" maxlength="4" placeholder="Ex: 2027">
-          <button class="btn primary btn-sm" id="btn-confirmar-novo-ano" type="button" style="height:28px;">Adicionar</button>
-          <button class="btn secondary btn-sm" id="btn-cancelar-novo-ano" type="button" style="height:28px;">Cancelar</button>
-        </span>
-        <label>Membro:</label>
-        <select id="f-ferias-membro" class="hdr-select"><option value="">Todos os membros</option></select>
+      <div class="hdr-tab-controls" id="hdr-ferias" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <label>Ano:</label>
+            <select id="f-ferias-ano" class="hdr-select" style="width:auto; min-width:88px;"></select>
+            <label>Membro:</label>
+            <select id="f-ferias-membro" class="hdr-select"><option value="">Todos os membros</option></select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="btn secondary btn-sm" id="btn-add-ano-afastamento" type="button" style="height:28px;" title="Cadastrar um novo ano para lançar afastamentos com antecedência">+ Novo ano</button>
+            <span id="ano-novo-inline" style="display:none; align-items:center; gap:6px;">
+              <label>Ano a cadastrar:</label>
+              <input type="text" id="input-novo-ano" class="hdr-input" style="width:88px;" inputmode="numeric" maxlength="4" placeholder="Ex: 2027">
+              <button class="btn primary btn-sm" id="btn-confirmar-novo-ano" type="button" style="height:28px;">Adicionar</button>
+              <button class="btn secondary btn-sm" id="btn-cancelar-novo-ano" type="button" style="height:28px;">Cancelar</button>
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-indicadores">
-        <label>Filtrar por Membro:</label>
-        <select id="dashMemberFilter" class="hdr-select"><option value="">Todos</option></select>
-        <button class="btn-pdf" id="btn-download-pdf" type="button">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Baixar PDF
-        </button>
-        <button class="btn-pdf" style="background:#059669;" id="btn-email-dashboard" type="button">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          Enviar por E-mail
-        </button>
+      <div class="hdr-tab-controls" id="hdr-indicadores" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <label>Filtrar por Membro:</label>
+            <select id="dashMemberFilter" class="hdr-select"><option value="">Todos</option></select>
+          </div>
+          <div></div>
+        </div>
+        <div style="position: absolute; right: 24px; top: 8px; display: flex; gap: 8px;">
+          <button class="btn-action-icon" id="btn-download-pdf" type="button" title="Baixar PDF">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button class="btn-action-icon email" id="btn-email-dashboard" type="button" title="Enviar por E-mail">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </button>
+        </div>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-archived" style="flex-wrap:wrap;">
-        <label>Membro:</label>
-        <select id="f-archived-membro" class="hdr-select"><option value="">Todos</option></select>
-        <label>Concluído em:</label>
-        <input type="date" id="f-archived-data-ini" class="hdr-input" style="width:135px;">
-        <span style="color:#64748b; font-size:11px;">até</span>
-        <input type="date" id="f-archived-data-fim" class="hdr-input" style="width:135px;">
-        <button class="btn-pdf" id="btn-pdf-archived" type="button">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Baixar PDF
-        </button>
-        <button class="btn-pdf" style="background:#059669;" id="btn-email-archived" type="button">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          Enviar por E-mail
-        </button>
+      <div class="hdr-tab-controls" id="hdr-archived" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <label>Membro:</label>
+            <select id="f-archived-membro" class="hdr-select"><option value="">Todos</option></select>
+            <label>Concluído em:</label>
+            <input type="date" id="f-archived-data-ini" class="hdr-input" style="width:135px;">
+            <span style="color:#64748b; font-size:11px;">até</span>
+            <input type="date" id="f-archived-data-fim" class="hdr-input" style="width:135px;">
+          </div>
+          <div></div>
+        </div>
+        <div style="position: absolute; right: 24px; top: 8px; display: flex; gap: 8px;">
+          <button class="btn-action-icon" id="btn-pdf-archived" type="button" title="Baixar PDF">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button class="btn-action-icon email" id="btn-email-archived" type="button" title="Enviar por E-mail">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </button>
+        </div>
       </div>
 
       <div class="hdr-tab-controls" id="hdr-unidades">
         <button class="btn primary" id="btn-nova-unidade" type="button">+ Nova Unidade</button>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-doc-lista" style="flex-direction: column; align-items: flex-end; gap: 8px;">
-        <button class="btn primary" id="btn-novo-doc" type="button">+ Novo Documento</button>
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <label>Unidade:</label>
-          <select id="f-doc-unidade" class="hdr-select"><option value="">Todas</option></select>
-          <label>Tipo:</label>
-          <select id="f-doc-tipo" class="hdr-select"><option value="">Todos</option><option>Instrução de Trabalho</option><option>Plano de Fiscalização</option><option>Procedimento</option><option>Política</option><option>Regimento Interno</option><option>Manual</option><option>Guia</option><option>Formulário</option></select>
-          <label>Status:</label>
-          <select id="f-doc-status" class="hdr-select"><option value="">Todos</option><option>Em Elaboração</option><option>Vigente</option><option>Próximo da Revisão</option><option>Vencido</option></select>
+      <div class="hdr-tab-controls" id="hdr-doc-lista" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <label>Unidade:</label>
+            <select id="f-doc-unidade" class="hdr-select"><option value="">Todas</option></select>
+            <label>Tipo:</label>
+            <select id="f-doc-tipo" class="hdr-select"><option value="">Todos</option><option>Instrução de Trabalho</option><option>Plano de Fiscalização</option><option>Procedimento</option><option>Política</option><option>Regimento Interno</option><option>Manual</option><option>Guia</option><option>Formulário</option></select>
+            <label>Status:</label>
+            <select id="f-doc-status" class="hdr-select"><option value="">Todos</option><option>Em Elaboração</option><option>Vigente</option><option>Próximo da Revisão</option><option>Vencido</option></select>
+          </div>
+          <div>
+            <button class="btn primary" id="btn-novo-doc" type="button">+ Novo Documento</button>
+          </div>
         </div>
       </div>
 
@@ -197,69 +217,80 @@
       </div>
 
       <div class="hdr-tab-controls" id="hdr-risco-matriz" style="flex-direction: column; align-items: flex-end; gap: 8px;">
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-action-icon" id="btn-pdf-matriz" type="button" title="Baixar PDF">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button class="btn-action-icon email" id="btn-email-matriz" type="button" title="Enviar por E-mail">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </button>
+        </div>
         <button class="btn primary" id="btn-mapear-risco" type="button">+ Mapear Risco</button>
-        <div style="display: flex; gap: 10px;">
-          <button class="btn-pdf" id="btn-pdf-matriz" type="button">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Baixar PDF
+      </div>
+
+      <div class="hdr-tab-controls" id="hdr-plano-acomp" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <label>Unidade:</label>
+            <select id="f-acomp-unidade" class="hdr-select"><option value="">Todas</option></select>
+            <label>Status:</label>
+            <select id="f-acomp-status" class="hdr-select"><option value="">Todos</option><option>Concluído</option><option>Em Andamento</option><option>Atrasado</option></select>
+          </div>
+          <div>
+            <button class="btn primary" id="btn-novo-plano" type="button">+ Novo Plano de Ação</button>
+          </div>
+        </div>
+        <div style="position: absolute; right: 24px; top: 8px; display: flex; gap: 8px;">
+          <button class="btn-action-icon" id="btn-pdf-acomp" type="button" title="Baixar PDF">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
-          <button class="btn-pdf" style="background:#059669;" id="btn-email-matriz" type="button">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            Enviar por E-mail
+          <button class="btn-action-icon email" id="btn-email-acomp" type="button" title="Enviar por E-mail">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           </button>
         </div>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-plano-acomp" style="flex-direction: column; align-items: flex-end; gap: 8px;">
-        <button class="btn primary" id="btn-novo-plano" type="button">+ Novo Plano de Ação</button>
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <label>Unidade:</label>
-          <select id="f-acomp-unidade" class="hdr-select"><option value="">Todas</option></select>
-          <label>Status:</label>
-          <select id="f-acomp-status" class="hdr-select"><option value="">Todos</option><option>Concluído</option><option>Em Andamento</option><option>Atrasado</option></select>
-          <button class="btn-pdf" id="btn-pdf-acomp" type="button">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Baixar PDF
+      <div class="hdr-tab-controls" id="hdr-risco-arquivado">
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-action-icon" id="btn-pdf-risco-arquivado" type="button" title="Baixar PDF">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
-          <button class="btn-pdf" style="background:#059669;" id="btn-email-acomp" type="button">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            Enviar por E-mail
+          <button class="btn-action-icon email" id="btn-email-risco-arquivado" type="button" title="Enviar por E-mail">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           </button>
         </div>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-risco-arquivado" style="flex-direction: column; align-items: flex-end; gap: 8px;">
-        <div style="display: flex; gap: 10px;">
-          <button class="btn-pdf" id="btn-pdf-risco-arquivado" type="button">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Baixar PDF
-          </button>
-          <button class="btn-pdf" style="background:#059669;" id="btn-email-risco-arquivado" type="button">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            Enviar por E-mail
-          </button>
+      <div class="hdr-tab-controls" id="hdr-logs" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <label>Ação:</label>
+            <select id="f-log-acao" class="hdr-select"><option value="">Todas</option></select>
+            <label>Usuário:</label>
+            <select id="f-log-usuario" class="hdr-select"><option value="">Todos</option></select>
+            <label>Período:</label>
+            <input type="date" id="f-log-data-ini" class="hdr-input" style="width:135px;">
+            <span style="color:#64748b; font-size:11px;">até</span>
+            <input type="date" id="f-log-data-fim" class="hdr-input" style="width:135px;">
+            <label>Buscar:</label>
+            <input type="text" id="f-log-busca" class="hdr-input" style="width:170px;" placeholder="Referência ou detalhes...">
+          </div>
+          <div></div>
         </div>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-logs">
-        <label>Ação:</label>
-        <select id="f-log-acao" class="hdr-select"><option value="">Todas</option></select>
-        <label>Usuário:</label>
-        <select id="f-log-usuario" class="hdr-select"><option value="">Todos</option></select>
-        <label>Período:</label>
-        <input type="date" id="f-log-data-ini" class="hdr-input" style="width:135px;">
-        <span style="color:#64748b; font-size:11px;">até</span>
-        <input type="date" id="f-log-data-fim" class="hdr-input" style="width:135px;">
-        <label>Buscar:</label>
-        <input type="text" id="f-log-busca" class="hdr-input" style="width:170px;" placeholder="Referência ou detalhes...">
-      </div>
-
-      <div class="hdr-tab-controls" id="hdr-capacitacoes-lista" style="flex-wrap:wrap;">
-        <label>Período (Data):</label>
-        <input type="date" id="f-cap-data-ini" class="hdr-input" style="width:135px;">
-        <span style="color:#64748b; font-size:11px;">até</span>
-        <input type="date" id="f-cap-data-fim" class="hdr-input" style="width:135px;">
-        <button class="btn primary" id="btn-nova-capacitacao" type="button" style="margin-left: auto;">+ Nova Capacitação</button>
+      <div class="hdr-tab-controls" id="hdr-capacitacoes-lista" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <label>Período (Data):</label>
+            <input type="date" id="f-cap-data-ini" class="hdr-input" style="width:135px;">
+            <span style="color:#64748b; font-size:11px;">até</span>
+            <input type="date" id="f-cap-data-fim" class="hdr-input" style="width:135px;">
+          </div>
+          <div>
+            <button class="btn primary" id="btn-nova-capacitacao" type="button">+ Nova Capacitação</button>
+          </div>
+        </div>
       </div>
       
 
@@ -542,11 +573,8 @@
           <div class="kpi-card" style="border-top:3px solid #eab308;"><div class="kpi-icon icon-yellow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-p-and" style="color:#eab308;">0</div></div></div>
           <div class="kpi-card" style="border-top:3px solid #ef4444;"><div class="kpi-icon icon-red"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div><div class="kpi-label">Atrasadas</div><div class="kpi-value" id="kpi-p-atr" style="color:#ef4444;">0</div></div></div>
         </div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th style="width:95px;">Risco</th><th>Ação (What)</th><th style="width:180px;">Por que (Why)</th><th style="width:120px;">Quem (Who)</th><th style="width:75px;">Onde</th><th style="width:80px;">Prazo</th><th style="width:80px;">Finalização</th><th style="width:110px;">Como (How)</th><th style="width:65px;">Custo</th><th style="text-align:center; width:90px;">Status</th><th style="text-align:center; width:140px;" class="no-print">Ações</th></tr></thead>
-            <tbody id="lista-acomp"><tr><td colspan="11" class="msg-empty">A carregar...</td></tr></tbody>
-          </table>
+        <div id="container-planos" style="display:flex; flex-direction:column; gap:20px; margin-bottom:24px;">
+          <div class="msg-empty">A carregar...</div>
         </div>
       </div>
     </section>
@@ -560,22 +588,9 @@
           <h2>Riscos e Planos Arquivados</h2>
         </div>
         
-        <h3 class="tl-section-title" style="margin-top: 0;">Riscos Superados / Arquivados</h3>
-        <p style="font-size:13px; color:#64748b; margin-bottom:10px;" class="no-print">Os riscos listados abaixo foram marcados como superados (arquivados).</p>
-        <div class="table-wrap" style="margin-bottom: 24px;">
-          <table class="data-table">
-            <thead><tr><th style="width:40px; text-align:center;">#</th><th style="width:75px; text-align:center;">ID</th><th style="width:120px;">Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th><th style="width:120px;">Tratamento</th><th style="width:130px;">Proprietário</th><th style="text-align:center; width:65px; " class="no-print">Ações</th></tr></thead>
-            <tbody id="lista-riscos-arquivados"><tr><td colspan="9" class="msg-empty">A carregar...</td></tr></tbody>
-          </table>
-        </div>
 
-        <h3 class="tl-section-title">Planos de Ação (5W2H) Arquivados</h3>
-        <p style="font-size:13px; color:#64748b; margin-bottom:10px;" class="no-print">Planos de ação vinculados aos riscos que foram arquivados.</p>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th style="width:95px;">Risco</th><th>Ação (What)</th><th style="width:180px;">Por que (Why)</th><th style="width:120px;">Quem (Who)</th><th style="width:75px;">Onde</th><th style="width:80px;">Prazo</th><th style="width:80px;">Finalização</th><th style="text-align:center; width:90px;">Status</th><th style="text-align:center; width:90px;" class="no-print">Ações</th></tr></thead>
-            <tbody id="lista-planos-arquivados"><tr><td colspan="9" class="msg-empty">A carregar...</td></tr></tbody>
-          </table>
+        <div id="container-arquivados" style="display:flex; flex-direction:column; gap:20px; margin-bottom:24px;">
+          <div class="msg-empty">A carregar...</div>
         </div>
       </div>
     </section>
@@ -950,13 +965,13 @@
     <div class="form-row" style="margin-bottom:16px;">
       <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
         <input type="radio" name="revp-acao" value="manter" checked onchange="$id('revp-alterar-campos').style.display='none'">
-        <strong>Manter o plano atual:</strong> As ações atuais continuam válidas. O alerta de revisão será removido.
+        <strong>Manter em Andamento:</strong> A estratégia atual continua válida. O alerta de revisão será removido.
       </label>
     </div>
     <div class="form-row" style="margin-bottom:16px;">
       <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
         <input type="radio" name="revp-acao" value="alterar" onchange="$id('revp-alterar-campos').style.display='block'">
-        <strong>Alterar o plano:</strong> O plano atual e suas entregas serão arquivados no histórico, e você definirá um novo 5W2H para o risco.
+        <strong>Substituir Plano:</strong> O plano atual será marcado como "Substituído" e mantido no histórico. Você definirá um novo 5W2H abaixo.
       </label>
     </div>
     

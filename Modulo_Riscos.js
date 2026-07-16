@@ -29,7 +29,7 @@ function salvarRisco(dados) {
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
       aba.appendRow([id, dados.macroetapa, nomeR, dados.causa, dados.consequencia,
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel,
-        dados.tipoTratamento, dados.responsavel, 'Ativo']);
+        dados.tipoTratamento, dados.responsavel, 'Ativo', '[]']);
       registrarLog('Cadastro de Risco', id, 'Risco criado: ' + nomeR);
       return { sucesso: true, mensagem: 'Risco mapeado com sucesso!' };
     });
@@ -59,38 +59,28 @@ function atualizarRisco(dados) {
       if (linha === -1) return { sucesso: false, mensagem: 'Risco não localizado.' };
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
       
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const abaH = safeGetSheetData(ss, SHEET_HISTORICO);
-      const CH = colIdx_(CABECALHOS_HISTORICO);
-      let lastHistRow = -1;
-      
-      if (abaH && abaH.length > 1) {
-        for (let i = abaH.length - 1; i >= 1; i--) {
-          if (String(abaH[i][CH('ID')]||'').trim() === ref && String(abaH[i][CH('Tipo')]||'').trim() === 'Risco') {
-            lastHistRow = i + 1;
-            break;
-          }
-        }
+      let histArr = [];
+      const jsonStr = String(rows[linha-1][CR('Histórico')]||'').trim();
+      if (jsonStr.startsWith('[')) {
+        try { histArr = JSON.parse(jsonStr); } catch(e) {}
       }
       
-      if (lastHistRow !== -1) {
-        // Risco possui histórico. Atualiza a última reavaliação (status atual) 
-        // e atualiza em SHEET_RISKS apenas os metadados para não sobrescrever o risco inerente.
-        // Nova Probabilidade..Novo Responsável são contíguas em
-        // CABECALHOS_HISTORICO — uma escrita no lugar de cinco, sem segurar o
-        // ScriptLock por 5 round-trips. (As guardas `CH(...) !== -1` que havia
-        // aqui nunca disparavam: colIdx_ opera sobre a constante, que declara
-        // as duas colunas, e lança para nome desconhecido em vez de devolver -1.)
-        conectarAba(SHEET_HISTORICO)
-          .getRange(lastHistRow, CH('Nova Probabilidade')+1, 1, 5)
-          .setValues([[Number(dados.probabilidade), Number(dados.impacto), nivel, dados.tipoTratamento, dados.responsavel]]);
+      if (histArr.length > 0) {
+        // Atualiza a última reavaliação no array JSON
+        const lastHist = histArr[histArr.length - 1];
+        lastHist.prob = Number(dados.probabilidade);
+        lastHist.impacto = Number(dados.impacto);
+        lastHist.nivel = nivel;
+        lastHist.tratamento = dados.tipoTratamento;
+        lastHist.responsavel = dados.responsavel;
         
         // Em SHEET_RISKS, preserva Prob, Imp, Trat, Resp originais
         aba.getRange(linha, CR('Macroetapa')+1, 1, 5).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia, dados.categoria]]);
+        aba.getRange(linha, CR('Histórico')+1).setValue(JSON.stringify(histArr));
       } else {
         // Risco não possui histórico. Atualiza o cadastro base.
-        aba.getRange(linha, CR('Macroetapa')+1, 1, 10).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia,
-          dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel, dados.tipoTratamento, dados.responsavel]]);
+        aba.getRange(linha, CR('Macroetapa')+1, 1, 11).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia,
+          dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel, dados.tipoTratamento, dados.responsavel, 'Ativo']]);
       }
       
       registrarLog('Edição de Risco', ref, 'Metadados atualizados.');
@@ -163,9 +153,23 @@ function reavaliarRisco(dados) {
       }
       if (linhaR === -1) return { sucesso: false, mensagem: 'Risco ' + ref + ' não encontrado.' };
 
-      const abaH = conectarAba(SHEET_HISTORICO);
       const nivel = calcularNivelRisco(prob, imp);
-      abaH.appendRow([ref, 'Risco', _dataLocalISO_(new Date()), prob, imp, nivel, dados.tipoTratamento, dados.responsavel, dados.justificativa]);
+      
+      let histArr = [];
+      const jsonStr = String(rowsR[linhaR-1][CR('Histórico')]||'').trim();
+      if (jsonStr.startsWith('[')) {
+        try { histArr = JSON.parse(jsonStr); } catch(e) {}
+      }
+      histArr.push({
+        data: _dataLocalISO_(new Date()),
+        prob: prob,
+        impacto: imp,
+        nivel: nivel,
+        tratamento: dados.tipoTratamento,
+        responsavel: dados.responsavel,
+        justificativa: dados.justificativa
+      });
+      abaR.getRange(linhaR, CR('Histórico')+1).setValue(JSON.stringify(histArr));
 
       const abaP = conectarAba(SHEET_PLANS);
       const rowsP = abaP.getDataRange().getValues();
@@ -189,56 +193,82 @@ function revisarPlano(dados) {
   try {
     return comBloqueio(() => {
       const ref = dados.riscoVinculado;
-      const abaH = conectarAba(SHEET_HISTORICO);
       const abaP = conectarAba(SHEET_PLANS);
-      
-      if (dados.acao === 'manter') {
-        const rowsP = abaP.getDataRange().getValues();
-        const colIdRisco = colIdx_(CABECALHOS_PLANOS)('ID Risco');
-        const colRevisao = colIdx_(CABECALHOS_PLANOS)('Revisão Pendente');
-        for (let i = 1; i < rowsP.length; i++) {
-          if (rowsP[i][colIdRisco].toString().trim() === ref) {
-            abaP.getRange(i+1, colRevisao + 1).setValue('Não');
-          }
-        }
-        abaH.appendRow([ref, 'Plano', _dataLocalISO_(new Date()), '', '', '', '', '', dados.justificativa||'Mantido após reavaliação.']);
-        registrarLog('Revisão de Plano', ref, 'Plano mantido.');
-        return { sucesso: true, mensagem: 'Revisão registrada.' };
-      }
-      
       const rowsP = abaP.getDataRange().getValues();
-      const colIdRisco = colIdx_(CABECALHOS_PLANOS)('ID Risco');
+      const CP = colIdx_(CABECALHOS_PLANOS);
+      
       let linhaP = -1;
       let planAntigo = null;
       for (let i = 1; i < rowsP.length; i++) {
-        if (rowsP[i][colIdRisco].toString().trim() === ref) {
-          linhaP = i+1;
+        if (String(rowsP[i][CP('ID Risco')]||'').trim() === ref && 
+            String(rowsP[i][CP('O Que')]||'').trim() === dados.whatAntigo) {
+          linhaP = i + 1;
           planAntigo = rowsP[i];
           break;
         }
       }
-      if (linhaP === -1) return { sucesso: false, mensagem: 'Plano não encontrado.' };
       
-      const abaE = conectarAba(SHEET_DELIVERY);
-      const rowsE = abaE.getDataRange().getValues();
-      const colRefE = colIdx_(CABECALHOS_ENTREGAS)('Risco Vinculado');
-      // Iteração de trás para frente: os deleteRow abaixo deslocam as linhas.
-      const linhasExcluir = [];
-      for (let i = rowsE.length - 1; i >= 1; i--) {
-        const r = String(rowsE[i][colRefE]||'');
-        if (r === ref || r.startsWith(ref + ' -')) linhasExcluir.push(i+1);
+      if (linhaP === -1) return { sucesso: false, mensagem: 'Plano não encontrado para revisão.' };
+
+      // Processar histórico comum a todas as ações
+      let histArr = [];
+      const jsonStr = String(planAntigo[CP('Histórico')]||'').trim();
+      if (jsonStr.startsWith('[')) { try { histArr = JSON.parse(jsonStr); } catch(e) {} }
+      
+      let justifTexto = dados.justificativa;
+
+      // Ação: MANTER
+      if (dados.acao === 'manter') {
+        abaP.getRange(linhaP, CP('Revisão Pendente') + 1).setValue('Não');
+        histArr.push({ data: _dataLocalISO_(new Date()), justificativa: justifTexto || 'Mantido após reavaliação.' });
+        abaP.getRange(linhaP, CP('Histórico') + 1).setValue(JSON.stringify(histArr));
+        registrarLog('Revisão de Plano', ref, 'Plano mantido em andamento.');
+        return { sucesso: true, mensagem: 'Plano mantido com sucesso!' };
       }
       
-      const CP = colIdx_(CABECALHOS_PLANOS);
-      abaH.appendRow([ref, 'Plano', _dataLocalISO_(new Date()), '', '', '', '', '', dados.justificativa||'Estratégia alterada.']);
-      linhasExcluir.forEach(l => abaE.deleteRow(l));
-      
-      const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
-      abaP.getRange(linhaP, CP('O Que')+1, 1, 10).setValues([[dados.what, dados.why, dados.who, dados.where,
-        dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, 'Não']]);
+      // Ação: CANCELAR
+      if (dados.acao === 'cancelar') {
+        abaP.getRange(linhaP, CP('Revisão Pendente') + 1).setValue('Não');
+        abaP.getRange(linhaP, CP('Status') + 1).setValue('Cancelado');
+        abaP.getRange(linhaP, CP('Data Finalização') + 1).setValue(_dataLocalISO_(new Date()));
+        histArr.push({ data: _dataLocalISO_(new Date()), justificativa: justifTexto || 'Plano cancelado após reavaliação.' });
+        abaP.getRange(linhaP, CP('Histórico') + 1).setValue(JSON.stringify(histArr));
+        registrarLog('Revisão de Plano', ref, 'Plano cancelado.');
+        return { sucesso: true, mensagem: 'Plano cancelado!' };
+      }
+
+      // Ação: ALTERAR (Substituir plano: fecha o antigo e cria um novo)
+      if (dados.acao === 'alterar') {
+        // 1. Fechar o plano antigo
+        abaP.getRange(linhaP, CP('Revisão Pendente') + 1).setValue('Não');
+        abaP.getRange(linhaP, CP('Status') + 1).setValue('Substituído');
+        abaP.getRange(linhaP, CP('Data Finalização') + 1).setValue(_dataLocalISO_(new Date()));
+        histArr.push({ data: _dataLocalISO_(new Date()), justificativa: justifTexto || 'Estratégia substituída por um novo plano.' });
+        abaP.getRange(linhaP, CP('Histórico') + 1).setValue(JSON.stringify(histArr));
         
-      registrarLog('Revisão de Plano', ref, 'Plano alterado.');
-      return { sucesso: true, mensagem: 'Plano atualizado!' };
+        // 2. Criar o novo plano (appendRow)
+        const novoStatus = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
+        const novaRow = new Array(CABECALHOS_PLANOS.length).fill('');
+        novaRow[CP('ID Risco')] = ref;
+        novaRow[CP('O Que')] = dados.what;
+        novaRow[CP('Por Que')] = dados.why;
+        novaRow[CP('Quem')] = dados.who;
+        novaRow[CP('Onde')] = dados.where;
+        novaRow[CP('Data Prevista')] = dados.whenPrevisto;
+        novaRow[CP('Data Finalização')] = dados.whenFinalizado || '';
+        novaRow[CP('Como')] = dados.how;
+        novaRow[CP('Quanto Custa')] = dados.howMuch;
+        novaRow[CP('Status')] = novoStatus;
+        novaRow[CP('Revisão Pendente')] = 'Não';
+        novaRow[CP('Histórico')] = '[]';
+        novaRow[CP('Entregas')] = '[]';
+        
+        abaP.appendRow(novaRow);
+        
+        registrarLog('Revisão de Plano', ref, 'Plano substituído por nova estratégia.');
+        return { sucesso: true, mensagem: 'Plano antigo substituído e novo plano criado com sucesso!' };
+      }
+
     });
   } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
 }
@@ -276,7 +306,7 @@ function salvarPlano(dados) {
       }
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
       aba.appendRow([dados.riscoVinculado, dados.what, dados.why, dados.who,
-        dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status]);
+        dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, 'Não', '[]']);
       registrarLog('Cadastro de Plano', dados.riscoVinculado, 'Plano 5W2H criado: ' + dados.what);
       return { sucesso: true, mensagem: 'Plano registrado!' };
     });
@@ -295,7 +325,8 @@ function atualizarPlano(dados) {
       const rows = aba.getDataRange().getValues();
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][CP('ID Risco')]||'') === dados.riscoVinculado) {
+        if (String(rows[i][CP('ID Risco')]||'').trim() === dados.riscoVinculado && 
+            String(rows[i][CP('O Que')]||'').trim() === dados.whatAntigo) {
           // Bloco contíguo O Que → Status (9 colunas)
           aba.getRange(i+1, CP('O Que')+1, 1, 9).setValues([[dados.what, dados.why, dados.who, dados.where,
             dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status]]);
@@ -343,29 +374,15 @@ function excluirPlano(idPlano) {
 function _planoEhGlobal_(quem) { return String(quem||'').toUpperCase().includes('TODAS'); }
 function _ehSubcomissao_(nomeUnidade) { const n = String(nomeUnidade||'').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); }
 
-// A reavaliação da baixa automática do plano e a gravação de entregas em
-// lote (via modal de Acompanhamento) são o único fluxo de entregas em uso.
-function _reavaliarBaixa(refRisco, cacheRowsE) {
-  const abaP = conectarAba(SHEET_PLANS);
+// A reavaliação da baixa automática do plano
+function _reavaliarBaixa(abaP, indexPlano, rowData, entregasArr) {
   const CP = colIdx_(CABECALHOS_PLANOS);
-  const CE = colIdx_(CABECALHOS_ENTREGAS);
-  const rowsP = abaP.getDataRange().getValues();
-  let indexPlano = -1, planoGlobal = false;
-  for (let i = 1; i < rowsP.length; i++) {
-    if (String(rowsP[i][CP('ID Risco')]||'') === refRisco) {
-      indexPlano = i+1;
-      planoGlobal = _planoEhGlobal_(rowsP[i][CP('Quem')]);
-      break;
-    }
-  }
-  if (indexPlano === -1) return;
-  const statusAtualPlano = String(rowsP[indexPlano-1][CP('Status')] || '');
-  let rowsE = cacheRowsE;
-  if (!rowsE) {
-    const abaE = conectarAba(SHEET_DELIVERY);
-    rowsE = abaE.getDataRange().getValues();
-  }
+  const who = String(rowData[CP('Quem')]||'');
+  const planoGlobal = _planoEhGlobal_(who);
+  const statusAtualPlano = String(rowData[CP('Status')]||'');
+  
   let darBaixa = false;
+  
   if (planoGlobal) {
     const CU = colIdx_(CABECALHOS_UNIDADES);
     const abaU = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_UNITS);
@@ -373,17 +390,14 @@ function _reavaliarBaixa(refRisco, cacheRowsE) {
     const subcomissoes = rowsU.slice(1).filter(r => _ehSubcomissao_(r[CU('Nome da Unidade')]));
     const total = Math.max(subcomissoes.length, 1);
     const entregaram = new Set();
-    rowsE.slice(1).forEach(r => {
-      if (String(r[CE('Risco Vinculado')]||'') === refRisco && r[CE('Status')] === 'Sim') entregaram.add(String(r[CE('Unidade')]||''));
+    entregasArr.forEach(e => {
+      if (e.status === 'Sim') entregaram.add(e.unidade);
     });
     darBaixa = entregaram.size >= total;
   } else {
-    for (let i = rowsE.length - 1; i >= 1; i--) {
-      if (String(rowsE[i][CE('Risco Vinculado')]||'') === refRisco) {
-        darBaixa = rowsE[i][CE('Status')] === 'Sim'; break;
-      }
-    }
+    darBaixa = entregasArr.some(e => e.status === 'Sim');
   }
+
   const hoje = _dataLocalISO_(new Date());
   if (darBaixa) {
     abaP.getRange(indexPlano, CP('Data Finalização')+1).setValue(hoje);
@@ -391,69 +405,54 @@ function _reavaliarBaixa(refRisco, cacheRowsE) {
   } else {
     if (statusAtualPlano === 'Concluído') return; // Congelamento de status aprovado (não reabrir se cadastrar nova unidade)
     abaP.getRange(indexPlano, CP('Data Finalização')+1).clearContent();
-    abaP.getRange(indexPlano, CP('Status')+1).setValue(_statusPlano(rowsP[indexPlano-1][CP('Data Prevista')], ''));
+    abaP.getRange(indexPlano, CP('Status')+1).setValue(_statusPlano(rowData[CP('Data Prevista')], ''));
   }
 }
 
 // Salva/atualiza múltiplas entregas de uma vez (acompanhamento em lote).
-function salvarEntregasEmLote(riscoVinculado, entregas) {
+function salvarEntregasEmLote(riscoVinculado, whatPlano, entregas) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
-      const aba = conectarAba(SHEET_DELIVERY);
-      const CE = colIdx_(CABECALHOS_ENTREGAS);
-      // Fatiado na largura do layout: getDataRange() devolve a largura REAL da
-      // aba, e a regravação abaixo é fixa em CABECALHOS_ENTREGAS.length. Se a
-      // aba ganhasse uma coluna extra (uma anotação manual em F, p.ex.), o
-      // setValues estourava com "number of columns does not match".
-      let rows = aba.getDataRange().getValues().map(r => r.slice(0, CABECALHOS_ENTREGAS.length));
-
-      // Índice (risco|unidade) → posição no array, montado UMA vez. Antes era
-      // uma varredura de `rows` por entrega — O(entregas × linhas).
-      const posPorChave = new Map();
+      const aba = conectarAba(SHEET_PLANS);
+      const rows = aba.getDataRange().getValues();
+      const CP = colIdx_(CABECALHOS_PLANOS);
+      
+      let indexPlano = -1;
+      let jsonAntigo = [];
+      
       for (let i = 1; i < rows.length; i++) {
-        const chave = String(rows[i][CE('Risco Vinculado')]||'') + '|' + String(rows[i][CE('Unidade')]||'');
-        posPorChave.set(chave, i); // a última ocorrência vence, como no loop de trás para frente original
-      }
-
-      const novas = [];
-      const atualizadas = [];
-      entregas.forEach(function(ent) {
-        const pos = posPorChave.get(riscoVinculado + '|' + ent.unidade);
-        if (pos !== undefined) {
-          rows[pos][CE('Status')] = ent.entregue;
-          rows[pos][CE('Data Entrega')] = ent.dataEntrega||'';
-          rows[pos][CE('SEI')] = ent.processoSei||'';
-          atualizadas.push(pos);
-        } else {
-          const novaRow = new Array(CABECALHOS_ENTREGAS.length).fill('');
-          novaRow[CE('Risco Vinculado')] = riscoVinculado;
-          novaRow[CE('Unidade')] = ent.unidade;
-          novaRow[CE('Status')] = ent.entregue;
-          novaRow[CE('Data Entrega')] = ent.dataEntrega||'';
-          novaRow[CE('SEI')] = ent.processoSei||'';
-          novas.push(novaRow);
+        if (String(rows[i][CP('ID Risco')]||'').trim() === riscoVinculado && 
+            String(rows[i][CP('O Que')]||'').trim() === whatPlano) {
+          indexPlano = i + 1;
+          const txt = String(rows[i][CP('Entregas')]||'').trim();
+          if (txt.startsWith('[')) {
+            try { jsonAntigo = JSON.parse(txt); } catch(e) {}
+          }
+          break;
         }
-      });
-
-      // Escrita PONTUAL: só as linhas que mudaram, e só as 3 colunas editáveis
-      // (Status..SEI são contíguas). Antes reescrevia a aba INTEIRA a cada
-      // gravação — uma chamada só, mas de custo proporcional ao total de linhas,
-      // crescendo para sempre e regravando dados que ninguém tocou. Aqui são N
-      // chamadas, mas N é o nº de entregas DESTE risco (limitado pelas unidades);
-      // o custo deixa de depender do tamanho da aba.
-      atualizadas.forEach(function(pos) {
-        aba.getRange(pos + 1, CE('Status') + 1, 1, 3)
-           .setValues([[rows[pos][CE('Status')], rows[pos][CE('Data Entrega')], rows[pos][CE('SEI')]]]);
-      });
-      if (novas.length) {
-        // Acréscimo em bloco (1 chamada), depois da última linha atual.
-        aba.getRange(rows.length + 1, 1, novas.length, CABECALHOS_ENTREGAS.length).setValues(novas);
-        novas.forEach(r => rows.push(r)); // _reavaliarBaixa enxerga o estado final
       }
-
-      _reavaliarBaixa(riscoVinculado, rows);
-      registrarLog('Acompanhamento de Entregas', riscoVinculado, 'Entregas atualizadas em lote. Registros: ' + entregas.length);
+      
+      if (indexPlano === -1) return { sucesso: false, mensagem: 'Plano não encontrado na planilha.' };
+      
+      const mapEntregas = new Map();
+      jsonAntigo.forEach(e => mapEntregas.set(e.unidade, e));
+      
+      entregas.forEach(ent => {
+        mapEntregas.set(ent.unidade, {
+          unidade: ent.unidade,
+          status: ent.entregue,
+          data: ent.dataEntrega || '',
+          sei: ent.processoSei || ''
+        });
+      });
+      
+      const novoJsonArr = Array.from(mapEntregas.values());
+      aba.getRange(indexPlano, CP('Entregas') + 1).setValue(JSON.stringify(novoJsonArr));
+      
+      _reavaliarBaixa(aba, indexPlano, rows[indexPlano-1], novoJsonArr);
+      
+      registrarLog('Acompanhamento de Entregas', riscoVinculado, 'Entregas do plano atualizadas. Registros: ' + entregas.length);
       return { sucesso: true, mensagem: 'Registros salvos com sucesso!' };
     });
   } catch(e) { return { sucesso: false, mensagem: e.toString() }; }

@@ -16,10 +16,12 @@ function renderUnidades() {
     .map(u => ({ u, i: state.units.indexOf(u) }))
     .sort((a, b) => a.u.unidade.localeCompare(b.u.unidade, 'pt-BR', { sensitivity: 'base' }));
   tbody.innerHTML = ordenadas.map(({u, i}) => {
-    const estiloInativo = u.ativo === false ? 'opacity:0.6; text-decoration:line-through;' : '';
-    const acaoStatus = u.ativo === false 
-      ? `<button type="button" class="btn-membro-status" data-acao="reativar-unidade" data-idx="${i}" title="Reativar unidade" style="color:#166534;border-color:#bbf7d0;">Reativar</button>`
-      : `<button type="button" class="btn-membro-status" data-acao="inativar-unidade" data-idx="${i}" title="Inativar unidade" style="color:#b45309;border-color:#fde68a;">Inativar</button>`;
+    const inativo = u.ativo === false;
+    const estiloInativo = inativo ? 'opacity:0.6;' : '';
+    const acaoStatus = inativo 
+      ? iconBtn('check', 'reativar-unidade', 'Reativar unidade', `data-idx="${i}"`)
+      : `${iconBtn('edit','edit-unidade','Editar',`data-idx="${i}"`)}
+         ${iconBtn('ban', 'inativar-unidade', 'Inativar unidade', `data-idx="${i}"`)}`;
     
     // O campo aceita texto livre (unidade sem Drive). Só vira o botão clicável
     // "Acessar" quando é http(s) de verdade; qualquer outro texto (ex.: 'Não
@@ -34,12 +36,11 @@ function renderUnidades() {
         : `<span style="color:#64748b; font-size:12px;">${esc(dv)}</span>`;
 
     return `<tr>
-    <td style="font-weight:700;color:#2563eb;padding-right:6px;${estiloInativo}">${esc(u.sigla)}</td>
-    <td style="padding-left:6px; font-size:12px;${estiloInativo}">${esc(u.unidade)}</td>
-    <td style="color:#64748b;${estiloInativo}">${esc(u.email)}</td>
-    <td style="${estiloInativo}">${celulaDrive}</td>
-    <td><div class="cell-actions" style="justify-content:center;">
-      ${iconBtn('edit','edit-unidade','Editar',`data-idx="${i}"`)}
+    <td style="font-weight:700;color:#2563eb;padding-right:6px;"><span style="${estiloInativo}">${esc(u.sigla)}</span>${inativo?' <span class="tag-badge" style="background:#94a3b8;font-size:10px;margin-left:4px;color:white;text-decoration:none;display:inline-block;">Inativo</span>':''}</td>
+    <td style="padding-left:6px; font-size:12px;"><span style="${estiloInativo}">${esc(u.unidade)}</span></td>
+    <td style="color:#64748b;"><span style="${estiloInativo}">${esc(u.email)}</span></td>
+    <td><span style="${estiloInativo}">${celulaDrive}</span></td>
+    <td><div class="cell-actions" style="justify-content:flex-end;">
       ${acaoStatus}
     </div></td>
   </tr>`}).join('');

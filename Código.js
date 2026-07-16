@@ -49,8 +49,8 @@ const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável
 const CABECALHOS_ATIVIDADES = ['Tarefa ID','Tipo','Texto','Data','Autor'];
 const CABECALHOS_UNIDADES = ['ID Unidade', 'Nome da Unidade','Sigla','E-mail Funcional','Link do Drive', 'Ativo'];
 const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
-const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status'];
-const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Revisão Pendente'];
+const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status','Histórico'];
+const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Revisão Pendente','Histórico','Entregas'];
 const CABECALHOS_ENTREGAS = ['Risco Vinculado','Unidade','Status','Data Entrega','SEI'];
 const CABECALHOS_LOGS     = ['Data/Hora','Usuário','Ação','Referência','Detalhes'];
 const CABECALHOS_CAPACITACOES = ['ID', 'Título da Capacitação', 'Tema', 'Público-alvo', 'Modalidade', 'Data Prevista', 'Data Realizada', 'Status', 'Lista de Presença', 'Responsáveis'];
@@ -823,11 +823,28 @@ function _lerRiscosPlanosEntregas_(ss) {
     if (base && !planoPorRef.has(base)) planoPorRef.set(base, String(p[CP('O Que')]||'-'));
   }
 
+  const historico = [];
+
   const risks = rData.length > 1 ? rData.slice(1)
     .map((r, i) => {
       const idRisco = parseInt(String(r[CR('ID Risco')]||'').replace('R',''), 10) || (i+1);
       const ref = 'R' + idRisco;
       const planoAcao = planoPorRef.get(ref) || '-';
+
+      const jsonHist = String(r[CR('Histórico')]||'').trim();
+      if (jsonHist.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(jsonHist);
+          parsed.forEach(h => {
+             historico.push({
+               id: ref, tipo: 'Risco', data: h.data||'',
+               prob: h.prob||null, impacto: h.impacto||null, nivel: h.nivel||'',
+               tratamento: h.tratamento||'', responsavel: h.responsavel||'', justificativa: h.justificativa||''
+             });
+          });
+        } catch(e) {}
+      }
+
       return {
         id: idRisco, macroetapa: String(r[CR('Macroetapa')]||''), nome: String(r[CR('Risco')]||''), causa: String(r[CR('Causa')]||''),
         consequencia: String(r[CR('Consequência')]||''), categoria: String(r[CR('Categoria')]||''),
@@ -838,36 +855,50 @@ function _lerRiscosPlanosEntregas_(ss) {
       };
     }) : [];
 
-  const plans = planosRows.map(r => ({
-    riscoVinculado: String(r[CP('ID Risco')]||''), what: String(r[CP('O Que')]||''), why: String(r[CP('Por Que')]||''),
-    who: String(r[CP('Quem')]||''), where: String(r[CP('Onde')]||''),
-    whenPrevisto: formatarDataParaUI(r[CP('Data Prevista')]), whenFinalizado: formatarDataParaUI(r[CP('Data Finalização')]),
-    how: String(r[CP('Como')]||''), howMuch: String(r[CP('Quanto Custa')]||''),
-    status: String(r[CP('Status')]||'Em Andamento'), revisaoPendente: String(r[CP('Revisão Pendente')]||'Não')
-  }));
+  const deliveries = [];
 
-  const CE = colIdx_(CABECALHOS_ENTREGAS);
-  const eData = safeGetSheetData(ss, SHEET_DELIVERY);
-  const deliveries = eData.length > 1 ? eData.slice(1)
-    .map(r => ({
-      riscoVinculado: String(r[CE('Risco Vinculado')]||''), unidade: String(r[CE('Unidade')]||''),
-      entregue: String(r[CE('Status')]||''), dataEntrega: formatarDataParaUI(r[CE('Data Entrega')]),
-      processoSei: String(r[CE('SEI')]||'')
-    })) : [];
+  const plans = planosRows.map((r, pIdx) => {
+    const ref = String(r[CP('ID Risco')]||'');
+    
+    // Processar Histórico
+    const jsonHist = String(r[CP('Histórico')]||'').trim();
+    if (jsonHist.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(jsonHist);
+        parsed.forEach(h => {
+           historico.push({
+             id: ref, tipo: 'Plano', data: h.data||'',
+             justificativa: h.justificativa||''
+           });
+        });
+      } catch(e) {}
+    }
 
-  const CH = colIdx_(CABECALHOS_HISTORICO);
-  const hData = safeGetSheetData(ss, SHEET_HISTORICO);
-  const historico = hData.length > 1 ? hData.slice(1).map(r => ({
-    // Modulo_Riscos grava esta coluna como STRING ('yyyy-MM-dd'); o Sheets às
-    // vezes a converte em Date. formatarDataParaUI cobre os dois casos — chamar
-    // _dataLocalISO_ direto quebrava com célula vazia/texto ('getFullYear is not
-    // a function'), e a exceção derrubava getRiscosData() E getRestoData().
-    id: String(r[CH('ID')]||''), tipo: String(r[CH('Tipo')]||''), data: formatarDataParaUI(r[CH('Data')]),
-    prob: parseInt(r[CH('Nova Probabilidade')],10)||null,
-    impacto: parseInt(r[CH('Novo Impacto')],10)||null, nivel: String(r[CH('Novo Nível')]||''),
-    justificativa: String(r[CH('Justificativa da Mudança')]||''),
-    tratamento: String(r[CH('Novo Tratamento')]||''), responsavel: String(r[CH('Novo Responsável')]||'')
-  })) : [];
+    // Processar Entregas
+    const jsonEntregas = String(r[CP('Entregas')]||'').trim();
+    if (jsonEntregas.startsWith('[')) {
+      try {
+        const parsedE = JSON.parse(jsonEntregas);
+        parsedE.forEach(e => {
+           deliveries.push({
+             planoIdx: pIdx, riscoVinculado: ref, unidade: e.unidade||'',
+             entregue: e.status||'', dataEntrega: formatarDataParaUI(e.data||''),
+             processoSei: e.sei||''
+           });
+        });
+      } catch(e) {}
+    }
+
+    return {
+      riscoVinculado: ref, what: String(r[CP('O Que')]||''), why: String(r[CP('Por Que')]||''),
+      who: String(r[CP('Quem')]||''), where: String(r[CP('Onde')]||''),
+      whenPrevisto: formatarDataParaUI(r[CP('Data Prevista')]), whenFinalizado: formatarDataParaUI(r[CP('Data Finalização')]),
+      how: String(r[CP('Como')]||''), howMuch: String(r[CP('Quanto Custa')]||''),
+      status: String(r[CP('Status')]||'Em Andamento'), revisaoPendente: String(r[CP('Revisão Pendente')]||'Não')
+    };
+  });
+
+
 
   return { risks: risks, plans: plans, deliveries: deliveries, history: historico };
 }
@@ -1111,4 +1142,141 @@ function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
     comBloqueio(() => registrarLog('Envio de PDF', titulo || 'Relatório', 'Destinatário: ' + destinatario));
     return { sucesso: true, mensagem: 'Relatório enviado com sucesso!' };
   } catch (e) { return { sucesso: false, mensagem: e.toString() }; }
+}
+
+// SCRIPT TEMPORÁRIO DE MIGRAÇÃO - DE HISTÓRICO PARA JSON NAS ABAS
+function MIGRAR_HISTORICO_PARA_JSON() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abaH = ss.getSheetByName('Histórico_Reavaliacoes');
+  if (!abaH) return 'Aba de histórico não encontrada.';
+  
+  const abaR = ss.getSheetByName('Riscos');
+  const abaP = ss.getSheetByName('Planos_Acao');
+  
+  const rowsH = abaH.getDataRange().getValues();
+  if (rowsH.length < 2) return 'Histórico vazio.';
+  
+  const CH = colIdx_(CABECALHOS_HISTORICO);
+  
+  // Agrupar histórico por ID e Tipo
+  const histRiscos = {};
+  const histPlanos = {};
+  
+  for (let i = 1; i < rowsH.length; i++) {
+    const r = rowsH[i];
+    const id = String(r[CH('ID')]||'').trim();
+    const tipo = String(r[CH('Tipo')]||'').trim();
+    if (!id || !tipo) continue;
+    
+    if (tipo === 'Risco') {
+      if (!histRiscos[id]) histRiscos[id] = [];
+      histRiscos[id].push({
+        data: formatarDataParaUI(r[CH('Data')]),
+        prob: parseInt(r[CH('Nova Probabilidade')],10)||null,
+        impacto: parseInt(r[CH('Novo Impacto')],10)||null,
+        nivel: String(r[CH('Novo Nível')]||''),
+        tratamento: String(r[CH('Novo Tratamento')]||''),
+        responsavel: String(r[CH('Novo Responsável')]||''),
+        justificativa: String(r[CH('Justificativa da Mudança')]||'')
+      });
+    } else if (tipo === 'Plano') {
+      if (!histPlanos[id]) histPlanos[id] = [];
+      histPlanos[id].push({
+        data: formatarDataParaUI(r[CH('Data')]),
+        justificativa: String(r[CH('Justificativa da Mudança')]||'')
+      });
+    }
+  }
+  
+  // Atualizar aba Riscos
+  const rowsR = abaR.getDataRange().getValues();
+  const CR = colIdx_(CABECALHOS_RISCOS);
+  for (let i = 1; i < rowsR.length; i++) {
+    const id = String(rowsR[i][CR('ID Risco')]||'').trim();
+    if (id && histRiscos[id]) {
+      abaR.getRange(i + 1, CR('Histórico') + 1).setValue(JSON.stringify(histRiscos[id]));
+    } else {
+      abaR.getRange(i + 1, CR('Histórico') + 1).setValue('[]');
+    }
+  }
+  
+  // Atualizar aba Planos
+  if (abaP) {
+    const rowsP = abaP.getDataRange().getValues();
+    const CP = colIdx_(CABECALHOS_PLANOS);
+    for (let i = 1; i < rowsP.length; i++) {
+      const id = String(rowsP[i][CP('ID Risco')]||'').trim();
+      if (id && histPlanos[id]) {
+        abaP.getRange(i + 1, CP('Histórico') + 1).setValue(JSON.stringify(histPlanos[id]));
+      } else {
+        abaP.getRange(i + 1, CP('Histórico') + 1).setValue('[]');
+      }
+    }
+  }
+  
+  return 'Migração concluída com sucesso!';
+}
+
+//==============================================================================
+// MIGRACÃO DE ENTREGAS
+// Função para ser executada manualmente no Editor de Script para migrar as
+// entregas da aba "Acompanhamento_Entregas" para a coluna "Entregas" em "Planos_Acao"
+//==============================================================================
+function MIGRAR_ENTREGAS_PARA_JSON() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abaEntregas = ss.getSheetByName(SHEET_DELIVERY);
+  const abaPlanos = ss.getSheetByName(SHEET_PLANS);
+  
+  if (!abaEntregas || !abaPlanos) {
+    Logger.log("Aba de Entregas ou Planos não encontrada.");
+    return;
+  }
+  
+  const rowsE = abaEntregas.getDataRange().getValues();
+  const CE = colIdx_(CABECALHOS_ENTREGAS);
+  
+  // Agrupar entregas por ID Risco
+  const entregasPorRisco = {};
+  for (let i = 1; i < rowsE.length; i++) {
+    const rId = String(rowsE[i][CE('Risco Vinculado')] || '').trim();
+    if (!rId) continue;
+    if (!entregasPorRisco[rId]) entregasPorRisco[rId] = [];
+    
+    entregasPorRisco[rId].push({
+      unidade: String(rowsE[i][CE('Unidade')] || ''),
+      status: String(rowsE[i][CE('Status')] || ''),
+      data: String(rowsE[i][CE('Data Entrega')] || ''),
+      sei: String(rowsE[i][CE('SEI')] || '')
+    });
+  }
+  
+  const rowsP = abaPlanos.getDataRange().getValues();
+  const CP = colIdx_(CABECALHOS_PLANOS);
+  const updateData = []; // [linha, valor]
+  
+  // Para cada risco, encontramos o SEU ÚLTIMO PLANO e injetamos as entregas nele.
+  const planosPorRisco = {}; // { R1: [linhas...] }
+  for (let i = 1; i < rowsP.length; i++) {
+    const rId = String(rowsP[i][CP('ID Risco')] || '').trim();
+    if (!rId) continue;
+    if (!planosPorRisco[rId]) planosPorRisco[rId] = [];
+    planosPorRisco[rId].push(i + 1); // linha base 1
+  }
+  
+  for (const rId in entregasPorRisco) {
+    const linhasPlano = planosPorRisco[rId];
+    if (linhasPlano && linhasPlano.length > 0) {
+      // Pega o último plano daquele risco
+      const ultimaLinha = linhasPlano[linhasPlano.length - 1];
+      const jsonStr = JSON.stringify(entregasPorRisco[rId]);
+      updateData.push([ultimaLinha, jsonStr]);
+    }
+  }
+  
+  // Escrever de volta
+  updateData.forEach(upd => {
+    abaPlanos.getRange(upd[0], CP('Entregas') + 1).setValue(upd[1]);
+  });
+  
+  Logger.log("Migração de Entregas concluída! Registros migrados para " + updateData.length + " planos.");
 }
