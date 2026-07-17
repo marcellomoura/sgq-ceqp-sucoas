@@ -736,21 +736,27 @@ const CFG_PDF = {
 //  - o atributo HTML legado "bgcolor" em <table>/<tr>/<td>/<th>
 // Por isso, TUDO que precisa de uma cor de preenchimento no PDF usa
 // <td bgcolor="..."> (nunca <div style="background:...">), e badges que
-// no app usam pílula colorida (fundo + texto branco) viram aqui borda +
+// no app usam pílula colorida (fundo claro + texto escuro) viram aqui borda +
 // texto colorido — sem depender de nenhum preenchimento.
 
-// Extrai a cor de "background: X" / "background-color: X" de um style inline.
-function _extrairCorFundo(styleTexto) {
-  const m = /background(?:-color)?\s*:\s*([^;]+)/i.exec(styleTexto || '');
-  return m ? m[1].trim() : null;
+// Extrai a cor de "color: X" (texto) de um style inline — não confundir com
+// "background-color: X", por isso a declaração é isolada por ";" antes do match.
+function _extrairCorTexto(styleTexto) {
+  const partes = String(styleTexto || '').split(';');
+  for (const p of partes) {
+    const m = /^\s*color\s*:\s*(.+)$/i.exec(p);
+    if (m) return m[1].trim();
+  }
+  return null;
 }
 
-// Converte badges de pílula colorida (status-badge/tag-badge, que usam
-// background inline) em borda + texto colorido — a única forma que
-// renderiza de maneira confiável no PDF.
+// Converte badges de pílula colorida (status-badge/tag-badge, que hoje usam
+// fundo claro + texto escuro) em borda + texto colorido — a única forma que
+// renderiza de maneira confiável no PDF. Usa a cor do TEXTO (escura, legível),
+// não a de fundo (clara demais para servir de cor de traço/texto no PDF).
 function _converterBadgesParaPdf(container) {
   container.querySelectorAll('.status-badge, .tag-badge').forEach(function(el) {
-    const cor = _extrairCorFundo(el.getAttribute('style'));
+    const cor = _extrairCorTexto(el.getAttribute('style'));
     if (!cor) return;
     el.setAttribute('style', `border:1.3px solid ${cor};color:${cor};font-weight:700;background:none;`);
   });
