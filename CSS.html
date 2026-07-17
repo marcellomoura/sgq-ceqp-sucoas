@@ -223,6 +223,10 @@
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   }
   .hdr-input::placeholder { font-size: var(--fs-xs); color: var(--text-muted); }
+  /* input[type="date"] tem uma regra global (width:100%) mais específica que
+     .hdr-input sozinha; o seletor com o atributo de tipo abaixo restaura o
+     padrão de 170px do cabeçalho sem precisar de style inline por campo. */
+  input[type="date"].hdr-input { width: 170px; padding: 0 10px; font-size: var(--fs-xs); }
   .hdr-select:focus, .hdr-input:focus { border-color: var(--primary); background: var(--bg-card); box-shadow: 0 0 0 3px var(--primary-ring); }
   .hdr-tab-controls .btn.primary { height: 32px; padding: 0 14px; font-size: var(--fs-sm); flex-shrink: 0; }
   .hdr-tab-controls .btn-outline { height: 32px; padding: 0 12px; font-size: var(--fs-xs); flex-shrink: 0; }
