@@ -665,7 +665,7 @@ async function montarHtmlMatrizPdf() {
 
   const riscosHtml = _pdfSecaoTitulo('Mapeamento de Riscos') +
     `<table><thead><tr>
-      <th style="text-align:center;">ID</th><th style="text-align:center;">Referência</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>
+      <th style="text-align:center;">#</th><th style="text-align:center;">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>
       <th>Categoria</th><th style="text-align:center;">P×I</th><th style="text-align:center;">Nível</th>
       <th>Tratamento</th><th>Proprietário</th><th>Plano de Ação</th>
     </tr></thead><tbody>${_tbodyParaPdf('lista-riscos')}</tbody></table>`;
