@@ -675,21 +675,14 @@ async function montarHtmlMatrizPdf() {
 
 // Corpo do relatório de Acompanhamento de Ações — KPIs + tabela de planos.
 function montarHtmlAcompanhamentoPdf() {
-  const getTxt = id => { const el = $id(id); return el ? el.innerText : ''; };
-  const kpiHtml = `<table style="margin-bottom:18px;"><tr>
-    ${_pdfKpiCell('Concluídas', getTxt('kpi-p-conc'), '#2CA98F')}
-    ${_pdfKpiCell('Em Andamento', getTxt('kpi-p-and'), '#7A6CDD')}
-    ${_pdfKpiCell('Atrasadas', getTxt('kpi-p-atr'), '#D8483A')}
-  </tr></table>`;
-
   const container = $id('container-planos');
-  if (!container) return kpiHtml;
+  if (!container) return '';
   
   const clone = container.cloneNode(true);
   clone.querySelectorAll('.no-print').forEach(el => el.remove());
   _converterBadgesParaPdf(clone);
 
-  return kpiHtml + clone.innerHTML;
+  return clone.innerHTML;
 }
 
 function atualizarLegendaRisco(prefix) {
