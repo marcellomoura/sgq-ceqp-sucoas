@@ -48,10 +48,7 @@ function renderCapacitacoes(resetPage = false) {
                  : c.dataPrevista  ? 'Em Andamento'
                  : 'Planejada';
 
-    let statusColor, statusBg;
-    if (status === 'Concluída')         { statusColor = '#047857'; statusBg = '#d1fae5'; }
-    else if (status === 'Em Andamento') { statusColor = '#7c3aed'; statusBg = '#ede9fe'; }
-    else                                { statusColor = '#92400e'; statusBg = '#fef3c7'; }
+    const [statusBg, statusColor] = CORES_STATUS[status];
 
     const materiaisLink = c.materiais
       ? `<a href="${c.materiais.startsWith('http') ? esc(c.materiais) : 'https://' + esc(c.materiais)}" target="_blank" rel="noopener noreferrer" style="color:#2b7fff; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
@@ -142,8 +139,16 @@ function renderGraficosCapacitacoes(fid) {
   if (fid) {
     caps = caps.filter(c => c.participantes && parseIdsResponsaveis(c.participantes).includes(String(fid)));
   }
+  const yid = ($id('dashYearFilter')||{value:''}).value;
+  if (yid) {
+    caps = caps.filter(c => {
+      const dataRef = c.dataRealizada || c.dataPrevista;
+      const year = dataRef ? String(dataRef).substring(0,4) : '';
+      return year === String(yid);
+    });
+  }
 
-  let pMes = {}, pModalidade = {};
+  let pMes = {}, pModalidade = {}, pTema = {};
   
   // Contagens por ID de membro (apenas ativos) para não somar juntos membros homônimos.
   const membrosGrafico = state.members.filter(m => m.ativo !== false);
@@ -172,6 +177,10 @@ function renderGraficosCapacitacoes(fid) {
     const mod = c.modalidade || 'Não Definida';
     pModalidade[mod] = (pModalidade[mod] || 0) + 1;
 
+    // Tema
+    const tema = c.tema || 'Não Definido';
+    pTema[tema] = (pTema[tema] || 0) + 1;
+
     // Participantes → contar capacitações por membro ATIVO
     if (c.participantes) {
       parseIdsResponsaveis(c.participantes).forEach(id => {
@@ -186,7 +195,7 @@ function renderGraficosCapacitacoes(fid) {
   const elDashCapConc = $id('kpi-dash-cap-conc');
   if (elDashCapConc) elDashCapConc.innerText = qtdConcluidas;
 
-  [capMesChartInst, capModalidadeChartInst, capMembroChartInst].forEach(c => { if (c) c.destroy(); });
+  [capMesChartInst, capModalidadeChartInst, capMembroChartInst, capTemaChartInst].forEach(c => { if (c) c.destroy(); });
 
   // Gráfico: Capacitações por Mês (chaves ordenadas cronologicamente, formato MM/YYYY)
   const chavesMes = Object.keys(pMes).sort((a, b) => {
@@ -198,8 +207,8 @@ function renderGraficosCapacitacoes(fid) {
   if (cMes) {
     const ctxMes = cMes.getContext('2d');
     const gradMes = ctxMes.createLinearGradient(0, 0, 0, 260);
-    gradMes.addColorStop(0, 'rgba(139,92,246,0.28)');
-    gradMes.addColorStop(1, 'rgba(139,92,246,0)');
+    gradMes.addColorStop(0, 'rgba(122,108,221,0.28)');
+    gradMes.addColorStop(1, 'rgba(122,108,221,0)');
     capMesChartInst = new Chart(ctxMes, {
       type: 'line',
       data: {
@@ -207,10 +216,10 @@ function renderGraficosCapacitacoes(fid) {
         datasets: [{
           label: 'Capacitações',
           data: dadosMes,
-          borderColor: '#8b5cf6', backgroundColor: gradMes, fill: true,
+          borderColor: '#7A6CDD', backgroundColor: gradMes, fill: true,
           tension: 0.4, borderWidth: 2.5,
           pointRadius: 0, pointHoverRadius: 5, pointHitRadius: 12,
-          pointHoverBackgroundColor: '#8b5cf6', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2
+          pointHoverBackgroundColor: '#7A6CDD', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2
         }]
       },
       options: {
@@ -227,11 +236,25 @@ function renderGraficosCapacitacoes(fid) {
     type: 'doughnut',
     data: {
       labels: Object.keys(pModalidade),
-      datasets: [{ data: Object.values(pModalidade), backgroundColor: ['#2b7fff','#8b5cf6','#b45309','#0f766e','#dc2626'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+      datasets: [{ data: Object.values(pModalidade), backgroundColor: ['#3D8FC4','#2CA98F','#D2596F','#7A6CDD','#E0904A'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
-      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} capacitação(ões)` } }, datalabels: CHART_DATALABELS_BASE }
+      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} capacitação(ões)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: '#030712' } }
+    }
+  });
+
+  // Gráfico: Capacitações por Tema
+  const cTema = $id('capTemaChart');
+  if (cTema) capTemaChartInst = new Chart(cTema.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(pTema),
+      datasets: [{ data: Object.values(pTema), backgroundColor: ['#C99A2E','#D8483A','#6B9B37','#1E9AA3','#A94FA0','#55647A'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '66%',
+      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} capacitação(ões)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: '#030712' } }
     }
   });
 
@@ -249,7 +272,7 @@ function renderGraficosCapacitacoes(fid) {
       datasets: [{
         label: 'Capacitações',
         data: dadosMembros,
-        backgroundColor: dadosMembros.map(v => v > 0 && v === maxMembro ? '#8b5cf6' : 'rgba(139,92,246,0.16)'),
+        backgroundColor: '#A94FA0',
         borderWidth: 0, borderRadius: 20, borderSkipped: false, maxBarThickness: 26
       }]
     },
@@ -261,11 +284,11 @@ function renderGraficosCapacitacoes(fid) {
   });
 }
 
-// Fragmento do relatório do Painel de Indicadores com os 3 gráficos de
+// Fragmento do relatório do Painel de Indicadores com os 4 gráficos de
 // Capacitações (viram imagem estática, já que Chart.js não roda no servidor).
 function graficosCapacitacoesPdfHtml() {
-  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Volume de Capacitações ao Longo do Ano','capMesChart','100%')}</tr></table>` +
-    `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Distribuição por Modalidade de Treinamento','capModalidadeChart')}${_pdfGraficoCel('Total de Participações por Membro','capMembroChart')}</tr></table>`;
+  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Volume de Capacitações ao Longo do Ano','capMesChart')}${_pdfGraficoCel('Volume de Capacitações por Tema','capTemaChart')}</tr></table>` +
+    `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Distribuição por Modalidade de Treinamento','capModalidadeChart')}${_pdfGraficoCel('Volume de Capacitações por Membro','capMembroChart')}</tr></table>`;
 }
 
 // ------------------------------------------

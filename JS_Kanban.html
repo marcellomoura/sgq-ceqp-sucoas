@@ -33,7 +33,10 @@ function renderMembers() {
       ? iconBtn('check', 'reativar-membro', 'Reativar membro', `data-idx="${i}"`)
       : `${iconBtn('edit','edit-membro','Editar',`data-idx="${i}"`)}${iconBtn('ban','inativar-membro','Inativar membro',`data-idx="${i}"`)}`;
     return `<tr${inativo?' style="opacity:0.6;"':''}>
-    <td style="font-weight:600;">${esc(m.name)}${inativo?' <span class="tag-badge" style="background:#4b5563;font-size:10px;margin-left:4px;">Inativo</span>':''}</td>
+    <td style="font-weight:600;"><div style="display:flex;align-items:center;gap:10px;">
+      <div class="member-avatar ${corPastelPorNome(m.name)}">${esc(iniciaisMembro(m.name))}</div>
+      <span>${esc(m.name)}${inativo?' '+badgeInativo():''}</span>
+    </div></td>
     <td><span class="member-role-badge">${esc(m.role)}</span></td>
     <td style="color:#4b5563;">${esc(m.email)||'-'}</td>
     <td style="color:#4b5563;">${esc(m.emailPessoal)||'-'}</td>
@@ -233,12 +236,13 @@ function renderArquivados(resetPage = false) {
         if (d >= 0) duracao = `${d} dia${d !== 1 ? 's' : ''}`;
       }
     }
-    const prioColor = task.priority==='Alta'?'#dc2626':task.priority==='Media'?'#b45309':'#0f766e';
+    // Mesma cor de CORES_STATUS['Alta'/'Media'/'Baixa'] (fonte única) — só o texto exibido usa acento.
+    const [prioBg, prioCor] = CORES_STATUS[task.priority];
 
     return `<tr>
       <td style="font-weight:600;" title="${esc(task.title)}">${esc(task.title)}</td>
       <td>${esc(nomes)}</td>
-      <td style="text-align:center;"><span class="tag-badge" style="background:${prioColor};">${esc(task.priority === 'Media' ? 'Média' : task.priority)}</span></td>
+      <td style="text-align:center;"><span class="tag-badge" style="background:${prioBg};color:${prioCor};">${esc(task.priority === 'Media' ? 'Média' : task.priority)}</span></td>
       <td>${fmtBr(task.startDate)}</td>
       <td>${fmtBr(task.completionDate)}</td>
       <td style="text-align:center;font-weight:600;color:#4b5563;">${duracao}</td>
@@ -294,35 +298,48 @@ function restaurarTarefa(id) {
 }
 
 // ---------- Modal Tarefa ----------
-// Etiquetas pré-definidas (paleta fixa, orientada à gestão da qualidade).
+// Etiquetas pré-definidas (orientadas à gestão da qualidade). cor/bg curados à
+// mão — evita colisão entre as 7 (o hash de corPastelPorNome() colidia em duas
+// delas) e dá sentido temático (Urgente=vermelho, etc.). Uma etiqueta NOVA sem
+// cor/bg definidos aqui cai automaticamente no hash (ver corLabel() abaixo).
 const LABELS_DISPONIVEIS = [
-  { id:'auditoria',    nome:'Auditoria',        cor:'#2563eb' },
-  { id:'nc',           nome:'Não Conformidade', cor:'#dc2626' },
-  { id:'melhoria',     nome:'Melhoria',         cor:'#16a34a' },
-  { id:'documentacao', nome:'Documentação',     cor:'#7c3aed' },
-  { id:'processo',     nome:'Processo',         cor:'#b45309' },
-  { id:'treinamento',  nome:'Treinamento',      cor:'#ea580c' },
-  { id:'urgente',      nome:'Urgente',          cor:'#dc2626' }
+  { id:'auditoria',    nome:'Auditoria',        cor:'#3D8FC4', bg:'#E1F1FC' }, // Céu
+  { id:'nc',           nome:'Não Conformidade', cor:'#D2596F', bg:'#FBE3E6' }, // Rosa
+  { id:'melhoria',     nome:'Melhoria',         cor:'#2CA98F', bg:'#DFF6EF' }, // Menta
+  { id:'documentacao', nome:'Documentação',     cor:'#7A6CDD', bg:'#E9E6FB' }, // Lavanda
+  { id:'processo',     nome:'Processo',         cor:'#E0904A', bg:'#FBEADD' }, // Pêssego
+  { id:'treinamento',  nome:'Treinamento',      cor:'#C99A2E', bg:'#FBF3D3' }, // Dourado
+  { id:'urgente',      nome:'Urgente',          cor:'#D8483A', bg:'#FCE1DE' }  // Tijolo
 ];
 function parseLabels(raw) {
   try { const a=JSON.parse(raw); return Array.isArray(a)?a.map(String):[]; } catch(e){ return []; }
 }
+// cor/bg explícitos (acima) têm prioridade; sem eles, cai no hash automático.
+function corLabel(l) { return l.cor && l.bg ? { cor: l.cor, bg: l.bg, cls: '' } : { cor: corPastelHex(l.nome), bg: '', cls: corPastelPorNome(l.nome) }; }
 function labelChipsHTML(ids) {
-  return ids.map(id=>{ const l=LABELS_DISPONIVEIS.find(x=>x.id===id); return l?`<span class="label-chip" style="background:${l.cor};">${esc(l.nome)}</span>`:''; }).join('');
+  return ids.map(id=>{
+    const l=LABELS_DISPONIVEIS.find(x=>x.id===id); if(!l) return '';
+    const c = corLabel(l);
+    const style = c.bg ? `background:${c.bg};color:${c.cor};` : '';
+    return `<span class="label-chip ${c.cls}" style="${style}">${esc(l.nome)}</span>`;
+  }).join('');
 }
 function populateLabels(selectedIds=[]) {
   const c=$id('taskLabelsContainer'); if(!c) return;
-  
+
   c.innerHTML = LABELS_DISPONIVEIS.map(l=>{
     const checked = selectedIds.includes(l.id);
-    const svgIcon = checked 
-      ? `<svg style="width:16px;height:16px;stroke:${l.cor};fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line><polyline points="9 11 12 14 22 4" stroke-width="3" style="stroke:${l.cor};"></polyline></svg>` 
+    const info = corLabel(l);
+    const cor = info.cor;
+    const badgeStyle = info.bg ? `background:${info.bg};color:${info.cor};` : '';
+    const svgIcon = checked
+      ? `<svg style="width:16px;height:16px;stroke:${cor};fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line><polyline points="9 11 12 14 22 4" stroke-width="3" style="stroke:${cor};"></polyline></svg>`
       : `<svg style="width:16px;height:16px;stroke:#6b7280;fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
 
     return `<label class="checkbox-label" style="display:flex; align-items:center; cursor:pointer; padding:4px 8px; margin-bottom:2px; border-radius:4px;">
       <input type="checkbox" style="display:none;" value="${esc(l.id.replace(/"/g,'&quot;'))}" ${checked?'checked':''}>
-      <span class="label-svg-icon" data-color="${l.cor}" style="display:flex;">${svgIcon}</span>
-      <span class="tag-badge" style="background:${l.cor};">${esc(l.nome)}</span>
+      <span class="label-svg-icon" data-color="${cor}" style="display:flex;">${svgIcon}</span>
+      <span class="tag-badge ${info.cls}" style="${badgeStyle}">${esc(l.nome)}</span>
     </label>`;
   }).join('');
   
@@ -488,6 +505,13 @@ function renderGraficosKanban(fid) {
   if (fid) {
     tasks = tasks.filter(t => parseIdsResponsaveis(t.assigneeId).includes(String(fid)));
   }
+  const yid = ($id('dashYearFilter')||{value:''}).value;
+  if (yid) {
+    tasks = tasks.filter(t => {
+      const year = t.completionDate ? t.completionDate.substring(0,4) : (t.creationDate ? t.creationDate.substring(0,4) : '');
+      return year === String(yid);
+    });
+  }
 
   const sc = { 'Backlog':0, 'A Fazer':0, 'Em Andamento':0, 'Em Revisão':0, 'Concluído':0 };
   const pc = { 'Alta':0, 'Media':0, 'Baixa':0 };
@@ -535,11 +559,15 @@ function renderGraficosKanban(fid) {
     type: 'doughnut',
     data: {
       labels: Object.keys(sc),
-      datasets: [{ data: Object.values(sc), backgroundColor: ['#d1d5db','#2b7fff','#b45309','#8b5cf6','#0f766e'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+      // Ordem de sc: Backlog, A Fazer, Em Andamento, Em Revisão, Concluído.
+      // Em Andamento=Lavanda e Concluído=Menta seguem CORES_STATUS; A Fazer
+      // (Céu) e Em Revisão (Dourado) são específicos deste gráfico.
+      datasets: [{ data: Object.values(sc), backgroundColor: ['#55647A','#3D8FC4','#7A6CDD','#C99A2E','#2CA98F'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
-      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } }, datalabels: CHART_DATALABELS_BASE }
+      // Texto escuro: Céu/Dourado/Menta são claros demais para número branco.
+      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: '#030712' } }
     }
   });
 
@@ -549,11 +577,13 @@ function renderGraficosKanban(fid) {
     type: 'doughnut',
     data: {
       labels: ['Alta', 'Média', 'Baixa'],
-      datasets: [{ data: [pc['Alta'], pc['Media'], pc['Baixa']], backgroundColor: ['#dc2626','#b45309','#0f766e'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+      datasets: [{ data: [pc['Alta'], pc['Media'], pc['Baixa']], backgroundColor: ['#D8483A','#E0904A','#2CA98F'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
-      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } }, datalabels: CHART_DATALABELS_BASE }
+      // Texto escuro (em vez do branco padrão de CHART_DATALABELS_BASE): o
+      // amarelo e o verde deste gráfico são claros demais para número branco.
+      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: '#030712' } }
     }
   });
 
@@ -567,7 +597,7 @@ function renderGraficosKanban(fid) {
       datasets: [{
         label: 'Em Andamento',
         data: dadosMc,
-        backgroundColor: dadosMc.map(v => v > 0 && v === maxMc ? '#2b7fff' : 'rgba(43,127,255,0.16)'),
+        backgroundColor: '#7A6CDD',
         borderWidth: 0, borderRadius: 20, borderSkipped: false, maxBarThickness: 26
       }]
     },
@@ -588,7 +618,7 @@ function renderGraficosKanban(fid) {
       datasets: [{
         label: 'Concluídas',
         data: dadosMcConcluido,
-        backgroundColor: dadosMcConcluido.map(v => v > 0 && v === maxMcC ? '#0f766e' : 'rgba(15,118,110,0.16)'),
+        backgroundColor: '#2CA98F',
         borderWidth: 0, borderRadius: 20, borderSkipped: false, maxBarThickness: 26
       }]
     },

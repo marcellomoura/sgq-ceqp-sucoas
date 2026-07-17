@@ -49,17 +49,17 @@ function renderDocumentos(modo) {
     const oi = idxPorIdRow.get(d.idRow);
     const auxList = [linkA(d.docAuxiliar,'Anexo 1','#4b5563'), linkA(d.docAuxiliar2,'Anexo 2','#4b5563')].filter(x=>x!=='-');
     const aux = auxList.length > 0 ? `<div style="display:flex; flex-direction:column; gap:8px;">${auxList.join('')}</div>` : '-';
-    const base = `<td style="font-weight:700; white-space:nowrap;">${esc(d.codigo)}</td><td style="text-align:center;">v${esc(d.versao)}</td><td>${esc(d.tipo)}</td><td><span style="display:inline-block; font-weight:600; color:#030712; border:1px solid #d1d5db; border-radius:6px; padding:4px 10px; background:#f9fafb;">${esc(d.titulo)}</span></td><td>${esc(formatUnidadeUI(d.responsavel))}</td><td>${fmtBr(d.dataAprovacao)}</td>`;
+    const base = `<td style="font-weight:700; white-space:nowrap;">${esc(d.codigo)}</td><td style="text-align:center;">v${esc(d.versao)}</td><td>${badge(d.tipo, CORES_TIPO_DOC)}</td><td style="font-weight:500;">${esc(d.titulo)}</td><td>${esc(formatUnidadeUI(d.responsavel))}</td><td>${fmtBr(d.dataAprovacao)}</td>`;
     if (modo === 'mestra') return `<tr>${base}
       <td>${fmtBr(d.proximaRevisao)}</td>
-      <td style="text-align:center;">${linkA(d.linkDoc,'Visualizar')}</td>
+      <td style="text-align:center;">${linkA(d.linkDoc,'Acessar',null,true)}</td>
       <td style="text-align:center;">${aux}</td>
       <td style="font-size:12px;">${esc(d.motivo)}</td>
       <td style="text-align:center;">${badge(d.status)}</td>
       <td><div class="cell-actions" style="justify-content:center;">${iconBtn('edit','edit-doc','Editar',`data-idx="${oi}"`)}${iconBtn('rev','rev-doc','Nova Revisão',`data-idx="${oi}"`)}${iconBtn('del','del-doc','Excluir',`data-idx="${oi}"`)} </div></td>
     </tr>`;
     return `<tr>${base}
-      <td style="text-align:center;">${linkA(d.linkDoc,'Visualizar')}</td>
+      <td style="text-align:center;">${linkA(d.linkDoc,'Acessar',null,true)}</td>
       <td style="text-align:center;">${aux}</td>
       <td style="font-size:12px;">${esc(d.motivo)}</td>
       <td style="text-align:center;">${badge('Obsoleto')}</td>
@@ -120,9 +120,9 @@ function confirmarEdicaoDoc() {
   if (!dados.titulo || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
   google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) { recarregarDocs(()=>renderDocumentos('mestra')); feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>fecharModal('modal-doc-editar')); }
-    else { btn.disabled=false; btn.innerText='Confirmar'; showAlerta(r.mensagem); }
-  }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarDocumento(dados);
+    if (r.sucesso) { recarregarDocs(()=>renderDocumentos('mestra')); feedbackBtn(btn,'✅ Salvo!','Salvar Documento',()=>fecharModal('modal-doc-editar')); }
+    else { btn.disabled=false; btn.innerText='Salvar Documento'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Salvar Documento',null)).atualizarDocumento(dados);
 }
 
 function abrirRevisaoDoc(idx) {

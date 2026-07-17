@@ -43,8 +43,8 @@ function renderMatriz() {
       
       const prevScore = hist.length > 1 ? (hist[hist.length - 2].prob * hist[hist.length - 2].impacto) : originalScore;
       const curScore = curProb * curImp;
-      if (curScore < prevScore) trendIcon = '<span style="color:#16a34a; font-weight:bold; margin-left:4px;" title="Risco reduziu">⬇️</span>';
-      else if (curScore > prevScore) trendIcon = '<span style="color:#dc2626; font-weight:bold; margin-left:4px;" title="Risco aumentou">⬆️</span>';
+      if (curScore < prevScore) trendIcon = '<span style="color:#2CA98F; font-weight:bold; margin-left:4px;" title="Risco reduziu">⬇️</span>';
+      else if (curScore > prevScore) trendIcon = '<span style="color:#D8483A; font-weight:bold; margin-left:4px;" title="Risco aumentou">⬆️</span>';
       else trendIcon = '<span style="color:#6b7280; font-weight:bold; margin-left:4px;" title="Risco manteve">➖</span>';
     }
     
@@ -153,9 +153,9 @@ function confirmarEdicaoRisco() {
   if (!dados.nome || !dados.causa || !dados.consequencia || !dados.probabilidade || !dados.impacto) return showAlerta('Preencha os campos obrigatórios, incluindo Probabilidade e Impacto.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
   google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-risco-editar'); recarregarRiscosPlanos(renderMatriz); });
-    else { btn.disabled=false; btn.innerText='Confirmar'; showAlerta(r.mensagem); }
-  }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarRisco(dados);
+    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Salvar Risco',()=>{ fecharModal('modal-risco-editar'); recarregarRiscosPlanos(renderMatriz); });
+    else { btn.disabled=false; btn.innerText='Salvar Risco'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Salvar Risco',null)).atualizarRisco(dados);
 }
 
 function excluirRisco(id) {
@@ -382,12 +382,12 @@ function renderAcompanhamento() {
           </div>
           <h4 style="margin:0 0 6px 0; color:#0f172a; font-size:15px;">${esc(r.nome)}</h4>
           <div style="display: flex; flex-wrap: wrap; gap: 6px 16px; font-size:13px; color:#4b5563;">
-            <div><strong style="color:#030712;">Causa:</strong> ${esc(r.causa)}</div>
-            <div><strong style="color:#030712;">Consequência:</strong> ${esc(r.consequencia)}</div>
-            <div><strong style="color:#030712;">Categoria:</strong> ${esc(r.categoria)}</div>
-            <div><strong style="color:#030712;">Nível de Risco:</strong> ${badge(curNivel)}</div>
-            <div><strong style="color:#030712;">Tratamento:</strong> ${esc(curTratamento)}</div>
-            <div><strong style="color:#030712;">Proprietário:</strong> ${esc(formatUnidadeUI(curResp))}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Causa:</strong> ${esc(r.causa)}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Consequência:</strong> ${esc(r.consequencia)}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Categoria:</strong> ${esc(r.categoria)}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Nível de Risco:</strong> ${badge(curNivel)}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Tratamento:</strong> ${esc(curTratamento)}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Proprietário:</strong> ${esc(formatUnidadeUI(curResp))}</div>
           </div>
         </div>
       </div>
@@ -428,9 +428,9 @@ function confirmarEdicaoPlano() {
   if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
   google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Confirmar',()=>{ fecharModal('modal-plano-editar'); recarregarRiscosPlanos(renderAcompanhamento); });
-    else { btn.disabled=false; btn.innerText='Confirmar'; showAlerta(r.mensagem); }
-  }).withFailureHandler(falha(btn,'Confirmar',null)).atualizarPlano(dados);
+    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Salvar Plano de Ação',()=>{ fecharModal('modal-plano-editar'); recarregarRiscosPlanos(renderAcompanhamento); });
+    else { btn.disabled=false; btn.innerText='Salvar Plano de Ação'; showAlerta(r.mensagem); }
+  }).withFailureHandler(falha(btn,'Salvar Plano de Ação',null)).atualizarPlano(dados);
 }
 
 function excluirPlano(riscoVinculado) {
@@ -478,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     btn.disabled = true; btn.innerText = 'A processar...';
     google.script.run.withSuccessHandler(r => {
-      btn.disabled = false; btn.innerText = 'Confirmar';
+      btn.disabled = false; btn.innerText = 'Salvar Revisão';
       if (r.sucesso) {
         showAlerta(r.mensagem, 'success');
         fecharModal('modal-revisar-plano');
@@ -486,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         showAlerta(r.mensagem);
       }
-    }).withFailureHandler(falha(btn,'Confirmar',null)).revisarPlano(dados);
+    }).withFailureHandler(falha(btn,'Salvar Revisão',null)).revisarPlano(dados);
   });
 });
 
@@ -677,9 +677,9 @@ async function montarHtmlMatrizPdf() {
 function montarHtmlAcompanhamentoPdf() {
   const getTxt = id => { const el = $id(id); return el ? el.innerText : ''; };
   const kpiHtml = `<table style="margin-bottom:18px;"><tr>
-    ${_pdfKpiCell('Concluídas', getTxt('kpi-p-conc'), '#0f766e')}
-    ${_pdfKpiCell('Em Andamento', getTxt('kpi-p-and'), '#92400e')}
-    ${_pdfKpiCell('Atrasadas', getTxt('kpi-p-atr'), '#dc2626')}
+    ${_pdfKpiCell('Concluídas', getTxt('kpi-p-conc'), '#2CA98F')}
+    ${_pdfKpiCell('Em Andamento', getTxt('kpi-p-and'), '#7A6CDD')}
+    ${_pdfKpiCell('Atrasadas', getTxt('kpi-p-atr'), '#D8483A')}
   </tr></table>`;
 
   const container = $id('container-planos');
@@ -711,17 +711,16 @@ function atualizarLegendaRisco(prefix) {
   const p = Number(probVal);
   const i = Number(impVal);
   const s = p * i;
-  let text = '', bg = '', cor = '', border = '';
-  if (s >= 15) { text = 'Crítico (' + s + ')'; bg = '#ffe9eb'; cor = '#b91c1c'; border = '#fecdd3'; }
-  else if (s >= 10) { text = 'Alto (' + s + ')'; bg = '#ffedd5'; cor = '#9a3412'; border = '#fdba74'; }
-  else if (s >= 5) { text = 'Médio (' + s + ')'; bg = '#fef3c7'; cor = '#92400e'; border = '#fde68a'; }
-  else { text = 'Baixo (' + s + ')'; bg = '#e5fbf8'; cor = '#0f6a5f'; border = '#99e6da'; }
-  
+  // Nível a partir do score; as cores saem de CORES_STATUS (fonte única, ver
+  // JS_Utilitarios.html) — a borda usa a própria cor do texto.
+  const nivel = s >= 15 ? 'Crítico' : s >= 10 ? 'Alto' : s >= 5 ? 'Médio' : 'Baixo';
+  const [bg, cor] = CORES_STATUS[nivel];
+
   if (leg && val) {
     leg.style.backgroundColor = bg;
-    leg.style.borderColor = border;
+    leg.style.borderColor = cor;
     leg.style.color = cor;
-    val.innerText = text;
+    val.innerText = nivel + ' (' + s + ')';
   }
 }
 
@@ -803,12 +802,12 @@ function renderRiscosArquivados() {
           </div>
           <h4 style="margin:0 0 6px 0; color:#0f172a; font-size:15px;">${esc(r.nome)}</h4>
           <div style="display: flex; flex-wrap: wrap; gap: 6px 16px; font-size:13px; color:#4b5563;">
-            <div><strong style="color:#030712;">Causa:</strong> ${esc(r.causa)}</div>
-            <div><strong style="color:#030712;">Consequência:</strong> ${esc(r.consequencia)}</div>
-            <div><strong style="color:#030712;">Categoria:</strong> ${esc(r.categoria)}</div>
-            <div><strong style="color:#030712;">Nível de Risco:</strong> ${badge(curNivel)}</div>
-            <div><strong style="color:#030712;">Tratamento:</strong> ${esc(curTratamento)}</div>
-            <div><strong style="color:#030712;">Proprietário:</strong> ${esc(formatUnidadeUI(curResp))}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Causa:</strong> ${esc(r.causa)}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Consequência:</strong> ${esc(r.consequencia)}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Categoria:</strong> ${esc(r.categoria)}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Nível de Risco:</strong> ${badge(curNivel)}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Tratamento:</strong> ${esc(curTratamento)}</div>
+            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Proprietário:</strong> ${esc(formatUnidadeUI(curResp))}</div>
           </div>
         </div>
         <div class="no-print" style="flex-shrink:0;">

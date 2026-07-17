@@ -158,8 +158,9 @@
       <div class="hdr-tab-controls" id="hdr-indicadores" style="width: 100%; margin-top: 6px;">
         <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
           <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <label>Filtrar por Membro:</label>
-            <select id="dashMemberFilter" class="hdr-select"><option value="">Todos</option></select>
+            <label>Filtros:</label>
+            <select id="dashYearFilter" class="hdr-select"></select>
+            <select id="dashMemberFilter" class="hdr-select"><option value="">Todos os Membros</option></select>
           </div>
           <div></div>
         </div>
@@ -273,9 +274,9 @@
             <label>Usuário:</label>
             <select id="f-log-usuario" class="hdr-select"><option value="">Todos</option></select>
             <label>Período:</label>
-            <input type="date" id="f-log-data-ini" class="hdr-input" style="width:100px; font-size:10px; padding:0 4px;">
+            <input type="date" id="f-log-data-ini" class="hdr-input">
             <span style="color:#4b5563; font-size:10px;">até</span>
-            <input type="date" id="f-log-data-fim" class="hdr-input" style="width:100px; font-size:10px; padding:0 4px;">
+            <input type="date" id="f-log-data-fim" class="hdr-input">
             <label>Buscar:</label>
             <input type="text" id="f-log-busca" class="hdr-input" style="width:170px;" placeholder="Referência ou detalhes...">
           </div>
@@ -287,9 +288,9 @@
         <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
           <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
             <label>Período:</label>
-            <input type="date" id="f-cap-data-ini" class="hdr-input" style="width:100px; font-size:10px; padding:0 4px;">
+            <input type="date" id="f-cap-data-ini" class="hdr-input">
             <span style="color:#4b5563; font-size:10px;">até</span>
-            <input type="date" id="f-cap-data-fim" class="hdr-input" style="width:100px; font-size:10px; padding:0 4px;">
+            <input type="date" id="f-cap-data-fim" class="hdr-input">
           </div>
           <div>
             <button class="btn primary" id="btn-nova-capacitacao" type="button">+ Nova Capacitação</button>
@@ -410,7 +411,7 @@
     <!-- ======================== MÓDULO 5: PAINEL DE INDICADORES ======================== -->
     <section id="view-indicadores" class="view-section print-target">
       <div class="tl-kpi-grid" id="dash-kpis-geral">
-        <div class="tl-kpi-card">
+        <div class="tl-kpi-card kpi-fill-blue">
           <div class="tl-kpi-icon c-blue">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
           </div>
@@ -419,7 +420,7 @@
             <div class="tl-kpi-value" id="kpi-dash-tarefas">0</div>
           </div>
         </div>
-        <div class="tl-kpi-card">
+        <div class="tl-kpi-card kpi-fill-green">
           <div class="tl-kpi-icon c-green">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
           </div>
@@ -428,7 +429,7 @@
             <div class="tl-kpi-value" id="kpi-dash-tarefas-conc">0</div>
           </div>
         </div>
-        <div class="tl-kpi-card">
+        <div class="tl-kpi-card kpi-fill-purple">
           <div class="tl-kpi-icon c-purple">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           </div>
@@ -437,7 +438,7 @@
             <div class="tl-kpi-value" id="kpi-dash-cap">0</div>
           </div>
         </div>
-        <div class="tl-kpi-card">
+        <div class="tl-kpi-card kpi-fill-green">
           <div class="tl-kpi-icon c-green">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
           </div>
@@ -469,10 +470,14 @@
       </div>
 
       <h3 class="tl-section-title">Gestão de Capacitações</h3>
-      <div class="tl-chart-grid full">
+      <div class="tl-chart-grid">
         <div class="tl-chart-card">
           <div class="tl-chart-header">Volume de Capacitações ao Longo do Ano</div>
           <div class="tl-chart-wrap"><canvas id="capMesChart"></canvas></div>
+        </div>
+        <div class="tl-chart-card">
+          <div class="tl-chart-header">Volume de Capacitações por Tema</div>
+          <div class="tl-chart-wrap"><canvas id="capTemaChart"></canvas></div>
         </div>
       </div>
       <div class="tl-chart-grid">
@@ -481,7 +486,7 @@
           <div class="tl-chart-wrap"><canvas id="capModalidadeChart"></canvas></div>
         </div>
         <div class="tl-chart-card">
-          <div class="tl-chart-header">Total de Participações por Membro</div>
+          <div class="tl-chart-header">Volume de Capacitações por Membro</div>
           <div class="tl-chart-wrap"><canvas id="capMembroChart"></canvas></div>
         </div>
       </div>
@@ -506,11 +511,11 @@
     <!-- ======================== MÓDULO 3: LISTA MESTRA ======================== -->
     <section id="view-doc-lista" class="view-section compact-view">
       <div class="kpi-grid" style="margin-bottom:16px;">
-        <div class="kpi-card"><div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div><div><div class="kpi-label">Total</div><div class="kpi-value" id="kpi-d-total">0</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon icon-purple"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></div><div><div class="kpi-label">Em Elaboração</div><div class="kpi-value" id="kpi-d-elab">0</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon icon-green"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div><div class="kpi-label">Vigentes</div><div class="kpi-value" id="kpi-d-vig">0</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon icon-yellow"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div><div><div class="kpi-label">Próximos da Revisão</div><div class="kpi-value" id="kpi-d-prox">0</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon icon-red"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div><div class="kpi-label">Vencidos</div><div class="kpi-value" id="kpi-d-ven">0</div></div></div>
+        <div class="kpi-card kpi-fill-sky"><div class="kpi-icon icon-sky"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div><div><div class="kpi-label">Total</div><div class="kpi-value" id="kpi-d-total">0</div></div></div>
+        <div class="kpi-card kpi-fill-blue"><div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></div><div><div class="kpi-label">Em Elaboração</div><div class="kpi-value" id="kpi-d-elab">0</div></div></div>
+        <div class="kpi-card kpi-fill-green"><div class="kpi-icon icon-green"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div><div class="kpi-label">Vigentes</div><div class="kpi-value" id="kpi-d-vig">0</div></div></div>
+        <div class="kpi-card kpi-fill-yellow"><div class="kpi-icon icon-yellow"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div><div><div class="kpi-label">Próximos da Revisão</div><div class="kpi-value" id="kpi-d-prox">0</div></div></div>
+        <div class="kpi-card kpi-fill-red"><div class="kpi-icon icon-red"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div><div class="kpi-label">Vencidos</div><div class="kpi-value" id="kpi-d-ven">0</div></div></div>
       </div>
       <div class="table-wrap">
         <table class="data-table">
@@ -548,10 +553,10 @@
           <tr><td class="cell-axis">1 (Raro)</td><td class="cell-green" id="cell-1-1"></td><td class="cell-green" id="cell-1-2"></td><td class="cell-green" id="cell-1-3"></td><td class="cell-green" id="cell-1-4"></td><td class="cell-yellow" id="cell-1-5"></td></tr>
         </table>
         <div class="legend-row">
-          <div class="legend-item"><div class="legend-dot" style="background:#bfead7; border:1px solid #8fd6b4;"></div>1–4 · Baixo</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#f9e3ab; border:1px solid #edc768;"></div>5–9 · Médio</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#f6c9a0; border:1px solid #ec9f5c;"></div>10–14 · Alto</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#f0b0b9; border:1px solid #e17f8d;"></div>15–25 · Crítico</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#72C9B7; border:1px solid #55B5A1;"></div>1–4 · Baixo</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#DBBB72; border:1px solid #C5A358;"></div>5–9 · Médio</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#E6AD7A; border:1px solid #D59963;"></div>10–14 · Alto</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#E27E73; border:1px solid #D2685C;"></div>15–25 · Crítico</div>
         </div>
         <h3 style="font-size:15px; font-weight:700; color:#030712; margin:28px 0 12px;">Mapeamento de Riscos</h3>
         <div class="table-wrap">
@@ -573,9 +578,9 @@
           <h2>Painel de Acompanhamento de Ações</h2>
         </div>
         <div class="kpi-grid" style="margin-bottom:14px;">
-          <div class="kpi-card"><div class="kpi-icon icon-green"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="kpi-p-conc">0</div></div></div>
-          <div class="kpi-card"><div class="kpi-icon icon-yellow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-p-and">0</div></div></div>
-          <div class="kpi-card"><div class="kpi-icon icon-red"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div><div class="kpi-label">Atrasadas</div><div class="kpi-value" id="kpi-p-atr">0</div></div></div>
+          <div class="kpi-card kpi-fill-green"><div class="kpi-icon icon-green"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="kpi-p-conc">0</div></div></div>
+          <div class="kpi-card kpi-fill-blue"><div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-p-and">0</div></div></div>
+          <div class="kpi-card kpi-fill-red"><div class="kpi-icon icon-red"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div><div class="kpi-label">Atrasadas</div><div class="kpi-value" id="kpi-p-atr">0</div></div></div>
         </div>
         <div id="container-planos" style="display:flex; flex-direction:column; gap:20px; margin-bottom:24px;">
           <div class="msg-empty">A carregar...</div>
@@ -615,9 +620,9 @@
     <!-- ======================== MÓDULO 6: CAPACITAÇÕES ======================== -->
     <section id="view-capacitacoes-lista" class="view-section">
       <div class="kpi-grid compact-view" id="dash-kpis-capacitacoes" style="margin-bottom:16px;">
-        <div class="kpi-card"><div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div><div><div class="kpi-label">Total</div><div class="kpi-value" id="kpi-cap-total">0</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon icon-yellow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-cap-andamento">0</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon icon-green"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="kpi-cap-concluidas">0</div></div></div>
+        <div class="kpi-card kpi-fill-sky"><div class="kpi-icon icon-sky"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div><div><div class="kpi-label">Total</div><div class="kpi-value" id="kpi-cap-total">0</div></div></div>
+        <div class="kpi-card kpi-fill-blue"><div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div><div><div class="kpi-label">Em Andamento</div><div class="kpi-value" id="kpi-cap-andamento">0</div></div></div>
+        <div class="kpi-card kpi-fill-green"><div class="kpi-icon icon-green"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="kpi-cap-concluidas">0</div></div></div>
       </div>
       <div class="table-wrap">
         <table class="data-table">
@@ -728,7 +733,7 @@
     </div>
     <label class="field-label" for="eu-email">E-mail</label><input type="email" id="eu-email" class="field-input">
     <label class="field-label" for="eu-link-drive">Link do Drive</label><input type="text" id="eu-link-drive" class="field-input">
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-unidade">Cancelar</button><button class="btn success" id="btn-confirmar-unidade">Confirmar</button></div>
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-unidade">Cancelar</button><button class="btn primary" id="btn-confirmar-unidade">Salvar Unidade</button></div>
   </div>
 </div>
 
@@ -752,7 +757,7 @@
       <div style="flex:1;"><label class="field-label" for="d-link-aux1">Doc. Auxiliar 1 (Opcional)</label><input type="text" id="d-link-aux1" class="field-input" placeholder="Link do anexo 1"></div>
       <div style="flex:1;"><label class="field-label" for="d-link-aux2">Doc. Auxiliar 2 (Opcional)</label><input type="text" id="d-link-aux2" class="field-input" placeholder="Link do anexo 2"></div>
     </div>
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-doc-novo">Cancelar</button><button class="btn success" id="btn-salvar-doc">Salvar Documento</button></div>
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-doc-novo">Cancelar</button><button class="btn primary" id="btn-salvar-doc">Salvar Documento</button></div>
   </div>
 </div>
 
@@ -770,7 +775,7 @@
     <label class="field-label" for="ed-titulo">Título</label><input type="text" id="ed-titulo" class="field-input">
     <div class="form-row"><div style="flex:2;"><label class="field-label" for="ed-resp">Responsável</label><select id="ed-resp" class="field-select"></select></div><div style="flex:1;"><label class="field-label" for="ed-data">Data Aprovação</label><input type="date" id="ed-data" class="field-input"></div></div>
     <div class="form-row"><div style="flex:1;"><label class="field-label" for="ed-link">Link Principal</label><input type="text" id="ed-link" class="field-input"></div><div style="flex:1;"><label class="field-label" for="ed-aux1">Auxiliar 1</label><input type="text" id="ed-aux1" class="field-input"></div><div style="flex:1;"><label class="field-label" for="ed-aux2">Auxiliar 2</label><input type="text" id="ed-aux2" class="field-input"></div></div>
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-doc-editar">Cancelar</button><button class="btn success" id="btn-confirmar-doc">Confirmar</button></div>
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-doc-editar">Cancelar</button><button class="btn primary" id="btn-confirmar-doc">Salvar Documento</button></div>
   </div>
 </div>
 
@@ -813,7 +818,7 @@
       <div style="flex:1;"><label class="field-label" for="r-trat">Tipo de Tratamento</label><select id="r-trat" class="field-select"><option value="" disabled selected>Selecione...</option><option>Aceitar (Tolerar)</option><option>Compartilhar (Transferir)</option><option>Evitar</option><option>Mitigar (Reduzir)</option></select></div>
       <div style="flex:1;"><label class="field-label" for="r-resp">Proprietário do Risco (Unidade)</label><select id="r-resp" class="field-select"><option value="" disabled selected>A carregar...</option></select></div>
     </div>
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-risco-novo">Cancelar</button><button class="btn success" id="btn-salvar-risco">Salvar Risco</button></div>
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-risco-novo">Cancelar</button><button class="btn primary" id="btn-salvar-risco">Salvar Risco</button></div>
   </div>
 </div>
 
@@ -834,7 +839,7 @@
       Nível de Risco: <span id="er-nivel-valor">--</span>
     </div>
     <div class="form-row"><div style="flex:1;"><label class="field-label" for="er-trat">Tipo de Tratamento</label><select id="er-trat" class="field-select"><option>Aceitar (Tolerar)</option><option>Evitar</option><option>Compartilhar (Transferir)</option><option>Mitigar (Reduzir)</option></select></div><div style="flex:1;"><label class="field-label" for="er-resp">Proprietário do Risco</label><select id="er-resp" class="field-select"></select></div></div>
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-risco-editar">Cancelar</button><button class="btn success" id="btn-confirmar-risco">Confirmar</button></div>
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-risco-editar">Cancelar</button><button class="btn primary" id="btn-confirmar-risco">Salvar Risco</button></div>
   </div>
 </div>
 
@@ -858,7 +863,7 @@
       <div style="flex:1;"><label class="field-label" for="p-how">6. Como? (How)</label><input type="text" id="p-how" class="field-input" placeholder="Método ou procedimento"></div>
       <div style="flex:1;"><label class="field-label" for="p-howmuch">7. Quanto custa? (How Much)</label><input type="text" id="p-howmuch" class="field-input" placeholder="Sem custos"></div>
     </div>
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-plano-novo">Cancelar</button><button class="btn success" id="btn-salvar-plano">Salvar Plano de Ação</button></div>
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-plano-novo">Cancelar</button><button class="btn primary" id="btn-salvar-plano">Salvar Plano de Ação</button></div>
   </div>
 </div>
 
@@ -872,7 +877,7 @@
     <div class="form-row"><div style="flex:1;"><label class="field-label" for="ep-who">Quem? (Who)</label><select id="ep-who" class="field-select"></select></div><div style="flex:1;"><label class="field-label" for="ep-where">Onde? (Where)</label><input type="text" id="ep-where" class="field-input"></div></div>
     <div class="form-row"><div style="flex:1;"><label class="field-label" for="ep-when">Data Prevista</label><input type="date" id="ep-when" class="field-input"></div><div style="flex:1;"><label class="field-label" for="ep-fin">Data Finalização</label><input type="date" id="ep-fin" class="field-input"></div></div>
     <div class="form-row"><div style="flex:1;"><label class="field-label" for="ep-how">Como? (How)</label><input type="text" id="ep-how" class="field-input"></div><div style="flex:1;"><label class="field-label" for="ep-cost">Custo</label><input type="text" id="ep-cost" class="field-input" placeholder="Sem custos"></div></div>
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-plano-editar">Cancelar</button><button class="btn success" id="btn-confirmar-plano">Confirmar</button></div>
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-plano-editar">Cancelar</button><button class="btn primary" id="btn-confirmar-plano">Salvar Plano de Ação</button></div>
   </div>
 </div>
 
@@ -954,7 +959,7 @@
       </div>
     </div>
 
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-reavaliar-risco">Cancelar</button><button class="btn success" id="btn-salvar-reaval">Salvar Reavaliação</button></div>
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-reavaliar-risco">Cancelar</button><button class="btn primary" id="btn-salvar-reaval">Salvar Reavaliação</button></div>
   </div>
 </div>
 
@@ -994,7 +999,7 @@
       <div class="form-row"><div style="flex:1;"><label class="field-label">Como? (How)</label><input type="text" id="revp-how" class="field-input"></div><div style="flex:1;"><label class="field-label">Custo</label><input type="text" id="revp-cost" class="field-input" placeholder="Sem custos"></div></div>
     </div>
     
-    <div class="modal-footer"><button class="btn secondary" data-close="modal-revisar-plano">Cancelar</button><button class="btn success" id="btn-salvar-revisar-plano">Confirmar</button></div>
+    <div class="modal-footer"><button class="btn secondary" data-close="modal-revisar-plano">Cancelar</button><button class="btn primary" id="btn-salvar-revisar-plano">Salvar Revisão</button></div>
   </div>
 </div>
 
@@ -1007,7 +1012,7 @@
     <div id="acomp-ent-lista"></div>
     <div class="modal-footer">
       <button class="btn secondary" data-close="modal-acomp-entregas">Cancelar</button>
-      <button class="btn success" id="btn-salvar-acomp-entregas">Salvar Registros</button>
+      <button class="btn primary" id="btn-salvar-acomp-entregas">Salvar Registros</button>
     </div>
   </div>
 </div>
@@ -1025,15 +1030,15 @@
 
 <!-- Modal: Confirmar Exclusão -->
 <div id="modal-confirmar" class="modal-overlay" style="z-index:300;">
-  <div class="modal-box narrow" id="confirm-box" style="max-width:400px; padding:30px 20px 24px; text-align:center; border-top: 4px solid #dc2626;">
-    <div id="confirm-icon-wrap" style="width:56px; height:56px; border-radius:50%; background:#ffe9eb; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
-      <svg id="confirm-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+  <div class="modal-box narrow" id="confirm-box" style="max-width:400px; padding:30px 20px 24px; text-align:center; border-top: 4px solid #D8483A;">
+    <div id="confirm-icon-wrap" style="width:56px; height:56px; border-radius:50%; background:#FCE1DE; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+      <svg id="confirm-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D8483A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
     </div>
     <h3 class="modal-title" id="confirm-title" style="color:#030712; font-size:18px; margin-bottom:8px;">Confirmação de Exclusão</h3>
     <p id="confirm-msg" style="font-size:14px; color:#4b5563; margin:0 0 24px; line-height:1.5;"></p>
     <div class="modal-footer" style="justify-content:center; gap:12px; border-top:none; padding-top:0;">
       <button class="btn secondary" data-close="modal-confirmar" style="width:100px; justify-content:center;">Cancelar</button>
-      <button class="btn" style="background:#dc2626; color:white; width:100px; border-color:#b91c1c; justify-content:center;" id="btn-confirmar-excluir">Excluir</button>
+      <button class="btn" style="background:#D8483A; color:white; width:100px; border-color:#791E15; justify-content:center;" id="btn-confirmar-excluir">Excluir</button>
     </div>
   </div>
 </div>
@@ -1110,7 +1115,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn secondary" data-close="modal-escala">Cancelar</button>
-      <button class="btn primary" id="btn-confirmar-escala">Confirmar</button>
+      <button class="btn primary" id="btn-confirmar-escala">Salvar Escala</button>
     </div>
   </div>
 </div>
@@ -1200,7 +1205,7 @@
 
     <div class="modal-footer">
       <button class="btn secondary" data-close="modal-ferias">Cancelar</button>
-      <button class="btn primary" id="btn-confirmar-ferias">Confirmar</button>
+      <button class="btn primary" id="btn-confirmar-ferias">Salvar Afastamentos</button>
     </div>
   </div>
 </div>

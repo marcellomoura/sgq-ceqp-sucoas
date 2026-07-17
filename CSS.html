@@ -50,28 +50,29 @@
     --border-subtle: #eef0f2;
     --border-strong: #d1d5db;
 
-    /* ---- Status ---- */
-    --success: #0f766e;
-    --success-bg: #e5fbf8;
-    --success-border: #99e6da;
-    --success-text: #0f6a5f;
-    --warning: #b45309;
-    --warning-bg: #fef3c7;
-    --warning-border: #fcd34d;
-    --warning-text: #92400e;
-    --danger: #dc2626;
-    --danger-bg: #ffe9eb;
-    --danger-border: #fecdd3;
-    --danger-text: #b91c1c;
-    --info: #2b7fff;
-    --info-bg: #eaf2ff;
-    --info-border: #bfdbfe;
-    --info-text: #1d4ed8;
+    /* ---- Status (paleta unificada: Menta / Dourado / Tijolo / Lavanda) ---- */
+    --success: #2CA98F;
+    --success-bg: #DFF6EF;
+    --success-border: #A6E0D2;
+    --success-text: #157965;
+    --warning: #C99A2E;
+    --warning-bg: #FBF3D3;
+    --warning-border: #EBD98C;
+    --warning-text: #795B15;
+    --danger: #D8483A;
+    --danger-bg: #FCE1DE;
+    --danger-border: #F3B8B0;
+    --danger-text: #791E15;
+    --info: #7A6CDD;
+    --info-bg: #E9E6FB;
+    --info-border: #CBC3F3;
+    --info-text: #3424A8;
     --purple: #8b5cf6;
     --purple-bg: #f3e8ff;
     --purple-border: #ddd6fe;
 
-    /* aliases legados usados em algumas regras internas */
+    /* Prioridade dos cartões do Kanban — mesma escada de status (Alta=Tijolo,
+       Média=Dourado, Baixa=Menta), unificada com --success/--warning/--danger. */
     --tag-alta: var(--danger);
     --tag-media: var(--warning);
     --tag-baixa: var(--success);
@@ -263,7 +264,7 @@
   /* Grupo de menu (retrátil) */
   .nav-group-title {
     background: transparent; color: var(--primary); border: none;
-    padding: 8px 10px; text-align: left; font-size: 10px;
+    padding: 8px 10px; text-align: left; font-size: 11.25px;
     text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;
     cursor: pointer; display: flex; align-items: center; gap: 8px;
     transition: background var(--transition-fast);
@@ -284,7 +285,7 @@
 
   /* Item de menu individual */
   .menu-item {
-    background: none; border: none; color: var(--sidebar-text);
+    background: none; border: none; color: var(--text-main);
     font-size: 13px; font-weight: 500; padding: 9px 10px;
     border-radius: var(--radius-sm); text-align: left; cursor: pointer;
     transition: color var(--transition-fast), background var(--transition-fast);
@@ -387,6 +388,28 @@
   .data-table tbody tr.row-warning td { background-color: var(--warning-bg) !important; }
   .data-table tbody tr.row-cancelled td { background-color: var(--bg-panel) !important; opacity: 0.6; }
   .group-row td { background: var(--bg-panel) !important; font-weight: 700; color: var(--text-secondary); font-size: var(--fs-sm); }
+  /* Sticky Header para Listagens Grandes */
+  #view-members, #view-escala, #view-ferias, #view-archived, #view-unidades, 
+  #view-doc-lista, #view-doc-revisoes, #view-logs, #view-capacitacoes-lista { 
+    overflow: hidden; 
+  }
+  #view-members .table-wrap, #view-escala .table-wrap, #view-ferias .table-wrap, 
+  #view-archived .table-wrap, #view-unidades .table-wrap, #view-doc-lista .table-wrap, 
+  #view-doc-revisoes .table-wrap, #view-logs .table-wrap, #view-capacitacoes-lista .table-wrap { 
+    flex: 1; overflow-y: auto; min-height: 0; 
+  }
+  #view-members .data-table th, #view-escala .data-table th, #view-ferias .data-table th, 
+  #view-archived .data-table th, #view-unidades .data-table th, #view-doc-lista .data-table th, 
+  #view-doc-revisoes .data-table th, #view-logs .data-table th, #view-capacitacoes-lista .data-table th { 
+    position: sticky; top: 0; z-index: 10; 
+  }
+  /* Evita que a borda suma no scroll */
+  #view-members .data-table th::after, #view-escala .data-table th::after, #view-ferias .data-table th::after, 
+  #view-archived .data-table th::after, #view-unidades .data-table th::after, #view-doc-lista .data-table th::after, 
+  #view-doc-revisoes .data-table th::after, #view-logs .data-table th::after, #view-capacitacoes-lista .data-table th::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -1px;
+    border-bottom: 1px solid var(--border-color); z-index: 11;
+  }
 
   .archived-table { table-layout: fixed; }
   .archived-table td:first-child {
@@ -409,15 +432,24 @@
     page-break-inside: avoid; break-inside: avoid;
   }
   .kpi-card:hover { transform: translateY(-2px); }
-  .kpi-card:has(.icon-blue)   { background: var(--info-bg); }
-  .kpi-card:has(.icon-green)  { background: var(--success-bg); }
-  .kpi-card:has(.icon-red)    { background: var(--danger-bg); }
-  .kpi-card:has(.icon-purple) { background: var(--purple-bg); }
-  .kpi-card:has(.icon-yellow) { background: var(--warning-bg); }
+  /* Cor de fundo do card, aplicada direto (não via :has() lendo o ícone
+     filho) — compartilhada entre .kpi-card e .tl-kpi-card (Painel de
+     Indicadores). !important pra sempre vencer a regra base de fundo, que no
+     .tl-kpi-card tem #view-indicadores no seletor (mais específica). */
+  .kpi-fill-blue   { background: var(--info-bg) !important; }
+  .kpi-fill-green  { background: var(--success-bg) !important; }
+  .kpi-fill-red    { background: var(--danger-bg) !important; }
+  .kpi-fill-purple { background: var(--purple-bg) !important; }
+  .kpi-fill-yellow { background: var(--warning-bg) !important; }
+  .kpi-fill-sky    { background: #E1F1FC !important; }
   .kpi-icon { width: 28px; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
-  .icon-blue { background: var(--info-border); color: var(--info); } .icon-green { background: var(--success-border); color: var(--success); }
-  .icon-red { background: var(--danger-border); color: var(--danger); } .icon-purple { background: var(--purple-border); color: var(--purple); }
-  .icon-yellow { background: var(--warning-border); color: var(--warning); }
+  .icon-blue, #view-indicadores .c-blue { background: var(--info-border); color: var(--info); }
+  .icon-green, #view-indicadores .c-green { background: var(--success-border); color: var(--success); }
+  .icon-red { background: var(--danger-border); color: var(--danger); }
+  .icon-purple, #view-indicadores .c-purple { background: var(--purple-border); color: var(--purple); }
+  .icon-yellow, #view-indicadores .c-orange { background: var(--warning-border); color: var(--warning); }
+  /* Céu — usada em KPIs de contagem "neutra" (Total), pra não repetir a cor de Info/Lavanda (Em Andamento). */
+  .icon-sky { background: #CDE8FA; color: #3D8FC4; }
   .kpi-card > div:last-child { display: flex; flex-direction: column; min-width: 0; }
   .kpi-label { order: 2; font-size: var(--fs-2xs); font-weight: 500; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .kpi-value { order: 1; font-size: 17px; font-weight: 700; color: var(--text-main); letter-spacing: -0.3px; line-height: 1.15; }
@@ -465,7 +497,7 @@
   .btn.danger { background: var(--bg-card); color: var(--danger); border: 1px solid var(--danger-border); }
   .btn.danger:hover { background: var(--danger-bg); }
   .btn.success { background: var(--success); color: white; }
-  .btn.success:hover { background: #115e59; }
+  .btn.success:hover { background: var(--success-text); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-sm { padding: 6px 12px; font-size: var(--fs-xs); }
   .btn-icon {
@@ -490,7 +522,7 @@
   .btn-action-icon { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: none; border-radius: var(--radius-sm); background: var(--text-main); color: white; cursor: pointer; transition: background var(--transition-fast); flex-shrink: 0; outline: none; }
   .btn-action-icon:hover { background: #303140; }
   .btn-action-icon.email { background: var(--success); }
-  .btn-action-icon.email:hover { background: #115e59; }
+  .btn-action-icon.email:hover { background: var(--success-text); }
   .btn-action-icon:disabled { opacity: 0.6; cursor: not-allowed; }
   .btn-action-icon.loading { opacity: 0.5; pointer-events: none; }
   .btn-action-icon svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
@@ -501,7 +533,7 @@
   .action-btn-main:disabled { background: var(--text-muted); cursor: not-allowed; box-shadow: none; }
 
   /* ===== STATUS BADGES ===== */
-  .status-badge { padding: 4px 11px; border-radius: var(--radius-pill); font-weight: 700; font-size: var(--fs-xs); display: inline-block; white-space: nowrap; }
+  .status-badge { padding: 4px 11px; border-radius: var(--radius-pill); font-weight: 600; font-size: var(--fs-xs); display: inline-block; white-space: nowrap; }
   .version-badge {
     padding: 3px 10px; border-radius: var(--radius-pill); font-weight: 700; font-size: var(--fs-xs);
     background: var(--bg-panel); color: var(--text-secondary); border: 1px solid var(--border-color);
@@ -513,11 +545,14 @@
   .matrix-table { width: 100%; border-collapse: separate; border-spacing: 4px; break-inside: avoid; page-break-inside: avoid; }
   .matrix-table th, .matrix-table td { height: 100px; text-align: center; font-weight: 700; border-radius: var(--radius-sm); font-size: 13.5px; width: 16%; vertical-align: middle; padding: 4px; }
   .matrix-table tr { break-inside: avoid; page-break-inside: avoid; }
-  .cell-axis { background: var(--bg-card); color: var(--text-secondary); font-size: var(--fs-xs); border: 1px solid var(--border-color); }
-  .cell-green  { background: #bfead7; color: #0f5b40; border: 1px solid #8fd6b4; }
-  .cell-yellow { background: #f9e3ab; color: #7a5b06; border: 1px solid #edc768; }
-  .cell-orange { background: #f6c9a0; color: #7c3f0d; border: 1px solid #ec9f5c; }
-  .cell-red    { background: #f0b0b9; color: #7f1d2c; border: 1px solid #e17f8d; }
+  .cell-axis { background: var(--bg-card); color: var(--text-main); font-size: var(--fs-xs); border: 1px solid var(--border-color); }
+  /* Heatmap alinhado à escada de nível: Baixo=Menta, Médio=Dourado,
+     Alto=Pêssego, Crítico=Tijolo — tom mais forte que o badge/status,
+     de propósito: aqui a cor precisa se destacar como mapa de calor. */
+  .cell-green  { background: #72C9B7; color: var(--text-main); border: 1px solid #55B5A1; }
+  .cell-yellow { background: #DBBB72; color: var(--text-main); border: 1px solid #C5A358; }
+  .cell-orange { background: #E6AD7A; color: var(--text-main); border: 1px solid #D59963; }
+  .cell-red    { background: #E27E73; color: var(--text-main); border: 1px solid #D2685C; }
   .badge-cluster { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; padding: 4px; }
   .risk-badge { background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.1); color: var(--text-main); padding: 2px 7px; border-radius: var(--radius-xs); font-size: var(--fs-xs); font-weight: 700; cursor: default; }
   .legend-row { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; background: var(--bg-panel); padding: 13px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-top: 12px; break-inside: avoid; page-break-inside: avoid; }
@@ -663,7 +698,7 @@
     font-size: var(--fs-xs); color: var(--text-muted); margin-bottom: 8px;
   }
   .escala-member-pill {
-    display: inline-block; background: var(--primary); color: #fff;
+    display: inline-block; background: #35598D; color: #fff;
     border-radius: var(--radius-pill); padding: 2px 10px; font-size: var(--fs-xs); font-weight: 600;
     margin: 2px auto;
   }
@@ -677,18 +712,30 @@
     background: var(--success-bg); color: var(--success-text); font-size: 12px; font-weight: 700;
   }
   .escala-check.presencial {
-    background: var(--info-bg); color: var(--info-text);
+    background: #E2EBF8; color: #25497F;
   }
   .escala-check svg { stroke: currentColor; }
   .escala-vazio { color: var(--border-strong); font-size: var(--fs-base); }
 
-  /* Avatar de membro */
+  /* Avatar de membro — a cor vem de uma das classes .avatar-pastel-N abaixo,
+     escolhida por corPastelPorNome() (JS_Utilitarios.html) conforme o nome. */
   .member-avatar {
     width: 33px; height: 33px; border-radius: 50%;
-    background: var(--primary); color: #fff;
     display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 13px; flex-shrink: 0;
+    font-weight: 600; font-size: 12px; flex-shrink: 0;
   }
+  .avatar-pastel-1  { background: #E1F1FC; color: #3D8FC4; } /* Céu */
+  .avatar-pastel-2  { background: #DFF6EF; color: #2CA98F; } /* Menta */
+  .avatar-pastel-3  { background: #FBE3E6; color: #D2596F; } /* Rosa */
+  .avatar-pastel-4  { background: #E9E6FB; color: #7A6CDD; } /* Lavanda */
+  .avatar-pastel-5  { background: #FBEADD; color: #E0904A; } /* Pêssego */
+  .avatar-pastel-6  { background: #FBF3D3; color: #C99A2E; } /* Dourado */
+  .avatar-pastel-7  { background: #FCE1DE; color: #D8483A; } /* Tijolo */
+  .avatar-pastel-8  { background: #EAF5DC; color: #6B9B37; } /* Lima */
+  .avatar-pastel-9  { background: #DCF3F3; color: #1E9AA3; } /* Turquesa */
+  .avatar-pastel-10 { background: #F6E3F5; color: #A94FA0; } /* Orquídea */
+  .avatar-pastel-11 { background: #E7EBF2; color: #55647A; } /* Ardósia */
+  .avatar-pastel-12 { background: #F2E4D8; color: #8B5E3C; } /* Canela */
 
   /* Escala — checkboxes/radios estilizados no modal */
   .escala-day-check {
@@ -729,10 +776,7 @@
     transition: transform var(--transition-base);
   }
   #view-indicadores .tl-kpi-card:hover { transform: translateY(-2px); }
-  #view-indicadores .tl-kpi-card:has(.c-blue)   { background: var(--info-bg); }
-  #view-indicadores .tl-kpi-card:has(.c-green)  { background: var(--success-bg); }
-  #view-indicadores .tl-kpi-card:has(.c-purple) { background: var(--purple-bg); }
-  #view-indicadores .tl-kpi-card:has(.c-orange) { background: var(--warning-bg); }
+  /* Cor de .c-* já declarada junto com .icon-* mais acima (mesma família). */
   #view-indicadores .tl-kpi-icon { width: 28px; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
   #view-indicadores .tl-kpi-icon svg { width: 14px; height: 14px; }
   #view-indicadores .tl-kpi-info { display: flex; flex-direction: column; min-width: 0; }
@@ -752,11 +796,7 @@
     box-shadow: none; border: 1px solid var(--border-subtle);
     display: flex; flex-direction: column;
   }
-  #view-indicadores .tl-chart-header { font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 16px; letter-spacing: -0.2px; }
+  #view-indicadores .tl-chart-header { font-size: 14.5px; font-weight: 700; color: var(--text-main); margin-bottom: 16px; letter-spacing: -0.2px; }
   #view-indicadores .tl-chart-wrap { height: 250px; width: 100%; position: relative; }
 
-  #view-indicadores .c-blue { background: var(--info-border); color: var(--info); }
-  #view-indicadores .c-green { background: var(--success-border); color: var(--success); }
-  #view-indicadores .c-purple { background: var(--purple-border); color: var(--purple); }
-  #view-indicadores .c-orange { background: var(--warning-border); color: var(--warning); }
 </style>
