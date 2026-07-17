@@ -49,25 +49,25 @@ function renderCapacitacoes(resetPage = false) {
                  : 'Planejada';
 
     let statusColor, statusBg;
-    if (status === 'Concluída')         { statusColor = '#059669'; statusBg = '#d1fae5'; }
+    if (status === 'Concluída')         { statusColor = '#047857'; statusBg = '#d1fae5'; }
     else if (status === 'Em Andamento') { statusColor = '#7c3aed'; statusBg = '#ede9fe'; }
-    else                                { statusColor = '#d97706'; statusBg = '#fef3c7'; }
+    else                                { statusColor = '#92400e'; statusBg = '#fef3c7'; }
 
     const materiaisLink = c.materiais
-      ? `<a href="${c.materiais.startsWith('http') ? esc(c.materiais) : 'https://' + esc(c.materiais)}" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
-      : '<span style="color:#cbd5e1;">-</span>';
+      ? `<a href="${c.materiais.startsWith('http') ? esc(c.materiais) : 'https://' + esc(c.materiais)}" target="_blank" rel="noopener noreferrer" style="color:#2b7fff; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
+      : '<span style="color:#d1d5db;">-</span>';
 
     const nomes = c.participantes ? nomesMembros(parseIdsResponsaveis(c.participantes)) : '';
 
     return `<tr>
       <td style="font-weight:500;">${esc(c.titulo)}</td>
       <td style="font-size:12px;">${esc(c.tema || '-')}</td>
-      <td style="color:#475569; font-size:12.5px;">${esc(c.publico || '-')}</td>
+      <td style="color:#4b5563; font-size:12.5px;">${esc(c.publico || '-')}</td>
       <td style="font-size:12px;">${esc(c.modalidade || '-')}</td>
-      <td style="color:#64748b;">${fmtData(c.dataPrevista)}</td>
-      <td style="color:#64748b;">${fmtData(c.dataRealizada)}</td>
+      <td style="color:#4b5563;">${fmtData(c.dataPrevista)}</td>
+      <td style="color:#4b5563;">${fmtData(c.dataRealizada)}</td>
       <td><span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; background:${statusBg}; color:${statusColor};">${status}</span></td>
-      <td style="font-size:11.5px; color:#475569;">${esc(nomes || '-')}</td>
+      <td style="font-size:11.5px; color:#4b5563;">${esc(nomes || '-')}</td>
       <td style="text-align:center;">${materiaisLink}</td>
       <td><div class="cell-actions" style="justify-content:center;">
         ${iconBtn('edit','edit-capacitacao','Editar',`data-idx="${i}"`)}
@@ -85,7 +85,7 @@ function populateCapParticipantes(selectedIds = []) {
   if (!c) return;
   const membros = membrosOrdenados();
   if (!membros.length) {
-    c.innerHTML = '<div style="font-size:12px;color:#64748b;padding:8px;">Nenhum membro cadastrado.</div>';
+    c.innerHTML = '<div style="font-size:12px;color:#4b5563;padding:8px;">Nenhum membro cadastrado.</div>';
   } else {
     c.innerHTML = membros.map(m =>
       `<label class="checkbox-label"><input type="checkbox" value="${esc(String(m.id))}" ${selectedIds.includes(String(m.id)) ? 'checked' : ''}> ${esc(m.name)}</label>`
@@ -194,23 +194,32 @@ function renderGraficosCapacitacoes(fid) {
     return (ya + ma).localeCompare(yb + mb);
   });
   const cMes = $id('capMesChart');
-  if (cMes) capMesChartInst = new Chart(cMes.getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: chavesMes,
-      datasets: [{
-        label: 'Capacitações',
-        data: chavesMes.map(k => pMes[k]),
-        backgroundColor: 'rgba(108,93,211,0.85)', borderColor: '#6c5dd3',
-        borderWidth: 1, borderRadius: 8, borderSkipped: false, maxBarThickness: 42
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: CHART_DATALABELS_BASE },
-      scales: CHART_SCALES_BASE
-    }
-  });
+  const dadosMes = chavesMes.map(k => pMes[k]);
+  if (cMes) {
+    const ctxMes = cMes.getContext('2d');
+    const gradMes = ctxMes.createLinearGradient(0, 0, 0, 260);
+    gradMes.addColorStop(0, 'rgba(139,92,246,0.28)');
+    gradMes.addColorStop(1, 'rgba(139,92,246,0)');
+    capMesChartInst = new Chart(ctxMes, {
+      type: 'line',
+      data: {
+        labels: chavesMes,
+        datasets: [{
+          label: 'Capacitações',
+          data: dadosMes,
+          borderColor: '#8b5cf6', backgroundColor: gradMes, fill: true,
+          tension: 0.4, borderWidth: 2.5,
+          pointRadius: 0, pointHoverRadius: 5, pointHitRadius: 12,
+          pointHoverBackgroundColor: '#8b5cf6', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { display: false } },
+        scales: CHART_SCALES_BASE
+      }
+    });
+  }
 
   // Gráfico: Capacitações por Modalidade
   const cMod = $id('capModalidadeChart');
@@ -218,7 +227,7 @@ function renderGraficosCapacitacoes(fid) {
     type: 'doughnut',
     data: {
       labels: Object.keys(pModalidade),
-      datasets: [{ data: Object.values(pModalidade), backgroundColor: ['#3f8cff','#6c5dd3','#dc8a00','#17a673','#e0455e'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+      datasets: [{ data: Object.values(pModalidade), backgroundColor: ['#2b7fff','#8b5cf6','#b45309','#0f766e','#dc2626'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
@@ -232,6 +241,7 @@ function renderGraficosCapacitacoes(fid) {
   const dadosMembros = membrosGrafico.map(m => pMembro[m.id]);
 
   const cMembro = $id('capMembroChart');
+  const maxMembro = Math.max(0, ...dadosMembros);
   if (cMembro) capMembroChartInst = new Chart(cMembro.getContext('2d'), {
     type: 'bar',
     data: {
@@ -239,14 +249,13 @@ function renderGraficosCapacitacoes(fid) {
       datasets: [{
         label: 'Capacitações',
         data: dadosMembros,
-        backgroundColor: dadosMembros.map(v => v === 0 ? '#f2f2f7' : 'rgba(108,93,211,0.85)'),
-        borderColor:     dadosMembros.map(v => v === 0 ? '#eeeef5' : '#6c5dd3'),
-        borderWidth: 1, borderRadius: 8, borderSkipped: false, maxBarThickness: 42
+        backgroundColor: dadosMembros.map(v => v > 0 && v === maxMembro ? '#8b5cf6' : 'rgba(139,92,246,0.16)'),
+        borderWidth: 0, borderRadius: 20, borderSkipped: false, maxBarThickness: 26
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: ctx => ctx.dataset.data[ctx.dataIndex] === 0 ? '#8b8d9c' : '#fff' } },
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { display: false } },
       scales: CHART_SCALES_BASE
     }
   });

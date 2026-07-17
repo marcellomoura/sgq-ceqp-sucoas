@@ -231,7 +231,7 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 | `Modulo_Riscos.js` | Riscos, Planos 5W2H, Entregas, reavaliação, revisão de plano. |
 | `Modulo_Capacitacoes.js` | CRUD de Capacitações. |
 | `Index.html` | Estrutura da SPA: sidebar, header por aba (`hdr-*`), 14 views (`view-*`), ~20 modais; inclui CSS e os 7 JS. |
-| `CSS.html` | Design system: tokens `:root` (cor primária `#6c5dd3`), sem framework; `@media` (768/900px), `@keyframes`, estilos de impressão (`.no-print`, `.pdf-header`). |
+| `CSS.html` | Design system: tokens `:root` (cor primária `#030712` + acento azul `#2b7fff` — ver §8.7), sem framework; `@media` (768/900px), `@keyframes`, estilos de impressão (`.no-print`, `.pdf-header`). |
 | `JS_Utilitarios.html` | Núcleo do cliente: `state`, navegação (`mudarTab`), delegação de eventos, `garantirRestoData`, helpers (`esc`, `badge`, `linkA`, `showConfirm`), geração de PDF (montagem HTML), logs. |
 | `JS_Kanban.html` | Membros, quadro Kanban, arquivados, modal de tarefa, gráficos do Kanban, `recarregarKanban/RiscosPlanos`. |
 | `JS_Riscos.html` | Matriz, planos, entregas, reavaliação, arquivados de risco, PDFs. |
@@ -282,6 +282,33 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 - `sanitizarHtml_` não é parser (P10) — aceitável porque o destino é PDF estático.
 - Crescimento de payload/latência com volume (P2/P3).
 - Sem testes automatizados (P9).
+
+### 8.7 Reformulação de identidade visual (2026-07-16)
+
+Aplicação de um novo design system a todo o cliente (`CSS.html`, `Index.html`, `JS_Kanban.html`, `JS_Riscos.html`, `JS_Capacitacoes.html`, `JS_Pessoas.html`, `JS_Unidades.html`, `JS_Documentos.html`, `JS_Utilitarios.html`), por engenharia reversa de um template de referência (dashboard shell público em light mode) — cor, tipografia, raio, sombra e espaçamento; comportamento e arquitetura preservados integralmente (troca puramente visual, ver §6 sobre risco zero em regra de negócio).
+
+**Decisão de marca:** substituição completa do índigo (`#6c5dd3`) — não uma adaptação parcial. Cor primária virou tinta preta (`#030712`), com azul (`#2b7fff`) como acento secundário (links de referência, gráficos, categorização "info").
+
+**Tokens principais** (`:root` em `CSS.html`):
+| Token | Valor | Observação |
+|---|---|---|
+| `--primary` | `#030712` | Estado ativo do menu, botões primários, foco |
+| `--accent` | `#2b7fff` | Acento azul — não é a cor de ação principal |
+| `--success` / `--warning` / `--danger` | `#0f766e` / `#b45309` / `#dc2626` | Recalibrados nesta sessão — os tons "500" originalmente escolhidos (`#14b8a6`/`#f59e0b`/`#ef4444`) falhavam WCAG AA (contraste 2.1–3.8:1) como texto ou texto branco sobre preenchimento; os valores atuais passam em ≥4.5:1 |
+| `--purple` | `#8b5cf6` | 5ª cor categórica (KPIs/gráficos), não faz parte da paleta do template de referência |
+| Raios | 6/8/12/16/20px + pill | Cards em 16px, botões/inputs em 12px |
+| Sombra | quase nula (`--shadow-xs: none`) | Elevação por borda + tonalidade, não por `box-shadow` — cards estáticos não têm sombra; hover de elementos arrastáveis (Kanban) mantém uma sombra sutil como affordance |
+
+**Sidebar:** de grafite escuro (`#24252f`) para claro (`#fafafa`); item ativo = pill preto sólido com texto branco; títulos de grupo sem opacidade (cor sólida `var(--primary)`, igual aberto/fechado — não há mais distinção visual de estado); logo circular preto com "SGQ".
+
+**Cards de KPI** (`.kpi-card`, `.tl-kpi-card`): fundo tintado por categoria via seletor CSS `:has()` (`.kpi-card:has(.icon-blue) { background: var(--info-bg) }`, etc. — dispensa classe extra no HTML), layout horizontal compacto (ícone circular + número + label), número sempre em cor neutra (nunca colorido, por legibilidade sobre fundo tintado).
+
+**Gráficos Chart.js** (Kanban + Capacitações, Painel de Indicadores): barras em formato de pílula (`borderRadius: 20`, sem borda) com apenas a barra de maior valor em cor sólida (demais a 16% de opacidade) — sem rótulo fixo dentro da barra (só tooltip). "Capacitações por Mês" convertido de barra para **linha** com curva suave (`tension: 0.4`) e preenchimento em degradê (`createLinearGradient`, cor para transparente).
+
+**Fora do escopo, deliberadamente:**
+- Geração de PDF (`_envelopeHtml`/`_pdfKpiCell`/`_pdfGraficoCel` em `JS_Utilitarios.html`) — paleta própria, documentada no código como intencionalmente independente do `CSS.html` (o conversor de PDF do Apps Script não lida bem com flex/grid do app); nunca usou a marca antiga.
+- Formatação de células da planilha Google Sheets (`Código.js`, `setBackground('#f1f5f9')` em cabeçalhos) — superfície diferente (banco de dados), não é UI do app.
+- Badge de variação percentual em KPIs/gráficos (ex.: "+18%") e paleta categórica das etiquetas do Kanban (`LABELS_DISPONIVEIS`) — o primeiro exigiria calcular tendência vs. período anterior (dado que o sistema não tem hoje); o segundo é uma paleta multi-hue já madura e não ligada à marca antiga.
 
 ---
 

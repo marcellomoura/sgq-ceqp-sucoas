@@ -33,10 +33,10 @@ function renderMembers() {
       ? iconBtn('check', 'reativar-membro', 'Reativar membro', `data-idx="${i}"`)
       : `${iconBtn('edit','edit-membro','Editar',`data-idx="${i}"`)}${iconBtn('ban','inativar-membro','Inativar membro',`data-idx="${i}"`)}`;
     return `<tr${inativo?' style="opacity:0.6;"':''}>
-    <td style="font-weight:600;">${esc(m.name)}${inativo?' <span class="tag-badge" style="background:#94a3b8;font-size:10px;margin-left:4px;">Inativo</span>':''}</td>
+    <td style="font-weight:600;">${esc(m.name)}${inativo?' <span class="tag-badge" style="background:#4b5563;font-size:10px;margin-left:4px;">Inativo</span>':''}</td>
     <td><span class="member-role-badge">${esc(m.role)}</span></td>
-    <td style="color:#64748b;">${esc(m.email)||'-'}</td>
-    <td style="color:#64748b;">${esc(m.emailPessoal)||'-'}</td>
+    <td style="color:#4b5563;">${esc(m.email)||'-'}</td>
+    <td style="color:#4b5563;">${esc(m.emailPessoal)||'-'}</td>
     <td style="text-align:right;">
       <div class="cell-actions" style="justify-content:flex-end;">${btnStatus}</div>
     </td>
@@ -233,7 +233,7 @@ function renderArquivados(resetPage = false) {
         if (d >= 0) duracao = `${d} dia${d !== 1 ? 's' : ''}`;
       }
     }
-    const prioColor = task.priority==='Alta'?'#e0455e':task.priority==='Media'?'#dc8a00':'#17a673';
+    const prioColor = task.priority==='Alta'?'#dc2626':task.priority==='Media'?'#b45309':'#0f766e';
 
     return `<tr>
       <td style="font-weight:600;" title="${esc(task.title)}">${esc(task.title)}</td>
@@ -241,7 +241,7 @@ function renderArquivados(resetPage = false) {
       <td style="text-align:center;"><span class="tag-badge" style="background:${prioColor};">${esc(task.priority === 'Media' ? 'Média' : task.priority)}</span></td>
       <td>${fmtBr(task.startDate)}</td>
       <td>${fmtBr(task.completionDate)}</td>
-      <td style="text-align:center;font-weight:600;color:#475569;">${duracao}</td>
+      <td style="text-align:center;font-weight:600;color:#4b5563;">${duracao}</td>
       <td class="no-print" style="text-align:center;"><button class="btn-icon rev" title="Restaurar ao quadro" data-acao="restore-task" data-id="${esc(task.id)}">${ICON.rev}</button></td>
     </tr>`;
   }).join('');
@@ -300,9 +300,9 @@ const LABELS_DISPONIVEIS = [
   { id:'nc',           nome:'Não Conformidade', cor:'#dc2626' },
   { id:'melhoria',     nome:'Melhoria',         cor:'#16a34a' },
   { id:'documentacao', nome:'Documentação',     cor:'#7c3aed' },
-  { id:'processo',     nome:'Processo',         cor:'#f59e0b' },
+  { id:'processo',     nome:'Processo',         cor:'#b45309' },
   { id:'treinamento',  nome:'Treinamento',      cor:'#ea580c' },
-  { id:'urgente',      nome:'Urgente',          cor:'#ef4444' }
+  { id:'urgente',      nome:'Urgente',          cor:'#dc2626' }
 ];
 function parseLabels(raw) {
   try { const a=JSON.parse(raw); return Array.isArray(a)?a.map(String):[]; } catch(e){ return []; }
@@ -317,7 +317,7 @@ function populateLabels(selectedIds=[]) {
     const checked = selectedIds.includes(l.id);
     const svgIcon = checked 
       ? `<svg style="width:16px;height:16px;stroke:${l.cor};fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line><polyline points="9 11 12 14 22 4" stroke-width="3" style="stroke:${l.cor};"></polyline></svg>` 
-      : `<svg style="width:16px;height:16px;stroke:#94a3b8;fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
+      : `<svg style="width:16px;height:16px;stroke:#6b7280;fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
 
     return `<label class="checkbox-label" style="display:flex; align-items:center; cursor:pointer; padding:4px 8px; margin-bottom:2px; border-radius:4px;">
       <input type="checkbox" style="display:none;" value="${esc(l.id.replace(/"/g,'&quot;'))}" ${checked?'checked':''}>
@@ -332,7 +332,7 @@ function populateLabels(selectedIds=[]) {
     if(e.target.checked) {
       labelSvgSpan.innerHTML = `<svg style="width:16px;height:16px;stroke:${color};fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line><polyline points="9 11 12 14 22 4" stroke-width="3" style="stroke:${color};"></polyline></svg>`;
     } else {
-      labelSvgSpan.innerHTML = `<svg style="width:16px;height:16px;stroke:#94a3b8;fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
+      labelSvgSpan.innerHTML = `<svg style="width:16px;height:16px;stroke:#6b7280;fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
     }
     atualizarTagsLabels();
   }));
@@ -349,8 +349,8 @@ function populateAssignees(selectedIds=[]) {
   let lista = membrosOrdenados();
   const faltando = (selectedIds||[]).map(String).filter(id => !lista.some(m=>String(m.id)===id));
   if (faltando.length) lista = lista.concat(state.members.filter(m => faltando.includes(String(m.id))));
-  if(!lista.length){ c.innerHTML='<div style="font-size:12px;color:#64748b;padding:8px;">Nenhum membro cadastrado.</div>'; atualizarTagsAssignee(); return; }
-  c.innerHTML=lista.map(m=>`<label class="checkbox-label"><input type="checkbox" value="${esc(m.id)}" ${selectedIds.includes(String(m.id))?'checked':''}> ${esc(m.name)}${m.ativo===false?' <span style="color:#94a3b8;font-size:11px;">(inativo)</span>':''}</label>`).join('');
+  if(!lista.length){ c.innerHTML='<div style="font-size:12px;color:#6b7280;padding:8px;">Nenhum membro cadastrado.</div>'; atualizarTagsAssignee(); return; }
+  c.innerHTML=lista.map(m=>`<label class="checkbox-label"><input type="checkbox" value="${esc(m.id)}" ${selectedIds.includes(String(m.id))?'checked':''}> ${esc(m.name)}${m.ativo===false?' <span style="color:#6b7280;font-size:11px;">(inativo)</span>':''}</label>`).join('');
   c.querySelectorAll('input').forEach(i=>i.addEventListener('change',atualizarTagsAssignee));
   atualizarTagsAssignee();
 }
@@ -423,8 +423,8 @@ function abrirEditarTarefa(task) {
 // afirmando algo falso sobre o cartão.
 function renderActividades(msgEstado) {
   const feed=$id('activity-feed'); if(!feed) return;
-  if(msgEstado){ feed.innerHTML='<div style="font-size:12px;color:#5e6c84;padding-left:10px;">'+esc(msgEstado)+'</div>'; return; }
-  if(!currentActivities.length){ feed.innerHTML='<div style="font-size:12px;color:#5e6c84;padding-left:10px;">Nenhuma atividade registrada.</div>'; return; }
+  if(msgEstado){ feed.innerHTML='<div style="font-size:12px;color:#6b7280;padding-left:10px;">'+esc(msgEstado)+'</div>'; return; }
+  if(!currentActivities.length){ feed.innerHTML='<div style="font-size:12px;color:#6b7280;padding-left:10px;">Nenhuma atividade registrada.</div>'; return; }
   feed.innerHTML=[...currentActivities].reverse().map(a=>`<div class="hist-item"><div class="hist-date">${a.author?`<span class="hist-author">${esc(a.author)}</span> · `:''}${esc(a.date)}</div><div class="hist-action">${a.type==='comment'?'<strong>Comentou:</strong> ':''}${esc(a.text)}</div></div>`).join('');
 }
 function adicionarComentario() {
@@ -535,7 +535,7 @@ function renderGraficosKanban(fid) {
     type: 'doughnut',
     data: {
       labels: Object.keys(sc),
-      datasets: [{ data: Object.values(sc), backgroundColor: ['#b9b9cc','#3f8cff','#dc8a00','#6c5dd3','#17a673'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+      datasets: [{ data: Object.values(sc), backgroundColor: ['#d1d5db','#2b7fff','#b45309','#8b5cf6','#0f766e'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
@@ -549,7 +549,7 @@ function renderGraficosKanban(fid) {
     type: 'doughnut',
     data: {
       labels: ['Alta', 'Média', 'Baixa'],
-      datasets: [{ data: [pc['Alta'], pc['Media'], pc['Baixa']], backgroundColor: ['#e0455e','#dc8a00','#17a673'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+      datasets: [{ data: [pc['Alta'], pc['Media'], pc['Baixa']], backgroundColor: ['#dc2626','#b45309','#0f766e'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
@@ -559,6 +559,7 @@ function renderGraficosKanban(fid) {
 
   // Gráfico: Em Andamento por Membro
   const cM = $id('memberChart');
+  const maxMc = Math.max(0, ...dadosMc);
   if (cM) memberChartInst = new Chart(cM.getContext('2d'), {
     type: 'bar',
     data: {
@@ -566,20 +567,20 @@ function renderGraficosKanban(fid) {
       datasets: [{
         label: 'Em Andamento',
         data: dadosMc,
-        backgroundColor: dadosMc.map(v => v === 0 ? '#f2f2f7' : 'rgba(63,140,255,0.85)'),
-        borderColor:     dadosMc.map(v => v === 0 ? '#eeeef5' : '#3f8cff'),
-        borderWidth: 1, borderRadius: 8, borderSkipped: false, maxBarThickness: 42
+        backgroundColor: dadosMc.map(v => v > 0 && v === maxMc ? '#2b7fff' : 'rgba(43,127,255,0.16)'),
+        borderWidth: 0, borderRadius: 20, borderSkipped: false, maxBarThickness: 26
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} em andamento` } }, datalabels: CHART_DATALABELS_BASE },
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} em andamento` } }, datalabels: { display: false } },
       scales: CHART_SCALES_BASE
     }
   });
 
   // Gráfico: Concluídas por Membro
   const cMC = $id('memberConcluidoChart');
+  const maxMcC = Math.max(0, ...dadosMcConcluido);
   if (cMC) memberConcluidoChartInst = new Chart(cMC.getContext('2d'), {
     type: 'bar',
     data: {
@@ -587,14 +588,13 @@ function renderGraficosKanban(fid) {
       datasets: [{
         label: 'Concluídas',
         data: dadosMcConcluido,
-        backgroundColor: dadosMcConcluido.map(v => v === 0 ? '#f2f2f7' : 'rgba(23,166,115,0.85)'),
-        borderColor:     dadosMcConcluido.map(v => v === 0 ? '#eeeef5' : '#17a673'),
-        borderWidth: 1, borderRadius: 8, borderSkipped: false, maxBarThickness: 42
+        backgroundColor: dadosMcConcluido.map(v => v > 0 && v === maxMcC ? '#0f766e' : 'rgba(15,118,110,0.16)'),
+        borderWidth: 0, borderRadius: 20, borderSkipped: false, maxBarThickness: 26
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} concluída(s)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: ctx => ctx.dataset.data[ctx.dataIndex] === 0 ? '#8b8d9c' : '#fff' } },
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} concluída(s)` } }, datalabels: { display: false } },
       scales: CHART_SCALES_BASE
     }
   });

@@ -39,7 +39,7 @@ function renderEscala() {
       return '<td style="text-align:center;">' +
         '<div style="display:flex; flex-direction:column; align-items:center; gap:2px;">' +
         '<span class="escala-check' + (presencial ? ' presencial' : '') + '" title="' + esc(d) + (presencial ? ' (presencial)' : '') + '">' + icon + '</span>' +
-        (horInfo ? '<span style="font-size:9.5px;color:#64748b;font-weight:normal;white-space:nowrap;">' + esc(horInfo) + '</span>' : '') +
+        (horInfo ? '<span style="font-size:9.5px;color:#4b5563;font-weight:normal;white-space:nowrap;">' + esc(horInfo) + '</span>' : '') +
         '</div>' +
         '</td>';
     }).join('');
@@ -47,13 +47,13 @@ function renderEscala() {
       '<td><div style="display:flex;align-items:center;gap:10px;">' +
         '<div class="member-avatar">' + esc(m.name.charAt(0)) + '</div>' +
         '<div><div style="font-weight:600;font-size:13px;">' + esc(m.name) + '</div>' +
-        '<div style="font-size:11px;color:#64748b;">' + esc(m.role) + '</div></div>' +
+        '<div style="font-size:11px;color:#4b5563;">' + esc(m.role) + '</div></div>' +
       '</div></td>' +
       dayTds +
       '<td style="text-align:center;">' +
         (presList.length > 0
-          ? presList.map(function(p){ return '<span class="tag-badge" style="background:#2563eb;font-size:11px;margin-right:2px;display:inline-block;margin-bottom:2px;">' + esc(p.substring(0,3)) + '</span>'; }).join('')
-          : '<span style="color:#94a3b8;font-size:12px;">—</span>') +
+          ? presList.map(function(p){ return '<span class="tag-badge" style="background:#2b7fff;font-size:11px;margin-right:2px;display:inline-block;margin-bottom:2px;">' + esc(p.substring(0,3)) + '</span>'; }).join('')
+          : '<span style="color:#6b7280;font-size:12px;">—</span>') +
       '</td>' +
       '<td><div class="cell-actions" style="justify-content:center;">' +
         iconBtn('edit','edit-escala','Editar Escala','data-idx="' + origIdx + '"') +
@@ -286,7 +286,7 @@ function renderFerias() {
   }
 
   // Helpers de formatação — definidos uma vez por render, fora do loop de linhas
-  var TRACO = '<span style="color:#94a3b8;font-size:12px;">—</span>';
+  var TRACO = '<span style="color:#6b7280;font-size:12px;">—</span>';
   var fmtDM = function(isoStr) {
     if (!isoStr) return '';
     var p = isoStr.split('-');
@@ -297,8 +297,8 @@ function renderFerias() {
     var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim);
     var dias = (ini && fim) ? Math.floor((fim - ini) / 86400000) + 1 : null;
     var agora = ini && fim && ini <= hoje && fim >= hoje;
-    return '<span style="display:inline-block; margin-right:4px; margin-bottom:4px; margin-top:4px; font-size:11.5px;' + (agora ? 'background:#dcfce7; border: 1px solid #86efac; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#15803d;' : 'color:#334155; padding: 2px 0px;') + '">' +
-      fmtDM(p.inicio) + ' a ' + fmtDM(p.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + dias + 'd)</span>' +
+    return '<span style="display:inline-block; margin-right:4px; margin-bottom:4px; margin-top:4px; font-size:11.5px;' + (agora ? 'background:#dcfce7; border: 1px solid #86efac; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#15803d;' : 'color:#030712; padding: 2px 0px;') + '">' +
+      fmtDM(p.inicio) + ' a ' + fmtDM(p.fim) + ' <span style="color:#4b5563; font-weight:normal;">(' + dias + 'd)</span>' +
       '</span>';
   };
 
@@ -322,7 +322,7 @@ function renderFerias() {
       var tagsData = afs.abonosFixos.map(function(d) {
         var dt = parseDataStr(d);
         var agora = dt && dt.getTime() === hoje.getTime();
-        return '<span style="display:inline-block; font-size:11px;' + (agora ? 'background:#fef9c3; border: 1px solid #fef08a; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#854d0e;' : 'background:#f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 6px; color:#475569;') + '">' + fmtDM(d) + '</span>';
+        return '<span style="display:inline-block; font-size:11px;' + (agora ? 'background:#fef9c3; border: 1px solid #fef08a; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#854d0e;' : 'background:#f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; padding: 2px 6px; color:#4b5563;') + '">' + fmtDM(d) + '</span>';
       });
       htmlAbono = '<div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center;">' + tagsData.join('') + '</div>';
     }
@@ -331,7 +331,7 @@ function renderFerias() {
     if (afs.abonoAniv && afs.abonoAniv.inicio) {
       var dtA = parseDataStr(afs.abonoAniv.inicio);
       var agoraA = dtA && dtA.getTime() === hoje.getTime();
-      htmlAbonoAniv = '<span style="display:inline-block; font-size:11.5px; margin-top:4px; white-space:nowrap;' + (agoraA ? 'background:#d1fae5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#047857;' : 'color:#334155; padding: 2px 0px;') + '">' +
+      htmlAbonoAniv = '<span style="display:inline-block; font-size:11.5px; margin-top:4px; white-space:nowrap;' + (agoraA ? 'background:#d1fae5; border: 1px solid #a7f3d0; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#047857;' : 'color:#030712; padding: 2px 0px;') + '">' +
         fmtDM(afs.abonoAniv.inicio) + '</span>';
     }
 
@@ -342,8 +342,8 @@ function renderFerias() {
         var iniL = parseDataStr(lc.inicio), fimL = parseDataStr(lc.fim);
         var diasL = (iniL && fimL) ? Math.floor((fimL - iniL) / 86400000) + 1 : null;
         var agoraL = iniL && fimL && iniL <= hoje && fimL >= hoje;
-        return '<div style="font-size:11.5px; margin:2px 0; line-height:1.35;' + (agoraL ? 'background:#f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#6b21a8;' : 'color:#334155;') + '">' +
-          fmtDM(lc.inicio) + ' a ' + fmtDM(lc.fim) + ' <span style="color:#64748b; font-weight:normal;">(' + diasL + 'd)</span></div>';
+        return '<div style="font-size:11.5px; margin:2px 0; line-height:1.35;' + (agoraL ? 'background:#f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#6b21a8;' : 'color:#030712;') + '">' +
+          fmtDM(lc.inicio) + ' a ' + fmtDM(lc.fim) + ' <span style="color:#4b5563; font-weight:normal;">(' + diasL + 'd)</span></div>';
       }).join('');
       if (!htmlLicenca) htmlLicenca = TRACO;
     }
@@ -355,8 +355,8 @@ function renderFerias() {
         var temPeriodo = d.inicio && d.fim;
         var iniD = temPeriodo ? parseDataStr(d.inicio) : null, fimD = temPeriodo ? parseDataStr(d.fim) : null;
         var agoraD = iniD && fimD && iniD <= hoje && fimD >= hoje;
-        var periodoTxt = temPeriodo ? ' <span style="color:#64748b; font-weight:normal;">(' + fmtDM(d.inicio) + ' a ' + fmtDM(d.fim) + ')</span>' : '';
-        return '<div style="font-size:11px; margin:2px 0; line-height:1.35;' + (agoraD ? 'background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:2px 6px; font-weight:600; color:#334155;' : 'color:#334155;') + '">' + esc(d.descricao) + periodoTxt + '</div>';
+        var periodoTxt = temPeriodo ? ' <span style="color:#4b5563; font-weight:normal;">(' + fmtDM(d.inicio) + ' a ' + fmtDM(d.fim) + ')</span>' : '';
+        return '<div style="font-size:11px; margin:2px 0; line-height:1.35;' + (agoraD ? 'background:#f3f4f6; border:1px solid #e5e7eb; border-radius:4px; padding:2px 6px; font-weight:600; color:#030712;' : 'color:#030712;') + '">' + esc(d.descricao) + periodoTxt + '</div>';
       }).join('');
       if (!htmlDemais) htmlDemais = TRACO;
     }
@@ -371,11 +371,11 @@ function renderFerias() {
       return i && f && i <= hoje && f >= hoje;
     });
 
-    return '<tr' + (isQualquerAtivo ? ' style="background:#f8fafc;"' : '') + '>' +
+    return '<tr' + (isQualquerAtivo ? ' style="background:#f9fafb;"' : '') + '>' +
       '<td><div style="display:flex;align-items:center;gap:10px;">' +
         '<div class="member-avatar">' + esc(m.name.charAt(0)) + '</div>' +
         '<div><div style="font-weight:600;font-size:13px;">' + esc(m.name) + '</div>' +
-        '<div style="font-size:11px;color:#64748b;">' + esc(m.role) + '</div></div>' +
+        '<div style="font-size:11px;color:#4b5563;">' + esc(m.role) + '</div></div>' +
       '</div></td>' +
       '<td>' + htmlF1 + '</td>' +
       '<td>' + htmlF2 + '</td>' +
