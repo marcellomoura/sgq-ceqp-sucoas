@@ -122,13 +122,27 @@
     <header class="page-header no-print" style="flex-wrap: wrap; position: relative;">
       <div class="page-tab-title" id="page-tab-title"></div>
 
-      <div class="hdr-tab-controls" id="hdr-kanban">
-        <label>Filtrar por Membro:</label>
-        <select id="memberFilterSelect" class="hdr-select"><option value="">Todos</option></select>
+      <div class="hdr-tab-controls" id="hdr-kanban" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <label>Filtrar por Membro:</label>
+            <select id="memberFilterSelect" class="hdr-select"><option value="">Todos</option></select>
+          </div>
+          <div></div>
+        </div>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-members">
-        <button class="btn primary" id="btn-novo-membro" type="button">+ Novo Membro</button>
+      <div class="hdr-tab-controls" id="hdr-members" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <label class="checkbox-label" style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:#4b5563; cursor:pointer; padding: 0;">
+              <input type="checkbox" id="chk-membros-inativos" onchange="renderMembers()"> Mostrar inativos
+            </label>
+          </div>
+          <div>
+            <button class="btn primary" id="btn-novo-membro" type="button">+ Novo Membro</button>
+          </div>
+        </div>
       </div>
 
       <div class="hdr-tab-controls" id="hdr-escala">
@@ -196,8 +210,17 @@
         </div>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-unidades">
-        <button class="btn primary" id="btn-nova-unidade" type="button">+ Nova Unidade</button>
+      <div class="hdr-tab-controls" id="hdr-unidades" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <label class="checkbox-label" style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:#4b5563; cursor:pointer; padding: 0;">
+              <input type="checkbox" id="chk-unidades-inativas" onchange="renderUnidades()"> Mostrar inativas
+            </label>
+          </div>
+          <div>
+            <button class="btn primary" id="btn-nova-unidade" type="button">+ Nova Unidade</button>
+          </div>
+        </div>
       </div>
 
       <div class="hdr-tab-controls" id="hdr-doc-lista" style="width: 100%; margin-top: 6px;">
@@ -216,9 +239,14 @@
         </div>
       </div>
 
-      <div class="hdr-tab-controls" id="hdr-doc-revisoes">
-        <label>Unidade:</label>
-        <select id="f-rev-unidade" class="hdr-select"><option value="">Todas</option></select>
+      <div class="hdr-tab-controls" id="hdr-doc-revisoes" style="width: 100%; margin-top: 6px;">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <label>Unidade:</label>
+            <select id="f-rev-unidade" class="hdr-select"><option value="">Todas</option></select>
+          </div>
+          <div></div>
+        </div>
       </div>
 
       <div class="hdr-tab-controls" id="hdr-risco-matriz" style="flex-direction: column; align-items: flex-end; gap: 8px;">
@@ -334,11 +362,7 @@
 
     <!-- ======================== MÓDULO 1: MEMBROS ======================== -->
     <section id="view-members" class="view-section">
-      <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
-        <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:#4b5563; cursor:pointer;">
-          <input type="checkbox" id="chk-membros-inativos" onchange="renderMembers()"> Mostrar inativos
-        </label>
-      </div>
+
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th>Nome do Membro</th><th>Função / Cargo</th><th>E-mail Funcional</th><th>E-mail Pessoal</th><th style="text-align:right;">Ações</th></tr></thead>
@@ -494,11 +518,7 @@
 
     <!-- ======================== MÓDULO 2: UNIDADES ======================== -->
     <section id="view-unidades" class="view-section">
-      <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
-        <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:#4b5563; cursor:pointer;">
-          <input type="checkbox" id="chk-unidades-inativas" onchange="renderUnidades()"> Mostrar inativas
-        </label>
-      </div>
+
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th style="width:140px; padding-right:6px;">Sigla</th><th style="padding-left:6px;">Nome</th><th>E-mail</th><th style="width:250px;">Link do Drive</th><th style="text-align:center; width:90px;">Ações</th></tr></thead>
@@ -1023,6 +1043,10 @@
     <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-pdf-email" aria-label="Fechar">&times;</button></div>
     <h3 class="modal-title">Enviar Relatório por E-mail</h3>
     <p style="font-size:13px; color:#4b5563; margin:8px 0 18px;">Informe o e-mail do destinatário para envio direto do PDF.</p>
+    <label class="field-label" for="pdf-email-select">Selecionar Unidade (Opcional)</label>
+    <select id="pdf-email-select" class="field-select" style="margin-bottom: 14px;" onchange="adicionarEmailDest(this.value);">
+      <option value="">Carregando unidades...</option>
+    </select>
     <label class="field-label" for="pdf-email-dest">E-mail do Destinatário</label><input type="email" id="pdf-email-dest" class="field-input" placeholder="Ex: gestao@saude.df.gov.br">
     <div class="modal-footer"><button class="btn secondary" data-close="modal-pdf-email">Cancelar</button><button class="btn primary" id="btn-enviar-pdf">📨 Enviar PDF</button></div>
   </div>

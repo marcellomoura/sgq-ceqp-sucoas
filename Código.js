@@ -209,7 +209,7 @@ function membrosParaAuth_() {
   let cache = null;
   try { cache = CacheService.getScriptCache(); } catch (e) {}
   if (cache) {
-    const bruto = cache.get('membros_auth');
+    const bruto = cache.get('membros_auth_v2');
     if (bruto) { try { return JSON.parse(bruto); } catch (e) {} }
   }
   let lista = [];
@@ -240,7 +240,7 @@ function membrosParaAuth_() {
   // Cachear [] por 6h travaria TODO o sistema — isMembro_ retornaria false
   // para todos, e nem saveMember (também protegido por isMembro_) conseguiria
   // invalidar. Sem cache, a próxima chamada relê e se auto-recupera.
-  if (cache && lista.length > 0) { try { cache.put('membros_auth', JSON.stringify(lista), 21600); } catch (e) {} }
+  if (cache && lista.length > 0) { try { cache.put('membros_auth_v2', JSON.stringify(lista), 21600); } catch (e) {} }
   return lista;
 }
 
@@ -248,7 +248,7 @@ function membrosParaAuth_() {
 // aba Membros (saveMember/inativarMembro/reativarMembro) para que membership e nomes fiquem
 // atualizados na hora, sem esperar o TTL de 6h.
 function invalidarCacheMembros_() {
-  try { CacheService.getScriptCache().remove('membros_auth'); } catch (e) {}
+  try { CacheService.getScriptCache().remove('membros_auth_v2'); } catch (e) {}
 }
 
 // Cache COMPARTILHADO do mapa {idTarefa: nº de comentários} usado no badge do
@@ -1376,16 +1376,23 @@ function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
   try {
     if (limiteEnvioPdfExcedido_())
       return { sucesso: false, mensagem: 'Aguarde alguns segundos antes de enviar outro relatório.' };
-    if (!destinatario || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario.trim()))
-      return { sucesso: false, mensagem: 'E-mail do destinatário inválido.' };
-      
-    // C04: Restringe o envio exclusivamente para membros cadastrados
-    const alvo = destinatario.trim().toLowerCase();
-    const lista = membrosParaAuth_();
-    const isDestinatarioMembro = lista.some(m => alvo === m[0] || alvo === m[1]);
+    if (!destinatario) return { sucesso: false, mensagem: 'E-mail do destinatário não informado.' };
     
-    if (!isDestinatarioMembro) {
-      return { sucesso: false, mensagem: 'O destinatário deve ser um membro cadastrado no sistema.' };
+    const listaEmails = destinatario.split(',').map(e => e.trim().toLowerCase()).filter(e => e);
+    if (listaEmails.length === 0) return { sucesso: false, mensagem: 'Nenhum e-mail válido encontrado.' };
+    
+    const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const listaMembros = membrosParaAuth_();
+    
+    for (let alvo of listaEmails) {
+      if (!regexEmail.test(alvo)) {
+        return { sucesso: false, mensagem: `E-mail inválido: ${alvo}` };
+      }
+      // C04: Restringe o envio exclusivamente para membros cadastrados
+      const isDestinatarioMembro = listaMembros.some(m => alvo === m[0] || alvo === m[1]);
+      if (!isDestinatarioMembro) {
+        return { sucesso: false, mensagem: `O e-mail ${alvo} não pertence a um membro cadastrado no sistema.` };
+      }
     }
 
     const htmlSeguro = sanitizarHtml_(htmlContent);

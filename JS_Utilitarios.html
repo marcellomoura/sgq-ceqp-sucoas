@@ -942,17 +942,70 @@ function _gerarPdfReal(tipo) {
   });
 }
 
-function abrirModalEmail(tipo) { tipoPdfAtual = tipo; $id('pdf-email-dest').value = ''; abrirModal('modal-pdf-email'); }
+function adicionarEmailDest(val) {
+  if (!val) return;
+  const input = $id('pdf-email-dest');
+  let atual = input.value.trim();
+  // Remove trailing comma if exists
+  if (atual.endsWith(',')) atual = atual.slice(0, -1).trim();
+  
+  if (val === 'ALL') {
+    if (!state.units) return;
+    const ativas = state.units.filter(u => u.ativo !== false && u.email);
+    // Filter unique emails
+    const emails = [...new Set(ativas.map(u => u.email.trim()))];
+    const todos = emails.join(', ');
+    input.value = atual ? atual + ', ' + todos : todos;
+  } else {
+    input.value = atual ? atual + ', ' + val : val;
+  }
+  $id('pdf-email-select').value = '';
+}
+
+function gerarOptsEmailsUnidades() {
+  let h = '<option value="">Adicionar Unidade à lista...</option>';
+  h += '<option value="ALL">** Adicionar TODAS as Unidades **</option>';
+  if (!state.units) return h;
+  const ativas = state.units.filter(u => u.ativo !== false).sort((a,b)=>a.sigla.localeCompare(b.sigla));
+  ativas.forEach(u => {
+    if(u.email) {
+      h += `<option value="${esc(u.email)}">${esc(u.sigla)} - ${esc(u.email)}</option>`;
+    }
+  });
+  return h;
+}
+
+function abrirModalEmail(tipo) { 
+  tipoPdfAtual = tipo; 
+  $id('pdf-email-dest').value = ''; 
+  $id('pdf-email-select').innerHTML = '<option value="">Carregando unidades...</option>';
+  $id('pdf-email-select').value = '';
+  abrirModal('modal-pdf-email'); 
+  
+  garantirRestoData(function() {
+    $id('pdf-email-select').innerHTML = gerarOptsEmailsUnidades();
+  });
+}
 
 function dispararEnvioPdf() {
-  const email = ($id('pdf-email-dest').value||'').trim();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAlerta('Informe um e-mail válido.'); return; }
+  const emailStr = ($id('pdf-email-dest').value||'').trim();
+  if (!emailStr) { showAlerta('Informe pelo menos um e-mail válido.'); return; }
+  
+  const listaEmails = emailStr.split(',').map(e => e.trim()).filter(e => e);
+  const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const invalidos = listaEmails.filter(e => !regexEmail.test(e));
+  
+  if (listaEmails.length === 0 || invalidos.length > 0) { 
+    showAlerta('Existem e-mails inválidos na lista. Verifique e tente novamente.'); 
+    return; 
+  }
+  
   const btn = $id('btn-enviar-pdf');
   if (btn) { btn.innerText = 'A gerar PDF...'; btn.disabled = true; }
   if (tipoPdfAtual === 'matriz' || tipoPdfAtual === 'acomp' || tipoPdfAtual === 'risco-arquivado') {
-    garantirRestoData(function() { _dispararEnvioPdfReal(email); });
+    garantirRestoData(function() { _dispararEnvioPdfReal(emailStr); });
   } else {
-    _dispararEnvioPdfReal(email);
+    _dispararEnvioPdfReal(emailStr);
   }
 }
 
