@@ -773,12 +773,12 @@ function _tbodyParaPdf(tbodyId) {
 // Título de seção — tabela de uma célula sem borda (mais confiável no
 // conversor do que um <div> solto).
 function _pdfSecaoTitulo(texto) {
-  return `<table style="margin:16px 0 8px;"><tr><td style="border:none;padding:0;font-size:14px;font-weight:700;color:#1e293b;">${esc(texto)}</td></tr></table>`;
+  return `<table style="margin:16px 0 8px;"><tr><td style="border:none;padding:0;font-size:14px;font-weight:700;color:#030712;">${esc(texto)}</td></tr></table>`;
 }
 
 function _pdfKpiCell(label, valor, cor) {
-  return `<td bgcolor="#ffffff" style="background:#ffffff;width:25%;padding:14px 16px;border:1px solid #cbd5e1;">
-    <span style="font-size:10.5px;font-weight:700;color:#64748b;">${esc(label)}</span><br>
+  return `<td bgcolor="#ffffff" style="background:#ffffff;width:25%;padding:14px 16px;border:1px solid #e5e7eb;">
+    <span style="font-size:10.5px;font-weight:700;color:#4b5563;">${esc(label)}</span><br>
     <div style="font-size:24px;font-weight:700;color:${cor};margin-top:8px;">${esc(String(valor))}</div>
   </td>`;
 }
@@ -790,8 +790,8 @@ function _imgDeCanvas(canvasId) {
 }
 function _pdfGraficoCel(titulo, canvasId, largura) {
   return `<td style="width:${largura||'50%'};padding:0 4px;vertical-align:top;border:none;">
-    <div style="border:1px solid #cbd5e1; border-radius:6px; padding:8px; background-color:#ffffff;">
-      <span style="font-size:11px;font-weight:700;color:#334155;display:block;margin-bottom:8px;text-align:center;">${esc(titulo)}</span>
+    <div style="border:1px solid #e5e7eb; border-radius:6px; padding:8px; background-color:#ffffff;">
+      <span style="font-size:11px;font-weight:700;color:#4b5563;display:block;margin-bottom:8px;text-align:center;">${esc(titulo)}</span>
       <div style="text-align:center;">
         <img src="${_imgDeCanvas(canvasId)}" style="max-height:165px; width:auto; max-width:100%;">
       </div>
@@ -802,9 +802,9 @@ function _pdfGraficoCel(titulo, canvasId, largura) {
 // Cabeçalho institucional (sem fundo para alinhar com a margem 0 perfeitamente)
 function _cabecalhoPdfHtml(cfg) {
   return `<table style="margin-bottom:20px; border-collapse: collapse;">
-    <tr><td style="border:none;padding:0 0 6px 0;font-size:12px;font-weight:800;color:#0f172a;">SISTEMA DE GESTÃO DA QUALIDADE</td></tr>
-    <tr><td style="border:none;padding:0 0 16px 0;color:#64748b;font-size:9.5px;border-bottom:1px solid #e2e8f0;">COMISSÃO ESPECIAL DE QUALIDADE E PADRONIZAÇÃO · CEQP | SUCOAS - SES/DF</td></tr>
-    <tr><td style="border:none;padding:16px 0 0;font-size:24px;font-weight:700;color:#2563eb;">${esc(cfg.title)}</td></tr>
+    <tr><td style="border:none;padding:0 0 6px 0;font-size:12px;font-weight:800;color:#030712;">SISTEMA DE GESTÃO DA QUALIDADE</td></tr>
+    <tr><td style="border:none;padding:0 0 16px 0;color:#6b7280;font-size:9.5px;border-bottom:1px solid #e5e7eb;">COMISSÃO ESPECIAL DE QUALIDADE E PADRONIZAÇÃO · CEQP | SUCOAS - SES/DF</td></tr>
+    <tr><td style="border:none;padding:16px 0 0;font-size:24px;font-weight:700;color:#030712;">${esc(cfg.title)}</td></tr>
   </table>`;
 }
 
@@ -818,19 +818,19 @@ function _envelopeHtml(cfg, corpoHtml) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
     @page { size: ${pagina}; margin: 12mm; }
     * { box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #1e293b; font-size: 11px; margin: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #030712; font-size: 11px; margin: 0; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-    th, td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: middle; font-size: 10.5px; }
-    th { background: #f8fafc; color: #475569; font-size: 9.5px; text-transform: uppercase; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
+    th, td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: middle; font-size: 10.5px; }
+    th { background: #f9fafb; color: #4b5563; font-size: 9.5px; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #e5e7eb; }
     tr { page-break-inside: avoid; }
-    .msg-empty { text-align: center; color: #94a3b8; padding: 16px; font-size: 11px; }
+    .msg-empty { text-align: center; color: #6b7280; padding: 16px; font-size: 11px; }
     .status-badge { padding: 3px 8px; border-radius: 5px; font-weight: 700; font-size: 9.5px; display: inline-block; white-space: nowrap; }
     .tag-badge { border-radius: 4px; padding: 2px 6px; font-size: 9px; font-weight: 700; color: white; display: inline-block; }
     .urgent-date { color: #dc2626; font-weight: 700; }
     .matrix-table { border-collapse: separate; border-spacing: 3px; margin-bottom: 6px; }
     .matrix-table th, .matrix-table td { height: 70px; text-align: center; font-weight: 700; border-radius: 5px; font-size: 10.5px; width: 16%; vertical-align: middle; padding: 3px; }
     .badge-cluster { display: block; text-align: center; }
-    .risk-badge { display: inline-block; border: 1px solid #94a3b8; color: #1e293b; padding: 1px 5px; border-radius: 4px; font-size: 9.5px; font-weight: 700; margin: 1px; }
+    .risk-badge { display: inline-block; border: 1px solid #d1d5db; color: #030712; padding: 1px 5px; border-radius: 4px; font-size: 9.5px; font-weight: 700; margin: 1px; }
   </style></head><body>${_cabecalhoPdfHtml(cfg)}${corpoHtml}</body></html>`;
 }
 

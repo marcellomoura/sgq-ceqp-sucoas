@@ -629,7 +629,7 @@ function salvarAcompEntregas() {
       if (r.sucesso) {
         showAlerta('Entregas salvas com sucesso!', 'success');
         fecharModal('modal-acomp-entregas');
-        recarregarRiscosPlanos();
+        recarregarRiscosPlanos(renderAcompanhamento);
       } else {
         showAlerta(r.mensagem);
       }
