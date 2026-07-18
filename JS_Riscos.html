@@ -68,7 +68,7 @@
     $id('lista-riscos').innerHTML = ativos.map((r, i) => {
       const origIdx = idxPorIdRisco.has(r.id) ? idxPorIdRisco.get(r.id) : -1;
       const temPlanos = state.plans.some(p => p.riscoVinculado === 'R' + r.id);
-      return `<div style="display: grid; grid-template-columns: 35px 60px 0.8fr 1.2fr 1.2fr 1.2fr 90px 55px 90px 1fr 120px 1.2fr 95px; gap: 8px; align-items: center; background-color: #ffffff; padding: 12px 0; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); font-size: 13px; color: #111827; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.05)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.02)'">
+      return `<div class="grid-row-hover" style="display: grid; grid-template-columns: 35px 60px 0.8fr 1.2fr 1.2fr 1.2fr 90px 55px 90px 1fr 120px 1.2fr 95px; gap: 8px; align-items: center; background-color: #ffffff; padding: 12px 0; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); font-size: 13px; color: #111827;">
     <div style="text-align:center;font-weight:700;color:#4b5563;">${i + 1}</div>
     <div style="text-align:center;font-weight:700;color:#2b7fff;white-space:nowrap;">R-${r.id}</div>
     <div style="font-weight: 500;">${esc(r.macroetapa)}</div>
@@ -822,7 +822,7 @@
         curResp = ultimo.responsavel;
       }
 
-      return `<div style="background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom: 8px; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.05)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.02)'">
+      return `<div class="grid-row-hover" style="background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom: 8px;">
       <div style="display: grid; grid-template-columns: 35px 60px 0.8fr 1.2fr 1.2fr 1.2fr 90px 55px 90px 1fr 120px 1.2fr 95px; gap: 8px; align-items: center; padding: 12px 0; font-size: 13px; color: #111827;">
         <div style="text-align:center;font-weight:700;color:#4b5563;">${idx + 1}</div>
         <div style="text-align:center;font-weight:700;color:#6b7280;white-space:nowrap;">R-${r.id}</div>

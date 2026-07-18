@@ -48,7 +48,7 @@ function renderDocumentos(modo) {
     const oi = idxPorIdRow.get(d.idRow);
     const auxList = [linkA(d.docAuxiliar,'Anexo 1','#4b5563'), linkA(d.docAuxiliar2,'Anexo 2','#4b5563')].filter(x=>x!=='-');
     const aux = auxList.length > 0 ? `<div style="display:flex; flex-direction:column; gap:8px;">${auxList.join('')}</div>` : '-';
-    if (modo === 'mestra') return `<div style="display: grid; grid-template-columns: 85px 45px 1.2fr 2.5fr 1.2fr 85px 85px 50px 80px 70px 100px 90px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;">
+    if (modo === 'mestra') return `<div class="grid-row-hover" style="display: grid; grid-template-columns: 85px 45px 1.2fr 2.5fr 1.2fr 85px 85px 50px 80px 70px 100px 90px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;">
       <div style="font-weight:700; white-space:nowrap; color:#111827; font-size:13px;">${esc(d.codigo)}</div>
       <div style="text-align:center; font-size:13px; color:#4b5563;">v${esc(d.versao)}</div>
       <div>${badge(d.tipo, CORES_TIPO_DOC)}</div>
@@ -62,7 +62,7 @@ function renderDocumentos(modo) {
       <div style="text-align:center;">${badge(d.status)}</div>
       <div class="no-print" style="display:flex; justify-content:flex-end; gap:4px;">${iconBtn('edit','edit-doc','Editar',`data-idx="${oi}"`)}${iconBtn('rev','rev-doc','Nova Revisão',`data-idx="${oi}"`)}${iconBtn('del','del-doc','Excluir',`data-idx="${oi}"`)}</div>
     </div>`;
-    return `<div style="display: grid; grid-template-columns: 85px 45px 1fr 2fr 1fr 85px 60px 70px 1.2fr 100px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;">
+    return `<div class="grid-row-hover" style="display: grid; grid-template-columns: 85px 45px 1fr 2fr 1fr 85px 60px 70px 1.2fr 100px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;">
       <div style="font-weight:700; white-space:nowrap; color:#111827; font-size:13px;">${esc(d.codigo)}</div>
       <div style="text-align:center; font-size:13px; color:#4b5563;">v${esc(d.versao)}</div>
       <div>${badge(d.tipo, CORES_TIPO_DOC)}</div>

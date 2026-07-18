@@ -41,7 +41,7 @@ function renderEscala() {
         (horInfo ? '<span style="font-size:9.5px;color:#4b5563;font-weight:normal;white-space:nowrap;">' + esc(horInfo) + '</span>' : '') +
         '</div>';
     }).join('');
-    return '<div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 70px; gap: 8px; align-items: center; padding: 12px 20px; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #f3f4f6;">' +
+    return '<div class="grid-row-hover" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 70px; gap: 8px; align-items: center; padding: 12px 20px; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #f3f4f6;">' +
       '<div style="display:flex;align-items:center;gap:12px; text-align: left;">' +
         '<div class="member-avatar ' + corPastelPorNome(m.name) + '" style="width: 38px; height: 38px; font-size: 13px;">' + esc(iniciaisMembro(m.name)) + '</div>' +
         '<div><div style="font-weight:600;font-size:14px;color:#111827;">' + esc(m.name) + '</div>' +
@@ -361,7 +361,7 @@ function renderFerias() {
       if (!htmlDemais) htmlDemais = TRACO;
     }
 
-    return '<div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
+    return '<div class="grid-row-hover" style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
       '<div><div style="display:flex;align-items:center;gap:10px;">' +
         '<div class="member-avatar ' + corPastelPorNome(m.name) + '">' + esc(iniciaisMembro(m.name)) + '</div>' +
         '<div><div style="font-weight:600;font-size:13px;color:#111827;">' + esc(m.name) + '</div>' +

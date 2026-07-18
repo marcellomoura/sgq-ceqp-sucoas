@@ -301,6 +301,14 @@
   .data-table tbody tr { break-inside: avoid; page-break-inside: avoid; transition: background var(--transition-fast); }
   .data-table tbody tr:last-child td { border-bottom: none; }
   .data-table tbody tr:hover td { background: var(--bg-hover); }
+  /* Elevação no hover das linhas de listagem em grid (cards de <div>). CSS puro:
+     transform/box-shadow são compostos na GPU e não causam reflow — mais leve que
+     os handlers onmouseover/onmouseout inline usados antes (que repetiam JS por
+     linha). O box-shadow do hover leva !important porque as linhas carregam um
+     box-shadow inline de repouso no atributo style="" (inline vence a folha; só o
+     estado hover precisa sobrepor — o transform não conflita). */
+  .grid-row-hover { transition: transform var(--transition-fast), box-shadow var(--transition-fast); }
+  .grid-row-hover:hover { transform: translateY(-1px); box-shadow: var(--shadow-md) !important; }
   .data-table tbody tr.row-warning td { background-color: var(--warning-bg) !important; }
   .data-table tbody tr.row-cancelled td { background-color: var(--bg-panel) !important; opacity: 0.6; }
   .group-row td { background: var(--bg-panel) !important; font-weight: 700; color: var(--text-secondary); font-size: var(--fs-sm); }
