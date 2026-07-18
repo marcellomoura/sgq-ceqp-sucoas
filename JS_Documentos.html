@@ -4,8 +4,7 @@
 // ==========================================
 function renderDocumentos(modo) {
   const tbodyId = modo === 'mestra' ? 'lista-mestra' : 'lista-revisoes';
-  const cols     = modo === 'mestra' ? 12 : 10;
-  msgTabela(tbodyId, cols, 'A carregar...');
+  $id(tbodyId).innerHTML = `<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">A carregar...</div>`;
 
   const fU = ($id('f-doc-unidade') || {value:''}).value;
   const fT = ($id('f-doc-tipo')    || {value:''}).value;
@@ -38,7 +37,7 @@ function renderDocumentos(modo) {
     ['kpi-d-total','kpi-d-vig','kpi-d-prox','kpi-d-ven','kpi-d-elab'].forEach((id,i)=>{ const el=$id(id); if(el) el.innerText=[tot,vig,prox,ven,elab][i]; });
   }
 
-  if (!filtrados.length) { msgTabela(tbodyId, cols, 'Nenhum documento encontrado.'); return; }
+  if (!filtrados.length) { $id(tbodyId).innerHTML = `<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhum documento encontrado.</div>`; return; }
 
   // Índice original de cada doc em state.docs, pré-computado uma vez
   // (idRow → posição). Antes era um findIndex por linha DENTRO do map,
@@ -49,21 +48,32 @@ function renderDocumentos(modo) {
     const oi = idxPorIdRow.get(d.idRow);
     const auxList = [linkA(d.docAuxiliar,'Anexo 1','#4b5563'), linkA(d.docAuxiliar2,'Anexo 2','#4b5563')].filter(x=>x!=='-');
     const aux = auxList.length > 0 ? `<div style="display:flex; flex-direction:column; gap:8px;">${auxList.join('')}</div>` : '-';
-    const base = `<td style="font-weight:700; white-space:nowrap;">${esc(d.codigo)}</td><td style="text-align:center;">v${esc(d.versao)}</td><td>${badge(d.tipo, CORES_TIPO_DOC)}</td><td style="font-weight:500;">${esc(d.titulo)}</td><td>${esc(formatUnidadeUI(d.responsavel))}</td><td>${fmtBr(d.dataAprovacao)}</td>`;
-    if (modo === 'mestra') return `<tr>${base}
-      <td>${fmtBr(d.proximaRevisao)}</td>
-      <td style="text-align:center;">${linkA(d.linkDoc,'Acessar',null,true)}</td>
-      <td style="text-align:center;">${aux}</td>
-      <td style="font-size:12px;">${esc(d.motivo)}</td>
-      <td style="text-align:center;">${badge(d.status)}</td>
-      <td><div class="cell-actions" style="justify-content:center;">${iconBtn('edit','edit-doc','Editar',`data-idx="${oi}"`)}${iconBtn('rev','rev-doc','Nova Revisão',`data-idx="${oi}"`)}${iconBtn('del','del-doc','Excluir',`data-idx="${oi}"`)} </div></td>
-    </tr>`;
-    return `<tr>${base}
-      <td style="text-align:center;">${linkA(d.linkDoc,'Acessar',null,true)}</td>
-      <td style="text-align:center;">${aux}</td>
-      <td style="font-size:12px;">${esc(d.motivo)}</td>
-      <td style="text-align:center;">${badge('Obsoleto')}</td>
-    </tr>`;
+    if (modo === 'mestra') return `<div style="display: grid; grid-template-columns: 85px 45px 1.2fr 2.5fr 1.2fr 85px 85px 50px 80px 70px 100px 90px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;">
+      <div style="font-weight:700; white-space:nowrap; color:#111827; font-size:13px;">${esc(d.codigo)}</div>
+      <div style="text-align:center; font-size:13px; color:#4b5563;">v${esc(d.versao)}</div>
+      <div>${badge(d.tipo, CORES_TIPO_DOC)}</div>
+      <div style="font-weight:500; font-size:13px; color:#111827;">${esc(d.titulo)}</div>
+      <div style="font-size:13px; color:#4b5563;">${esc(formatUnidadeUI(d.responsavel))}</div>
+      <div style="font-size:13px; color:#4b5563;">${fmtBr(d.dataAprovacao)}</div>
+      <div style="font-size:13px; color:#4b5563;">${fmtBr(d.proximaRevisao)}</div>
+      <div style="text-align:center; font-size:13px;">${linkA(d.linkDoc,'Acessar',null,true)}</div>
+      <div style="text-align:center; font-size:13px;">${aux}</div>
+      <div style="font-size:12px; color:#4b5563;">${esc(d.motivo)}</div>
+      <div style="text-align:center;">${badge(d.status)}</div>
+      <div class="no-print" style="display:flex; justify-content:flex-end; gap:4px;">${iconBtn('edit','edit-doc','Editar',`data-idx="${oi}"`)}${iconBtn('rev','rev-doc','Nova Revisão',`data-idx="${oi}"`)}${iconBtn('del','del-doc','Excluir',`data-idx="${oi}"`)}</div>
+    </div>`;
+    return `<div style="display: grid; grid-template-columns: 85px 45px 1fr 2fr 1fr 85px 60px 70px 1.2fr 100px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;">
+      <div style="font-weight:700; white-space:nowrap; color:#111827; font-size:13px;">${esc(d.codigo)}</div>
+      <div style="text-align:center; font-size:13px; color:#4b5563;">v${esc(d.versao)}</div>
+      <div>${badge(d.tipo, CORES_TIPO_DOC)}</div>
+      <div style="font-weight:500; font-size:13px; color:#111827;">${esc(d.titulo)}</div>
+      <div style="font-size:13px; color:#4b5563;">${esc(formatUnidadeUI(d.responsavel))}</div>
+      <div style="font-size:13px; color:#4b5563;">${fmtBr(d.dataAprovacao)}</div>
+      <div style="text-align:center; font-size:13px;">${linkA(d.linkDoc,'Acessar',null,true)}</div>
+      <div style="text-align:center; font-size:13px;">${aux}</div>
+      <div style="font-size:12px; color:#4b5563;">${esc(d.motivo)}</div>
+      <div style="text-align:center;">${badge('Obsoleto')}</div>
+    </div>`;
   }).join('');
 }
 

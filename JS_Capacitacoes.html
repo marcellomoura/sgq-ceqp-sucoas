@@ -27,7 +27,7 @@ function renderCapacitacoes(resetPage = false) {
   const btnMore = $id('btn-load-more-cap');
 
   if (!caps.length) {
-    tbody.innerHTML = '<tr><td colspan="10" class="msg-empty">Nenhuma capacitação encontrada.</td></tr>';
+    tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhuma capacitação encontrada.</div>';
     if (btnMore) btnMore.style.display = 'none';
     return;
   }
@@ -56,21 +56,21 @@ function renderCapacitacoes(resetPage = false) {
 
     const nomes = c.participantes ? nomesMembros(parseIdsResponsaveis(c.participantes)) : '';
 
-    return `<tr>
-      <td style="font-weight:500;">${esc(c.titulo)}</td>
-      <td style="font-size:12px;">${esc(c.tema || '-')}</td>
-      <td style="color:#4b5563; font-size:12.5px;">${esc(c.publico || '-')}</td>
-      <td style="font-size:12px;">${esc(c.modalidade || '-')}</td>
-      <td style="color:#4b5563;">${fmtData(c.dataPrevista)}</td>
-      <td style="color:#4b5563;">${fmtData(c.dataRealizada)}</td>
-      <td><span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:11.5px; font-weight:600; background:${statusBg}; color:${statusColor};">${status}</span></td>
-      <td style="font-size:11.5px; color:#4b5563;">${esc(nomes || '-')}</td>
-      <td style="text-align:center;">${materiaisLink}</td>
-      <td><div class="cell-actions" style="justify-content:center;">
-        ${iconBtn('edit','edit-capacitacao','Editar',`data-idx="${i}"`)}
-        ${iconBtn('del','del-capacitacao','Excluir',`data-idx="${i}"`)}
-      </div></td>
-    </tr>`;
+    return `<div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 0.8fr 0.8fr 0.8fr 1.5fr 0.8fr 70px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+      <div style="font-weight:600; color:#111827; font-size:13px;">${esc(c.titulo)}</div>
+      <div style="font-size:13px;">${esc(c.tema || '-')}</div>
+      <div style="color:#4b5563; font-size:13px;">${esc(c.publico || '-')}</div>
+      <div style="font-size:13px;">${esc(c.modalidade || '-')}</div>
+      <div style="color:#4b5563; font-size:13px;">${fmtData(c.dataPrevista)}</div>
+      <div style="color:#4b5563; font-size:13px;">${fmtData(c.dataRealizada)}</div>
+      <div style="text-align:center;"><span style="display:inline-block; padding:4px 12px; border-radius:9999px; font-size:11.5px; font-weight:600; background:${statusBg}; color:${statusColor};">${status}</span></div>
+      <div style="font-size:13px; color:#4b5563;">${esc(nomes || '-')}</div>
+      <div style="text-align:center; font-size:13px;">${materiaisLink}</div>
+      <div class="no-print" style="display:flex; justify-content:flex-end; gap:4px;">
+        <button class="btn-icon edit" title="Editar Capacitação" onclick="abrirEditarCapacitacao(state.trainings[${i}])">${ICON.edit}</button>
+        <button class="btn-icon del" title="Excluir Capacitação" onclick="confirmarExcluirCapacitacao(${i})">${ICON.del}</button>
+      </div>
+    </div>`;
   }).join('');
 }
 

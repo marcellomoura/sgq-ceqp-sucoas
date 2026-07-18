@@ -18,7 +18,7 @@ function renderEscala() {
   var tbody = $id('lista-escala');
   if (!tbody) return;
   if (!ativos.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="msg-empty">Nenhum membro cadastrado.</td></tr>';
+    tbody.innerHTML = '<div class="msg-empty">Nenhum membro cadastrado.</div>';
     return;
   }
   // id → índice em state.members, pré-computado (evita indexOf O(n²) por linha)
@@ -31,34 +31,34 @@ function renderEscala() {
     var dayTds = DIAS_SEMANA.map(function(d) {
       var ativo      = dias.indexOf(d) !== -1;
       var presencial = presList.indexOf(d) !== -1;
-      if (!ativo) return '<td style="text-align:center;"><span class="escala-vazio">—</span></td>';
+      if (!ativo) return '<div style="text-align:center; display:flex; align-items:center; justify-content:center;"><span class="escala-vazio">—</span></div>';
       var horInfo = (m.horarios && m.horarios[d]) ? m.horarios[d] : '';
       var icon = presencial
         ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
         : '✓';
-      return '<td style="text-align:center;">' +
-        '<div style="display:flex; flex-direction:column; align-items:center; gap:2px;">' +
+      return '<div style="text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">' +
         '<span class="escala-check' + (presencial ? ' presencial' : '') + '" title="' + esc(d) + (presencial ? ' (presencial)' : '') + '">' + icon + '</span>' +
         (horInfo ? '<span style="font-size:9.5px;color:#4b5563;font-weight:normal;white-space:nowrap;">' + esc(horInfo) + '</span>' : '') +
-        '</div>' +
-        '</td>';
+        '</div>';
     }).join('');
-    return '<tr>' +
-      '<td><div style="display:flex;align-items:center;gap:10px;">' +
-        '<div class="member-avatar ' + corPastelPorNome(m.name) + '">' + esc(iniciaisMembro(m.name)) + '</div>' +
-        '<div><div style="font-weight:600;font-size:13px;">' + esc(m.name) + '</div>' +
-        '<div style="font-size:11px;color:#4b5563;">' + esc(m.role) + '</div></div>' +
-      '</div></td>' +
+    return '<div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 70px; gap: 8px; align-items: center; padding: 12px 20px; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #f3f4f6;">' +
+      '<div style="display:flex;align-items:center;gap:12px; text-align: left;">' +
+        '<div class="member-avatar ' + corPastelPorNome(m.name) + '" style="width: 38px; height: 38px; font-size: 13px;">' + esc(iniciaisMembro(m.name)) + '</div>' +
+        '<div><div style="font-weight:600;font-size:14px;color:#111827;">' + esc(m.name) + '</div>' +
+        '<div style="font-size:12px;color:#4b5563;">' + esc(m.role) + '</div></div>' +
+      '</div>' +
       dayTds +
-      '<td style="text-align:center;">' +
+      '<div style="text-align:center;">' +
         (presList.length > 0
           ? presList.map(function(p){ return '<span class="tag-badge" style="background:#35598D;font-size:11px;margin-right:2px;display:inline-block;margin-bottom:2px;">' + esc(p.substring(0,3)) + '</span>'; }).join('')
           : '<span style="color:#6b7280;font-size:12px;">—</span>') +
-      '</td>' +
-      '<td><div class="cell-actions" style="justify-content:center;">' +
-        iconBtn('edit','edit-escala','Editar Escala','data-idx="' + origIdx + '"') +
-      '</div></td>' +
-    '</tr>';
+      '</div>' +
+      '<div style="text-align:right;">' +
+        '<div class="cell-actions" style="justify-content:flex-end;">' +
+          iconBtn('edit','edit-escala','Editar Escala','data-idx="' + origIdx + '"') +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }).join('');
 }
 
@@ -281,7 +281,7 @@ function renderFerias() {
   var membrosFiltrados = membrosOrdenados().filter(function(m){ return !fM || String(m.id) === fM; });
 
   if (!membrosFiltrados.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="msg-empty">Nenhum membro cadastrado.</td></tr>';
+    tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhum membro cadastrado.</div>';
     return;
   }
 
@@ -361,33 +361,23 @@ function renderFerias() {
       if (!htmlDemais) htmlDemais = TRACO;
     }
 
-    // Destaca a linha se algum afastamento está ativo hoje
-    var listaAtivos = [].concat(afs.ferias || [], afs.abonoAniv ? [afs.abonoAniv] : [], afs.licencas || []);
-    (afs.abonosFixos || []).forEach(function(d){ if (d) listaAtivos.push({inicio: d, fim: d}); });
-    (afs.demais || []).forEach(function(d){ if (d && d.inicio && d.fim) listaAtivos.push({inicio: d.inicio, fim: d.fim}); });
-    var isQualquerAtivo = listaAtivos.some(function(p) {
-      if (!p || !p.inicio) return false;
-      var i = parseDataStr(p.inicio), f = parseDataStr(p.fim || p.inicio);
-      return i && f && i <= hoje && f >= hoje;
-    });
-
-    return '<tr' + (isQualquerAtivo ? ' style="background:#f9fafb;"' : '') + '>' +
-      '<td><div style="display:flex;align-items:center;gap:10px;">' +
+    return '<div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
+      '<div><div style="display:flex;align-items:center;gap:10px;">' +
         '<div class="member-avatar ' + corPastelPorNome(m.name) + '">' + esc(iniciaisMembro(m.name)) + '</div>' +
-        '<div><div style="font-weight:600;font-size:13px;">' + esc(m.name) + '</div>' +
+        '<div><div style="font-weight:600;font-size:13px;color:#111827;">' + esc(m.name) + '</div>' +
         '<div style="font-size:11px;color:#4b5563;">' + esc(m.role) + '</div></div>' +
-      '</div></td>' +
-      '<td>' + htmlF1 + '</td>' +
-      '<td>' + htmlF2 + '</td>' +
-      '<td>' + htmlF3 + '</td>' +
-      '<td>' + htmlAbono + '</td>' +
-      '<td>' + htmlAbonoAniv + '</td>' +
-      '<td>' + htmlLicenca + '</td>' +
-      '<td>' + htmlDemais + '</td>' +
-      '<td><div class="cell-actions" style="justify-content:center;">' +
+      '</div></div>' +
+      '<div>' + htmlF1 + '</div>' +
+      '<div>' + htmlF2 + '</div>' +
+      '<div>' + htmlF3 + '</div>' +
+      '<div>' + htmlAbono + '</div>' +
+      '<div>' + htmlAbonoAniv + '</div>' +
+      '<div>' + htmlLicenca + '</div>' +
+      '<div>' + htmlDemais + '</div>' +
+      '<div style="text-align: right;" class="no-print">' +
         iconBtn('edit','edit-ferias','Editar Afastamentos','data-idx="' + origIdx + '"') +
-      '</div></td>' +
-    '</tr>';
+      '</div>' +
+    '</div>';
   }).join('');
 }
 

@@ -11,7 +11,7 @@ function renderUnidades() {
     units = units.filter(u => u.ativo !== false);
   }
 
-  if (!units.length) { tbody.innerHTML = '<tr><td colspan="5" class="msg-empty">Nenhuma unidade cadastrada.</td></tr>'; return; }
+  if (!units.length) { tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhuma unidade cadastrada.</div>'; return; }
   const ordenadas = units
     .map(u => ({ u, i: state.units.indexOf(u) }))
     .sort((a, b) => a.u.unidade.localeCompare(b.u.unidade, 'pt-BR', { sensitivity: 'base' }));
@@ -35,15 +35,16 @@ function renderUnidades() {
         ? `<a href="${esc(dv)}" target="_blank" rel="noopener noreferrer" style="color:#2b7fff; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
         : `<span style="color:#4b5563; font-size:12px;">${esc(dv)}</span>`;
 
-    return `<tr>
-    <td style="font-weight:700;color:var(--text-main);padding-right:6px;"><span style="${estiloInativo}">${esc(u.sigla)}</span>${inativo?' '+badgeInativo():''}</td>
-    <td style="padding-left:6px; font-size:12px;"><span style="${estiloInativo}">${esc(u.unidade)}</span></td>
-    <td style="color:#4b5563;"><span style="${estiloInativo}">${esc(u.email)}</span></td>
-    <td><span style="${estiloInativo}">${celulaDrive}</span></td>
-    <td><div class="cell-actions" style="justify-content:flex-end;">
+    return `<div style="display: grid; grid-template-columns: 1fr 2fr 1.5fr 2fr 90px; gap: 16px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="font-weight:700; color:#111827; font-size:13px; ${estiloInativo}">${esc(u.sigla)}${inativo?' '+badgeInativo():''}</div>
+    <div style="font-size:13px; color:#374151; ${estiloInativo}">${esc(u.unidade)}</div>
+    <div style="color:#4b5563; font-size:13px; ${estiloInativo}">${esc(u.email)}</div>
+    <div style="font-size:13px; ${estiloInativo}">${celulaDrive}</div>
+    <div class="no-print" style="display:flex; justify-content:flex-end; gap:4px;">
       ${acaoStatus}
-    </div></td>
-  </tr>`}).join('');
+    </div>
+  </div>`;
+  }).join('');
 }
 
 // Sigla no momento em que a edição foi aberta — o servidor confere esse

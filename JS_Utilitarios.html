@@ -403,6 +403,11 @@ function atualizarTopBar() {
   const tabTitle = $id('page-tab-title');
   if (tabTitle) tabTitle.innerText = TAB_TITULOS[currentTab] || '';
 
+  const pageHeader = document.querySelector('.page-header');
+  if (pageHeader) {
+    pageHeader.style.display = 'none';
+  }
+
   // Esconde todos os blocos de controles do cabeçalho e mostra só o da aba atual
   document.querySelectorAll('.hdr-tab-controls').forEach(el => el.classList.remove('active'));
   const bloco = $id('hdr-' + currentTab);
@@ -1120,13 +1125,13 @@ function renderLogsHTML() {
     return;
   }
 
-  $id('lista-logs').innerHTML = logsCache.map(l => `<tr>
-    <td style="white-space:nowrap; font-size:12px; color:#4b5563;">${esc(l.dataHora)}</td>
-    <td style="font-size:12px;">${esc(l.usuario)}</td>
-    <td><span class="status-badge" style="background:#f3f4f6; color:#4b5563;">${esc(l.acao)}</span></td>
-    <td style="font-weight:600; color:var(--text-main); padding-left:32px;">${esc(l.referencia)}</td>
-    <td style="font-size:12.5px;">${esc(l.detalhes)}</td>
-  </tr>`).join('');
+  $id('lista-logs').innerHTML = logsCache.map(l => `<div style="display: grid; grid-template-columns: 130px 180px 170px 190px 1fr; gap: 16px; align-items: center; background-color: #ffffff; padding: 12px 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); font-size: 13px; color: #111827; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.05)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.02)'">
+    <div style="white-space:nowrap; font-size:12px; color:#4b5563;">${esc(l.dataHora)}</div>
+    <div style="font-size:12px;">${esc(l.usuario)}</div>
+    <div><span style="display:inline-block; font-weight:600; color:#4b5563; border:1px solid #e5e7eb; border-radius:12px; padding:2px 8px; background:#f9fafb; font-size:11px;">${esc(l.acao)}</span></div>
+    <div style="font-weight:600; color:#111827;">${esc(l.referencia)}</div>
+    <div style="font-size:12.5px; color:#4b5563; line-height: 1.4;">${esc(l.detalhes)}</div>
+  </div>`).join('');
 
   const btnMais = $id('btn-load-more-logs');
   if (btnMais) {

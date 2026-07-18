@@ -21,7 +21,7 @@ function renderMembers() {
   // Índice ORIGINAL em state.members (usado pelos botões) preservado via indexOf.
   const visiveis = state.members.filter(m => mostrarInativos || m.ativo !== false);
   if(!visiveis.length) {
-    tbody.innerHTML='<tr><td colspan="5" class="msg-empty">Nenhum membro '+(mostrarInativos?'':'ativo ')+'cadastrado.</td></tr>';
+    tbody.innerHTML=`<div class="msg-empty">Nenhum membro ${(mostrarInativos?'':'ativo ')}cadastrado.</div>`;
     return;
   }
   const ordenados = visiveis
@@ -32,18 +32,19 @@ function renderMembers() {
     const btnStatus = inativo
       ? iconBtn('check', 'reativar-membro', 'Reativar membro', `data-idx="${i}"`)
       : `${iconBtn('edit','edit-membro','Editar',`data-idx="${i}"`)}${iconBtn('ban','inativar-membro','Inativar membro',`data-idx="${i}"`)}`;
-    return `<tr${inativo?' style="opacity:0.6;"':''}>
-    <td style="font-weight:600;"><div style="display:flex;align-items:center;gap:10px;">
-      <div class="member-avatar ${corPastelPorNome(m.name)}">${esc(iniciaisMembro(m.name))}</div>
-      <span>${esc(m.name)}${inativo?' '+badgeInativo():''}</span>
-    </div></td>
-    <td><span class="member-role-badge">${esc(m.role)}</span></td>
-    <td style="color:#4b5563;">${esc(m.email)||'-'}</td>
-    <td style="color:#4b5563;">${esc(m.emailPessoal)||'-'}</td>
-    <td style="text-align:right;">
-      <div class="cell-actions" style="justify-content:flex-end;">${btnStatus}</div>
-    </td>
-  </tr>`;
+      
+    return `<div style="display: grid; grid-template-columns: 2fr 1.5fr 2fr 2fr 100px; gap: 16px; align-items: center; padding: 12px 20px; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #f3f4f6; ${inativo?'opacity:0.6;':''}">
+      <div style="font-weight:600; display:flex; align-items:center; gap:12px;">
+        <div class="member-avatar ${corPastelPorNome(m.name)}" style="width: 38px; height: 38px; font-size: 13px;">${esc(iniciaisMembro(m.name))}</div>
+        <span style="font-size: 14px; color: #111827;">${esc(m.name)}${inativo?' '+badgeInativo():''}</span>
+      </div>
+      <div><span class="member-role-badge" style="font-size: 12px;">${esc(m.role)}</span></div>
+      <div style="color:#4b5563; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(m.email)||'-'}</div>
+      <div style="color:#4b5563; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(m.emailPessoal)||'-'}</div>
+      <div style="text-align:right;">
+        <div class="cell-actions" style="justify-content:flex-end;">${btnStatus}</div>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -212,7 +213,7 @@ function renderArquivados(resetPage = false) {
   const btnMore = $id('btn-load-more-archived');
 
   if (!arquivados.length) { 
-    tbody.innerHTML = '<tr><td colspan="7" class="msg-empty">Nenhum cartão arquivado encontrado.</td></tr>'; 
+    tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhum cartão arquivado encontrado.</div>'; 
     if (btnMore) btnMore.style.display = 'none';
     return; 
   }
@@ -239,15 +240,15 @@ function renderArquivados(resetPage = false) {
     // Mesma cor de CORES_STATUS['Alta'/'Media'/'Baixa'] (fonte única) — só o texto exibido usa acento.
     const [prioBg, prioCor] = CORES_STATUS[task.priority];
 
-    return `<tr>
-      <td style="font-weight:600;" title="${esc(task.title)}">${esc(task.title)}</td>
-      <td>${esc(nomes)}</td>
-      <td style="text-align:center;"><span class="tag-badge" style="background:${prioBg};color:${prioCor};">${esc(task.priority === 'Media' ? 'Média' : task.priority)}</span></td>
-      <td>${fmtBr(task.startDate)}</td>
-      <td>${fmtBr(task.completionDate)}</td>
-      <td style="text-align:center;font-weight:600;color:#4b5563;">${duracao}</td>
-      <td class="no-print" style="text-align:center;"><button class="btn-icon rev" title="Restaurar ao quadro" data-acao="restore-task" data-id="${esc(task.id)}">${ICON.rev}</button></td>
-    </tr>`;
+    return `<div style="display: grid; grid-template-columns: 2.5fr 1.5fr 1fr 1fr 1fr 1.5fr 70px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+      <div style="font-weight:600;color:#111827;font-size:13px;" title="${esc(task.title)}">${esc(task.title)}</div>
+      <div style="font-size:13px;">${esc(nomes)}</div>
+      <div style="text-align:center;"><span class="tag-badge" style="background:${prioBg};color:${prioCor};">${esc(task.priority === 'Media' ? 'Média' : task.priority)}</span></div>
+      <div style="font-size:13px;">${fmtBr(task.startDate)}</div>
+      <div style="font-size:13px;">${fmtBr(task.completionDate)}</div>
+      <div style="text-align:center;font-weight:600;color:#4b5563;font-size:13px;">${duracao}</div>
+      <div class="no-print" style="text-align:right;"><button class="btn-icon rev" title="Restaurar ao quadro" data-acao="restore-task" data-id="${esc(task.id)}">${ICON.rev}</button></div>
+    </div>`;
   }).join('');
 }
 

@@ -1,378 +1,399 @@
 <script>
-// ==========================================
-// MÓDULO 4 — RISCOS
-// ==========================================
+  // ==========================================
+  // MÓDULO 4 — RISCOS
+  // ==========================================
 
-// Regra de negócio (espelho da do servidor, ver Modulo_Riscos.js): plano com
-// "TODAS" no responsável cobra todas as subcomissões; unidade é subcomissão
-// quando "Subcomissão" aparece no nome. Único ponto de verdade no cliente.
-function planoEhGlobal(quem) { return String(quem||'').toUpperCase().includes('TODAS'); }
-function ehSubcomissao(nomeUnidade) { const n = String(nomeUnidade||'').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); }
+  // Regra de negócio (espelho da do servidor, ver Modulo_Riscos.js): plano com
+  // "TODAS" no responsável cobra todas as subcomissões; unidade é subcomissão
+  // quando "Subcomissão" aparece no nome. Único ponto de verdade no cliente.
+  function planoEhGlobal(quem) { return String(quem || '').toUpperCase().includes('TODAS'); }
+  function ehSubcomissao(nomeUnidade) { const n = String(nomeUnidade || '').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); }
 
-// riscoVinculado → PRIMEIRA posição em state.plans. Substitui o
-// state.plans.findIndex(...) que era chamado por linha dentro dos map() de
-// render (O(n²)); o "primeiro vence" replica a semântica do findIndex.
-function _indicePlanosPorRisco() {
-  const idx = new Map();
-  (state.plans || []).forEach((x, i) => {
-    if (!idx.has(x.riscoVinculado)) idx.set(x.riscoVinculado, i);
-  });
-  return idx;
-}
-
-function renderMatriz() {
-  msgTabela('lista-riscos', 12, 'A carregar...');
-  for (let p=1;p<=5;p++) for(let i=1;i<=5;i++) { const el=$id(`cell-${p}-${i}`); if(el) el.innerHTML=''; }
-
-  const ativos = state.risks.filter(r => r.status !== 'Arquivado');
-  
-  ativos.forEach((r, idx) => {
-    // Busca a reavaliação mais recente no histórico, se houver
-    const ref = 'R' + r.id;
-    const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
-    let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
-    let originalScore = r.probabilidade * r.impacto;
-    let trendIcon = '';
-    
-    if (hist.length > 0) {
-      // hist está ordenado cronologicamente pois foi lido da aba do topo ao fim.
-      const ultimo = hist[hist.length - 1];
-      curProb = ultimo.prob;
-      curImp = ultimo.impacto;
-      curNivel = ultimo.nivel;
-      
-      const prevScore = hist.length > 1 ? (hist[hist.length - 2].prob * hist[hist.length - 2].impacto) : originalScore;
-      const curScore = curProb * curImp;
-      if (curScore < prevScore) trendIcon = '<span style="color:#2CA98F; font-weight:bold; margin-left:4px;" title="Risco reduziu">⬇️</span>';
-      else if (curScore > prevScore) trendIcon = '<span style="color:#D8483A; font-weight:bold; margin-left:4px;" title="Risco aumentou">⬆️</span>';
-      else trendIcon = '<span style="color:#6b7280; font-weight:bold; margin-left:4px;" title="Risco manteve">➖</span>';
-    }
-    
-    // Anexa dados dinâmicos ao objeto para uso na tabela
-    r._curProb = curProb; r._curImp = curImp; r._curNivel = curNivel; r._trend = trendIcon;
-
-    const cel = $id(`cell-${curProb}-${curImp}`);
-    if (cel) {
-      if (!cel.querySelector('.badge-cluster')) cel.innerHTML = '<div class="badge-cluster"></div>';
-      const b = document.createElement('span');
-      b.className = 'risk-badge'; b.textContent = 'R' + r.id; b.title = r.nome;
-      cel.querySelector('.badge-cluster').appendChild(b);
-    }
-  });
-
-  if (!ativos.length) { msgTabela('lista-riscos', 12, 'Nenhum risco ativo mapeado.'); return; }
-  // Índice id → posição em state.risks, montado uma vez. Antes era um
-  // findIndex por linha DENTRO do map (O(n²)) — mesma correção já aplicada em
-  // renderDocumentos.
-  const idxPorIdRisco = new Map(state.risks.map((x, i) => [x.id, i]));
-  $id('lista-riscos').innerHTML = ativos.map((r, i) => {
-    const origIdx = idxPorIdRisco.has(r.id) ? idxPorIdRisco.get(r.id) : -1;
-    const temPlanos = state.plans.some(p => p.riscoVinculado === 'R' + r.id);
-    return `<tr>
-    <td style="text-align:center;font-weight:700;color:#4b5563;">${i + 1}</td>
-    <td style="text-align:center;font-weight:700;color:#2b7fff;white-space:nowrap;">R-${r.id}</td>
-    <td>${esc(r.macroetapa)}</td><td><span style="display:inline-block; font-weight:600; color:#030712; border:1px solid #d1d5db; border-radius:6px; padding:4px 10px; background:#f9fafb;">${esc(r.nome)}</span></td><td>${esc(r.causa)}</td>
-    <td>${esc(r.consequencia)}</td><td>${esc(r.categoria)}</td>
-    <td style="text-align:center;font-weight:700;">${r._curProb * r._curImp}</td>
-    <td style="text-align:center; white-space:nowrap;">${badge(r._curNivel)}${r._trend}</td>
-    <td>${esc(r.tipoTratamento)}</td><td>${esc(formatUnidadeUI(r.responsavel))}</td><td>${esc(r.planoAcao)}</td>
-    <td class="no-print"><div class="cell-actions" style="justify-content:center;">
-      ${temPlanos ? '' : iconBtn('edit','edit-risco','Editar Risco',`data-idx="${origIdx}"`)}
-      ${iconBtn('rev','reav-risco','Reavaliar',`onclick="abrirModalReavaliar(${origIdx})"`)}
-    </div></td>
-  </tr>`
-  }).join('');
-}
-
-function abrirModalMapearRisco() {
-  try {
-    ['r-macro','r-cat','r-nome','r-causa','r-conseq','r-trat','r-resp'].forEach(id => { const el = $id(id); if (el) el.value = ''; });
-    if ($id('r-prob')) $id('r-prob').value = '';
-    if ($id('r-imp')) $id('r-imp').value = '';
-    atualizarLegendaRisco('r');
-    sincronizarSelectsUnidade();
-    abrirModal('modal-risco-novo');
-  } catch (err) {
-    console.error('Erro ao abrir modal de mapear risco:', err);
-    showAlerta('Não foi possível abrir o formulário: ' + (err.message || String(err)));
+  // riscoVinculado → PRIMEIRA posição em state.plans. Substitui o
+  // state.plans.findIndex(...) que era chamado por linha dentro dos map() de
+  // render (O(n²)); o "primeiro vence" replica a semântica do findIndex.
+  function _indicePlanosPorRisco() {
+    const idx = new Map();
+    (state.plans || []).forEach((x, i) => {
+      if (!idx.has(x.riscoVinculado)) idx.set(x.riscoVinculado, i);
+    });
+    return idx;
   }
-}
 
-function salvarRisco() {
-  const btn = $id('btn-salvar-risco');
-  const dados = {
-    macroetapa: $id('r-macro').value, categoria: $id('r-cat').value,
-    nome: ($id('r-nome').value||'').trim(), causa: ($id('r-causa').value||'').trim(),
-    consequencia: ($id('r-conseq').value||'').trim(),
-    probabilidade: Number($id('r-prob').value), impacto: Number($id('r-imp').value),
-    tipoTratamento: $id('r-trat').value, responsavel: $id('r-resp').value
-  };
-  if (!dados.macroetapa || !dados.categoria || !dados.nome || !dados.causa || !dados.consequencia || !dados.tipoTratamento || !dados.responsavel) return showAlerta('Preencha todos os campos do risco.');
-  if (!dados.probabilidade || !dados.impacto) return showAlerta('Selecione a Probabilidade e o Impacto.');
-  btn.disabled = true; btn.innerText = 'A guardar...';
-  google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Mapeado!','Salvar Risco',()=>{ fecharModal('modal-risco-novo'); recarregarRiscosPlanos(renderMatriz); });
-    else { btn.disabled=false; btn.innerText='Salvar Risco'; showAlerta(r.mensagem); }
-  }).withFailureHandler(falha(btn,'Salvar Risco',null)).salvarRisco(dados);
-}
+  function renderMatriz() {
+    msgTabela('lista-riscos', 12, 'A carregar...');
+    for (let p = 1; p <= 5; p++) for (let i = 1; i <= 5; i++) { const el = $id(`cell-${p}-${i}`); if (el) el.innerHTML = ''; }
 
-function abrirEditarRisco(idx) {
-  const r = state.risks[idx]; if(!r) return;
-  $id('er-id').value = r.id; 
-  $id('er-prob-original').value = r.probabilidade;
-  $id('er-imp-original').value = r.impacto;
+    const ativos = state.risks.filter(r => r.status !== 'Arquivado');
 
-  const hist = state.history ? state.history.filter(h => h.id === 'R'+r.id && h.tipo === 'Risco') : [];
-  const temReavaliacao = hist.length > 0;
+    ativos.forEach((r, idx) => {
+      // Busca a reavaliação mais recente no histórico, se houver
+      const ref = 'R' + r.id;
+      const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
+      let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
+      let originalScore = r.probabilidade * r.impacto;
+      let trendIcon = '';
 
-  $id('label-risco-editar').innerText = `Risco: R${r.id} — ${r.nome}`;
+      if (hist.length > 0) {
+        // hist está ordenado cronologicamente pois foi lido da aba do topo ao fim.
+        const ultimo = hist[hist.length - 1];
+        curProb = ultimo.prob;
+        curImp = ultimo.impacto;
+        curNivel = ultimo.nivel;
 
-  $id('er-macro').value = r.macroetapa; $id('er-cat').value = r.categoria;
-  $id('er-nome').value = r.nome; $id('er-causa').value = r.causa; $id('er-conseq').value = r.consequencia;
-  
-  $id('er-prob').value = temReavaliacao ? (r._curProb || r.probabilidade) : r.probabilidade; 
-  $id('er-imp').value = temReavaliacao ? (r._curImp || r.impacto) : r.impacto;
-  $id('er-prob').disabled = false;
-  $id('er-imp').disabled = false;
+        const prevScore = hist.length > 1 ? (hist[hist.length - 2].prob * hist[hist.length - 2].impacto) : originalScore;
+        const curScore = curProb * curImp;
+        if (curScore < prevScore) trendIcon = '<span style="color:#2CA98F; font-weight:bold; margin-left:4px;" title="Risco reduziu">⬇️</span>';
+        else if (curScore > prevScore) trendIcon = '<span style="color:#D8483A; font-weight:bold; margin-left:4px;" title="Risco aumentou">⬆️</span>';
+        else trendIcon = '<span style="color:#6b7280; font-weight:bold; margin-left:4px;" title="Risco manteve">➖</span>';
+      }
 
-  $id('er-trat').value = r.tipoTratamento;
-  $id('er-resp').innerHTML = gerarOptsProprietariosRisco(); $id('er-resp').value = r.responsavel;
-  atualizarLegendaRisco('er');
-  abrirModal('modal-risco-editar');
-}
-function confirmarEdicaoRisco() {
-  const btn = $id('btn-confirmar-risco');
-  const pVal = $id('er-prob').value;
-  const iVal = $id('er-imp').value;
-  const dados = {
-    id: $id('er-id').value, macroetapa: $id('er-macro').value, categoria: $id('er-cat').value,
-    nome: $id('er-nome').value.trim(), causa: $id('er-causa').value.trim(), consequencia: $id('er-conseq').value.trim(),
-    probabilidade: Number(pVal), impacto: Number(iVal),
-    tipoTratamento: $id('er-trat').value, responsavel: $id('er-resp').value
-  };
-  if (!dados.nome || !dados.causa || !dados.consequencia || !dados.probabilidade || !dados.impacto) return showAlerta('Preencha os campos obrigatórios, incluindo Probabilidade e Impacto.');
-  btn.disabled = true; btn.innerText = 'A atualizar...';
-  google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Salvar Risco',()=>{ fecharModal('modal-risco-editar'); recarregarRiscosPlanos(renderMatriz); });
-    else { btn.disabled=false; btn.innerText='Salvar Risco'; showAlerta(r.mensagem); }
-  }).withFailureHandler(falha(btn,'Salvar Risco',null)).atualizarRisco(dados);
-}
+      // Anexa dados dinâmicos ao objeto para uso na tabela
+      r._curProb = curProb; r._curImp = curImp; r._curNivel = curNivel; r._trend = trendIcon;
 
-function excluirRisco(id) {
-  google.script.run.withSuccessHandler(() => recarregarRiscosPlanos(renderMatriz))
-    .withFailureHandler(e => showAlerta(String(e))).excluirRisco(id);
-}
+      const cel = $id(`cell-${curProb}-${curImp}`);
+      if (cel) {
+        if (!cel.querySelector('.badge-cluster')) cel.innerHTML = '<div class="badge-cluster"></div>';
+        const b = document.createElement('span');
+        b.className = 'risk-badge'; b.textContent = 'R' + r.id; b.title = r.nome;
+        cel.querySelector('.badge-cluster').appendChild(b);
+      }
+    });
 
-function abrirModalReavaliar(idx) {
-  const r = state.risks[idx]; if (!r) return;
-  $id('rev-id-risco').value = r.id;
-  $id('rev-info').innerText = `Risco: R${r.id} — ${r.nome} \nNível Atual: ${r._curNivel} (${r._curProb*r._curImp})`;
-  $id('rev-prob').value = r._curProb || r.probabilidade;
-  $id('rev-imp').value = r._curImp || r.impacto;
-  $id('rev-trat').value = r.tipoTratamento;
-  $id('rev-resp').innerHTML = gerarOptsProprietariosRisco(); $id('rev-resp').value = r.responsavel;
-  $id('rev-justif').value = '';
-  
-  const hTable = $id('rev-historico-lista');
-  const hist = state.history ? state.history.filter(h => h.id === 'R'+r.id && h.tipo === 'Risco') : [];
-  if (hist.length) {
-    hTable.innerHTML = hist.map(h => `<tr>
+    if (!ativos.length) { $id('lista-riscos').innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhum risco ativo mapeado.</div>'; return; }
+    // Índice id → posição em state.risks, montado uma vez. Antes era um
+    // findIndex por linha DENTRO do map (O(n²)) — mesma correção já aplicada em
+    // renderDocumentos.
+    const idxPorIdRisco = new Map(state.risks.map((x, i) => [x.id, i]));
+    $id('lista-riscos').innerHTML = ativos.map((r, i) => {
+      const origIdx = idxPorIdRisco.has(r.id) ? idxPorIdRisco.get(r.id) : -1;
+      const temPlanos = state.plans.some(p => p.riscoVinculado === 'R' + r.id);
+      return `<div style="display: grid; grid-template-columns: 35px 60px 0.8fr 1.2fr 1.2fr 1.2fr 90px 55px 90px 1fr 120px 1.2fr 95px; gap: 8px; align-items: center; background-color: #ffffff; padding: 12px 0; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); font-size: 13px; color: #111827; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.05)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.02)'">
+    <div style="text-align:center;font-weight:700;color:#4b5563;">${i + 1}</div>
+    <div style="text-align:center;font-weight:700;color:#2b7fff;white-space:nowrap;">R-${r.id}</div>
+    <div style="font-weight: 500;">${esc(r.macroetapa)}</div>
+    <div><span style="display:inline-block; font-weight:600; color:#030712; border:1px solid #d1d5db; border-radius:6px; padding:4px 10px; background:#f9fafb;">${esc(r.nome)}</span></div>
+    <div style="line-height: 1.4; color: #4b5563;">${esc(r.causa)}</div>
+    <div style="line-height: 1.4; color: #4b5563;">${esc(r.consequencia)}</div>
+    <div>${esc(r.categoria)}</div>
+    <div style="text-align:center;font-weight:700;">${r._curProb * r._curImp}</div>
+    <div style="text-align:center; white-space:nowrap;">${badge(r._curNivel)}${r._trend}</div>
+    <div>${esc(r.tipoTratamento)}</div>
+    <div>${esc(formatUnidadeUI(r.responsavel))}</div>
+    <div style="line-height: 1.4; color: #4b5563;">${esc(r.planoAcao)}</div>
+    <div class="no-print" style="display: flex; gap: 4px; justify-content: center;">
+      ${temPlanos ? '' : iconBtn('edit', 'edit-risco', 'Editar Risco', `data-idx="${origIdx}"`)}
+      ${iconBtn('rev', 'reav-risco', 'Reavaliar', `onclick="abrirModalReavaliar(${origIdx})"`)}
+    </div>
+  </div>`
+    }).join('');
+  }
+
+  function abrirModalMapearRisco() {
+    try {
+      ['r-macro', 'r-cat', 'r-nome', 'r-causa', 'r-conseq', 'r-trat', 'r-resp'].forEach(id => { const el = $id(id); if (el) el.value = ''; });
+      if ($id('r-prob')) $id('r-prob').value = '';
+      if ($id('r-imp')) $id('r-imp').value = '';
+      atualizarLegendaRisco('r');
+      sincronizarSelectsUnidade();
+      abrirModal('modal-risco-novo');
+    } catch (err) {
+      console.error('Erro ao abrir modal de mapear risco:', err);
+      showAlerta('Não foi possível abrir o formulário: ' + (err.message || String(err)));
+    }
+  }
+
+  function salvarRisco() {
+    const btn = $id('btn-salvar-risco');
+    const dados = {
+      macroetapa: $id('r-macro').value, categoria: $id('r-cat').value,
+      nome: ($id('r-nome').value || '').trim(), causa: ($id('r-causa').value || '').trim(),
+      consequencia: ($id('r-conseq').value || '').trim(),
+      probabilidade: Number($id('r-prob').value), impacto: Number($id('r-imp').value),
+      tipoTratamento: $id('r-trat').value, responsavel: $id('r-resp').value
+    };
+    if (!dados.macroetapa || !dados.categoria || !dados.nome || !dados.causa || !dados.consequencia || !dados.tipoTratamento || !dados.responsavel) return showAlerta('Preencha todos os campos do risco.');
+    if (!dados.probabilidade || !dados.impacto) return showAlerta('Selecione a Probabilidade e o Impacto.');
+    btn.disabled = true; btn.innerText = 'A guardar...';
+    google.script.run.withSuccessHandler(r => {
+      if (r.sucesso) feedbackBtn(btn, '✅ Mapeado!', 'Salvar Risco', () => { fecharModal('modal-risco-novo'); recarregarRiscosPlanos(renderMatriz); });
+      else { btn.disabled = false; btn.innerText = 'Salvar Risco'; showAlerta(r.mensagem); }
+    }).withFailureHandler(falha(btn, 'Salvar Risco', null)).salvarRisco(dados);
+  }
+
+  function abrirEditarRisco(idx) {
+    const r = state.risks[idx]; if (!r) return;
+    $id('er-id').value = r.id;
+    $id('er-prob-original').value = r.probabilidade;
+    $id('er-imp-original').value = r.impacto;
+
+    const hist = state.history ? state.history.filter(h => h.id === 'R' + r.id && h.tipo === 'Risco') : [];
+    const temReavaliacao = hist.length > 0;
+
+    $id('label-risco-editar').innerText = `Risco: R${r.id} — ${r.nome}`;
+
+    $id('er-macro').value = r.macroetapa; $id('er-cat').value = r.categoria;
+    $id('er-nome').value = r.nome; $id('er-causa').value = r.causa; $id('er-conseq').value = r.consequencia;
+
+    $id('er-prob').value = temReavaliacao ? (r._curProb || r.probabilidade) : r.probabilidade;
+    $id('er-imp').value = temReavaliacao ? (r._curImp || r.impacto) : r.impacto;
+    $id('er-prob').disabled = false;
+    $id('er-imp').disabled = false;
+
+    $id('er-trat').value = r.tipoTratamento;
+    $id('er-resp').innerHTML = gerarOptsProprietariosRisco(); $id('er-resp').value = r.responsavel;
+    atualizarLegendaRisco('er');
+    abrirModal('modal-risco-editar');
+  }
+  function confirmarEdicaoRisco() {
+    const btn = $id('btn-confirmar-risco');
+    const pVal = $id('er-prob').value;
+    const iVal = $id('er-imp').value;
+    const dados = {
+      id: $id('er-id').value, macroetapa: $id('er-macro').value, categoria: $id('er-cat').value,
+      nome: $id('er-nome').value.trim(), causa: $id('er-causa').value.trim(), consequencia: $id('er-conseq').value.trim(),
+      probabilidade: Number(pVal), impacto: Number(iVal),
+      tipoTratamento: $id('er-trat').value, responsavel: $id('er-resp').value
+    };
+    if (!dados.nome || !dados.causa || !dados.consequencia || !dados.probabilidade || !dados.impacto) return showAlerta('Preencha os campos obrigatórios, incluindo Probabilidade e Impacto.');
+    btn.disabled = true; btn.innerText = 'A atualizar...';
+    google.script.run.withSuccessHandler(r => {
+      if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Risco', () => { fecharModal('modal-risco-editar'); recarregarRiscosPlanos(renderMatriz); });
+      else { btn.disabled = false; btn.innerText = 'Salvar Risco'; showAlerta(r.mensagem); }
+    }).withFailureHandler(falha(btn, 'Salvar Risco', null)).atualizarRisco(dados);
+  }
+
+  function excluirRisco(id) {
+    google.script.run.withSuccessHandler(() => recarregarRiscosPlanos(renderMatriz))
+      .withFailureHandler(e => showAlerta(String(e))).excluirRisco(id);
+  }
+
+  function abrirModalReavaliar(idx) {
+    const r = state.risks[idx]; if (!r) return;
+    $id('rev-id-risco').value = r.id;
+    $id('rev-info').innerText = `Risco: R${r.id} — ${r.nome} \nNível Atual: ${r._curNivel} (${r._curProb * r._curImp})`;
+    $id('rev-prob').value = r._curProb || r.probabilidade;
+    $id('rev-imp').value = r._curImp || r.impacto;
+    $id('rev-trat').value = r.tipoTratamento;
+    $id('rev-resp').innerHTML = gerarOptsProprietariosRisco(); $id('rev-resp').value = r.responsavel;
+    $id('rev-justif').value = '';
+
+    const hTable = $id('rev-historico-lista');
+    const hist = state.history ? state.history.filter(h => h.id === 'R' + r.id && h.tipo === 'Risco') : [];
+    if (hist.length) {
+      hTable.innerHTML = hist.map(h => `<tr>
       <td>${h.data}</td>
       <td>${h.prob}</td><td>${h.impacto}</td><td>${badge(h.nivel)}</td>
       <td>${esc(h.tratamento || '-')}</td><td>${esc(formatUnidadeUI(h.responsavel) || '-')}</td>
       <td>${esc(h.justificativa)}</td>
     </tr>`).join('');
-  } else {
-    hTable.innerHTML = '<tr><td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td></tr>';
-  }
-  
-  $id('rev-acao').value = 'reavaliar';
-  toggleCamposReavaliacao();
-  atualizarLegendaRisco('rev');
-  
-  abrirModal('modal-reavaliar-risco');
-}
+    } else {
+      hTable.innerHTML = '<tr><td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td></tr>';
+    }
 
-function toggleCamposReavaliacao() {
-  const acao = $id('rev-acao').value;
-  const notasDiv = $id('rev-campos-notas');
-  
-  if (acao === 'superado') {
-    notasDiv.style.display = 'none';
-  } else {
-    notasDiv.style.display = 'block';
-    const disable = (acao === 'manter');
-    $id('rev-prob').disabled = disable;
-    $id('rev-imp').disabled = disable;
-    $id('rev-trat').disabled = disable;
-    $id('rev-resp').disabled = disable;
-  }
-}
+    $id('rev-acao').value = 'reavaliar';
+    toggleCamposReavaliacao();
+    atualizarLegendaRisco('rev');
 
-document.addEventListener('DOMContentLoaded', () => {
-  const btnRevRisco = $id('btn-salvar-reaval');
-  if (btnRevRisco) btnRevRisco.addEventListener('click', () => {
-    const btn = btnRevRisco;
+    abrirModal('modal-reavaliar-risco');
+  }
+
+  function toggleCamposReavaliacao() {
     const acao = $id('rev-acao').value;
-    const idRisco = $id('rev-id-risco').value;
-    
+    const notasDiv = $id('rev-campos-notas');
+
     if (acao === 'superado') {
-      const justificativa = $id('rev-justif').value.trim();
-      if (!justificativa) return showAlerta('Descreva a justificativa para superar/arquivar este risco.');
-      btn.disabled = true; btn.innerText = 'A arquivar...';
+      notasDiv.style.display = 'none';
+    } else {
+      notasDiv.style.display = 'block';
+      const disable = (acao === 'manter');
+      $id('rev-prob').disabled = disable;
+      $id('rev-imp').disabled = disable;
+      $id('rev-trat').disabled = disable;
+      $id('rev-resp').disabled = disable;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btnRevRisco = $id('btn-salvar-reaval');
+    if (btnRevRisco) btnRevRisco.addEventListener('click', () => {
+      const btn = btnRevRisco;
+      const acao = $id('rev-acao').value;
+      const idRisco = $id('rev-id-risco').value;
+
+      if (acao === 'superado') {
+        const justificativa = $id('rev-justif').value.trim();
+        if (!justificativa) return showAlerta('Descreva a justificativa para superar/arquivar este risco.');
+        btn.disabled = true; btn.innerText = 'A arquivar...';
+        google.script.run.withSuccessHandler(r => {
+          if (r && r.sucesso === false) { btn.disabled = false; btn.innerText = 'Salvar Ação'; showAlerta(r.mensagem); return; }
+          feedbackBtn(btn, '✅ Superado!', 'Salvar Ação', () => { fecharModal('modal-reavaliar-risco'); recarregarRiscosPlanos(renderMatriz); });
+        }).withFailureHandler(falha(btn, 'Salvar Ação', null)).excluirRisco(idRisco);
+        return;
+      }
+
+      const dados = {
+        idRisco: idRisco,
+        probabilidade: Number($id('rev-prob').value),
+        impacto: Number($id('rev-imp').value),
+        tipoTratamento: $id('rev-trat').value,
+        responsavel: $id('rev-resp').value,
+        justificativa: $id('rev-justif').value.trim() || 'Reavaliação periódica.'
+      };
+      if (!dados.probabilidade || !dados.impacto) return showAlerta('Probabilidade e Impacto são obrigatórios.');
+      if (!dados.tipoTratamento || !dados.responsavel) return showAlerta('Tipo de Tratamento e Proprietário do Risco são obrigatórios.');
+      btn.disabled = true; btn.innerText = 'A salvar...';
       google.script.run.withSuccessHandler(r => {
-        if (r && r.sucesso === false) { btn.disabled=false; btn.innerText='Salvar Ação'; showAlerta(r.mensagem); return; }
-        feedbackBtn(btn,'✅ Superado!','Salvar Ação',()=>{ fecharModal('modal-reavaliar-risco'); recarregarRiscosPlanos(renderMatriz); });
-      }).withFailureHandler(falha(btn,'Salvar Ação',null)).excluirRisco(idRisco);
+        if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Ação', () => { fecharModal('modal-reavaliar-risco'); recarregarRiscosPlanos(renderMatriz); });
+        else { btn.disabled = false; btn.innerText = 'Salvar Ação'; showAlerta(r.mensagem); }
+      }).withFailureHandler(falha(btn, 'Salvar Ação', null)).reavaliarRisco(dados);
+    });
+  });
+
+  // ==========================================
+  // MÓDULO 4 — PLANOS DE AÇÃO (5W2H)
+  // ==========================================
+  function formatRiscoUI(val) {
+    if (!val || val === '-') return val || '';
+    const idx = state.risks.findIndex(x => 'R' + x.id === String(val));
+    if (idx !== -1) {
+      return `Risco ${idx + 1} — ${state.risks[idx].nome}`;
+    }
+    return val;
+  }
+
+  function carregarRiscosLivres() {
+    const sel = $id('p-risco');
+    sel.innerHTML = '<option value="">A carregar riscos sem plano...</option>';
+    const idsComPlano = new Set(state.plans.map(p => p.riscoVinculado));
+    const livres = state.risks.filter(r => !idsComPlano.has('R' + r.id));
+    if (!livres.length) { sel.innerHTML = '<option value="">Nenhum risco sem plano de ação.</option>'; return; }
+    const idxPorIdRisco = new Map(state.risks.map((x, i) => [x.id, i]));
+    sel.innerHTML = '<option value="" disabled selected>Selecione o risco...</option>' +
+      livres.map(r => {
+        const idx = idxPorIdRisco.has(r.id) ? idxPorIdRisco.get(r.id) : -1;
+        return `<option value="R${r.id}">Risco ${idx + 1} — ${esc(r.nome)}</option>`;
+      }).join('');
+  }
+
+  function abrirModalNovoPlano() {
+    try {
+      ['p-risco', 'p-what', 'p-why', 'p-where', 'p-when', 'p-how', 'p-who', 'p-howmuch'].forEach(id => { const el = $id(id); if (el) el.value = ''; });
+      sincronizarSelectsUnidade();
+      carregarRiscosLivres();
+      abrirModal('modal-plano-novo');
+    } catch (err) {
+      console.error('Erro ao abrir modal de novo plano:', err);
+      showAlerta('Não foi possível abrir o formulário de novo plano: ' + (err.message || String(err)));
+    }
+  }
+
+  function salvarPlano() {
+    const btn = $id('btn-salvar-plano');
+    const dados = {
+      riscoVinculado: $id('p-risco').value, what: ($id('p-what').value || '').trim(),
+      why: ($id('p-why').value || '').trim(), who: $id('p-who').value,
+      where: ($id('p-where').value || '').trim(), whenPrevisto: $id('p-when').value,
+      whenFinalizado: '', how: ($id('p-how').value || '').trim(),
+      howMuch: ($id('p-howmuch').value || '').trim() || 'Sem custos'
+    };
+    if (!dados.riscoVinculado || !dados.what || !dados.why || !dados.who || !dados.where || !dados.whenPrevisto || !dados.how) return showAlerta('Preencha todos os campos do plano.');
+    btn.disabled = true; btn.innerText = 'A guardar...';
+    google.script.run.withSuccessHandler(r => {
+      if (r.sucesso) feedbackBtn(btn, '✅ Registrado!', 'Salvar Plano de Ação', () => { fecharModal('modal-plano-novo'); recarregarRiscosPlanos(renderAcompanhamento); });
+      else { btn.disabled = false; btn.innerText = 'Salvar Plano de Ação'; showAlerta(r.mensagem); }
+    }).withFailureHandler(falha(btn, 'Salvar Plano de Ação', null)).salvarPlano(dados);
+  }
+
+  function renderAcompanhamento() {
+    $id('kpi-p-conc').innerText = state.plans.filter(p => p.status === 'Concluído').length;
+    $id('kpi-p-and').innerText = state.plans.filter(p => p.status === 'Em Andamento').length;
+    $id('kpi-p-atr').innerText = state.plans.filter(p => p.status === 'Atrasado').length;
+
+    const fU = ($id('f-acomp-unidade') || { value: '' }).value;
+    const fS = ($id('f-acomp-status') || { value: '' }).value;
+
+    const ativosRiscosMap = new Map();
+    state.risks.filter(r => r.status !== 'Arquivado').forEach(r => ativosRiscosMap.set('R' + r.id, r));
+
+    const filtrados = state.plans.filter(p => ativosRiscosMap.has(p.riscoVinculado) && (!fU || p.who === fU) && (!fS || p.status === fS));
+
+    const container = $id('container-planos');
+    if (!container) return;
+
+    if (!filtrados.length) {
+      container.innerHTML = '<div class="msg-empty" style="text-align:center; padding: 30px; background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 6px; color: #4b5563;">Nenhum plano ativo encontrado.</div>';
       return;
     }
 
-    const dados = {
-      idRisco: idRisco,
-      probabilidade: Number($id('rev-prob').value),
-      impacto: Number($id('rev-imp').value),
-      tipoTratamento: $id('rev-trat').value,
-      responsavel: $id('rev-resp').value,
-      justificativa: $id('rev-justif').value.trim() || 'Reavaliação periódica.'
-    };
-    if (!dados.probabilidade || !dados.impacto) return showAlerta('Probabilidade e Impacto são obrigatórios.');
-    if (!dados.tipoTratamento || !dados.responsavel) return showAlerta('Tipo de Tratamento e Proprietário do Risco são obrigatórios.');
-    btn.disabled = true; btn.innerText = 'A salvar...';
-    google.script.run.withSuccessHandler(r => {
-      if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Salvar Ação',()=>{ fecharModal('modal-reavaliar-risco'); recarregarRiscosPlanos(renderMatriz); });
-      else { btn.disabled=false; btn.innerText='Salvar Ação'; showAlerta(r.mensagem); }
-    }).withFailureHandler(falha(btn,'Salvar Ação',null)).reavaliarRisco(dados);
-  });
-});
+    // Agrupar planos filtrados por risco
+    const planosPorRisco = {};
+    filtrados.forEach(p => {
+      if (!planosPorRisco[p.riscoVinculado]) planosPorRisco[p.riscoVinculado] = [];
+      planosPorRisco[p.riscoVinculado].push(p);
+    });
 
-// ==========================================
-// MÓDULO 4 — PLANOS DE AÇÃO (5W2H)
-// ==========================================
-function formatRiscoUI(val) {
-  if (!val || val === '-') return val || '';
-  const idx = state.risks.findIndex(x => 'R' + x.id === String(val));
-  if (idx !== -1) {
-    return `Risco ${idx + 1} — ${state.risks[idx].nome}`;
-  }
-  return val;
-}
+    const html = Object.keys(planosPorRisco).map(ref => {
+      const r = ativosRiscosMap.get(ref);
+      const planos = planosPorRisco[ref];
+      if (!r) return '';
 
-function carregarRiscosLivres() {
-  const sel = $id('p-risco');
-  sel.innerHTML = '<option value="">A carregar riscos sem plano...</option>';
-  const idsComPlano = new Set(state.plans.map(p => p.riscoVinculado));
-  const livres = state.risks.filter(r => !idsComPlano.has('R' + r.id));
-  if (!livres.length) { sel.innerHTML = '<option value="">Nenhum risco sem plano de ação.</option>'; return; }
-  const idxPorIdRisco = new Map(state.risks.map((x, i) => [x.id, i]));
-  sel.innerHTML = '<option value="" disabled selected>Selecione o risco...</option>' +
-    livres.map(r => {
-      const idx = idxPorIdRisco.has(r.id) ? idxPorIdRisco.get(r.id) : -1;
-      return `<option value="R${r.id}">Risco ${idx + 1} — ${esc(r.nome)}</option>`;
-    }).join('');
-}
-
-function abrirModalNovoPlano() {
-  try {
-    ['p-risco','p-what','p-why','p-where','p-when','p-how','p-who','p-howmuch'].forEach(id => { const el = $id(id); if (el) el.value = ''; });
-    sincronizarSelectsUnidade();
-    carregarRiscosLivres();
-    abrirModal('modal-plano-novo');
-  } catch (err) {
-    console.error('Erro ao abrir modal de novo plano:', err);
-    showAlerta('Não foi possível abrir o formulário de novo plano: ' + (err.message || String(err)));
-  }
-}
-
-function salvarPlano() {
-  const btn = $id('btn-salvar-plano');
-  const dados = {
-    riscoVinculado: $id('p-risco').value, what: ($id('p-what').value||'').trim(),
-    why: ($id('p-why').value||'').trim(), who: $id('p-who').value,
-    where: ($id('p-where').value||'').trim(), whenPrevisto: $id('p-when').value,
-    whenFinalizado: '', how: ($id('p-how').value||'').trim(),
-    howMuch: ($id('p-howmuch').value||'').trim() || 'Sem custos'
-  };
-  if (!dados.riscoVinculado || !dados.what || !dados.why || !dados.who || !dados.where || !dados.whenPrevisto || !dados.how) return showAlerta('Preencha todos os campos do plano.');
-  btn.disabled = true; btn.innerText = 'A guardar...';
-  google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Registrado!','Salvar Plano de Ação',()=>{ fecharModal('modal-plano-novo'); recarregarRiscosPlanos(renderAcompanhamento); });
-    else { btn.disabled=false; btn.innerText='Salvar Plano de Ação'; showAlerta(r.mensagem); }
-  }).withFailureHandler(falha(btn,'Salvar Plano de Ação',null)).salvarPlano(dados);
-}
-
-function renderAcompanhamento() {
-  $id('kpi-p-conc').innerText = state.plans.filter(p=>p.status==='Concluído').length;
-  $id('kpi-p-and').innerText  = state.plans.filter(p=>p.status==='Em Andamento').length;
-  $id('kpi-p-atr').innerText  = state.plans.filter(p=>p.status==='Atrasado').length;
-
-  const fU = ($id('f-acomp-unidade')||{value:''}).value;
-  const fS = ($id('f-acomp-status') ||{value:''}).value;
-  
-  const ativosRiscosMap = new Map();
-  state.risks.filter(r => r.status !== 'Arquivado').forEach(r => ativosRiscosMap.set('R' + r.id, r));
-  
-  const filtrados = state.plans.filter(p => ativosRiscosMap.has(p.riscoVinculado) && (!fU || p.who === fU) && (!fS || p.status === fS));
-  
-  const container = $id('container-planos');
-  if (!container) return;
-
-  if (!filtrados.length) { 
-    container.innerHTML = '<div class="msg-empty" style="text-align:center; padding: 30px; background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 6px; color: #4b5563;">Nenhum plano ativo encontrado.</div>'; 
-    return; 
-  }
-
-  // Agrupar planos filtrados por risco
-  const planosPorRisco = {};
-  filtrados.forEach(p => {
-    if (!planosPorRisco[p.riscoVinculado]) planosPorRisco[p.riscoVinculado] = [];
-    planosPorRisco[p.riscoVinculado].push(p);
-  });
-
-  const html = Object.keys(planosPorRisco).map(ref => {
-    const r = ativosRiscosMap.get(ref);
-    const planos = planosPorRisco[ref];
-    if (!r) return '';
-
-    let planosHtml = `<div class="table-wrap"><table class="data-table" style="margin-bottom:0;">
-      <thead><tr><th>Ação (What)</th><th>Por que (Why)</th><th>Quem (Who)</th><th>Onde</th><th>Prazo</th><th>Finalização</th><th>Como (How)</th><th>Custo</th><th style="text-align:center;">Status</th><th style="text-align:center; width:110px;" class="no-print">Ações</th></tr></thead>
-      <tbody>
+      let planosHtml = `<div style="margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 12px;">
+      <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 85px 85px 1.5fr 80px 100px 90px; gap: 8px; padding: 0 0 8px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; margin-bottom: 8px;">
+        <div>Ação (What)</div>
+        <div>Por que (Why)</div>
+        <div>Quem (Who)</div>
+        <div>Onde</div>
+        <div style="text-align: center;">Prazo</div>
+        <div style="text-align: center;">Finalização</div>
+        <div>Como (How)</div>
+        <div style="text-align: right;">Custo</div>
+        <div style="text-align: center;">Status</div>
+        <div style="text-align: right;" class="no-print">Ações</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
         ${planos.map(p => {
-          const oi = state.plans.indexOf(p);
-          const acaoRev = p.revisaoPendente === 'Sim' ? iconBtn('alert','rev-plano','Revisar Plano',`onclick="abrirModalRevisarPlano(${oi})"`) : '';
-          
-          let rowClass = '';
-          if (p.status === 'Cancelado' || p.status === 'Substituído') {
-            rowClass = 'row-cancelled';
-          } else if (p.revisaoPendente === 'Sim') {
-            rowClass = 'row-warning';
-          }
-          
-          return `<tr class="${rowClass}">
-            <td>${esc(p.what)}</td><td>${esc(p.why)}</td><td>${esc(formatUnidadeUI(p.who))}</td>
-            <td>${esc(p.where)}</td><td>${fmtBr(p.whenPrevisto)}</td><td>${fmtBr(p.whenFinalizado)}</td>
-            <td>${esc(p.how)}</td><td>${esc(p.howMuch)}</td>
-            <td style="text-align:center;">${badge(p.status)}</td>
-            <td class="no-print"><div class="cell-actions" style="justify-content:center;">
+        const oi = state.plans.indexOf(p);
+        const acaoRev = p.revisaoPendente === 'Sim' ? iconBtn('alert', 'rev-plano', 'Revisar Plano', `onclick="abrirModalRevisarPlano(${oi})"`) : '';
+
+        let rowStyle = 'display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 85px 85px 1.5fr 80px 100px 90px; gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 0; border-bottom: 1px solid #f3f4f6; transition: background 0.2s;';
+        if (p.status === 'Cancelado' || p.status === 'Substituído') {
+          rowStyle += ' text-decoration: line-through; opacity: 0.6;';
+        } else if (p.revisaoPendente === 'Sim') {
+          rowStyle += ' background-color: #fffbeb;';
+        }
+
+        return `<div style="${rowStyle}" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='${p.revisaoPendente === 'Sim' && p.status !== 'Cancelado' && p.status !== 'Substituído' ? '#fffbeb' : 'transparent'}'">
+            <div style="font-weight: 500;">${esc(p.what)}</div>
+            <div>${esc(p.why)}</div>
+            <div>${esc(formatUnidadeUI(p.who))}</div>
+            <div>${esc(p.where)}</div>
+            <div style="text-align: center;">${fmtBr(p.whenPrevisto)}</div>
+            <div style="text-align: center;">${fmtBr(p.whenFinalizado)}</div>
+            <div>${esc(p.how)}</div>
+            <div style="text-align: right;">${esc(p.howMuch)}</div>
+            <div style="text-align: center;">${badge(p.status)}</div>
+            <div class="no-print" style="display: flex; justify-content: flex-end; gap: 4px;">
               ${acaoRev}
-              ${(p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído') ? '' : iconBtn('edit','edit-plano','Editar',`onclick="abrirEditarPlano(${oi})"`)}
-              ${iconBtn('check','acomp-entregas','Acompanhamento / Entregas',`onclick="abrirModalAcompEntregas(${oi})"`, false)}
-            </div></td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table></div>`;
+              ${(p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído') ? '' : iconBtn('edit', 'edit-plano', 'Editar', `onclick="abrirEditarPlano(${oi})"`)}
+              ${iconBtn('check', 'acomp-entregas', 'Acompanhamento / Entregas', `onclick="abrirModalAcompEntregas(${oi})"`, false)}
+            </div>
+          </div>`;
+      }).join('')}
+      </div>
+    </div>`;
 
-    let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
-    let curTratamento = r.tipoTratamento, curResp = r.responsavel;
+      let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
+      let curTratamento = r.tipoTratamento, curResp = r.responsavel;
 
-    const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
-    if (hist.length > 0) {
-      const ultimo = hist[hist.length - 1];
-      curProb = ultimo.prob; curImp = ultimo.impacto; curNivel = ultimo.nivel;
-      curTratamento = ultimo.tratamento; curResp = ultimo.responsavel;
-    }
+      const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
+      if (hist.length > 0) {
+        const ultimo = hist[hist.length - 1];
+        curProb = ultimo.prob; curImp = ultimo.impacto; curNivel = ultimo.nivel;
+        curTratamento = ultimo.tratamento; curResp = ultimo.responsavel;
+      }
 
-    return `<div class="card" style="border-left: 4px solid #3b82f6; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+      return `<div class="card" style="border-left: 4px solid #3b82f6; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
         <div style="flex: 1;">
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
@@ -399,231 +420,231 @@ function renderAcompanhamento() {
         ${planosHtml}
       </div>
     </div>`;
-  }).join('');
+    }).join('');
 
-  container.innerHTML = html;
-}
+    container.innerHTML = html;
+  }
 
-function abrirEditarPlano(idx) {
-  const p = state.plans[idx]; if(!p) return;
-  $id('ep-risco').value = p.riscoVinculado; $id('label-plano-editar').innerText = `Risco: ${p.riscoVinculado}`;
-  $id('ep-risco').dataset.whatAntigo = p.what;
-  $id('ep-what').value = p.what === '-' ? '' : p.what; $id('ep-why').value = p.why === '-' ? '' : p.why;
-  $id('ep-who').innerHTML = gerarOptsUnidades(true); $id('ep-who').value = p.who;
-  $id('ep-where').value = p.where === '-' ? '' : p.where;
-  $id('ep-when').value = p.whenPrevisto; $id('ep-fin').value = p.whenFinalizado;
-  $id('ep-how').value = p.how === '-' ? '' : p.how; $id('ep-cost').value = p.howMuch === '-' ? '' : p.howMuch;
-  abrirModal('modal-plano-editar');
-}
-function confirmarEdicaoPlano() {
-  const btn = $id('btn-confirmar-plano');
-  const dados = {
-    riscoVinculado: $id('ep-risco').value, whatAntigo: $id('ep-risco').dataset.whatAntigo,
-    what: $id('ep-what').value.trim(),
-    why: $id('ep-why').value.trim(), who: $id('ep-who').value,
-    where: $id('ep-where').value.trim(), whenPrevisto: $id('ep-when').value,
-    whenFinalizado: $id('ep-fin').value, how: $id('ep-how').value.trim(),
-    howMuch: $id('ep-cost').value.trim() || 'Sem custos'
-  };
-  if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios.');
-  btn.disabled = true; btn.innerText = 'A atualizar...';
-  google.script.run.withSuccessHandler(r => {
-    if (r.sucesso) feedbackBtn(btn,'✅ Salvo!','Salvar Plano de Ação',()=>{ fecharModal('modal-plano-editar'); recarregarRiscosPlanos(renderAcompanhamento); });
-    else { btn.disabled=false; btn.innerText='Salvar Plano de Ação'; showAlerta(r.mensagem); }
-  }).withFailureHandler(falha(btn,'Salvar Plano de Ação',null)).atualizarPlano(dados);
-}
-
-function excluirPlano(riscoVinculado) {
-  google.script.run.withSuccessHandler(() => recarregarRiscosPlanos(renderAcompanhamento))
-    .withFailureHandler(e => showAlerta(String(e))).excluirPlano(riscoVinculado);
-}
-
-function abrirModalRevisarPlano(idx) {
-  const p = state.plans[idx]; if(!p) return;
-  $id('revp-risco').value = p.riscoVinculado;
-  
-  // Guardar o "O que" original para o backend localizar o plano exato
-  $id('revp-risco').dataset.whatAntigo = p.what;
-
-  $id('revp-justif').value = '';
-  document.querySelector('input[name="revp-acao"][value="manter"]').click(); // reset to manter
-  
-  $id('revp-what').value = ''; $id('revp-why').value = '';
-  $id('revp-who').innerHTML = gerarOptsUnidades(true); $id('revp-who').value = '';
-  $id('revp-where').value = '';
-  $id('revp-when').value = ''; $id('revp-fin').value = '';
-  $id('revp-how').value = ''; $id('revp-cost').value = '';
-  abrirModal('modal-revisar-plano');
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const btnRevPlano = $id('btn-salvar-revisar-plano');
-  if (btnRevPlano) btnRevPlano.addEventListener('click', () => {
-    const btn = btnRevPlano;
-    const acao = document.querySelector('input[name="revp-acao"]:checked').value;
+  function abrirEditarPlano(idx) {
+    const p = state.plans[idx]; if (!p) return;
+    $id('ep-risco').value = p.riscoVinculado; $id('label-plano-editar').innerText = `Risco: ${p.riscoVinculado}`;
+    $id('ep-risco').dataset.whatAntigo = p.what;
+    $id('ep-what').value = p.what === '-' ? '' : p.what; $id('ep-why').value = p.why === '-' ? '' : p.why;
+    $id('ep-who').innerHTML = gerarOptsUnidades(true); $id('ep-who').value = p.who;
+    $id('ep-where').value = p.where === '-' ? '' : p.where;
+    $id('ep-when').value = p.whenPrevisto; $id('ep-fin').value = p.whenFinalizado;
+    $id('ep-how').value = p.how === '-' ? '' : p.how; $id('ep-cost').value = p.howMuch === '-' ? '' : p.howMuch;
+    abrirModal('modal-plano-editar');
+  }
+  function confirmarEdicaoPlano() {
+    const btn = $id('btn-confirmar-plano');
     const dados = {
-      riscoVinculado: $id('revp-risco').value,
-      whatAntigo: $id('revp-risco').dataset.whatAntigo,
-      acao: acao,
-      justificativa: $id('revp-justif').value.trim()
+      riscoVinculado: $id('ep-risco').value, whatAntigo: $id('ep-risco').dataset.whatAntigo,
+      what: $id('ep-what').value.trim(),
+      why: $id('ep-why').value.trim(), who: $id('ep-who').value,
+      where: $id('ep-where').value.trim(), whenPrevisto: $id('ep-when').value,
+      whenFinalizado: $id('ep-fin').value, how: $id('ep-how').value.trim(),
+      howMuch: $id('ep-cost').value.trim() || 'Sem custos'
     };
-    
-    if (acao === 'alterar') {
-      dados.what = $id('revp-what').value.trim(); dados.why = $id('revp-why').value.trim();
-      dados.who = $id('revp-who').value; dados.where = $id('revp-where').value.trim();
-      dados.whenPrevisto = $id('revp-when').value; dados.whenFinalizado = $id('revp-fin').value;
-      dados.how = $id('revp-how').value.trim(); dados.howMuch = $id('revp-cost').value.trim() || 'Sem custos';
-      if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios do novo plano.');
-    }
-    
-    btn.disabled = true; btn.innerText = 'A processar...';
+    if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios.');
+    btn.disabled = true; btn.innerText = 'A atualizar...';
     google.script.run.withSuccessHandler(r => {
-      btn.disabled = false; btn.innerText = 'Salvar Revisão';
-      if (r.sucesso) {
-        showAlerta(r.mensagem, 'success');
-        fecharModal('modal-revisar-plano');
-        recarregarRiscosPlanos(renderAcompanhamento);
-      } else {
-        showAlerta(r.mensagem);
+      if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Plano de Ação', () => { fecharModal('modal-plano-editar'); recarregarRiscosPlanos(renderAcompanhamento); });
+      else { btn.disabled = false; btn.innerText = 'Salvar Plano de Ação'; showAlerta(r.mensagem); }
+    }).withFailureHandler(falha(btn, 'Salvar Plano de Ação', null)).atualizarPlano(dados);
+  }
+
+  function excluirPlano(riscoVinculado) {
+    google.script.run.withSuccessHandler(() => recarregarRiscosPlanos(renderAcompanhamento))
+      .withFailureHandler(e => showAlerta(String(e))).excluirPlano(riscoVinculado);
+  }
+
+  function abrirModalRevisarPlano(idx) {
+    const p = state.plans[idx]; if (!p) return;
+    $id('revp-risco').value = p.riscoVinculado;
+
+    // Guardar o "O que" original para o backend localizar o plano exato
+    $id('revp-risco').dataset.whatAntigo = p.what;
+
+    $id('revp-justif').value = '';
+    document.querySelector('input[name="revp-acao"][value="manter"]').click(); // reset to manter
+
+    $id('revp-what').value = ''; $id('revp-why').value = '';
+    $id('revp-who').innerHTML = gerarOptsUnidades(true); $id('revp-who').value = '';
+    $id('revp-where').value = '';
+    $id('revp-when').value = ''; $id('revp-fin').value = '';
+    $id('revp-how').value = ''; $id('revp-cost').value = '';
+    abrirModal('modal-revisar-plano');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btnRevPlano = $id('btn-salvar-revisar-plano');
+    if (btnRevPlano) btnRevPlano.addEventListener('click', () => {
+      const btn = btnRevPlano;
+      const acao = document.querySelector('input[name="revp-acao"]:checked').value;
+      const dados = {
+        riscoVinculado: $id('revp-risco').value,
+        whatAntigo: $id('revp-risco').dataset.whatAntigo,
+        acao: acao,
+        justificativa: $id('revp-justif').value.trim()
+      };
+
+      if (acao === 'alterar') {
+        dados.what = $id('revp-what').value.trim(); dados.why = $id('revp-why').value.trim();
+        dados.who = $id('revp-who').value; dados.where = $id('revp-where').value.trim();
+        dados.whenPrevisto = $id('revp-when').value; dados.whenFinalizado = $id('revp-fin').value;
+        dados.how = $id('revp-how').value.trim(); dados.howMuch = $id('revp-cost').value.trim() || 'Sem custos';
+        if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios do novo plano.');
       }
-    }).withFailureHandler(falha(btn,'Salvar Revisão',null)).revisarPlano(dados);
-  });
-});
 
-// ==========================================
-// ACOMPANHAMENTO DE ENTREGAS (modal inline no Plano de Ação)
-// ==========================================
-// ==========================================
-
-function abrirModalAcompEntregas(idx) {
-  const p = state.plans[idx]; if (!p) return;
-  const global = planoEhGlobal(p.who);
-  let unidadesCobradas;
-  if (global) {
-    // "Todas as Subcomissões" cobra APENAS unidades com "Subcomissão" no nome
-    unidadesCobradas = state.units.filter(function(u) { return ehSubcomissao(u.unidade); });
-  } else {
-    // Plano atribuído a uma unidade específica — só ela é cobrada
-    unidadesCobradas = state.units.filter(function(u) {
-      return String(u.id) === String(p.who) || (u.sigla + ' - ' + u.unidade) === p.who;
+      btn.disabled = true; btn.innerText = 'A processar...';
+      google.script.run.withSuccessHandler(r => {
+        btn.disabled = false; btn.innerText = 'Salvar Revisão';
+        if (r.sucesso) {
+          showAlerta(r.mensagem, 'success');
+          fecharModal('modal-revisar-plano');
+          recarregarRiscosPlanos(renderAcompanhamento);
+        } else {
+          showAlerta(r.mensagem);
+        }
+      }).withFailureHandler(falha(btn, 'Salvar Revisão', null)).revisarPlano(dados);
     });
-    if (!unidadesCobradas.length && p.who) {
-      // Unidade renomeada/excluída depois do plano: mantém a cobrança
-      // pelo texto gravado no plano para o registro não sumir
-      unidadesCobradas = [{ id: p.who, sigla: '', unidade: formatUnidadeUI(p.who) }];
+  });
+
+  // ==========================================
+  // ACOMPANHAMENTO DE ENTREGAS (modal inline no Plano de Ação)
+  // ==========================================
+  // ==========================================
+
+  function abrirModalAcompEntregas(idx) {
+    const p = state.plans[idx]; if (!p) return;
+    const global = planoEhGlobal(p.who);
+    let unidadesCobradas;
+    if (global) {
+      // "Todas as Subcomissões" cobra APENAS unidades com "Subcomissão" no nome
+      unidadesCobradas = state.units.filter(function (u) { return ehSubcomissao(u.unidade); });
+    } else {
+      // Plano atribuído a uma unidade específica — só ela é cobrada
+      unidadesCobradas = state.units.filter(function (u) {
+        return String(u.id) === String(p.who) || (u.sigla + ' - ' + u.unidade) === p.who;
+      });
+      if (!unidadesCobradas.length && p.who) {
+        // Unidade renomeada/excluída depois do plano: mantém a cobrança
+        // pelo texto gravado no plano para o registro não sumir
+        unidadesCobradas = [{ id: p.who, sigla: '', unidade: formatUnidadeUI(p.who) }];
+      }
     }
-  }
 
-  const rRef = state.risks.find(function(x) { return 'R'+x.id === p.riscoVinculado; }) || {};
-  const isArquivado = rRef.status === 'Arquivado' || p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído';
+    const rRef = state.risks.find(function (x) { return 'R' + x.id === p.riscoVinculado; }) || {};
+    const isArquivado = rRef.status === 'Arquivado' || p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído';
 
-  $id('acomp-ent-info').innerHTML =
-    '<strong>Risco:</strong> ' + esc(formatRiscoUI(p.riscoVinculado)) +
-    ' &nbsp;·&nbsp; <strong>Ação:</strong> ' + esc(p.what) +
-    ' &nbsp;·&nbsp; <strong>Prazo:</strong> ' + fmtBr(p.whenPrevisto);
+    $id('acomp-ent-info').innerHTML =
+      '<strong>Risco:</strong> ' + esc(formatRiscoUI(p.riscoVinculado)) +
+      ' &nbsp;·&nbsp; <strong>Ação:</strong> ' + esc(p.what) +
+      ' &nbsp;·&nbsp; <strong>Prazo:</strong> ' + fmtBr(p.whenPrevisto);
 
-  if (!unidadesCobradas.length) {
-    $id('acomp-ent-lista').innerHTML =
-      '<p class="msg-empty">Nenhuma Subcomissão encontrada. ' +
-      'Cadastre unidades com "Subcomissão" no nome para acompanhar entregas aqui.</p>';
-    $id('modal-acomp-entregas').dataset.idx = idx;
-    abrirModal('modal-acomp-entregas');
-    return;
-  }
-
-  $id('modal-acomp-entregas').dataset.idx = idx;
-
-  $id('acomp-ent-lista').innerHTML = unidadesCobradas.map(function(u, i) {
-    const chave = u.id || (u.sigla ? (u.sigla + ' - ' + u.unidade) : u.unidade);
-    const ent = state.deliveries.find(function(e) {
-      return e.planoIdx === parseInt(idx) && e.unidade === chave;
-    });
-    const entregue = ent ? ent.entregue : '';
-    const sei      = ent && ent.processoSei && ent.processoSei !== '-' ? ent.processoSei : '';
-    const dataEnt  = ent && ent.dataEntrega ? ent.dataEntrega : '';
-    const rowClass = entregue === 'Sim' ? 'entregue' : (entregue === 'Não' ? 'pendente' : '');
-    const selClass = rowClass ? (' ' + rowClass) : '';
-    return (
-      '<div class="acomp-ent-row ' + rowClass + '" data-unidade="' + esc(chave) + '" style="display:flex; align-items:center; gap:16px; flex-wrap:nowrap;">' +
-        '<div class="acomp-unit-info" style="flex:1; min-width:200px;">' +
-          '<div class="acomp-unit-sigla">' + esc(u.sigla || '') + '</div>' +
-          '<div class="acomp-unit-nome" style="white-space:normal; line-height:1.2; margin-top:2px;">' + esc(u.unidade) + '</div>' +
-        '</div>' +
-        '<div class="acomp-field-group acomp-status-wrap" style="width:160px; flex-shrink:0;">' +
-          '<span class="acomp-field-label">Status</span>' +
-          '<select class="acomp-status-select acomp-status' + selClass + '" data-row="' + i + '" style="width:100%;"' + (isArquivado ? ' disabled' : '') + '>' +
-            '<option value=""' + (!entregue ? ' selected' : '') + '>— Selecione —</option>' +
-            '<option value="Sim"' + (entregue === 'Sim' ? ' selected' : '') + '>Sim — Entregue</option>' +
-            '<option value="Não"' + (entregue === 'Não' ? ' selected' : '') + '>Não — Pendente</option>' +
-          '</select>' +
-        '</div>' +
-        '<div class="acomp-sei-wrap" style="display:flex; align-items:center; gap:12px; flex-shrink:0;">' +
-          '<div class="acomp-field-group">' +
-            '<span class="acomp-field-label">Data de Entrega</span>' +
-            '<input type="date" class="acomp-data" value="' + esc(dataEnt) + '" style="width:130px; height:32px; padding:0 8px;"' + (isArquivado ? ' disabled' : '') + '>' +
-          '</div>' +
-          '<div class="acomp-field-group">' +
-            '<span class="acomp-field-label">Nº Processo SEI <span style="color:#dc2626;">*</span></span>' +
-            '<input type="text" class="acomp-sei" placeholder="Ex: 00060-000..." value="' + esc(sei) + '" style="width:150px; height:32px; padding:0 8px;"' + (isArquivado ? ' disabled' : '') + '>' +
-          '</div>' +
-        '</div>' +
-      '</div>'
-    );
-  }).join('');
-
-  // Atualiza só o visual ao mudar status — os campos de Data/SEI ficam
-  // sempre visíveis para manter todas as linhas alinhadas entre si
-  $id('acomp-ent-lista').querySelectorAll('.acomp-status').forEach(function(sel) {
-    sel.addEventListener('change', function() {
-      const row  = this.closest('.acomp-ent-row');
-      row.classList.remove('entregue', 'pendente');
-      this.classList.remove('entregue', 'pendente');
-      if (this.value === 'Sim')      { row.classList.add('entregue'); this.classList.add('entregue'); }
-      else if (this.value === 'Não') { row.classList.add('pendente'); this.classList.add('pendente'); }
-    });
-  });
-
-  const btnSalvar = $id('btn-salvar-acomp-entregas');
-  if (btnSalvar) btnSalvar.style.display = isArquivado ? 'none' : 'inline-block';
-
-  abrirModal('modal-acomp-entregas');
-}
-
-function salvarAcompEntregas() {
-  const btn = $id('btn-salvar-acomp-entregas');
-  const idxModal = $id('modal-acomp-entregas').dataset.idx;
-  const p = state.plans[idxModal]; if (!p) return;
-
-  const rows = $id('acomp-ent-lista').querySelectorAll('.acomp-ent-row');
-  const entregas = [];
-  let valido = true;
-
-  rows.forEach(function(row) {
-    const unidade  = row.dataset.unidade;
-    const status   = row.querySelector('.acomp-status').value;
-    const sei      = row.querySelector('.acomp-sei').value.trim();
-    const dataEnt  = row.querySelector('.acomp-data').value;
-
-    if (!status) return; // linha sem seleção — ignora
-
-    if (status === 'Sim' && !sei) {
-      showAlerta('Informe o número SEI para: ' + unidade);
-      valido = false;
+    if (!unidadesCobradas.length) {
+      $id('acomp-ent-lista').innerHTML =
+        '<p class="msg-empty">Nenhuma Subcomissão encontrada. ' +
+        'Cadastre unidades com "Subcomissão" no nome para acompanhar entregas aqui.</p>';
+      $id('modal-acomp-entregas').dataset.idx = idx;
+      abrirModal('modal-acomp-entregas');
       return;
     }
 
-    entregas.push({
-      unidade:      unidade,
-      entregue:     status,
-      dataEntrega:  status === 'Sim' ? (dataEnt || hojeISO()) : '',
-      processoSei:  status === 'Sim' ? sei : ''
+    $id('modal-acomp-entregas').dataset.idx = idx;
+
+    $id('acomp-ent-lista').innerHTML = unidadesCobradas.map(function (u, i) {
+      const chave = u.id || (u.sigla ? (u.sigla + ' - ' + u.unidade) : u.unidade);
+      const ent = state.deliveries.find(function (e) {
+        return e.planoIdx === parseInt(idx) && e.unidade === chave;
+      });
+      const entregue = ent ? ent.entregue : '';
+      const sei = ent && ent.processoSei && ent.processoSei !== '-' ? ent.processoSei : '';
+      const dataEnt = ent && ent.dataEntrega ? ent.dataEntrega : '';
+      const rowClass = entregue === 'Sim' ? 'entregue' : (entregue === 'Não' ? 'pendente' : '');
+      const selClass = rowClass ? (' ' + rowClass) : '';
+      return (
+        '<div class="acomp-ent-row ' + rowClass + '" data-unidade="' + esc(chave) + '" style="display:flex; align-items:center; gap:16px; flex-wrap:nowrap;">' +
+        '<div class="acomp-unit-info" style="flex:1; min-width:200px;">' +
+        '<div class="acomp-unit-sigla">' + esc(u.sigla || '') + '</div>' +
+        '<div class="acomp-unit-nome" style="white-space:normal; line-height:1.2; margin-top:2px;">' + esc(u.unidade) + '</div>' +
+        '</div>' +
+        '<div class="acomp-field-group acomp-status-wrap" style="width:160px; flex-shrink:0;">' +
+        '<span class="acomp-field-label">Status</span>' +
+        '<select class="acomp-status-select acomp-status' + selClass + '" data-row="' + i + '" style="width:100%;"' + (isArquivado ? ' disabled' : '') + '>' +
+        '<option value=""' + (!entregue ? ' selected' : '') + '>— Selecione —</option>' +
+        '<option value="Sim"' + (entregue === 'Sim' ? ' selected' : '') + '>Sim — Entregue</option>' +
+        '<option value="Não"' + (entregue === 'Não' ? ' selected' : '') + '>Não — Pendente</option>' +
+        '</select>' +
+        '</div>' +
+        '<div class="acomp-sei-wrap" style="display:flex; align-items:center; gap:12px; flex-shrink:0;">' +
+        '<div class="acomp-field-group">' +
+        '<span class="acomp-field-label">Data de Entrega</span>' +
+        '<input type="date" class="acomp-data" value="' + esc(dataEnt) + '" style="width:130px; height:32px; padding:0 8px;"' + (isArquivado ? ' disabled' : '') + '>' +
+        '</div>' +
+        '<div class="acomp-field-group">' +
+        '<span class="acomp-field-label">Nº Processo SEI <span style="color:#dc2626;">*</span></span>' +
+        '<input type="text" class="acomp-sei" placeholder="Ex: 00060-000..." value="' + esc(sei) + '" style="width:150px; height:32px; padding:0 8px;"' + (isArquivado ? ' disabled' : '') + '>' +
+        '</div>' +
+        '</div>' +
+        '</div>'
+      );
+    }).join('');
+
+    // Atualiza só o visual ao mudar status — os campos de Data/SEI ficam
+    // sempre visíveis para manter todas as linhas alinhadas entre si
+    $id('acomp-ent-lista').querySelectorAll('.acomp-status').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        const row = this.closest('.acomp-ent-row');
+        row.classList.remove('entregue', 'pendente');
+        this.classList.remove('entregue', 'pendente');
+        if (this.value === 'Sim') { row.classList.add('entregue'); this.classList.add('entregue'); }
+        else if (this.value === 'Não') { row.classList.add('pendente'); this.classList.add('pendente'); }
+      });
     });
-  });
 
-  if (!valido) return;
-  if (!entregas.length) { fecharModal('modal-acomp-entregas'); return; }
+    const btnSalvar = $id('btn-salvar-acomp-entregas');
+    if (btnSalvar) btnSalvar.style.display = isArquivado ? 'none' : 'inline-block';
 
-  btn.disabled = true; btn.innerText = 'A gravar...';
+    abrirModal('modal-acomp-entregas');
+  }
+
+  function salvarAcompEntregas() {
+    const btn = $id('btn-salvar-acomp-entregas');
+    const idxModal = $id('modal-acomp-entregas').dataset.idx;
+    const p = state.plans[idxModal]; if (!p) return;
+
+    const rows = $id('acomp-ent-lista').querySelectorAll('.acomp-ent-row');
+    const entregas = [];
+    let valido = true;
+
+    rows.forEach(function (row) {
+      const unidade = row.dataset.unidade;
+      const status = row.querySelector('.acomp-status').value;
+      const sei = row.querySelector('.acomp-sei').value.trim();
+      const dataEnt = row.querySelector('.acomp-data').value;
+
+      if (!status) return; // linha sem seleção — ignora
+
+      if (status === 'Sim' && !sei) {
+        showAlerta('Informe o número SEI para: ' + unidade);
+        valido = false;
+        return;
+      }
+
+      entregas.push({
+        unidade: unidade,
+        entregue: status,
+        dataEntrega: status === 'Sim' ? (dataEnt || hojeISO()) : '',
+        processoSei: status === 'Sim' ? sei : ''
+      });
+    });
+
+    if (!valido) return;
+    if (!entregas.length) { fecharModal('modal-acomp-entregas'); return; }
+
+    btn.disabled = true; btn.innerText = 'A gravar...';
     google.script.run.withSuccessHandler(r => {
       btn.textContent = 'Salvar Registros'; btn.disabled = false;
       if (r.sucesso) {
@@ -637,224 +658,231 @@ function salvarAcompEntregas() {
       btn.textContent = 'Salvar Registros'; btn.disabled = false;
       showAlerta(String(e));
     }).salvarEntregasEmLote(p.riscoVinculado, p.what, entregas);
-}
+  }
 
-// ---------- PDF ----------
-// A grade da Matriz (cores + badges) é capturada como imagem real da tela
-// (_capturarElementoComoImg, em JS_Utilitarios.html — usa html2canvas só
-// nesses dois elementos pequenos, sem esconder nada nem piscar a tela) —
-// reaproveita exatamente a mesma cor, fonte e badge que já estão corretos
-// na tela, em vez de redesenhar. O conversor de PDF do Apps Script não
-// pinta background-color, mas <img> sempre renderiza (mesma técnica já
-// usada e funcional nos gráficos do Dashboard).
-// Assíncrono (html2canvas devolve Promise) — ver Promise.resolve() em
-// _gerarPdfReal/_dispararEnvioPdfReal, que aceitam tanto Promise quanto
-// string dos demais relatórios (síncronos).
-async function montarHtmlMatrizPdf() {
-  const matrizEl  = document.querySelector('#area-matriz .matrix-table');
-  const legendaEl = document.querySelector('#area-matriz .legend-row');
-  const [matrizImg, legendaImg] = await Promise.all([
-    _capturarElementoComoImg(matrizEl),
-    _capturarElementoComoImg(legendaEl)
-  ]);
+  // ---------- PDF ----------
+  // A grade da Matriz (cores + badges) é capturada como imagem real da tela
+  // (_capturarElementoComoImg, em JS_Utilitarios.html — usa html2canvas só
+  // nesses dois elementos pequenos, sem esconder nada nem piscar a tela) —
+  // reaproveita exatamente a mesma cor, fonte e badge que já estão corretos
+  // na tela, em vez de redesenhar. O conversor de PDF do Apps Script não
+  // pinta background-color, mas <img> sempre renderiza (mesma técnica já
+  // usada e funcional nos gráficos do Dashboard).
+  // Assíncrono (html2canvas devolve Promise) — ver Promise.resolve() em
+  // _gerarPdfReal/_dispararEnvioPdfReal, que aceitam tanto Promise quanto
+  // string dos demais relatórios (síncronos).
+  async function montarHtmlMatrizPdf() {
+    const matrizEl = document.querySelector('#area-matriz .matrix-table');
+    const legendaEl = document.querySelector('#area-matriz .legend-row');
+    const [matrizImg, legendaImg] = await Promise.all([
+      _capturarElementoComoImg(matrizEl),
+      _capturarElementoComoImg(legendaEl)
+    ]);
 
-  const matrizHtml = matrizImg
-    ? `<img src="${matrizImg}" style="display:block;width:100%;margin-bottom:14px;">` : '';
-  const legendaHtml = legendaImg
-    ? `<img src="${legendaImg}" style="display:block;width:100%;margin:0 auto 20px;">` : '';
+    const matrizHtml = matrizImg
+      ? `<img src="${matrizImg}" style="display:block;width:100%;margin-bottom:14px;">` : '';
+    const legendaHtml = legendaImg
+      ? `<img src="${legendaImg}" style="display:block;width:100%;margin:0 auto 20px;">` : '';
 
-  const riscosHtml = _pdfSecaoTitulo('Mapeamento de Riscos') +
-    `<table><thead><tr>
+    const riscosHtml = _pdfSecaoTitulo('Mapeamento de Riscos') +
+      `<table><thead><tr>
       <th style="text-align:center;">#</th><th style="text-align:center;">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>
       <th>Categoria</th><th style="text-align:center;">P×I</th><th style="text-align:center;">Nível</th>
       <th>Tratamento</th><th>Proprietário</th><th>Plano de Ação</th>
     </tr></thead><tbody>${_tbodyParaPdf('lista-riscos')}</tbody></table>`;
 
-  return matrizHtml + legendaHtml + riscosHtml;
-}
+    return matrizHtml + legendaHtml + riscosHtml;
+  }
 
-// Corpo do relatório de Acompanhamento de Ações — KPIs + tabela de planos.
-function montarHtmlAcompanhamentoPdf() {
-  const container = $id('container-planos');
-  if (!container) return '';
-  
-  const clone = container.cloneNode(true);
-  clone.querySelectorAll('.no-print').forEach(el => el.remove());
-  _converterBadgesParaPdf(clone);
+  // Corpo do relatório de Acompanhamento de Ações — KPIs + tabela de planos.
+  function montarHtmlAcompanhamentoPdf() {
+    const container = $id('container-planos');
+    if (!container) return '';
 
-  return clone.innerHTML;
-}
+    const clone = container.cloneNode(true);
+    clone.querySelectorAll('.no-print').forEach(el => el.remove());
+    _converterBadgesParaPdf(clone);
 
-function atualizarLegendaRisco(prefix) {
-  const probVal = $id(prefix + '-prob').value;
-  const impVal = $id(prefix + '-imp').value;
-  const leg = $id(prefix + '-nivel-legenda');
-  const val = $id(prefix + '-nivel-valor');
+    return clone.innerHTML;
+  }
 
-  if (!probVal || !impVal) {
+  function atualizarLegendaRisco(prefix) {
+    const probVal = $id(prefix + '-prob').value;
+    const impVal = $id(prefix + '-imp').value;
+    const leg = $id(prefix + '-nivel-legenda');
+    const val = $id(prefix + '-nivel-valor');
+
+    if (!probVal || !impVal) {
+      if (leg && val) {
+        leg.style.backgroundColor = '#f9fafb';
+        leg.style.borderColor = '#e5e7eb';
+        leg.style.color = '#4b5563';
+        val.innerText = '--';
+      }
+      return;
+    }
+
+    const p = Number(probVal);
+    const i = Number(impVal);
+    const s = p * i;
+    // Nível a partir do score; as cores saem de CORES_STATUS (fonte única, ver
+    // JS_Utilitarios.html) — a borda usa a própria cor do texto.
+    const nivel = s >= 15 ? 'Crítico' : s >= 10 ? 'Alto' : s >= 5 ? 'Médio' : 'Baixo';
+    const [bg, cor] = CORES_STATUS[nivel];
+
     if (leg && val) {
-      leg.style.backgroundColor = '#f9fafb';
-      leg.style.borderColor = '#e5e7eb';
-      leg.style.color = '#4b5563';
-      val.innerText = '--';
+      leg.style.backgroundColor = bg;
+      leg.style.borderColor = cor;
+      leg.style.color = cor;
+      val.innerText = nivel + ' (' + s + ')';
     }
-    return;
   }
 
-  const p = Number(probVal);
-  const i = Number(impVal);
-  const s = p * i;
-  // Nível a partir do score; as cores saem de CORES_STATUS (fonte única, ver
-  // JS_Utilitarios.html) — a borda usa a própria cor do texto.
-  const nivel = s >= 15 ? 'Crítico' : s >= 10 ? 'Alto' : s >= 5 ? 'Médio' : 'Baixo';
-  const [bg, cor] = CORES_STATUS[nivel];
+  // ==========================================
+  // ABA ARQUIVADOS (Riscos e Planos)
+  // ==========================================
+  function renderRiscosArquivados() {
+    const arquivadosRiscos = state.risks.filter(r => r.status === 'Arquivado');
+    const container = $id('container-arquivados');
 
-  if (leg && val) {
-    leg.style.backgroundColor = bg;
-    leg.style.borderColor = cor;
-    leg.style.color = cor;
-    val.innerText = nivel + ' (' + s + ')';
-  }
-}
+    if (!container) return;
 
-// ==========================================
-// ABA ARQUIVADOS (Riscos e Planos)
-// ==========================================
-function renderRiscosArquivados() {
-  const arquivadosRiscos = state.risks.filter(r => r.status === 'Arquivado');
-  const container = $id('container-arquivados');
-  
-  if (!container) return;
-
-  if (!arquivadosRiscos.length) {
-    container.innerHTML = '<div class="msg-empty" style="text-align:center; padding: 30px; background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 6px; color: #4b5563;">Nenhum risco ou plano arquivado no momento.</div>';
-    return;
-  }
-  
-  const idsArquivados = new Set(arquivadosRiscos.map(r => 'R' + r.id));
-  const planosArquivados = state.plans.filter(p => idsArquivados.has(p.riscoVinculado));
-  const planosPorRisco = {};
-  planosArquivados.forEach(p => {
-    if (!planosPorRisco[p.riscoVinculado]) planosPorRisco[p.riscoVinculado] = [];
-    planosPorRisco[p.riscoVinculado].push(p);
-  });
-
-  const html = arquivadosRiscos.map((r) => {
-    const ref = 'R' + r.id;
-    const planos = planosPorRisco[ref] || [];
-    
-    let planosHtml = '';
-    if (planos.length === 0) {
-      planosHtml = '<div style="font-size:13px; color:#6b7280; font-style:italic;">Nenhum plano de ação associado a este risco.</div>';
-    } else {
-      planosHtml = `<div class="table-wrap"><table class="data-table" style="margin-bottom:0;">
-        <thead><tr><th>Ação (What)</th><th>Por que (Why)</th><th>Quem (Who)</th><th>Onde</th><th>Prazo</th><th>Finalização</th><th>Como (How)</th><th>Custo</th><th style="text-align:center;">Status</th><th style="text-align:center; width:60px;" class="no-print">Ações</th></tr></thead>
-        <tbody>
-          ${planos.map(p => {
-            const oi = state.plans.indexOf(p);
-            let rowClass = '';
-            if (p.status === 'Cancelado' || p.status === 'Substituído') {
-              rowClass = 'row-cancelled';
-            } else if (p.revisaoPendente === 'Sim') {
-              rowClass = 'row-warning';
-            }
-            return `<tr class="${rowClass}">
-              <td>${esc(p.what)}</td><td>${esc(p.why)}</td><td>${esc(formatUnidadeUI(p.who))}</td>
-              <td>${esc(p.where)}</td><td>${fmtBr(p.whenPrevisto)}</td><td>${fmtBr(p.whenFinalizado)}</td>
-              <td>${esc(p.how)}</td><td>${esc(p.howMuch)}</td>
-              <td style="text-align:center;">${badge(p.status)}</td>
-              <td class="no-print"><div class="cell-actions" style="justify-content:center;">
-                ${iconBtn('history','acomp-entregas','Acompanhamento / Entregas',`onclick="abrirModalAcompEntregas(${oi})"`, false)}
-              </div></td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table></div>`;
+    if (!arquivadosRiscos.length) {
+      container.innerHTML = '<div class="msg-empty" style="text-align:center; padding: 30px; background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 6px; color: #4b5563;">Nenhum risco ou plano arquivado no momento.</div>';
+      return;
     }
 
-    let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
-    let curTratamento = r.tipoTratamento, curResp = r.responsavel;
+    const idsArquivados = new Set(arquivadosRiscos.map(r => 'R' + r.id));
+    const planosArquivados = state.plans.filter(p => idsArquivados.has(p.riscoVinculado));
+    const planosPorRisco = {};
+    planosArquivados.forEach(p => {
+      if (!planosPorRisco[p.riscoVinculado]) planosPorRisco[p.riscoVinculado] = [];
+      planosPorRisco[p.riscoVinculado].push(p);
+    });
 
-    const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
-    if (hist.length > 0) {
-      const ultimo = hist[hist.length - 1];
-      curProb = ultimo.prob;
-      curImp = ultimo.impacto;
-      curNivel = ultimo.nivel;
-      curTratamento = ultimo.tratamento;
-      curResp = ultimo.responsavel;
-    }
+    const html = arquivadosRiscos.map((r, idx) => {
+      const ref = 'R' + r.id;
+      const planos = planosPorRisco[ref] || [];
 
-    return `<div class="card" style="border-left: 4px solid #d1d5db; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
-        <div style="flex: 1;">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-            <div style="font-size:12px; color:#4b5563; font-weight:600; background:#f3f4f6; padding:2px 8px; border-radius:12px; border:1px solid #d1d5db;">R-${esc(r.id)}</div>
-            <div style="width:4px; height:4px; border-radius:50%; background:#d1d5db;"></div>
-            <div style="font-size:12px; color:#4b5563; font-weight:600;">${esc(r.macroetapa)}</div>
-          </div>
-          <h4 style="margin:0 0 6px 0; color:#0f172a; font-size:15px;">${esc(r.nome)}</h4>
-          <div style="display: flex; flex-wrap: wrap; gap: 6px 16px; font-size:13px; color:#4b5563;">
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Causa:</strong> ${esc(r.causa)}</div>
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Consequência:</strong> ${esc(r.consequencia)}</div>
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Categoria:</strong> ${esc(r.categoria)}</div>
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Nível de Risco:</strong> ${badge(curNivel)}</div>
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Tratamento:</strong> ${esc(curTratamento)}</div>
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Proprietário:</strong> ${esc(formatUnidadeUI(curResp))}</div>
-          </div>
+      let planosHtml = '';
+      if (planos.length === 0) {
+        planosHtml = '<div style="font-size:13px; color:#6b7280; font-style:italic;">Nenhum plano de ação associado a este risco.</div>';
+      } else {
+        planosHtml = `<div style="margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 12px;">
+        <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 85px 85px 1.5fr 80px 100px 60px; gap: 8px; padding: 0 0 8px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; margin-bottom: 8px;">
+          <div>Ação (What)</div>
+          <div>Por que (Why)</div>
+          <div>Quem (Who)</div>
+          <div>Onde</div>
+          <div style="text-align: center;">Prazo</div>
+          <div style="text-align: center;">Finalização</div>
+          <div>Como (How)</div>
+          <div style="text-align: right;">Custo</div>
+          <div style="text-align: center;">Status</div>
+          <div style="text-align: right;" class="no-print">Ações</div>
         </div>
-        <div class="no-print" style="flex-shrink:0;">
-          <button type="button" class="btn secondary btn-sm" onclick="confirmarRestaurarRisco(${r.id})" title="Restaurar Risco para Ativo">
-            <svg style="width:14px; height:14px; margin-right:4px; vertical-align:middle; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${planos.map(p => {
+          const oi = state.plans.indexOf(p);
+          let rowStyle = 'display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 85px 85px 1.5fr 80px 100px 60px; gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 0; border-bottom: 1px solid #f3f4f6; transition: background 0.2s;';
+          if (p.status === 'Cancelado' || p.status === 'Substituído') {
+            rowStyle += ' text-decoration: line-through; opacity: 0.6;';
+          } else if (p.revisaoPendente === 'Sim') {
+            rowStyle += ' background-color: #fffbeb;';
+          }
+          return `<div style="${rowStyle}" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='${p.revisaoPendente === 'Sim' && p.status !== 'Cancelado' && p.status !== 'Substituído' ? '#fffbeb' : 'transparent'}'">
+              <div style="font-weight: 500;">${esc(p.what)}</div>
+              <div>${esc(p.why)}</div>
+              <div>${esc(formatUnidadeUI(p.who))}</div>
+              <div>${esc(p.where)}</div>
+              <div style="text-align: center;">${fmtBr(p.whenPrevisto)}</div>
+              <div style="text-align: center;">${fmtBr(p.whenFinalizado)}</div>
+              <div>${esc(p.how)}</div>
+              <div style="text-align: right;">${esc(p.howMuch)}</div>
+              <div style="text-align: center;">${badge(p.status)}</div>
+              <div class="no-print" style="display: flex; justify-content: flex-end; gap: 4px;">
+                ${iconBtn('history', 'acomp-entregas', 'Acompanhamento / Entregas', `onclick="abrirModalAcompEntregas(${oi})"`, false)}
+              </div>
+            </div>`;
+        }).join('')}
+        </div>
+      </div>`;
+      }
+
+      let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
+      let curTratamento = r.tipoTratamento, curResp = r.responsavel;
+
+      const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
+      if (hist.length > 0) {
+        const ultimo = hist[hist.length - 1];
+        curProb = ultimo.prob;
+        curImp = ultimo.impacto;
+        curNivel = ultimo.nivel;
+        curTratamento = ultimo.tratamento;
+        curResp = ultimo.responsavel;
+      }
+
+      return `<div style="background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom: 8px; transition: transform 0.15s, box-shadow 0.15s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.05)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.02)'">
+      <div style="display: grid; grid-template-columns: 35px 60px 0.8fr 1.2fr 1.2fr 1.2fr 90px 55px 90px 1fr 120px 1.2fr 95px; gap: 8px; align-items: center; padding: 12px 0; font-size: 13px; color: #111827;">
+        <div style="text-align:center;font-weight:700;color:#4b5563;">${idx + 1}</div>
+        <div style="text-align:center;font-weight:700;color:#6b7280;white-space:nowrap;">R-${r.id}</div>
+        <div style="font-weight: 500;">${esc(r.macroetapa)}</div>
+        <div><span style="display:inline-block; font-weight:600; color:#030712; border:1px solid #d1d5db; border-radius:6px; padding:4px 10px; background:#f9fafb;">${esc(r.nome)}</span></div>
+        <div style="line-height: 1.4; color: #4b5563;">${esc(r.causa)}</div>
+        <div style="line-height: 1.4; color: #4b5563;">${esc(r.consequencia)}</div>
+        <div>${esc(r.categoria)}</div>
+        <div style="text-align:center;font-weight:700;">${curProb * curImp}</div>
+        <div style="text-align:center; white-space:nowrap;">${badge(curNivel)}</div>
+        <div>${esc(curTratamento)}</div>
+        <div>${esc(formatUnidadeUI(curResp))}</div>
+        <div style="line-height: 1.4; color: #4b5563;">${esc(r.planoAcao)}</div>
+        <div class="no-print" style="display: flex; gap: 4px; justify-content: center;">
+          <button type="button" class="btn secondary btn-sm" onclick="confirmarRestaurarRisco(${r.id})" title="Restaurar Risco para Ativo" style="padding: 4px 8px; font-size: 11px;">
             Restaurar
           </button>
         </div>
       </div>
-      
-      <div style="margin-top: 16px; border-top: 1px solid #f3f4f6; padding-top: 16px;">
-        <h5 style="margin: 0 0 12px 0; font-size:14px; color:#030712; font-weight:600; display:flex; align-items:center; gap:6px;">
-          <svg style="width:16px; height:16px; stroke:#4b5563; fill:none; stroke-width:2;" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          Planos de Ação (5W2H) Vinculados
-        </h5>
+      <div style="padding: 0 16px 12px; border-top: 1px solid #f3f4f6; margin-top: 4px;">
+        <div style="font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 8px;">Planos de Ação (5W2H) Vinculados:</div>
         ${planosHtml}
       </div>
     </div>`;
-  }).join('');
+    }).join('');
 
-  container.innerHTML = html;
-}
+    container.innerHTML = html;
+  }
 
-function confirmarRestaurarRisco(id) {
-  showConfirm('Deseja restaurar este risco? Ele voltará a aparecer na Matriz de Risco como Ativo.', () => {
-    google.script.run.withSuccessHandler(r => {
-      if(r.sucesso) { recarregarRiscosPlanos(renderRiscosArquivados); }
-      else { showAlerta(r.mensagem); }
-    }).withFailureHandler(e => showAlerta(String(e))).restaurarRisco(id);
+  function confirmarRestaurarRisco(id) {
+    showConfirm('Deseja restaurar este risco? Ele voltará a aparecer na Matriz de Risco como Ativo.', () => {
+      google.script.run.withSuccessHandler(r => {
+        if (r.sucesso) { recarregarRiscosPlanos(renderRiscosArquivados); }
+        else { showAlerta(r.mensagem); }
+      }).withFailureHandler(e => showAlerta(String(e))).restaurarRisco(id);
+    });
+  }
+
+  function montarHtmlRiscoArquivadoPdf() {
+    const container = $id('container-arquivados');
+    if (!container) return '';
+
+    // Limpa elementos marcados com no-print antes de jogar pro PDF
+    const clone = container.cloneNode(true);
+    clone.querySelectorAll('.no-print').forEach(e => e.remove());
+
+    return _pdfSecaoTitulo('Riscos Superados / Arquivados') + clone.innerHTML;
+  }
+
+  // Mesmo padrão dos demais relatórios: o tipo 'risco-arquivado' está em
+  // CFG_PDF e gerarPdfLocal/_gerarPdfReal cuidam do estado do botão e da espera
+  // pelos dados. Os handlers antigos chamavam _gerarPdfReal/_dispararEnvioPdfReal
+  // com a assinatura errada (passavam o HTML onde se espera o tipo) e encadeavam
+  // .finally() num retorno undefined — o TypeError síncrono deixava o botão preso
+  // em "A gerar..." até um F5.
+  document.addEventListener('DOMContentLoaded', () => {
+    const btnPdfRiscoArq = $id('btn-pdf-risco-arquivado');
+    if (btnPdfRiscoArq) btnPdfRiscoArq.addEventListener('click', () => gerarPdfLocal('risco-arquivado'));
+
+    const btnEmailRiscoArq = $id('btn-email-risco-arquivado');
+    if (btnEmailRiscoArq) btnEmailRiscoArq.addEventListener('click', () => abrirModalEmail('risco-arquivado'));
   });
-}
-
-function montarHtmlRiscoArquivadoPdf() {
-  const container = $id('container-arquivados');
-  if (!container) return '';
-  
-  // Limpa elementos marcados com no-print antes de jogar pro PDF
-  const clone = container.cloneNode(true);
-  clone.querySelectorAll('.no-print').forEach(e => e.remove());
-  
-  return _pdfSecaoTitulo('Riscos Superados / Arquivados') + clone.innerHTML;
-}
-
-// Mesmo padrão dos demais relatórios: o tipo 'risco-arquivado' está em
-// CFG_PDF e gerarPdfLocal/_gerarPdfReal cuidam do estado do botão e da espera
-// pelos dados. Os handlers antigos chamavam _gerarPdfReal/_dispararEnvioPdfReal
-// com a assinatura errada (passavam o HTML onde se espera o tipo) e encadeavam
-// .finally() num retorno undefined — o TypeError síncrono deixava o botão preso
-// em "A gerar..." até um F5.
-document.addEventListener('DOMContentLoaded', () => {
-  const btnPdfRiscoArq = $id('btn-pdf-risco-arquivado');
-  if (btnPdfRiscoArq) btnPdfRiscoArq.addEventListener('click', () => gerarPdfLocal('risco-arquivado'));
-
-  const btnEmailRiscoArq = $id('btn-email-risco-arquivado');
-  if (btnEmailRiscoArq) btnEmailRiscoArq.addEventListener('click', () => abrirModalEmail('risco-arquivado'));
-});
 </script>
