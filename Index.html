@@ -22,6 +22,7 @@
        reaproveitar a imagem exata da tela (cores, fonte, badges) em vez de
        redesenhar, já que o conversor de PDF do Apps Script não pinta fundo. -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+  
   <?!= include_('CSS'); ?>
 </head>
 
@@ -239,7 +240,7 @@
           <div style="display: flex; align-items: center; gap: 16px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <select id="memberFilterSelect" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
-                <option value="">Todos</option>
+                <option value="">Todos os Membros</option>
               </select>
             </div>
           </div>
@@ -294,18 +295,20 @@
         </header>
 
         <!-- Lista de Membros (Grid Header + Conteúdo) -->
-        <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 28px;">
-          <div
-            style="display: grid; grid-template-columns: 2fr 1.5fr 2fr 2fr 100px; gap: 16px; padding: 0 20px 8px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;">
-            <div>Nome do Membro</div>
-            <div>Função / Cargo</div>
-            <div>E-mail Funcional</div>
-            <div>E-mail Pessoal</div>
-            <div style="text-align: right;">Ações</div>
-          </div>
-          <div id="members-list"
-            style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-bottom: 28px; flex: 1; padding-right: 4px;">
-            <div class="msg-empty">A carregar...</div>
+        <div style="display: flex; flex-direction: column; flex: 1; overflow: auto; scrollbar-gutter: stable; padding: 0 28px 28px;">
+          <div style="min-width: 900px; display: flex; flex-direction: column;">
+            <div
+              style="position: sticky; top: 0; z-index: 2; background: var(--bg-app); display: grid; grid-template-columns: 2fr 1.5fr 2fr 2fr 100px; gap: 16px; padding: 8px 20px; border: 1px solid transparent; font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+              <div>Nome do Membro</div>
+              <div>Função / Cargo</div>
+              <div>E-mail Funcional</div>
+              <div>E-mail Pessoal</div>
+              <div style="text-align:center;">Ações</div>
+            </div>
+            <div id="members-list"
+              style="display: flex; flex-direction: column; gap: 8px;">
+              <div class="msg-empty">A carregar...</div>
+            </div>
           </div>
         </div>
       </section>
@@ -319,20 +322,22 @@
         <div class="escala-overview" id="escala-grid" style="padding: 0 28px; margin-bottom: 16px; flex-shrink: 0;"></div>
         
         <!-- Lista de Escala (Grid Header + Conteúdo) -->
-        <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 28px;">
-          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 70px; gap: 8px; padding: 0 20px 8px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; text-align: center;">
-            <div style="text-align: left;">Membro</div>
-            <div>Seg</div>
-            <div>Ter</div>
-            <div>Qua</div>
-            <div>Qui</div>
-            <div>Sex</div>
-            <div>Sáb</div>
-            <div>Presencial</div>
-            <div style="text-align: right;">Ações</div>
-          </div>
-          <div id="lista-escala" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-bottom: 28px; flex: 1; padding-right: 4px;">
-            <div class="msg-empty">A carregar...</div>
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 950px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 70px; text-align: center;">
+              <div style="text-align: left;">Membro</div>
+              <div>Seg</div>
+              <div>Ter</div>
+              <div>Qua</div>
+              <div>Qui</div>
+              <div>Sex</div>
+              <div>Sáb</div>
+              <div>Presencial</div>
+              <div style="text-align:center;">Ações</div>
+            </div>
+            <div id="lista-escala" class="list-body">
+              <div class="msg-empty">A carregar...</div>
+            </div>
           </div>
         </div>
       </section>
@@ -346,7 +351,7 @@
             <div style="display: flex; align-items: center; gap: 8px;">
               <select id="f-ferias-ano" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;"></select>
               <select id="f-ferias-membro" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
-                <option value="">Todos</option>
+                <option value="">Todos os Membros</option>
               </select>
             </div>
             
@@ -364,20 +369,22 @@
         </header>
 
         <!-- Lista de Afastamentos (Grid Header + Conteúdo) -->
-        <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 28px;">
-          <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px; gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; text-align: left;">
-            <div>Membro</div>
-            <div>Férias 1</div>
-            <div>Férias 2</div>
-            <div>Férias 3</div>
-            <div>Abonos</div>
-            <div>Abono Aniv.</div>
-            <div>Licença Srv/Prêmio</div>
-            <div>Demais Afast.</div>
-            <div style="text-align: right;" class="no-print">Ações</div>
-          </div>
-          <div id="lista-ferias" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-bottom: 28px; flex: 1; padding-right: 4px;">
-            <div class="msg-empty">A carregar...</div>
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 1000px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px; text-align: left;">
+              <div>Membro</div>
+              <div>Férias 1</div>
+              <div>Férias 2</div>
+              <div>Férias 3</div>
+              <div>Abonos</div>
+              <div>Abono Aniv.</div>
+              <div>Licença Srv/Prêmio</div>
+              <div>Demais Afast.</div>
+              <div class="no-print">Ações</div>
+            </div>
+            <div id="lista-ferias" class="list-body">
+              <div class="msg-empty">A carregar...</div>
+            </div>
           </div>
         </div>
       </section>
@@ -391,7 +398,7 @@
           <div style="display: flex; align-items: center; gap: 16px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <select id="f-archived-membro" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
-                <option value="">Todos</option>
+                <option value="">Todos os Membros</option>
               </select>
               <div style="display: flex; align-items: center; padding: 0 4px; border-radius: 9999px; background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);">
                 <input type="date" id="f-archived-data-ini" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
@@ -429,18 +436,20 @@
         </p>
 
         <!-- Lista de Cartões (Grid Header + Conteúdo) -->
-        <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 28px;">
-          <div style="display: grid; grid-template-columns: 2.5fr 1.5fr 1fr 1fr 1fr 1.5fr 70px; gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; text-align: left;">
-            <div>Cartão</div>
-            <div>Responsável(is)</div>
-            <div style="text-align:center;">Prioridade</div>
-            <div>Início</div>
-            <div>Conclusão</div>
-            <div style="text-align:center;">Tempo de Execução</div>
-            <div style="text-align: right;" class="no-print">Ações</div>
-          </div>
-          <div id="archived-list" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-bottom: 28px; flex: 1; padding-right: 4px;">
-            <div class="msg-empty">Nenhum cartão arquivado.</div>
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 850px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: 1.5fr 1.5fr 1.6fr 1fr 1fr 1.0fr 70px; text-align: left;">
+              <div>Cartão</div>
+              <div>Responsável(is)</div>
+              <div style="text-align:center;">Prioridade</div>
+              <div style="text-align:center;">Início</div>
+              <div style="text-align:center;">Conclusão</div>
+              <div style="text-align:center;">Tempo de Execução</div>
+              <div class="no-print" style="text-align:center;">Ações</div>
+            </div>
+            <div id="archived-list" class="list-body">
+              <div class="msg-empty">Nenhum cartão arquivado.</div>
+            </div>
           </div>
         </div>
         <div style="text-align:center; margin-top:16px; margin-bottom: 20px;" class="no-print">
@@ -597,16 +606,18 @@
         </header>
 
         <!-- Lista de Unidades (Grid Header + Conteúdo) -->
-        <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 28px;">
-          <div style="display: grid; grid-template-columns: 1fr 2fr 1.5fr 2fr 90px; gap: 16px; padding: 0 20px 8px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;">
-            <div>Sigla</div>
-            <div>Nome</div>
-            <div>E-mail</div>
-            <div>Link do Drive</div>
-            <div style="text-align: right;">Ações</div>
-          </div>
-          <div id="lista-unidades" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-bottom: 28px; flex: 1; padding-right: 4px;">
-            <div class="msg-empty">A carregar...</div>
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 750px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: 1fr 3fr 2.5fr 1fr 90px; gap: 16px;">
+              <div>Sigla</div>
+              <div>Nome</div>
+              <div>E-mail</div>
+              <div style="text-align:center;">Link do Drive</div>
+              <div class="no-print" style="text-align:center;">Ações</div>
+            </div>
+            <div id="lista-unidades" class="list-body">
+              <div class="msg-empty">A carregar...</div>
+            </div>
           </div>
         </div>
       </section>
@@ -705,23 +716,23 @@
             </div>
           </div>
         </div>
-        <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 28px;">
-          <div style="overflow-x: auto; flex: 1; display: flex; flex-direction: column;">
-            <div style="min-width: 100%; display: grid; grid-template-columns: 85px 45px 1.2fr 2.5fr 1.2fr 85px 85px 50px 80px 70px 100px 90px; gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; text-align: left;">
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 1500px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: minmax(0,0.95fr) minmax(0,0.45fr) minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,0.9fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr) minmax(0,0.8fr); text-align: left;">
               <div>Código</div>
-              <div style="text-align: center;">Ver.</div>
+              <div style="text-align:center;">Ver.</div>
               <div>Tipo</div>
               <div>Título</div>
-              <div>Responsável</div>
+              <div style="text-align:center;">Responsável</div>
               <div>Aprovação</div>
               <div>Revisão</div>
-              <div style="text-align: center;">Link</div>
-              <div style="text-align: center;">Auxiliares</div>
+              <div style="text-align:center;">Link</div>
+              <div style="text-align:center;">Auxiliares</div>
               <div>Histórico</div>
-              <div style="text-align: center;">Status</div>
-              <div style="text-align: right;" class="no-print">Ações</div>
+              <div style="text-align:center;">Status</div>
+              <div class="no-print" style="text-align:center;">Ações</div>
             </div>
-            <div id="lista-mestra" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-bottom: 28px; flex: 1; min-width: 100%; padding-right: 4px;">
+            <div id="lista-mestra" class="list-body">
               <div class="msg-empty">A carregar...</div>
             </div>
           </div>
@@ -742,21 +753,21 @@
           </div>
         </header>
 
-        <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 28px;">
-          <div style="overflow-x: auto; flex: 1; display: flex; flex-direction: column;">
-            <div style="min-width: 100%; display: grid; grid-template-columns: 85px 45px 1fr 2fr 1fr 85px 60px 70px 1.2fr 100px; gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; text-align: left;">
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 1400px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: minmax(0,0.85fr) minmax(0,0.45fr) minmax(0,1.2fr) minmax(0,2.0fr) minmax(0,0.9fr) minmax(0,0.85fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr); text-align: left;">
               <div>Código</div>
-              <div style="text-align: center;">Ver.</div>
+              <div>Ver.</div>
               <div>Tipo</div>
               <div>Título</div>
-              <div>Responsável</div>
+              <div style="text-align:center;">Responsável</div>
               <div>Aprovação</div>
-              <div style="text-align: center;">Link</div>
-              <div style="text-align: center;">Auxiliares</div>
-              <div>Histórico</div>
-              <div style="text-align: center;">Status</div>
+              <div style="text-align:center;">Link</div>
+              <div style="text-align:center;">Auxiliares</div>
+              <div style="text-align:center;">Histórico</div>
+              <div style="text-align:center;">Status</div>
             </div>
-            <div id="lista-revisoes" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-bottom: 28px; flex: 1; min-width: 100%; padding-right: 4px;">
+            <div id="lista-revisoes" class="list-body">
               <div class="msg-empty">A carregar...</div>
             </div>
           </div>
@@ -871,21 +882,21 @@
           </div>
           
           <div style="overflow-x: auto; padding-bottom: 28px;">
-            <div style="min-width: 100%;">
-              <div style="display: grid; grid-template-columns: 35px 60px 0.8fr 1.2fr 1.2fr 1.2fr 90px 55px 90px 1fr 120px 1.2fr 95px; gap: 8px; padding: 0 0 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); margin-bottom: 8px;">
-                <div style="text-align: center;">#</div>
-                <div style="text-align: center;">ID</div>
+            <div style="min-width: 1400px;">
+              <div style="display: grid; grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 70px; gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); margin-bottom: 8px; text-align: left;">
+                <div style="text-align:center;">#</div>
+                <div style="text-align:center;">ID</div>
                 <div>Macroetapa</div>
                 <div>Risco</div>
                 <div>Causa</div>
                 <div>Consequência</div>
                 <div>Categoria</div>
-                <div style="text-align: center;">P×I</div>
-                <div style="text-align: center;">Nível</div>
+                <div style="text-align:center;">P×I</div>
+                <div style="text-align:center;">Nível</div>
                 <div>Tratamento</div>
                 <div>Proprietário</div>
                 <div>Plano de Ação</div>
-                <div style="text-align: center;" class="no-print">Ações</div>
+                <div class="no-print" style="text-align:center;">Ações</div>
               </div>
               <div id="lista-riscos" style="display: flex; flex-direction: column; gap: 8px;">
                 <div class="msg-empty" style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px;">A carregar...</div>
@@ -977,8 +988,8 @@
               </div>
             </div>
           </div>
-          <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 11px 0 28px;">
-            <div id="container-planos" style="display:flex; flex-direction:column; gap:20px; overflow-y:auto; padding-bottom:24px; flex: 1;">
+          <div class="list-scroll" style="padding: 0 28px;">
+            <div id="container-planos" class="list-body" style="gap:20px;">
               <div class="msg-empty">A carregar...</div>
             </div>
           </div>
@@ -1015,27 +1026,25 @@
             <h2>Riscos e Planos Arquivados</h2>
           </div>
 
-          <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 28px; margin-top: 24px;">
-            <div style="overflow-x: auto; padding-bottom: 28px; flex: 1; display: flex; flex-direction: column;">
-              <div style="min-width: 100%; display: flex; flex-direction: column; flex: 1;">
-                <div style="display: grid; grid-template-columns: 35px 60px 0.8fr 1.2fr 1.2fr 1.2fr 90px 55px 90px 1fr 120px 1.2fr 95px; gap: 8px; padding: 0 0 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); margin-bottom: 8px; flex-shrink: 0;">
-                  <div style="text-align: center;">#</div>
-                  <div style="text-align: center;">ID</div>
+          <div class="list-scroll x" style="padding: 0 28px; margin-top: 24px;">
+            <div style="min-width: 1400px; display: flex; flex-direction: column;">
+              <div class="list-head" style="grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 70px; text-align: left;">
+                  <div style="text-align:center;">#</div>
+                  <div style="text-align:center;">ID</div>
                   <div>Macroetapa</div>
                   <div>Risco</div>
                   <div>Causa</div>
                   <div>Consequência</div>
                   <div>Categoria</div>
-                  <div style="text-align: center;">P×I</div>
-                  <div style="text-align: center;">Nível</div>
+                  <div style="text-align:center;">P×I</div>
+                  <div style="text-align:center;">Nível</div>
                   <div>Tratamento</div>
                   <div>Proprietário</div>
                   <div>Plano de Ação</div>
-                  <div style="text-align: center;" class="no-print">Ações</div>
-                </div>
-                <div id="container-arquivados" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; padding-right: 4px;">
-                  <div class="msg-empty">A carregar...</div>
-                </div>
+                  <div class="no-print" style="text-align:center;">Ações</div>
+              </div>
+              <div id="container-arquivados" class="list-body">
+                <div class="msg-empty">A carregar...</div>
               </div>
             </div>
           </div>
@@ -1050,11 +1059,8 @@
           
           <div style="display: flex; align-items: center; gap: 16px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <select id="f-log-acao" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
-                <option value="">Todas as Ações</option>
-              </select>
               <select id="f-log-usuario" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
-                <option value="">Todos os Usuários</option>
+                <option value="">Todos os Membros</option>
               </select>
             </div>
             
@@ -1069,16 +1075,18 @@
         </header>
 
         <!-- Lista de Logs (Grid Header + Conteúdo) -->
-        <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 28px; margin-top: 24px;">
-          <div style="display: grid; grid-template-columns: 130px 180px 170px 190px 1fr; gap: 16px; padding: 0 20px 8px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; text-align: left;">
-            <div>Data/Hora</div>
-            <div>Usuário</div>
-            <div>Ação</div>
-            <div>Referência</div>
-            <div>Detalhes</div>
-          </div>
-          <div id="lista-logs" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-bottom: 28px; flex: 1; padding-right: 4px;">
-            <div class="msg-empty">A carregar...</div>
+        <div class="list-scroll x" style="padding: 0 28px; margin-top: 24px;">
+          <div style="min-width: 1000px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,2fr); text-align: left; gap: 16px;">
+              <div>Data/Hora</div>
+              <div>Usuário</div>
+              <div>Ação</div>
+              <div>Referência</div>
+              <div>Detalhes</div>
+            </div>
+            <div id="lista-logs" class="list-body">
+              <div class="msg-empty">A carregar...</div>
+            </div>
           </div>
         </div>
         <div style="text-align:center; margin-top:16px; margin-bottom: 20px;" class="no-print">
@@ -1138,21 +1146,21 @@
           </div>
         </div>
 
-        <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 28px;">
-          <div style="overflow-x: auto; flex: 1; display: flex; flex-direction: column;">
-            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 0.8fr 0.8fr 0.8fr 1.5fr 0.8fr 70px; gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; text-align: left; min-width: 1150px;">
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 1150px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1.15fr) minmax(0,1.2fr) minmax(0,0.8fr) minmax(0,0.8fr); text-align: left;">
               <div>Título da Capacitação</div>
               <div>Tema</div>
               <div>Público-alvo</div>
               <div>Modalidade</div>
               <div>Data Prevista</div>
               <div>Data Realizada</div>
-              <div style="text-align: center;">Status</div>
+              <div style="text-align:center;">Status</div>
               <div>Responsáveis</div>
-              <div style="text-align: center;">Presença</div>
-              <div style="text-align: right;" class="no-print">Ações</div>
+              <div style="text-align:center;">Presença</div>
+              <div class="no-print" style="text-align:center;">Ações</div>
             </div>
-            <div id="lista-capacitacoes" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-bottom: 28px; flex: 1; min-width: 1150px; padding-right: 4px;">
+            <div id="lista-capacitacoes" class="list-body">
               <div class="msg-empty">A carregar...</div>
             </div>
           </div>
@@ -1442,7 +1450,7 @@
         <div style="flex:1;"><label class="field-label" for="r-macro">Macroetapa</label><select id="r-macro"
             class="field-select">
             <option value="" disabled selected>Selecione...</option>
-            <option>Gestão/Fiscalização</option>
+            <option>Fiscalização</option>
             <option>Planejamento</option>
             <option>Recursos Humanos</option>
           </select></div>
@@ -1520,7 +1528,7 @@
       <div class="form-row">
         <div style="flex:1;"><label class="field-label" for="er-macro">Macroetapa</label><select id="er-macro"
             class="field-select">
-            <option>Gestão/Fiscalização</option>
+            <option>Fiscalização</option>
             <option>Planejamento</option>
             <option>Recursos Humanos</option>
           </select></div>
@@ -1848,10 +1856,13 @@
       <p style="font-size:13px; color:var(--text-secondary); margin:8px 0 18px;">Informe o e-mail do destinatário para envio direto do
         PDF.</p>
       <label class="field-label" for="pdf-email-select">Selecionar Unidade (Opcional)</label>
-      <select id="pdf-email-select" class="field-select" style="margin-bottom: 14px;"
-        onchange="adicionarEmailDest(this.value);">
-        <option value="">Carregando unidades...</option>
-      </select>
+      <div id="pdf-email-select" style="margin-bottom: 8px; height: 140px; overflow-y: auto; padding: 4px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-input);">
+        <div style="font-size: 13px; color: var(--text-muted); padding: 8px;">Carregando unidades...</div>
+      </div>
+      <button type="button" class="btn secondary" style="width: 100%; margin-bottom: 14px; display: flex; justify-content: center; gap: 8px;" onclick="adicionarEmailsSelecionados()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+        OK - Adicionar Selecionados
+      </button>
       <label class="field-label" for="pdf-email-dest">E-mail do Destinatário</label><input type="email"
         id="pdf-email-dest" class="field-input" placeholder="Ex: gestao@saude.df.gov.br">
       <div class="modal-footer"><button class="btn secondary" data-close="modal-pdf-email">Cancelar</button><button

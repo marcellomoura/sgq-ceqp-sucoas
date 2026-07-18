@@ -90,7 +90,8 @@ const ICON = {
   ban: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>',
   // "Reativar" — contraparte de ban: mesmo círculo, com um check em vez da
   // barra diagonal. Mantém o par visualmente óbvio (mesma forma, ação oposta).
-  check: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="8.5 12.5 11 15 15.5 9.5"/></svg>'
+  check: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="8.5 12.5 11 15 15.5 9.5"/></svg>',
+  restore: '<svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>'
 };
 
 function $id(id) { return document.getElementById(id); }
@@ -148,7 +149,15 @@ function iconBtn(cls, acao, title, attrs) { return `<button type="button" class=
 // esc(txt): as mensagens de erro carregam texto de exceção vindo do servidor
 // (buscarLogs etc.). Não é vetor explorável hoje, mas era o único innerHTML do
 // arquivo que interpolava texto sem escapar.
-function msgTabela(tbodyId, cols, txt, err) { $id(tbodyId).innerHTML = `<tr><td colspan="${cols}" class="${err?'msg-error':'msg-empty'}">${esc(txt)}</td></tr>`; }
+function msgTabela(tbodyId, cols, txt, err) { 
+  const el = $id(tbodyId); 
+  if (!el) return;
+  if (el.tagName.toLowerCase() === 'tbody') {
+    el.innerHTML = `<tr><td colspan="${cols}" class="${err?'msg-error':'msg-empty'}">${esc(txt)}</td></tr>`;
+  } else {
+    el.innerHTML = `<div class="${err?'msg-error':'msg-empty'}">${esc(txt)}</div>`;
+  }
+}
 function feedbackBtn(btn, ok, orig, cb) { btn.disabled=false; btn.innerText=ok; setTimeout(()=>{ btn.innerText=orig; if(cb) cb(); }, 1400); }
 function falha(btn, orig, statusEl) {
   return function(e) {
@@ -183,7 +192,7 @@ function nomesMembros(ids) {
 }
 // Options "Todos" + membros em ordem alfabética (filtros de membro)
 function optsMembros() {
-  return '<option value="">Todos</option>' +
+  return '<option value="">Todos os Membros</option>' +
     membrosOrdenados().map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
 }
 
@@ -754,7 +763,7 @@ document.addEventListener('change', function(e) {
   if (id === 'f-rev-unidade') renderDocumentos('revisoes');
   if (id === 'f-acomp-unidade' || id === 'f-acomp-status') renderAcompanhamento();
   if (id === 'f-archived-membro') renderArquivados(true);
-  if (id === 'f-log-acao' || id === 'f-log-usuario' || id === 'f-log-data-ini' || id === 'f-log-data-fim') carregarLogs();
+  if (id === 'f-log-usuario' || id === 'f-log-data-ini' || id === 'f-log-data-fim') carregarLogs();
 });
 
 var _debounceLogBusca;
@@ -947,34 +956,60 @@ function _gerarPdfReal(tipo) {
   });
 }
 
-function adicionarEmailDest(val) {
-  if (!val) return;
+function toggleTodosEmails(chk) {
+  const container = $id('pdf-email-select');
+  if (!container) return;
+  const chks = container.querySelectorAll('.chk-email-unidade');
+  chks.forEach(c => c.checked = chk.checked);
+}
+
+function adicionarEmailsSelecionados() {
+  const container = $id('pdf-email-select');
+  if (!container) return;
+  const chks = container.querySelectorAll('input[type="checkbox"]:checked');
+  if (chks.length === 0) return;
+  
+  let emailsToAdd = [];
+  let allSelected = false;
+  
+  chks.forEach(chk => {
+    if (chk.value === 'ALL') allSelected = true;
+    else emailsToAdd.push(chk.value);
+  });
+  
+  if (allSelected && state.units) {
+    const ativas = state.units.filter(u => u.ativo !== false && u.email);
+    emailsToAdd = [...new Set(ativas.map(u => u.email.trim()))];
+  } else {
+    emailsToAdd = [...new Set(emailsToAdd)];
+  }
+  
+  if (emailsToAdd.length === 0) return;
+  
   const input = $id('pdf-email-dest');
   let atual = input.value.trim();
-  // Remove trailing comma if exists
   if (atual.endsWith(',')) atual = atual.slice(0, -1).trim();
   
-  if (val === 'ALL') {
-    if (!state.units) return;
-    const ativas = state.units.filter(u => u.ativo !== false && u.email);
-    // Filter unique emails
-    const emails = [...new Set(ativas.map(u => u.email.trim()))];
-    const todos = emails.join(', ');
-    input.value = atual ? atual + ', ' + todos : todos;
+  if (atual) {
+    emailsToAdd.forEach(e => {
+      if (!atual.includes(e)) atual += ', ' + e;
+    });
+    input.value = atual;
   } else {
-    input.value = atual ? atual + ', ' + val : val;
+    input.value = emailsToAdd.join(', ');
   }
-  $id('pdf-email-select').value = '';
+  
+  // Limpar seleção após adicionar
+  container.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
 }
 
 function gerarOptsEmailsUnidades() {
-  let h = '<option value="">Adicionar Unidade à lista...</option>';
-  h += '<option value="ALL">** Adicionar TODAS as Unidades **</option>';
+  let h = '<label class="grid-row-hover" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 8px; font-size: 13px; border-radius: 4px; margin-bottom: 2px;"><input type="checkbox" value="ALL" onchange="toggleTodosEmails(this)"> <strong>Todas as unidades</strong></label>';
   if (!state.units) return h;
   const ativas = state.units.filter(u => u.ativo !== false).sort((a,b)=>a.sigla.localeCompare(b.sigla));
   ativas.forEach(u => {
     if(u.email) {
-      h += `<option value="${esc(u.email)}">${esc(u.sigla)} - ${esc(u.email)}</option>`;
+      h += `<label class="grid-row-hover" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 8px; font-size: 13px; border-radius: 4px; margin-bottom: 2px;"><input type="checkbox" class="chk-email-unidade" value="${esc(u.email)}"> ${esc(u.sigla)} - ${esc(u.email)}</label>`;
     }
   });
   return h;
@@ -1091,17 +1126,12 @@ function carregarLogs(isLoadMore = false) {
       const acoesUnicas = result.acoesUnicas || [];
 
       if (!isLoadMore && currentLogsOffset === 0) {
-        const selAcao = $id('f-log-acao');
-        if (selAcao && acoesUnicas.length > 0) {
-          const v = selAcao.value;
-          selAcao.innerHTML = '<option value="">Todas</option>' + acoesUnicas.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
-          if (v) selAcao.value = v;
-        }
+
         const selUsuario = $id('f-log-usuario');
         if (selUsuario) {
           const v = selUsuario.value;
           const usuariosUnicos = membrosOrdenados().map(m => m.name);
-          selUsuario.innerHTML = '<option value="">Todos</option>' + usuariosUnicos.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
+          selUsuario.innerHTML = '<option value="">Todos os Membros</option>' + usuariosUnicos.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
           if (v) selUsuario.value = v;
         }
       }
@@ -1125,8 +1155,8 @@ function renderLogsHTML() {
     return;
   }
 
-  $id('lista-logs').innerHTML = logsCache.map(l => `<div class="grid-row-hover" style="display: grid; grid-template-columns: 130px 180px 170px 190px 1fr; gap: 16px; align-items: center; background-color: #ffffff; padding: 12px 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); font-size: 13px; color: #111827;">
-    <div style="white-space:nowrap; font-size:12px; color:#4b5563;">${esc(l.dataHora)}</div>
+  $id('lista-logs').innerHTML = logsCache.map(l => `<div class="grid-row-hover" style="display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,2fr); gap: 16px; align-items: center; background-color: #ffffff; padding: 12px 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); font-size: 13px; color: #111827; text-align: left; word-break: break-word;">
+    <div style="font-size:12px; color:#4b5563;">${esc(l.dataHora)}</div>
     <div style="font-size:12px;">${esc(l.usuario)}</div>
     <div><span style="display:inline-block; font-weight:600; color:#4b5563; border:1px solid #e5e7eb; border-radius:12px; padding:2px 8px; background:#f9fafb; font-size:11px;">${esc(l.acao)}</span></div>
     <div style="font-weight:600; color:#111827;">${esc(l.referencia)}</div>

@@ -68,7 +68,7 @@
     $id('lista-riscos').innerHTML = ativos.map((r, i) => {
       const origIdx = idxPorIdRisco.has(r.id) ? idxPorIdRisco.get(r.id) : -1;
       const temPlanos = state.plans.some(p => p.riscoVinculado === 'R' + r.id);
-      return `<div class="grid-row-hover" style="display: grid; grid-template-columns: 35px 60px 0.8fr 1.2fr 1.2fr 1.2fr 90px 55px 90px 1fr 120px 1.2fr 95px; gap: 8px; align-items: center; background-color: #ffffff; padding: 12px 0; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); font-size: 13px; color: #111827;">
+      return `<div class="grid-row-hover" style="display: grid; grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 70px; gap: 8px; align-items: center; background-color: #ffffff; padding: 12px 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); font-size: 13px; color: #111827; text-align: left; word-break: break-word;">
     <div style="text-align:center;font-weight:700;color:#4b5563;">${i + 1}</div>
     <div style="text-align:center;font-weight:700;color:#2b7fff;white-space:nowrap;">R-${r.id}</div>
     <div style="font-weight: 500;">${esc(r.macroetapa)}</div>
@@ -77,11 +77,11 @@
     <div style="line-height: 1.4; color: #4b5563;">${esc(r.consequencia)}</div>
     <div>${esc(r.categoria)}</div>
     <div style="text-align:center;font-weight:700;">${r._curProb * r._curImp}</div>
-    <div style="text-align:center; white-space:nowrap;">${badge(r._curNivel)}${r._trend}</div>
+    <div style="text-align:center;white-space:nowrap;">${badge(r._curNivel)}${r._trend}</div>
     <div>${esc(r.tipoTratamento)}</div>
     <div>${esc(formatUnidadeUI(r.responsavel))}</div>
     <div style="line-height: 1.4; color: #4b5563;">${esc(r.planoAcao)}</div>
-    <div class="no-print" style="display: flex; gap: 4px; justify-content: center;">
+    <div class="no-print" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
       ${temPlanos ? '' : iconBtn('edit', 'edit-risco', 'Editar Risco', `data-idx="${origIdx}"`)}
       ${iconBtn('rev', 'reav-risco', 'Reavaliar', `onclick="abrirModalReavaliar(${origIdx})"`)}
     </div>
@@ -339,24 +339,24 @@
       if (!r) return '';
 
       let planosHtml = `<div style="margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 12px;">
-      <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 85px 85px 1.5fr 80px 100px 90px; gap: 8px; padding: 0 0 8px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; margin-bottom: 8px;">
+      <div style="display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; margin-bottom: 8px; text-align: left;">
         <div>Ação (What)</div>
         <div>Por que (Why)</div>
         <div>Quem (Who)</div>
         <div>Onde</div>
-        <div style="text-align: center;">Prazo</div>
-        <div style="text-align: center;">Finalização</div>
+        <div>Prazo</div>
+        <div>Finalização</div>
         <div>Como (How)</div>
-        <div style="text-align: right;">Custo</div>
-        <div style="text-align: center;">Status</div>
-        <div style="text-align: right;" class="no-print">Ações</div>
+        <div>Custo</div>
+        <div style="text-align:center;">Status</div>
+        <div class="no-print" style="text-align:center;">Ações</div>
       </div>
       <div style="display: flex; flex-direction: column; gap: 8px;">
         ${planos.map(p => {
         const oi = state.plans.indexOf(p);
         const acaoRev = p.revisaoPendente === 'Sim' ? iconBtn('alert', 'rev-plano', 'Revisar Plano', `onclick="abrirModalRevisarPlano(${oi})"`) : '';
 
-        let rowStyle = 'display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 85px 85px 1.5fr 80px 100px 90px; gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 0; border-bottom: 1px solid #f3f4f6; transition: background 0.2s;';
+        let rowStyle = 'display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 20px; border-bottom: 1px solid #f3f4f6; transition: background 0.2s; text-align: left; word-break: break-word;';
         if (p.status === 'Cancelado' || p.status === 'Substituído') {
           rowStyle += ' text-decoration: line-through; opacity: 0.6;';
         } else if (p.revisaoPendente === 'Sim') {
@@ -368,12 +368,12 @@
             <div>${esc(p.why)}</div>
             <div>${esc(formatUnidadeUI(p.who))}</div>
             <div>${esc(p.where)}</div>
-            <div style="text-align: center;">${fmtBr(p.whenPrevisto)}</div>
-            <div style="text-align: center;">${fmtBr(p.whenFinalizado)}</div>
+            <div>${fmtBr(p.whenPrevisto)}</div>
+            <div>${fmtBr(p.whenFinalizado)}</div>
             <div>${esc(p.how)}</div>
-            <div style="text-align: right;">${esc(p.howMuch)}</div>
-            <div style="text-align: center;">${badge(p.status)}</div>
-            <div class="no-print" style="display: flex; justify-content: flex-end; gap: 4px;">
+            <div>${esc(p.howMuch)}</div>
+            <div style="text-align:center;">${badge(p.status)}</div>
+            <div class="no-print" style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
               ${acaoRev}
               ${(p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído') ? '' : iconBtn('edit', 'edit-plano', 'Editar', `onclick="abrirEditarPlano(${oi})"`)}
               ${iconBtn('check', 'acomp-entregas', 'Acompanhamento / Entregas', `onclick="abrirModalAcompEntregas(${oi})"`, false)}
@@ -769,22 +769,22 @@
         planosHtml = '<div style="font-size:13px; color:#6b7280; font-style:italic;">Nenhum plano de ação associado a este risco.</div>';
       } else {
         planosHtml = `<div style="margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 12px;">
-        <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 85px 85px 1.5fr 80px 100px 60px; gap: 8px; padding: 0 0 8px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; margin-bottom: 8px;">
+        <div style="display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; margin-bottom: 8px; text-align: left;">
           <div>Ação (What)</div>
           <div>Por que (Why)</div>
           <div>Quem (Who)</div>
           <div>Onde</div>
-          <div style="text-align: center;">Prazo</div>
-          <div style="text-align: center;">Finalização</div>
+          <div>Prazo</div>
+          <div>Finalização</div>
           <div>Como (How)</div>
-          <div style="text-align: right;">Custo</div>
-          <div style="text-align: center;">Status</div>
-          <div style="text-align: right;" class="no-print">Ações</div>
+          <div>Custo</div>
+          <div style="text-align:center;">Status</div>
+          <div class="no-print" style="text-align:center;">Ações</div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           ${planos.map(p => {
           const oi = state.plans.indexOf(p);
-          let rowStyle = 'display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 85px 85px 1.5fr 80px 100px 60px; gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 0; border-bottom: 1px solid #f3f4f6; transition: background 0.2s;';
+          let rowStyle = 'display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 20px; border-bottom: 1px solid #f3f4f6; transition: background 0.2s; text-align: left; word-break: break-word;';
           if (p.status === 'Cancelado' || p.status === 'Substituído') {
             rowStyle += ' text-decoration: line-through; opacity: 0.6;';
           } else if (p.revisaoPendente === 'Sim') {
@@ -795,12 +795,12 @@
               <div>${esc(p.why)}</div>
               <div>${esc(formatUnidadeUI(p.who))}</div>
               <div>${esc(p.where)}</div>
-              <div style="text-align: center;">${fmtBr(p.whenPrevisto)}</div>
-              <div style="text-align: center;">${fmtBr(p.whenFinalizado)}</div>
+              <div>${fmtBr(p.whenPrevisto)}</div>
+              <div>${fmtBr(p.whenFinalizado)}</div>
               <div>${esc(p.how)}</div>
-              <div style="text-align: right;">${esc(p.howMuch)}</div>
-              <div style="text-align: center;">${badge(p.status)}</div>
-              <div class="no-print" style="display: flex; justify-content: flex-end; gap: 4px;">
+              <div>${esc(p.howMuch)}</div>
+              <div style="text-align:center;">${badge(p.status)}</div>
+              <div class="no-print" style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
                 ${iconBtn('history', 'acomp-entregas', 'Acompanhamento / Entregas', `onclick="abrirModalAcompEntregas(${oi})"`, false)}
               </div>
             </div>`;
@@ -823,7 +823,7 @@
       }
 
       return `<div class="grid-row-hover" style="background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom: 8px;">
-      <div style="display: grid; grid-template-columns: 35px 60px 0.8fr 1.2fr 1.2fr 1.2fr 90px 55px 90px 1fr 120px 1.2fr 95px; gap: 8px; align-items: center; padding: 12px 0; font-size: 13px; color: #111827;">
+      <div style="display: grid; grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 70px; gap: 8px; align-items: center; padding: 12px 20px; font-size: 13px; color: #111827; text-align: left; word-break: break-word;">
         <div style="text-align:center;font-weight:700;color:#4b5563;">${idx + 1}</div>
         <div style="text-align:center;font-weight:700;color:#6b7280;white-space:nowrap;">R-${r.id}</div>
         <div style="font-weight: 500;">${esc(r.macroetapa)}</div>
@@ -832,14 +832,12 @@
         <div style="line-height: 1.4; color: #4b5563;">${esc(r.consequencia)}</div>
         <div>${esc(r.categoria)}</div>
         <div style="text-align:center;font-weight:700;">${curProb * curImp}</div>
-        <div style="text-align:center; white-space:nowrap;">${badge(curNivel)}</div>
+        <div style="text-align:center;white-space:nowrap;">${badge(curNivel)}</div>
         <div>${esc(curTratamento)}</div>
         <div>${esc(formatUnidadeUI(curResp))}</div>
         <div style="line-height: 1.4; color: #4b5563;">${esc(r.planoAcao)}</div>
-        <div class="no-print" style="display: flex; gap: 4px; justify-content: center;">
-          <button type="button" class="btn secondary btn-sm" onclick="confirmarRestaurarRisco(${r.id})" title="Restaurar Risco para Ativo" style="padding: 4px 8px; font-size: 11px;">
-            Restaurar
-          </button>
+        <div class="no-print" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+          ${iconBtn('restore', 'restore-risco', 'Restaurar Risco para Ativo', `onclick="confirmarRestaurarRisco(${r.id})"`)}
         </div>
       </div>
       <div style="padding: 0 16px 12px; border-top: 1px solid #f3f4f6; margin-top: 4px;">
@@ -858,7 +856,7 @@
         if (r.sucesso) { recarregarRiscosPlanos(renderRiscosArquivados); }
         else { showAlerta(r.mensagem); }
       }).withFailureHandler(e => showAlerta(String(e))).restaurarRisco(id);
-    });
+    }, { tone: 'restore', loadingText: 'A restaurar...' });
   }
 
   function montarHtmlRiscoArquivadoPdf() {

@@ -53,8 +53,8 @@ function renderEscala() {
           ? presList.map(function(p){ return '<span class="tag-badge" style="background:#35598D;font-size:11px;margin-right:2px;display:inline-block;margin-bottom:2px;">' + esc(p.substring(0,3)) + '</span>'; }).join('')
           : '<span style="color:#6b7280;font-size:12px;">—</span>') +
       '</div>' +
-      '<div style="text-align:right;">' +
-        '<div class="cell-actions" style="justify-content:flex-end;">' +
+      '<div style="text-align:center;">' +
+        '<div class="cell-actions" style="justify-content:center;">' +
           iconBtn('edit','edit-escala','Editar Escala','data-idx="' + origIdx + '"') +
         '</div>' +
       '</div>' +
@@ -374,7 +374,7 @@ function renderFerias() {
       '<div>' + htmlAbonoAniv + '</div>' +
       '<div>' + htmlLicenca + '</div>' +
       '<div>' + htmlDemais + '</div>' +
-      '<div style="text-align: right;" class="no-print">' +
+      '<div class="no-print" style="display:flex; justify-content:flex-start;">' +
         iconBtn('edit','edit-ferias','Editar Afastamentos','data-idx="' + origIdx + '"') +
       '</div>' +
     '</div>';

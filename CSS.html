@@ -236,7 +236,7 @@
   }
   .list-wrapper {
     background-color: var(--kanban-list-bg); border-radius: var(--radius-lg); 
-    width: calc((100% - 64px) / 5); min-width: 260px;
+    width: calc((100% - 64px) / 5); min-width: 280px;
     display: flex; flex-direction: column; border: 1px solid var(--border-strong); flex-shrink: 0;
   }
   .list-header {
@@ -340,8 +340,8 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .cell-actions { display: flex; gap: 6px; align-items: center; }
-  .msg-empty { text-align: center; color: var(--text-muted); padding: 36px; font-size: var(--fs-base); }
-  .msg-error { text-align: center; color: var(--danger); padding: 36px; font-weight: 600; font-size: var(--fs-base); }
+  .msg-empty { display: flex; justify-content: center; align-items: center; width: 100%; color: var(--text-muted); padding: 60px 20px 36px; font-size: var(--fs-base); text-align: center; position: sticky; left: 0; }
+  .msg-error { display: flex; justify-content: center; align-items: center; width: 100%; color: var(--danger); padding: 60px 20px 36px; font-weight: 600; font-size: var(--fs-base); text-align: center; position: sticky; left: 0; }
 
   /* ===== MEMBROS ===== */
   .member-role-badge { background: var(--primary-light); color: var(--primary-text); padding: 3px 9px; border-radius: var(--radius-xs); font-size: var(--fs-xs); font-weight: 600; }
@@ -457,7 +457,7 @@
   .action-btn-main:disabled { background: var(--text-muted); cursor: not-allowed; box-shadow: none; }
 
   /* ===== STATUS BADGES ===== */
-  .status-badge { padding: 4px 11px; border-radius: var(--radius-pill); font-weight: 600; font-size: var(--fs-xs); display: inline-block; white-space: nowrap; }
+  .status-badge { padding: 4px 11px; border-radius: var(--radius-pill); font-weight: 600; font-size: var(--fs-xs); display: inline-block; white-space: normal; text-align: center; }
   .version-badge {
     padding: 3px 10px; border-radius: var(--radius-pill); font-weight: 700; font-size: var(--fs-xs);
     background: var(--bg-panel); color: var(--text-secondary); border: 1px solid var(--border-color);
@@ -727,5 +727,18 @@
   }
   #view-indicadores .tl-chart-header { font-size: 14.5px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; letter-spacing: -0.2px; }
   #view-indicadores .tl-chart-wrap { height: 190px; width: 100%; position: relative; }
+  /* ===== LISTAS (GRID) ===== */
+  /* Container que rola — cabeçalho e linhas juntos */
+  .list-scroll { flex:1; min-height:0; overflow-y:auto; scrollbar-gutter:stable;
+                 display:flex; flex-direction:column; }
+  .list-scroll.x { overflow:auto; }
+
+  /* Cabeçalho fixo, alinhado às linhas por construção */
+  .list-head { position:sticky; top:0; z-index:2; background:var(--bg-app);
+               display:grid; gap:8px; padding:8px 20px; border:1px solid transparent;
+               font-size:11px; font-weight:600; color:var(--text-muted);
+               text-transform:uppercase; letter-spacing:.5px; }
+
+  .list-body { display:flex; flex-direction:column; gap:8px; padding-bottom:28px; }
 
 </style>

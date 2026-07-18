@@ -35,12 +35,12 @@ function renderUnidades() {
         ? `<a href="${esc(dv)}" target="_blank" rel="noopener noreferrer" style="color:#2b7fff; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
         : `<span style="color:#4b5563; font-size:12px;">${esc(dv)}</span>`;
 
-    return `<div class="grid-row-hover" style="display: grid; grid-template-columns: 1fr 2fr 1.5fr 2fr 90px; gap: 16px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    return `<div class="grid-row-hover" style="display: grid; grid-template-columns: 1fr 3fr 2.5fr 1fr 90px; gap: 16px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
     <div style="font-weight:700; color:#111827; font-size:13px; ${estiloInativo}">${esc(u.sigla)}${inativo?' '+badgeInativo():''}</div>
     <div style="font-size:13px; color:#374151; ${estiloInativo}">${esc(u.unidade)}</div>
     <div style="color:#4b5563; font-size:13px; ${estiloInativo}">${esc(u.email)}</div>
-    <div style="font-size:13px; ${estiloInativo}">${celulaDrive}</div>
-    <div class="no-print" style="display:flex; justify-content:flex-end; gap:4px;">
+    <div style="text-align:center;font-size:13px; ${estiloInativo}">${celulaDrive}</div>
+    <div class="no-print" style="display:flex; justify-content:center; gap:4px;">
       ${acaoStatus}
     </div>
   </div>`;
