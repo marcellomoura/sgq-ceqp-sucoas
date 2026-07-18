@@ -129,111 +129,9 @@
   }
   :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
-  /* ===== HEADER ÚNICO DO SISTEMA ===== */
-  .top-header {
-    flex-shrink: 0;
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border-subtle);
-    padding: 14px 28px 12px;
-    box-sizing: border-box;
-  }
-  .top-header-title {
-    font-size: var(--fs-xl);
-    font-weight: 700;
-    color: var(--text-main);
-    letter-spacing: 0.2px;
-    line-height: 1.2;
-  }
-  .top-header-sub {
-    font-size: var(--fs-xs);
-    color: var(--text-muted);
-    margin-top: 3px;
-    font-weight: 500;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-  }
-
   /* ===== LAYOUT PRINCIPAL ===== */
   .app-layout { display: flex; width: 100vw; height: 100vh; overflow: hidden; }
   .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-
-  /* ===== PAGE HEADER (título da aba + filtros/ações) ===== */
-  .page-header {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: nowrap;
-    gap: 14px;
-    flex-shrink: 0;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    background: var(--bg-card);
-    padding: 16px 20px;
-    margin: 24px 28px 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-  .page-tab-title {
-    font-size: var(--fs-lg);
-    font-weight: 700;
-    color: var(--text-main);
-    line-height: 1;
-    white-space: nowrap;
-    flex-shrink: 0;
-    letter-spacing: -0.1px;
-  }
-  .hdr-tab-controls {
-    display: none;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: nowrap;
-    flex-shrink: 0;
-  }
-  .hdr-tab-controls.active { display: flex; }
-  .hdr-tab-controls label {
-    font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted);
-    white-space: nowrap; line-height: 1; flex-shrink: 0;
-  }
-  .hdr-select {
-    height: 32px;
-    width: 170px;
-    padding: 0 10px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    font-size: var(--fs-xs);
-    background: var(--bg-panel);
-    color: var(--text-main);
-    font-family: inherit;
-    outline: none;
-    cursor: pointer;
-    line-height: 1.3;
-    flex-shrink: 0;
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  }
-  .hdr-input {
-    height: 32px;
-    width: 170px;
-    padding: 0 10px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    font-size: var(--fs-xs);
-    background: var(--bg-panel);
-    color: var(--text-main);
-    font-family: inherit;
-    outline: none;
-    cursor: text;
-    line-height: 1.3;
-    flex-shrink: 0;
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  }
-  .hdr-input::placeholder { font-size: var(--fs-xs); color: var(--text-muted); }
-  /* input[type="date"] tem uma regra global (width:100%) mais específica que
-     .hdr-input sozinha; o seletor com o atributo de tipo abaixo restaura o
-     padrão de 170px do cabeçalho sem precisar de style inline por campo. */
-  input[type="date"].hdr-input { width: 170px; padding: 0 10px; font-size: var(--fs-xs); }
-  .hdr-select:focus, .hdr-input:focus { border-color: var(--primary); background: var(--bg-card); box-shadow: 0 0 0 3px var(--primary-ring); }
-  .hdr-tab-controls .btn.primary { height: 32px; padding: 0 14px; font-size: var(--fs-sm); flex-shrink: 0; }
-  .hdr-tab-controls .btn-outline { height: 32px; padding: 0 12px; font-size: var(--fs-xs); flex-shrink: 0; }
 
   /* ===== SIDEBAR ===== */
   .sidebar {
@@ -304,8 +202,6 @@
   .menu-item.active { color: var(--sidebar-text-active); background-color: var(--sidebar-active-bg); font-weight: 600; }
   .menu-item.active .menu-item-icon { opacity: 1; }
 
-  .top-bar { display: none; }
-
   /* ===== SEÇÕES DE VIEW ===== */
   .view-section { display: none; flex: 1; padding: 24px 28px; overflow: auto; background-color: var(--bg-app); }
   .view-section.active { display: flex; flex-direction: column; gap: 18px; }
@@ -317,6 +213,21 @@
   .compact-view .data-table th { padding: 10px 12px; font-size: var(--fs-xs); }
   .compact-view .data-table td { padding: 9px 12px; font-size: var(--fs-sm); }
   .view-section.kanban-view.active { display: flex; flex-direction: column; padding: 0; }
+
+  /* Views com cabeçalho customizado próprio e layout de altura total: zeram o
+     padding/gap padrão do .view-section. Consolidado aqui (antes eram 13 blocos
+     <style> repetidos, um por <section>, no Index.html). O !important + id
+     preserva a precedência que aqueles blocos tinham. */
+  #view-members.active, #view-escala.active, #view-ferias.active {
+    padding: 0 !important; overflow: hidden !important; gap: 0 !important;
+  }
+  #view-archived.active, #view-indicadores.active, #view-unidades.active,
+  #view-doc-lista.active, #view-doc-revisoes.active, #view-risco-matriz.active,
+  #view-plano-acomp.active, #view-risco-arquivado.active, #view-logs.active,
+  #view-capacitacoes-lista.active {
+    padding: 0 !important; overflow: hidden !important;
+    display: flex !important; flex-direction: column !important; gap: 0 !important;
+  }
 
   /* ===== QUADRO KANBAN ===== */
   .board-canvas {
@@ -772,7 +683,6 @@
     border-radius: var(--radius-lg);
     min-height: calc(100vh - 100px);
   }
-  #view-indicadores.active { display: block; }
 
   #view-indicadores .tl-header { margin-bottom: 32px; }
   #view-indicadores .tl-header h1 { font-size: var(--fs-2xl); font-weight: 700; color: var(--text-main); margin: 0 0 4px 0; letter-spacing: -0.3px; }

@@ -381,38 +381,10 @@ function mudarTab(tab, botao) {
   }
 }
 
-// Mapa de títulos por aba
-var TAB_TITULOS = {
-  'kanban':       'Quadro Kanban',
-  'archived':     'Cartões Arquivados',
-  'members':      'Membros da Equipe',
-  'indicadores':  'Painel de Indicadores',
-  'unidades':     'Unidades e Subcomissões',
-  'doc-lista':    'Lista Mestra de Documentos',
-  'doc-revisoes': 'Histórico de Revisões',
-  'risco-matriz': 'Matriz de Risco',
-  'plano-acomp':  'Plano de Ação',
-  'risco-arquivado': 'Riscos e Planos Arquivados',
-  'escala':       'Escala Semanal',
-  'ferias':       'Afastamentos',
-  'logs':         'Registros no Sistema',
-  'capacitacoes-lista': 'Lista de Capacitações'
-};
-
 function atualizarTopBar() {
-  const tabTitle = $id('page-tab-title');
-  if (tabTitle) tabTitle.innerText = TAB_TITULOS[currentTab] || '';
-
-  const pageHeader = document.querySelector('.page-header');
-  if (pageHeader) {
-    pageHeader.style.display = 'none';
-  }
-
-  // Esconde todos os blocos de controles do cabeçalho e mostra só o da aba atual
-  document.querySelectorAll('.hdr-tab-controls').forEach(el => el.classList.remove('active'));
-  const bloco = $id('hdr-' + currentTab);
-  if (bloco) bloco.classList.add('active');
-
+  // O cabeçalho é customizado por view (dentro de cada <section>); não há mais
+  // page-header/hdr-tab-controls globais para sincronizar aqui. Mantido só o
+  // que ainda é necessário: o binding do filtro de membros do Kanban.
   if (currentTab === 'kanban') {
     sincronizarDropdownMembros();
     const selKanban = $id('memberFilterSelect');
@@ -429,12 +401,40 @@ function atualizarTopBar() {
 // (Módulo 6), sob um único filtro de membro (dashMemberFilter).
 // ==========================================
 function renderIndicadores() {
+  // Chart.js vem de CDN (jsDelivr). Se a rede falhar e a lib não carregar,
+  // todos os new Chart() abaixo lançariam "Chart is not defined" e abortariam
+  // o Painel inteiro. Guardamos no único ponto de entrada dos 7 gráficos e
+  // avisamos o usuário de forma não-bloqueante em vez de quebrar em silêncio.
+  if (typeof Chart === 'undefined') {
+    _avisarBibliotecaGraficos();
+    return;
+  }
+  _removerAvisoGraficos();
   if (typeof ChartDataLabels !== 'undefined') {
     Chart.register(ChartDataLabels);
   }
   const fid = ($id('dashMemberFilter')||{value:''}).value;
   renderGraficosKanban(fid);
   renderGraficosCapacitacoes(fid);
+}
+
+// Aviso (idempotente) exibido no topo do Painel quando o Chart.js não está
+// disponível — inserido/removido conforme a lib carrega numa recarga futura.
+function _avisarBibliotecaGraficos() {
+  const view = $id('view-indicadores');
+  if (!view || $id('aviso-graficos-cdn')) return;
+  const box = document.createElement('div');
+  box.id = 'aviso-graficos-cdn';
+  box.className = 'msg-error';
+  box.style.margin = '16px 28px';
+  box.textContent = 'Não foi possível carregar a biblioteca de gráficos (Chart.js). '
+    + 'Verifique a conexão com a internet e recarregue a página.';
+  view.insertBefore(box, view.firstChild);
+}
+
+function _removerAvisoGraficos() {
+  const box = $id('aviso-graficos-cdn');
+  if (box) box.remove();
 }
 
 // Corpo do relatório do Painel de Indicadores — os 7 gráficos viram
