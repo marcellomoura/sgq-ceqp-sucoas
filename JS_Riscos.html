@@ -83,7 +83,7 @@
     <div style="line-height: 1.4; color: #4b5563;">${esc(r.planoAcao)}</div>
     <div class="no-print" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
       ${temPlanos ? '' : iconBtn('edit', 'edit-risco', 'Editar Risco', `data-idx="${origIdx}"`)}
-      ${iconBtn('rev', 'reav-risco', 'Reavaliar', `onclick="abrirModalReavaliar(${origIdx})"`)}
+      ${iconBtn('rev', 'reav-risco', 'Reavaliar', `data-idx="${origIdx}"`)}
     </div>
   </div>`
     }).join('');
@@ -161,11 +161,6 @@
       if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Risco', () => { fecharModal('modal-risco-editar'); recarregarRiscosPlanos(renderMatriz); });
       else { btn.disabled = false; btn.innerText = 'Salvar Risco'; showAlerta(r.mensagem); }
     }).withFailureHandler(falha(btn, 'Salvar Risco', null)).atualizarRisco(dados);
-  }
-
-  function excluirRisco(id) {
-    google.script.run.withSuccessHandler(() => recarregarRiscosPlanos(renderMatriz))
-      .withFailureHandler(e => showAlerta(String(e))).excluirRisco(id);
   }
 
   function abrirModalReavaliar(idx) {
@@ -321,6 +316,10 @@
     const container = $id('container-planos');
     if (!container) return;
 
+    // idx de cada plano em state.plans, pré-computado (evita indexOf O(n²) por
+    // linha dentro do map — mesmo padrão de idxPorIdRisco/_indicePlanosPorRisco).
+    const idxPlano = new Map(state.plans.map((pl, i) => [pl, i]));
+
     if (!filtrados.length) {
       container.innerHTML = '<div class="msg-empty" style="text-align:center; padding: 30px; background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 6px; color: #4b5563;">Nenhum plano ativo encontrado.</div>';
       return;
@@ -353,8 +352,8 @@
       </div>
       <div style="display: flex; flex-direction: column; gap: 8px;">
         ${planos.map(p => {
-        const oi = state.plans.indexOf(p);
-        const acaoRev = p.revisaoPendente === 'Sim' ? iconBtn('alert', 'rev-plano', 'Revisar Plano', `onclick="abrirModalRevisarPlano(${oi})"`) : '';
+        const oi = idxPlano.get(p);
+        const acaoRev = p.revisaoPendente === 'Sim' ? iconBtn('alert', 'rev-plano', 'Revisar Plano', `data-idx="${oi}"`) : '';
 
         let rowStyle = 'display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 20px; border-bottom: 1px solid #f3f4f6; transition: background 0.2s; text-align: left; word-break: break-word;';
         if (p.status === 'Cancelado' || p.status === 'Substituído') {
@@ -375,8 +374,8 @@
             <div style="text-align:center;">${badge(p.status)}</div>
             <div class="no-print" style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
               ${acaoRev}
-              ${(p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído') ? '' : iconBtn('edit', 'edit-plano', 'Editar', `onclick="abrirEditarPlano(${oi})"`)}
-              ${iconBtn('check', 'acomp-entregas', 'Acompanhamento / Entregas', `onclick="abrirModalAcompEntregas(${oi})"`, false)}
+              ${(p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído') ? '' : iconBtn('edit', 'edit-plano', 'Editar', `data-idx="${oi}"`)}
+              ${iconBtn('check', 'acomp-entregas', 'Acompanhamento / Entregas', `data-idx="${oi}"`)}
             </div>
           </div>`;
       }).join('')}
@@ -452,11 +451,6 @@
       if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Plano de Ação', () => { fecharModal('modal-plano-editar'); recarregarRiscosPlanos(renderAcompanhamento); });
       else { btn.disabled = false; btn.innerText = 'Salvar Plano de Ação'; showAlerta(r.mensagem); }
     }).withFailureHandler(falha(btn, 'Salvar Plano de Ação', null)).atualizarPlano(dados);
-  }
-
-  function excluirPlano(riscoVinculado) {
-    google.script.run.withSuccessHandler(() => recarregarRiscosPlanos(renderAcompanhamento))
-      .withFailureHandler(e => showAlerta(String(e))).excluirPlano(riscoVinculado);
   }
 
   function abrirModalRevisarPlano(idx) {
@@ -752,6 +746,8 @@
       return;
     }
 
+    // idx de cada plano em state.plans, pré-computado (evita indexOf O(n²)).
+    const idxPlano = new Map(state.plans.map((pl, i) => [pl, i]));
     const idsArquivados = new Set(arquivadosRiscos.map(r => 'R' + r.id));
     const planosArquivados = state.plans.filter(p => idsArquivados.has(p.riscoVinculado));
     const planosPorRisco = {};
@@ -783,7 +779,7 @@
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           ${planos.map(p => {
-          const oi = state.plans.indexOf(p);
+          const oi = idxPlano.get(p);
           let rowStyle = 'display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 20px; border-bottom: 1px solid #f3f4f6; transition: background 0.2s; text-align: left; word-break: break-word;';
           if (p.status === 'Cancelado' || p.status === 'Substituído') {
             rowStyle += ' text-decoration: line-through; opacity: 0.6;';
@@ -801,7 +797,7 @@
               <div>${esc(p.howMuch)}</div>
               <div style="text-align:center;">${badge(p.status)}</div>
               <div class="no-print" style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
-                ${iconBtn('history', 'acomp-entregas', 'Acompanhamento / Entregas', `onclick="abrirModalAcompEntregas(${oi})"`, false)}
+                ${iconBtn('history', 'acomp-entregas', 'Acompanhamento / Entregas', `data-idx="${oi}"`)}
               </div>
             </div>`;
         }).join('')}
@@ -837,7 +833,7 @@
         <div>${esc(formatUnidadeUI(curResp))}</div>
         <div style="line-height: 1.4; color: #4b5563;">${esc(r.planoAcao)}</div>
         <div class="no-print" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-          ${iconBtn('restore', 'restore-risco', 'Restaurar Risco para Ativo', `onclick="confirmarRestaurarRisco(${r.id})"`)}
+          ${iconBtn('restore', 'restore-risco', 'Restaurar Risco para Ativo', `data-id="${r.id}"`)}
         </div>
       </div>
       <div style="padding: 0 16px 12px; border-top: 1px solid #f3f4f6; margin-top: 4px;">

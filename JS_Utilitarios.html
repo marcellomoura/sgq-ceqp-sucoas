@@ -646,7 +646,6 @@ document.addEventListener('click', function(e) {
     'edit-ferias'     : () => abrirModalFerias(state.members[idx]),
     // Unidades
     'edit-unidade'    : () => abrirEditarUnidade(state.units[idx]),
-    'del-unidade'     : () => showConfirm(`Excluir a unidade "${state.units[idx].sigla}"?`, () => excluirUnidade(state.units[idx].idRow, state.units[idx].sigla)),
     'inativar-unidade': () => {
       const u = state.units[idx];
       showConfirm(`Inativar a unidade "${u.sigla}"? Ela não aparecerá em novos cadastros, mas o histórico é preservado.`,
@@ -663,11 +662,12 @@ document.addEventListener('click', function(e) {
     'del-doc'         : () => { const d=state.docs[idx]; showConfirm(`Excluir "${d.codigo}"?`, (fechar)=>excluirDoc(d.idRow, d.codigo, fechar)); },
     // Riscos
     'edit-risco'      : () => abrirEditarRisco(idx),
-    'del-risco'       : () => { const r=state.risks[idx]; showConfirm(`Excluir R${r.id}?`, ()=>excluirRisco(r.id)); },
+    'reav-risco'      : () => abrirModalReavaliar(idx),
+    'restore-risco'   : () => confirmarRestaurarRisco(alvo.dataset.id),
     // Planos
     'edit-plano'      : () => abrirEditarPlano(idx),
+    'rev-plano'       : () => abrirModalRevisarPlano(idx),
     'acomp-entregas'  : () => abrirModalAcompEntregas(idx),
-    'del-plano'       : () => { const p=state.plans[idx]; showConfirm(`Excluir plano de ${p.riscoVinculado}?`, ()=>excluirPlano(p.riscoVinculado)); },
     // Capacitações
     'edit-capacitacao': () => abrirEditarCapacitacao(state.trainings[idx]),
     'del-capacitacao' : () => { const c=state.trainings[idx]; showConfirm(`Excluir a capacitação "${c.id} - ${c.titulo}"?`, ()=>excluirCapacitacaoConfirm(c.idRow, c.id)); }

@@ -67,8 +67,7 @@ function renderCapacitacoes(resetPage = false) {
       <div style="font-size:13px; color:#4b5563;">${esc(nomes || '-')}</div>
       <div style="text-align:center;font-size:13px;">${materiaisLink}</div>
       <div class="no-print" style="display:flex; justify-content:center; gap:4px; flex-wrap:wrap;">
-        <button class="btn-icon edit" title="Editar Capacitação" onclick="abrirEditarCapacitacao(state.trainings[${i}])">${ICON.edit}</button>
-        <button class="btn-icon del" title="Excluir Capacitação" onclick="confirmarExcluirCapacitacao(${i})">${ICON.del}</button>
+        ${iconBtn('edit','edit-capacitacao','Editar Capacitação',`data-idx="${i}"`)}${iconBtn('del','del-capacitacao','Excluir Capacitação',`data-idx="${i}"`)}
       </div>
     </div>`;
   }).join('');

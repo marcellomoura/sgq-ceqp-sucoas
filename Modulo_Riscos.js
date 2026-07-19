@@ -339,27 +339,6 @@ function atualizarPlano(dados) {
   } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
 }
 
-function excluirPlano(idPlano) {
-  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
-  try {
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_PLANS);
-      const CP = colIdx_(CABECALHOS_PLANOS);
-      const rows = aba.getDataRange().getValues();
-      const linhasParaExcluir = [];
-      for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][CP('ID Risco')]||'') === idPlano) linhasParaExcluir.push(i + 1);
-      }
-      if (!linhasParaExcluir.length) return { sucesso: false, mensagem: 'Plano não localizado.' };
-      _deleteRowsBatch_(aba, linhasParaExcluir);
-      // As entregas do plano vivem na própria coluna 'Entregas' (JSON) da linha
-      // excluída acima — não há mais uma aba separada para limpar à parte.
-      registrarLog('Exclusão de Plano', idPlano, 'Plano e entregas vinculadas removidos.');
-      return { sucesso: true, mensagem: 'Plano excluído!' };
-    });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
-}
-
 // --- Entregas ---
 // Regra de negócio, num único ponto de verdade: um plano cujo "Quem" contém
 // "TODAS" cobra todas as subcomissões; uma unidade é subcomissão quando

@@ -78,12 +78,6 @@ function confirmarUnidade() {
     else { btn.disabled = false; btn.innerText = 'Salvar Unidade'; showAlerta(r.mensagem); }
   }
 }
-function excluirUnidade(idRow, sigla) {
-  google.script.run.withSuccessHandler(r => {
-    if (r && r.sucesso === false) { showAlerta(r.mensagem); return; }
-    recarregarUnidades(renderUnidades);
-  }).withFailureHandler(e => showAlerta(String(e))).excluirUnidade(idRow, sigla || '');
-}
 
 // Atualização otimista: a tela reflete a mudança na hora; só reverte se o servidor falhar.
 function inativarUnidade(idRow, sigla) {
