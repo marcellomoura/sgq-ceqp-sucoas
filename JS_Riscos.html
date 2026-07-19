@@ -665,6 +665,29 @@
   // Assíncrono (html2canvas devolve Promise) — ver Promise.resolve() em
   // _gerarPdfReal/_dispararEnvioPdfReal, que aceitam tanto Promise quanto
   // string dos demais relatórios (síncronos).
+  // #lista-riscos é um <div> (linhas em CSS Grid, não <tr>) — _tbodyParaPdf
+  // clonaria essas <div> direto para dentro de um <tbody>, o que é HTML
+  // inválido (só <tr> pode ficar num <tbody>). O conversor de PDF "corrige"
+  // isso sozinho tirando as <div> de dentro da tabela, e o resultado é a
+  // linha aparecendo solta (com o visual cru da tela) e a tabela real vazia,
+  // só com o cabeçalho. Este helper remonta cada linha como <tr><td> de
+  // verdade, célula a célula, preservando o estilo/cor de cada uma.
+  function _linhasMatrizParaPdf_() {
+    const lista = $id('lista-riscos');
+    if (!lista) return '';
+    const clone = lista.cloneNode(true);
+    clone.querySelectorAll('.no-print').forEach(el => el.remove());
+    _converterBadgesParaPdf(clone);
+    return Array.from(clone.children).filter(function (row) {
+      return row.classList && row.classList.contains('grid-row-hover');
+    }).map(function (row) {
+      const celulas = Array.from(row.children).map(function (cel) {
+        return '<td style="' + (cel.getAttribute('style') || '') + '">' + cel.innerHTML + '</td>';
+      }).join('');
+      return '<tr>' + celulas + '</tr>';
+    }).join('');
+  }
+
   async function montarHtmlMatrizPdf() {
     const matrizEl = document.querySelector('#area-matriz .matrix-table');
     const legendaEl = document.querySelector('#area-matriz .legend-row');
@@ -683,7 +706,7 @@
       <th style="text-align:center;">#</th><th style="text-align:center;">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>
       <th>Categoria</th><th style="text-align:center;">P×I</th><th style="text-align:center;">Nível</th>
       <th>Tratamento</th><th>Proprietário</th><th>Plano de Ação</th>
-    </tr></thead><tbody>${_tbodyParaPdf('lista-riscos')}</tbody></table>`;
+    </tr></thead><tbody>${_linhasMatrizParaPdf_()}</tbody></table>`;
 
     return matrizHtml + legendaHtml + riscosHtml;
   }
@@ -696,6 +719,33 @@
     const clone = container.cloneNode(true);
     clone.querySelectorAll('.no-print').forEach(el => el.remove());
     _converterBadgesParaPdf(clone);
+
+    // O bloco de planos de cada risco (cabeçalho + linhas, ver
+    // renderAcompanhamento) é montado com display:grid — o conversor de PDF
+    // do Apps Script não é confiável com grid/flex (mesmo motivo documentado
+    // em montarHtmlMatrizPdf) e sobrepunha as colunas ("Finalização"/"Como
+    // (How)" desalinhados). Substitui cada bloco por uma <table> real,
+    // célula a célula; o resto do card (título do risco, causa/consequência
+    // etc. — que usa flex e renderiza bem) permanece como está.
+    clone.querySelectorAll('.card').forEach(function (card) {
+      const historico = card.querySelector('div[style*="margin-top: 16px"]');
+      const planosWrap = historico ? historico.lastElementChild : null;
+      const header = planosWrap ? planosWrap.firstElementChild : null;
+      const linhasWrap = planosWrap ? planosWrap.lastElementChild : null;
+      if (!header || !linhasWrap || header === linhasWrap) return;
+
+      const theadCels = Array.from(header.children).map(function (c) {
+        return '<th style="' + (c.getAttribute('style') || '') + '">' + c.innerHTML + '</th>';
+      }).join('');
+      const corpo = Array.from(linhasWrap.children).map(function (row) {
+        const celulas = Array.from(row.children).map(function (c) {
+          return '<td style="' + (c.getAttribute('style') || '') + '">' + c.innerHTML + '</td>';
+        }).join('');
+        return '<tr>' + celulas + '</tr>';
+      }).join('');
+
+      planosWrap.innerHTML = '<table><thead><tr>' + theadCels + '</tr></thead><tbody>' + corpo + '</tbody></table>';
+    });
 
     return clone.innerHTML;
   }
@@ -862,6 +912,46 @@
     // Limpa elementos marcados com no-print antes de jogar pro PDF
     const clone = container.cloneNode(true);
     clone.querySelectorAll('.no-print').forEach(e => e.remove());
+
+    // Mesmo problema documentado em montarHtmlAcompanhamentoPdf: os blocos em
+    // display:grid (linha de dados do risco e o bloco de planos vinculados,
+    // cabeçalho + linhas — ver renderRiscosArquivados) não são confiáveis no
+    // conversor de PDF do Apps Script: ficavam sem cabeçalho e com colunas
+    // desalinhadas/sobrepostas. Substitui os dois por <table> real.
+    clone.querySelectorAll('.grid-row-hover').forEach(function (card) {
+      // Linha de dados do risco (primeiro filho do card) — mesmo cabeçalho de
+      // colunas usado no relatório da Matriz de Risco (montarHtmlMatrizPdf),
+      // já que as duas telas mostram exatamente os mesmos 12 campos.
+      const riscoGrid = card.firstElementChild;
+      if (riscoGrid && riscoGrid.children.length) {
+        const celulasRisco = Array.from(riscoGrid.children).map(function (c) {
+          return '<td style="' + (c.getAttribute('style') || '') + '">' + c.innerHTML + '</td>';
+        }).join('');
+        riscoGrid.outerHTML = '<table><thead><tr>' +
+          '<th style="text-align:center;">#</th><th style="text-align:center;">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>' +
+          '<th>Categoria</th><th style="text-align:center;">P×I</th><th style="text-align:center;">Nível</th>' +
+          '<th>Tratamento</th><th>Proprietário</th><th>Plano de Ação</th>' +
+          '</tr></thead><tbody><tr>' + celulasRisco + '</tr></tbody></table>';
+      }
+
+      const secaoPlanos = card.querySelector('div[style*="padding: 0 16px 12px"]');
+      const planosWrap = secaoPlanos ? secaoPlanos.lastElementChild : null;
+      const header = planosWrap ? planosWrap.firstElementChild : null;
+      const linhasWrap = planosWrap ? planosWrap.lastElementChild : null;
+      if (!header || !linhasWrap || header === linhasWrap) return;
+
+      const theadCels = Array.from(header.children).map(function (c) {
+        return '<th style="' + (c.getAttribute('style') || '') + '">' + c.innerHTML + '</th>';
+      }).join('');
+      const corpo = Array.from(linhasWrap.children).map(function (row) {
+        const celulas = Array.from(row.children).map(function (c) {
+          return '<td style="' + (c.getAttribute('style') || '') + '">' + c.innerHTML + '</td>';
+        }).join('');
+        return '<tr>' + celulas + '</tr>';
+      }).join('');
+
+      planosWrap.innerHTML = '<table><thead><tr>' + theadCels + '</tr></thead><tbody>' + corpo + '</tbody></table>';
+    });
 
     return _pdfSecaoTitulo('Riscos Superados / Arquivados') + clone.innerHTML;
   }
