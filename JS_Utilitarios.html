@@ -947,6 +947,7 @@ function _gerarPdfReal(tipo) {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        _marcarPdfBaixado(btn);
       })
       .withFailureHandler(function(e) {
         if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
@@ -954,6 +955,20 @@ function _gerarPdfReal(tipo) {
       })
       .gerarPdfDeHtml(html, cfg.file);
   });
+}
+
+// Pisca um check verde no botão de "Baixar PDF" por 1.4s para confirmar
+// visualmente que o download começou, depois volta ao ícone original.
+const _ICONE_PDF_CHECK = '<svg style="pointer-events: none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>';
+function _marcarPdfBaixado(btn) {
+  if (!btn) return;
+  const iconeOriginal = btn.innerHTML;
+  btn.innerHTML = _ICONE_PDF_CHECK;
+  btn.classList.add('success');
+  setTimeout(function() {
+    btn.innerHTML = iconeOriginal;
+    btn.classList.remove('success');
+  }, 1400);
 }
 
 function toggleTodosEmails(chk) {
@@ -1057,10 +1072,10 @@ function _dispararEnvioPdfReal(email) {
     const html = _envelopeHtml(cfg, corpoHtml);
     google.script.run
       .withSuccessHandler(function(r) {
-        if (r.sucesso) feedbackBtn(btn,'✅ Enviado!','📨 Enviar PDF',function(){ fecharModal('modal-pdf-email'); });
-        else { btn.innerText='📨 Enviar PDF'; btn.disabled=false; showAlerta(r.mensagem); }
+        if (r.sucesso) feedbackBtn(btn,'Enviado!','Enviar PDF',function(){ fecharModal('modal-pdf-email'); });
+        else { btn.innerText='Enviar PDF'; btn.disabled=false; showAlerta(r.mensagem); }
       })
-      .withFailureHandler(falha(btn,'📨 Enviar PDF',null))
+      .withFailureHandler(falha(btn,'Enviar PDF',null))
       .enviarPdfDeHtml(email, html, cfg.file, cfg.title);
   });
 }
