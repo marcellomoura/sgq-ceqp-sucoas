@@ -583,10 +583,10 @@ function inicializarSidebarRetratil() {
   }
 
   function alternarSidebar() {
+    const vaiExpandir = sidebar.classList.contains('collapsed');
     sidebar.classList.toggle('collapsed');
-    const recolhida = sidebar.classList.contains('collapsed');
-    if (recolhida) fecharTodosGrupos();
-    localStorage.setItem(CHAVE_STORAGE, recolhida ? '1' : '0');
+    if (!vaiExpandir) fecharTodosGrupos();
+    localStorage.setItem(CHAVE_STORAGE, vaiExpandir ? '0' : '1');
   }
   brand.addEventListener('click', alternarSidebar);
   brand.addEventListener('keydown', function(e) {
