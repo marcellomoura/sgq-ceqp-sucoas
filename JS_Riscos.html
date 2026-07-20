@@ -177,7 +177,7 @@
     const hist = state.history ? state.history.filter(h => h.id === 'R' + r.id && h.tipo === 'Risco') : [];
     if (hist.length) {
       hTable.innerHTML = hist.map(h => `<tr>
-      <td>${h.data}</td>
+      <td>${(h.data||'').split('-').reverse().join('/')}</td>
       <td>${h.prob}</td><td>${h.impacto}</td><td>${badge(h.nivel)}</td>
       <td>${esc(h.tratamento || '-')}</td><td>${esc(formatUnidadeUI(h.responsavel) || '-')}</td>
       <td>${esc(h.justificativa)}</td>
