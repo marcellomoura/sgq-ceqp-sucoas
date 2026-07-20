@@ -555,7 +555,69 @@ document.addEventListener('DOMContentLoaded', function() {
     m.setAttribute('role', 'dialog');
     m.setAttribute('aria-modal', 'true');
   });
+
+  inicializarSidebarRetratil();
 });
+
+// ==========================================
+// SIDEBAR RETRÁTIL (modo somente ícones)
+// ==========================================
+function inicializarSidebarRetratil() {
+  const sidebar = document.querySelector('.sidebar');
+  const brand = $id('sidebarBrand');
+  if (!sidebar || !brand) return;
+
+  const CHAVE_STORAGE = 'sgqSidebarCollapsed';
+
+  // No modo ícone o accordion não é usado (quem navega os grupos é o
+  // flyout no hover) — fechar tudo ao recolher evita que um grupo deixado
+  // aberto reapareça de uma vez (altura total, sem transição) ao reabrir.
+  function fecharTodosGrupos() {
+    document.querySelectorAll('.nav-group-title.open').forEach(function(b) { b.classList.remove('open'); });
+    document.querySelectorAll('.nav-group-items.open').forEach(function(p) { p.classList.remove('open'); });
+  }
+
+  if (localStorage.getItem(CHAVE_STORAGE) === '1') {
+    sidebar.classList.add('collapsed');
+    fecharTodosGrupos();
+  }
+
+  function alternarSidebar() {
+    sidebar.classList.toggle('collapsed');
+    const recolhida = sidebar.classList.contains('collapsed');
+    if (recolhida) fecharTodosGrupos();
+    localStorage.setItem(CHAVE_STORAGE, recolhida ? '1' : '0');
+  }
+  brand.addEventListener('click', alternarSidebar);
+  brand.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternarSidebar(); }
+  });
+
+  // Flyout dos grupos: só entra em ação com a sidebar recolhida (em telas
+  // largas; no mobile o CSS já neutraliza .collapsed e isto não é chamado
+  // porque sidebar.collapsed some da tela restrita).
+  document.querySelectorAll('.nav-group-title').forEach(function(btn) {
+    const painel = $id(btn.dataset.group);
+    if (!painel) return;
+    let timeoutFechar = null;
+
+    btn.addEventListener('mouseenter', function() {
+      if (!sidebar.classList.contains('collapsed')) return;
+      clearTimeout(timeoutFechar);
+      const rect = btn.getBoundingClientRect();
+      painel.style.top = rect.top + 'px';
+      painel.style.left = (rect.right + 8) + 'px';
+      painel.classList.add('flyout-visible');
+    });
+    btn.addEventListener('mouseleave', function() {
+      timeoutFechar = setTimeout(function() { painel.classList.remove('flyout-visible'); }, 150);
+    });
+    painel.addEventListener('mouseenter', function() { clearTimeout(timeoutFechar); });
+    painel.addEventListener('mouseleave', function() {
+      timeoutFechar = setTimeout(function() { painel.classList.remove('flyout-visible'); }, 150);
+    });
+  });
+}
 
 document.addEventListener('keydown', function(e) {
   // Focus Trap e fechamento via ESC para modais
