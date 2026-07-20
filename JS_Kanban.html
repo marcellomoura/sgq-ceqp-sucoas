@@ -190,11 +190,19 @@ function renderArquivados(resetPage = false) {
 
   const ini = $id('f-archived-data-ini') ? $id('f-archived-data-ini').value : '';
   const fim = $id('f-archived-data-fim') ? $id('f-archived-data-fim').value : '';
+  const archivedYear = ($id('archivedYearFilter')||{value:''}).value;
 
   // state.archivedTasks tem busca própria (getTarefasArquivadas), sob demanda
   // na primeira visita a esta aba. Antes saía de state.tasks.filter(archived),
   // o que obrigava o quadro a trafegar TODOS os cartões já criados a cada ação.
   let arquivados = (state.archivedTasks || []).slice();
+
+  if (archivedYear) {
+    arquivados = arquivados.filter(t => {
+      const d = t.completionDate || t.creationDate;
+      return d && String(d).substring(0,4) === archivedYear;
+    });
+  }
 
   if (filtroMembro) {
     arquivados = arquivados.filter(t => parseIdsResponsaveis(t.assigneeId).includes(String(filtroMembro)));
@@ -635,7 +643,7 @@ function renderGraficosKanban(fid) {
 // Fragmento do relatório do Painel de Indicadores com os 4 gráficos do
 // Kanban (viram imagem estática, já que Chart.js não roda no servidor).
 function graficosKanbanPdfHtml() {
-  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Volume de Tarefas por Status','statusChart')}${_pdfGraficoCel('Nível de Prioridade das Tarefas','priorityChart')}</tr></table>` +
+  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Tarefas por Status','statusChart')}${_pdfGraficoCel('Tarefas por Nível de Prioridade','priorityChart')}</tr></table>` +
     `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Tarefas em Andamento por Membro','memberChart')}${_pdfGraficoCel('Tarefas Concluídas por Membro','memberConcluidoChart')}</tr></table>`;
 }
 
@@ -708,10 +716,21 @@ function recarregarRiscosPlanos(cb) {
 document.addEventListener('DOMContentLoaded', () => {
   const btnLoadMoreArchived = $id('btn-load-more-archived');
   if (btnLoadMoreArchived) btnLoadMoreArchived.addEventListener('click', () => { archivedPage++; renderArquivados(); });
-  
+
+  const archivedYearFilter = $id('archivedYearFilter');
+  if (archivedYearFilter) {
+    const anoAtual = new Date().getFullYear();
+    let opts = '<option value="">Todos</option>';
+    const maxAno = Math.max(2028, anoAtual + 2);
+    for (let ano = 2026; ano <= maxAno; ano++) opts += `<option value="${ano}">${ano}</option>`;
+    archivedYearFilter.innerHTML = opts;
+    archivedYearFilter.value = anoAtual;
+    archivedYearFilter.addEventListener('change', () => renderArquivados(true));
+  }
+
   const fArchIni = $id('f-archived-data-ini');
   if (fArchIni) fArchIni.addEventListener('change', () => renderArquivados(true));
-  
+
   const fArchFim = $id('f-archived-data-fim');
   if (fArchFim) fArchFim.addEventListener('change', () => renderArquivados(true));
 });

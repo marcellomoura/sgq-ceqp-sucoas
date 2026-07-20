@@ -11,9 +11,12 @@ function renderCapacitacoes(resetPage = false) {
   const tbody = $id('lista-capacitacoes');
   let caps  = Array.isArray(state.trainings) ? state.trainings : [];
 
+  const capYear = ($id('capYearFilter')||{value:''}).value;
+  if (capYear) caps = caps.filter(c => { const d = c.dataRealizada || c.dataPrevista; return d && String(d).substring(0,4) === capYear; });
+
   const ini = $id('f-cap-data-ini') ? $id('f-cap-data-ini').value : '';
   const fim = $id('f-cap-data-fim') ? $id('f-cap-data-fim').value : '';
-  
+
   if (ini || fim) {
     caps = caps.filter(c => {
       const d = c.dataRealizada || c.dataPrevista;
@@ -112,7 +115,9 @@ function getIdsParticipantesSelecionados() {
 // KPIs DE CAPACITAÇÕES (aba "Capacitações")
 // ------------------------------------------
 function renderKpisCapacitacoes() {
-  const caps = Array.isArray(state.trainings) ? state.trainings : [];
+  let caps = Array.isArray(state.trainings) ? state.trainings : [];
+  const capYear = ($id('capYearFilter')||{value:''}).value;
+  if (capYear) caps = caps.filter(c => { const d = c.dataRealizada || c.dataPrevista; return d && String(d).substring(0,4) === capYear; });
   let andamento = 0, concluidas = 0;
 
   caps.forEach(c => {
@@ -286,8 +291,8 @@ function renderGraficosCapacitacoes(fid) {
 // Fragmento do relatório do Painel de Indicadores com os 4 gráficos de
 // Capacitações (viram imagem estática, já que Chart.js não roda no servidor).
 function graficosCapacitacoesPdfHtml() {
-  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Volume de Capacitações ao Longo do Ano','capMesChart')}${_pdfGraficoCel('Volume de Capacitações por Tema','capTemaChart')}</tr></table>` +
-    `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Distribuição por Modalidade de Treinamento','capModalidadeChart')}${_pdfGraficoCel('Volume de Capacitações por Membro','capMembroChart')}</tr></table>`;
+  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Evolução Mensal das Capacitações','capMesChart')}${_pdfGraficoCel('Capacitações por Tema','capTemaChart')}</tr></table>` +
+    `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Capacitações por Modalidade','capModalidadeChart')}${_pdfGraficoCel('Capacitações por Membro','capMembroChart')}</tr></table>`;
 }
 
 // ------------------------------------------
@@ -302,6 +307,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnLoadMoreCap = $id('btn-load-more-cap');
   if (btnLoadMoreCap) btnLoadMoreCap.addEventListener('click', () => { capPage++; renderCapacitacoes(); });
+
+  const capYearFilter = $id('capYearFilter');
+  if (capYearFilter) {
+    const anoAtual = new Date().getFullYear();
+    let opts = '<option value="">Todos</option>';
+    const maxAno = Math.max(2028, anoAtual + 2);
+    for (let ano = 2026; ano <= maxAno; ano++) opts += `<option value="${ano}">${ano}</option>`;
+    capYearFilter.innerHTML = opts;
+    capYearFilter.value = anoAtual;
+    capYearFilter.addEventListener('change', () => { renderCapacitacoes(true); renderKpisCapacitacoes(); });
+  }
 
   const fIni = $id('f-cap-data-ini'), fFim = $id('f-cap-data-fim');
   if (fIni) fIni.addEventListener('change', () => renderCapacitacoes(true));
