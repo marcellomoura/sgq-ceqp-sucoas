@@ -91,7 +91,7 @@ function atualizarRisco(dados) {
 
 // Soft delete: arquivar e restaurar diferiam apenas pelo valor de Status e
 // pelo texto do log — mesma extração que _definirStatusMembro_ já faz em
-// Modulo_Tarefas.js. Mantém a varredura completa (sem break) do código
+// Modulo_Kanban.js. Mantém a varredura completa (sem break) do código
 // original: se um ID duplicado existir na aba, todas as ocorrências recebem o
 // mesmo status, como antes.
 function _definirStatusRisco_(idRisco, novoStatus, acaoLog, detalheLog, msgOk) {

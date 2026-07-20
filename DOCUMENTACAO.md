@@ -64,7 +64,7 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 │ SERVIDOR (Apps Script V8)                                    │
 │  Código.js  ← doGet, config, utils, AUTH, acesso a dados,    │
 │               endpoints de leitura, PDF, logs                 │
-│  Modulo_Tarefas / _Pessoas / _Unidades / _Documentos /       │
+│  Modulo_Kanban / _Pessoas / _Unidades / _Documentos /        │
 │  _Riscos / _Capacitacoes  ← serviços de escrita por domínio  │
 └───────────────────────────────┬─────────────────────────────┘
                                  │ SpreadsheetApp / Cache /
@@ -108,8 +108,8 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 | `getCapacitacoesData` | Código.js | `recarregarCapacitacoes` |
 | `getAtividadesTarefa` | Código.js | `abrirEditarTarefa` |
 | `buscarLogs` | Código.js | `carregarLogs` |
-| `saveTask`/`updateTaskStatus`/`deleteTask`/`arquivarTarefaManual`/`restaurarTarefaArquivada` | Modulo_Tarefas | `salvarTarefa`/`drop`/`confirmarExcluirTarefa`/`confirmarArquivarTarefa`/`restaurarTarefa` |
-| `saveMember`/`inativarMembro`/`reativarMembro` | Modulo_Tarefas | `salvarMembro`/`inativarMembro`/`reativarMembro` |
+| `saveTask`/`updateTaskStatus`/`deleteTask`/`arquivarTarefaManual`/`restaurarTarefaArquivada` | Modulo_Kanban | `salvarTarefa`/`drop`/`confirmarExcluirTarefa`/`confirmarArquivarTarefa`/`restaurarTarefa` |
+| `saveMember`/`inativarMembro`/`reativarMembro` | Modulo_Kanban | `salvarMembro`/`inativarMembro`/`reativarMembro` |
 | `salvarEscala`/`salvarAfastamento` | Modulo_Pessoas | `confirmarEscala`/`confirmarFerias` |
 | `salvarUnidade`/`atualizarUnidade`/`excluirUnidade`/`inativarUnidade`/`reativarUnidade` | Modulo_Unidades | `confirmarUnidade`/`excluirUnidade`/… |
 | `salvarDocumento`/`atualizarDocumento`/`salvarRevisaoDocumento`/`excluirDocumento` | Modulo_Documentos | `salvarDocumento`/`confirmarEdicaoDoc`/`publicarRevisaoDoc`/`excluirDoc` |
@@ -161,7 +161,7 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 
 ### 4.6 Agente de Qualidade (Clean Code)
 - **Positivos:** nomes claros e consistentes; comentários explicam o *porquê*, não o *quê*; funções em geral coesas.
-- **Problemas:** funções longas com alta complexidade ciclomática — `renderTasks` (JS_Kanban), `renderFerias` (JS_Pessoas), `renderAcompanhamento`/`abrirModalAcompEntregas` (JS_Riscos), `saveTask` (Modulo_Tarefas); código morto (P11); referências a auditorias antigas nos comentários (`A03`, `B17`, `C04`, `H03`) — rastreabilidade útil, mas viram ruído sem um índice.
+- **Problemas:** funções longas com alta complexidade ciclomática — `renderTasks` (JS_Kanban), `renderFerias` (JS_Pessoas), `renderAcompanhamento`/`abrirModalAcompEntregas` (JS_Riscos), `saveTask` (Modulo_Kanban); código morto (P11); referências a auditorias antigas nos comentários (`A03`, `B17`, `C04`, `H03`) — rastreabilidade útil, mas viram ruído sem um índice.
 
 ---
 
@@ -224,7 +224,7 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 | `appsscript.json` | Manifesto: timezone `America/Sao_Paulo`, V8, Stackdriver, web app `executeAs: USER_ACCESSING`, `access: ANYONE`. Sem `oauthScopes` explícitos (inferidos pelo uso). |
 | `.clasp.json` | Config do clasp (deploy CLI). `scriptId` versionado; extensões `.js/.gs/.html/.json`. |
 | `Código.js` | Config global, `doGet`/`include_`, utils compartilhados, **autenticação** (`isMembro_`, `membrosParaAuth_`), setup/migrações, endpoints de **leitura**, Atividades, Logs, **geração/envio de PDF**. |
-| `Modulo_Tarefas.js` | Escritas de Tarefas (Kanban) e Membros. |
+| `Modulo_Kanban.js` | Escritas de Tarefas (Kanban) e Membros. |
 | `Modulo_Pessoas.js` | Escala semanal e Afastamentos (leitura + escrita). |
 | `Modulo_Unidades.js` | CRUD de Unidades + integridade referencial. |
 | `Modulo_Documentos.js` | Documentos: cadastro, edição, revisão (versionamento), exclusão. |
