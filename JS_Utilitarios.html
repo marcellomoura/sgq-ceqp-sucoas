@@ -470,7 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const dashYearFilter = $id('dashYearFilter');
   if (dashYearFilter) {
     const anoAtual = new Date().getFullYear();
-    let opts = '<option value="">Todos os Anos</option>';
+    let opts = '<option value="">Todos</option>';
     const maxAno = Math.max(2028, anoAtual + 2); // Garante que mostre alguns anos à frente também
     for (let ano = 2026; ano <= maxAno; ano++) {
       opts += `<option value="${ano}">${ano}</option>`;
@@ -586,12 +586,24 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
       }
     }
+    return;
+  }
+  if (e.key === 'Enter') {
+    const tag = document.activeElement.tagName;
+    if (tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT') return;
+    const openModals = document.querySelectorAll('.modal-overlay.open');
+    if (openModals.length === 0) return;
+    const modal = openModals[openModals.length - 1];
+    const btnSalvar = modal.querySelector('.btn.primary, #btn-save-task');
+    if (btnSalvar && !btnSalvar.disabled) {
+      e.preventDefault();
+      btnSalvar.click();
+    }
   }
 });
 
 document.addEventListener('click', function(e) {
-  // Fechar modal ao clicar no overlay
-  if (e.target.classList.contains('modal-overlay')) { fecharModal(e.target.id); return; }
+  // Clique no overlay (fora do card) não fecha o modal - só Salvar/Cancelar/ESC
   if (e.target.dataset.close) { fecharModal(e.target.dataset.close); return; }
 
   // Grupos de menu retrátil
