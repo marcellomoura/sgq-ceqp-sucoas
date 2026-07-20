@@ -195,8 +195,8 @@ function usuarioAtual_() {
 }
 
 // Nome amigável do usuário ativo para carimbar em atividades: procura o e-mail
-// (funcional ou pessoal) entre os membros cadastrados e devolve o Nome. Se não
-// achar, devolve o próprio e-mail; sem e-mail disponível, 'Sistema'.
+// pessoal entre os membros cadastrados e devolve o Nome. Se não achar, devolve
+// o próprio e-mail; sem e-mail disponível, 'Sistema'.
 // Lista compacta de membros para autenticação, em cache COMPARTILHADO
 // (ScriptCache): [ [emailFuncional, emailPessoal, nome], ... ].
 // isMembro_/nomeUsuarioAtual_ rodam no início de PRATICAMENTE TODA chamada ao
@@ -271,7 +271,7 @@ function nomeUsuarioAtual_() {
   const alvo = email.trim().toLowerCase();
   const lista = membrosParaAuth_();
   for (let i = 0; i < lista.length; i++) {
-    if (alvo && (alvo === lista[i][0] || alvo === lista[i][1])) return lista[i][2] || email;
+    if (alvo && alvo === lista[i][1]) return lista[i][2] || email;
   }
   return email;
 }
@@ -284,7 +284,7 @@ function isMembro_() {
   const alvo = email.trim().toLowerCase();
   const lista = membrosParaAuth_();
   for (let i = 0; i < lista.length; i++) {
-    if (alvo && (alvo === lista[i][0] || alvo === lista[i][1])) return true;
+    if (alvo && alvo === lista[i][1]) return true;
   }
   return false;
 }
