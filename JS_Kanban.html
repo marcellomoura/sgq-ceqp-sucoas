@@ -477,26 +477,81 @@ function salvarTarefa() {
   // a cada salvamento, só para o servidor filtrar os _novo e descartar o resto.
   const novosComentarios = currentActivities.filter(a => a && a._novo);
   const dados={ id:$id('taskId').value, status:$id('taskStatus').value||'Backlog', title:titulo, description:$id('taskDesc').value||'', assigneeId:JSON.stringify(ids), priority:$id('taskPriority').value||'Media', labels:JSON.stringify(labels), deadline:$id('taskDeadline').value||'', creationDate:$id('taskCreation').value||'', completionDate:$id('taskCompletion').value||'', startDate:$id('taskStartDate').value||'', activities:JSON.stringify(novosComentarios), updatedAt:$id('taskUpdatedAt').value||'' };
+
+  // ===== Atualização OTIMISTA (mesmo padrão do arrastar/drop) =====
+  // O cartão aparece/atualiza na tela e o modal fecha IMEDIATAMENTE; a gravação
+  // segue em segundo plano. Se o servidor recusar (ex.: conflito de edição) ou a
+  // chamada falhar, re-sincronizamos com o servidor (recarregarKanban), o que
+  // desfaz o efeito otimista — nunca fica um estado "salvo" que na verdade não foi.
+  const ehNovo = !dados.id;
+  // Cartão novo não tem id ainda: usa um id temporário só para exibir agora, e o
+  // troca pelo id real (TAR-...) quando o servidor responder (reconciliação).
+  const tempId = ehNovo ? ('tmp-' + Date.now()) : dados.id;
+  const cartaoAnterior = ehNovo ? null : state.tasks.find(t => String(t.id) === String(dados.id));
+  const countAnterior = cartaoAnterior ? (cartaoAnterior.commentCount || 0) : 0;
+
+  // Monta o cartão para exibição imediata. Na edição, parte do cartão atual
+  // (preserva status/datas, que o saveTask não altera) e sobrepõe os campos do
+  // formulário. Na criação, espelha a regra de datas do servidor (ver saveTask):
+  // fora do Backlog, início = hoje; criado em "Concluído", conclusão = hoje.
+  // São valores só para a tela — a reconciliação troca por valores canônicos.
+  const hoje = hojeISO();
+  const optimista = Object.assign(cartaoAnterior ? Object.assign({}, cartaoAnterior) : {}, {
+    id: tempId, status: dados.status, title: dados.title, description: dados.description,
+    assigneeId: dados.assigneeId, priority: dados.priority, deadline: dados.deadline,
+    labels: dados.labels, commentCount: countAnterior + novosComentarios.length
+  });
+  if (ehNovo) {
+    optimista.creationDate   = hoje;
+    optimista.startDate      = dados.status !== 'Backlog' ? hoje : '';
+    optimista.completionDate = dados.status === 'Concluído' ? hoje : '';
+    optimista.updatedAt      = '';
+  }
+  const idxOtim = ehNovo ? -1 : state.tasks.findIndex(t => String(t.id) === String(dados.id));
+  if (idxOtim >= 0) state.tasks[idxOtim] = optimista; else state.tasks.push(optimista);
+  renderTasks();
+  btn.disabled=false; btn.innerText='Salvar Cartão';
+  fecharModal('modal-task');
+
   google.script.run.withSuccessHandler(r=>{
-    if (r && r.sucesso === false) { btn.disabled=false; btn.innerText='Salvar Cartão'; showAlerta(r.mensagem || 'Não foi possível salvar o cartão.'); return; }
-    // Só fecha o modal depois que o quadro já foi atualizado — antes disso o
-    // modal sumia primeiro e o cartão só aparecia depois da releitura da
-    // planilha, dando a impressão de que o cartão tinha sumido.
-    recarregarKanban(()=>{ renderTasks(); btn.disabled=false; btn.innerText='Salvar Cartão'; fecharModal('modal-task'); });
-  }).withFailureHandler(falha(btn,'Salvar Cartão',null)).saveTask(dados);
+    if (r && r.sucesso === false) {
+      // Falha de negócio (ex.: cartão alterado por outra pessoa): avisa e relê o
+      // estado real do servidor, desfazendo a alteração otimista.
+      showAlerta(r.mensagem || 'Não foi possível salvar o cartão.');
+      recarregarKanban(renderTasks);
+      return;
+    }
+    // Reconciliação: troca o cartão otimista pelo canônico devolvido pelo servidor
+    // (id real, carimbo, datas). Casado pelo tempId (novo) ou pelo próprio id (edição).
+    if (r && r.task) {
+      r.task.commentCount = countAnterior + novosComentarios.length;
+      const i = state.tasks.findIndex(t => String(t.id) === String(tempId));
+      if (i >= 0) state.tasks[i] = r.task; else state.tasks.push(r.task);
+      renderTasks();
+    } else {
+      // Resposta sem o cartão (ex.: servidor ainda não atualizado no deploy):
+      // re-sincroniza para trocar o id temporário pelo real.
+      recarregarKanban(renderTasks);
+    }
+  }).withFailureHandler(e=>{
+    showAlerta(String(e));
+    recarregarKanban(renderTasks);
+  }).saveTask(dados);
 }
 function confirmarExcluirTarefa() {
   showConfirm('Excluir este cartão e todo o seu histórico?', ()=>{
     const id=$id('taskId').value;
+    // ===== Exclusão OTIMISTA (mesmo padrão do arrastar/drop) =====
+    // Remove o cartão da tela e fecha o modal na hora; a exclusão segue em
+    // segundo plano. Em falha (recusa do servidor ou erro de rede), re-sincroniza
+    // com o servidor — o cartão reaparece se não tiver sido de fato excluído.
+    const idx = state.tasks.findIndex(t => String(t.id) === String(id));
+    if (idx >= 0) state.tasks.splice(idx, 1);
+    fecharModal('modal-task');
+    renderTasks();
     google.script.run.withSuccessHandler(r=>{
-      if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível excluir o cartão.'); return; }
-      // Atualiza o estado local direto — evita uma segunda ida ao servidor
-      // (mesmo padrão de confirmarArquivarTarefa/restaurarTarefa, logo acima)
-      const idx = state.tasks.findIndex(t => String(t.id) === String(id));
-      if (idx >= 0) state.tasks.splice(idx, 1);
-      fecharModal('modal-task');
-      renderTasks();
-    }).withFailureHandler(e=>showAlerta(String(e))).deleteTask(id);
+      if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível excluir o cartão.'); recarregarKanban(renderTasks); }
+    }).withFailureHandler(e=>{ showAlerta(String(e)); recarregarKanban(renderTasks); }).deleteTask(id);
   });
 }
 
