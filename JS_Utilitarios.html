@@ -973,6 +973,27 @@ function _tbodyParaPdf(tbodyId) {
   return clone.innerHTML;
 }
 
+// Igual a _tbodyParaPdf, mas para listas desenhadas como <div class="grid-row-hover">
+// em CSS Grid (não <tr>). Clonar essas <div> direto para dentro de um <tbody> é
+// HTML inválido: o conversor de PDF as expulsa da tabela (foster parenting),
+// deixando as linhas soltas e o cabeçalho isolado no fim. Este helper remonta
+// cada linha como <tr><td> de verdade, célula a célula, preservando o estilo/cor.
+function _gridRowsParaPdf(containerId) {
+  const container = $id(containerId);
+  if (!container) return '';
+  const clone = container.cloneNode(true);
+  clone.querySelectorAll('.no-print').forEach(el => el.remove());
+  _converterBadgesParaPdf(clone);
+  return Array.from(clone.children).filter(function (row) {
+    return row.classList && row.classList.contains('grid-row-hover');
+  }).map(function (row) {
+    const celulas = Array.from(row.children).map(function (cel) {
+      return '<td style="' + (cel.getAttribute('style') || '') + '">' + cel.innerHTML + '</td>';
+    }).join('');
+    return '<tr>' + celulas + '</tr>';
+  }).join('');
+}
+
 // Título de seção — tabela de uma célula sem borda (mais confiável no
 // conversor do que um <div> solto).
 function _pdfSecaoTitulo(texto) {
