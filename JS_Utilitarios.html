@@ -829,6 +829,57 @@ document.querySelectorAll('.list-cards').forEach(el => {
   el.addEventListener('drop', function(e) { e.preventDefault(); drop(e, this.dataset.status); });
 });
 
+// Auto-scroll durante o arraste de cartões (DnD nativo do HTML5).
+// O quadro rola dentro do .board-canvas — um contêiner com overflow próprio — e
+// o auto-scroll nativo do navegador só age no documento raiz, nunca num
+// contêiner aninhado. Sem isto, arrastar um cartão do fim de uma coluna longa
+// não sobe a tela e as demais colunas ficam inacessíveis. Este laço supre a
+// lacuna: enquanto há arraste, rola o board-canvas na vertical/horizontal
+// conforme o cursor se aproxima das bordas, com velocidade proporcional à
+// proximidade. Só usa APIs nativas (compatível com o iframe do HTMLService).
+(function () {
+  const ZONA = 60;      // distância da borda (px) em que a rolagem começa
+  const VEL_MAX = 22;   // rolagem máxima por frame (px)
+  let rafId = null, ptrX = 0, ptrY = 0, arrastando = false;
+
+  const canvas = () => document.querySelector('.board-canvas');
+
+  function passo() {
+    const c = canvas();
+    if (!arrastando || !c) { rafId = null; return; }
+    const r = c.getBoundingClientRect();
+
+    // Vertical: cursor perto do topo sobe; perto da base desce.
+    const topo = ptrY - r.top, base = r.bottom - ptrY;
+    if (topo < ZONA && c.scrollTop > 0) {
+      c.scrollTop -= VEL_MAX * (1 - Math.max(0, topo) / ZONA);
+    } else if (base < ZONA && c.scrollTop + c.clientHeight < c.scrollHeight) {
+      c.scrollTop += VEL_MAX * (1 - Math.max(0, base) / ZONA);
+    }
+    // Horizontal: cursor perto da esquerda/direita rola as colunas.
+    const esq = ptrX - r.left, dir = r.right - ptrX;
+    if (esq < ZONA && c.scrollLeft > 0) {
+      c.scrollLeft -= VEL_MAX * (1 - Math.max(0, esq) / ZONA);
+    } else if (dir < ZONA && c.scrollLeft + c.clientWidth < c.scrollWidth) {
+      c.scrollLeft += VEL_MAX * (1 - Math.max(0, dir) / ZONA);
+    }
+    rafId = requestAnimationFrame(passo);
+  }
+
+  document.addEventListener('dragstart', function (e) {
+    if (e.target.closest && e.target.closest('.card')) {
+      arrastando = true;
+      if (!rafId) rafId = requestAnimationFrame(passo);
+    }
+  });
+  // Passivo: só registra a posição do cursor (não chama preventDefault, para
+  // não alterar onde o drop é permitido — isso continua a cargo das .list-cards).
+  document.addEventListener('dragover', function (e) { ptrX = e.clientX; ptrY = e.clientY; });
+  function parar() { arrastando = false; if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
+  document.addEventListener('dragend', parar);
+  document.addEventListener('drop', parar);
+})();
+
 // Change handlers
 document.addEventListener('change', function(e) {
   const id = e.target.id;
