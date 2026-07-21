@@ -79,14 +79,29 @@ function saveTask(task) {
           // veio da planilha (lido dentro deste mesmo lock), preservando-o.
           // Sem esse cuidado, o carimbo de tempo cairia dentro de 'Arquivado' e
           // a trava otimista nunca mais seria gravada.
+          const novoCarimbo = String(new Date().getTime());
           sheet.getRange(i+1, C('Etiquetas')+1, 1, 3).setValues([[
             task.labels || '[]',
             data[i][C('Arquivado')],
-            String(new Date().getTime())
+            novoCarimbo
           ]]);
           _registrarAtividades_(novasAtividades);
           SpreadsheetApp.flush();
-          return { sucesso: true };
+          // Devolve o cartão JÁ atualizado para o cliente aplicar no estado local,
+          // sem precisar de uma 2ª ida ao servidor (getKanbanData) só para reler o
+          // que acabamos de gravar. Reaproveita a linha lida dentro deste mesmo
+          // lock (data[i]) com os campos editados sobrepostos, e _mapearTarefa_
+          // para garantir EXATAMENTE o mesmo formato que o quadro recebe em
+          // getKanbanData (status/datas preservados vêm da própria linha).
+          const linhaAtualizada = data[i].slice();
+          linhaAtualizada[C('Título')]             = task.title;
+          linhaAtualizada[C('Descrição')]          = task.description;
+          linhaAtualizada[C('Responsável_ID')]     = task.assigneeId;
+          linhaAtualizada[C('Prioridade')]         = task.priority;
+          linhaAtualizada[C('Prazo')]              = task.deadline || '';
+          linhaAtualizada[C('Etiquetas')]          = task.labels || '[]';
+          linhaAtualizada[C('Última Atualização')] = novoCarimbo;
+          return { sucesso: true, task: _mapearTarefa_(linhaAtualizada, C) };
         }
       }
     } else {
@@ -100,21 +115,26 @@ function saveTask(task) {
       if (task.status !== 'Backlog' && !startDate) startDate = dateNow;
       let completionDate = task.completionDate || '';
       if (task.status === 'Concluído' && !completionDate) completionDate = dateNow;
-      sheet.appendRow([
+      // 13 valores, na ordem de CABECALHOS_TAREFAS (sem 'Atividades', que saiu
+      // do layout — o histórico vive na aba Atividades). Ordem do fim:
+      // Etiquetas, Arquivado, Última Atualização. O '' é 'Arquivado' — o
+      // cartão nasce sem decisão de arquivamento. `|| ''` no Prazo alinhado ao
+      // caminho de edição: sem ele, um deadline undefined gravava a string
+      // "undefined" na célula. Montada em variável para ser reaproveitada no
+      // retorno (via _mapearTarefa_), sem uma leitura extra da linha recém-criada.
+      const novaLinha = [
         newId, task.status, task.title, task.description, task.assigneeId,
-        // `|| ''` alinhado ao caminho de edição: sem ele, um deadline undefined
-        // gravava a string "undefined" na célula de Prazo.
-        // 13 valores, na ordem de CABECALHOS_TAREFAS (sem 'Atividades', que saiu
-        // do layout — o histórico vive na aba Atividades). Ordem do fim:
-        // Etiquetas, Arquivado, Última Atualização. O '' é 'Arquivado' — o
-        // cartão nasce sem decisão de arquivamento.
         task.priority, dateNow, startDate, task.deadline || '', completionDate, task.labels || '[]', '', String(new Date().getTime())
-      ]);
+      ];
+      sheet.appendRow(novaLinha);
       _registrarAtividades_([{
         tarefaId: newId, tipo: 'log', texto: `Criou este cartão na lista "${task.status}"`, data: timeNow, autor: autor
       }]);
       SpreadsheetApp.flush();
-      return { sucesso: true };
+      // Mesmo motivo do caminho de edição: devolve o cartão criado (com o id novo,
+      // datas calculadas no servidor e carimbo) para o cliente inseri-lo no estado
+      // local, dispensando o getKanbanData que era feito logo após salvar.
+      return { sucesso: true, task: _mapearTarefa_(novaLinha, C) };
     }
     return { sucesso: false, mensagem: 'Tarefa não localizada.' };
   });
