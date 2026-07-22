@@ -464,6 +464,10 @@
   .btn.success:hover { background: var(--success-text); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-sm { padding: 6px 12px; font-size: var(--fs-xs); }
+  /* Paginação compartilhada (Anterior / Página X de Y (N) / Próxima) — Logs, Capacitações e Arquivados */
+  .paginacao { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 16px 0 20px; }
+  .paginacao:empty { display: none; }
+  .paginacao-info { font-size: var(--fs-sm); color: var(--text-muted); font-weight: 500; white-space: nowrap; }
   .btn-icon {
     background: var(--bg-card); border: 1px solid var(--border-color); cursor: pointer;
     width: 32px; height: 32px; border-radius: var(--radius-sm); display: inline-flex;

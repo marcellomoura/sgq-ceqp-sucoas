@@ -218,20 +218,31 @@ function renderArquivados(resetPage = false) {
     });
   }
 
-  const btnMore = $id('btn-load-more-archived');
-
-  if (!arquivados.length) { 
-    tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhum cartão arquivado encontrado.</div>'; 
-    if (btnMore) btnMore.style.display = 'none';
-    return; 
+  if (!arquivados.length) {
+    tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhum cartão arquivado encontrado.</div>';
+    renderPaginacao('paginacao-archived', { totalRegistros: 0 });
+    return;
   }
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   // Mais recentemente concluídos primeiro
   arquivados.sort((a,b) => (b.completionDate||'').localeCompare(a.completionDate||''));
 
-  const exibidos = arquivados.slice(0, archivedPage * archivedLimit);
-  if (btnMore) btnMore.style.display = (arquivados.length > exibidos.length) ? 'inline-block' : 'none';
+  // Paginação por páginas (cliente): state.archivedTasks já traz tudo (exigido
+  // pelos gráficos históricos do Kanban), então isto controla só quais 20 são
+  // desenhadas. Se um filtro reduziu o total, recua para a última página válida.
+  const totalPaginas = Math.max(1, Math.ceil(arquivados.length / archivedLimit));
+  if (archivedPage > totalPaginas) archivedPage = totalPaginas;
+  const inicio = (archivedPage - 1) * archivedLimit;
+  const exibidos = arquivados.slice(inicio, inicio + archivedLimit);
+
+  renderPaginacao('paginacao-archived', {
+    pagina: archivedPage,
+    totalPaginas: totalPaginas,
+    totalRegistros: arquivados.length,
+    onPrev: () => { archivedPage--; renderArquivados(); },
+    onNext: () => { archivedPage++; renderArquivados(); }
+  });
 
   tbody.innerHTML = exibidos.map(task => {
     const nomes = nomesMembros(parseIdsResponsaveis(task.assigneeId))||'Sem responsável';
@@ -769,9 +780,6 @@ function recarregarRiscosPlanos(cb) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const btnLoadMoreArchived = $id('btn-load-more-archived');
-  if (btnLoadMoreArchived) btnLoadMoreArchived.addEventListener('click', () => { archivedPage++; renderArquivados(); });
-
   const archivedYearFilter = $id('archivedYearFilter');
   if (archivedYearFilter) {
     const anoAtual = new Date().getFullYear();

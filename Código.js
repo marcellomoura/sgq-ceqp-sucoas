@@ -1052,10 +1052,10 @@ function getCapacitacoesData() {
 // ==========================================
 function buscarLogs(filtros) {
   if (!isMembro_()) throw new Error('Acesso Negado.');
-  const LIMITE_REGISTROS = 30;
+  const LIMITE_REGISTROS = 20;
   filtros = filtros || {};
   const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
-  if (aba.getLastRow() <= 1) return { logs: [], temMais: false, acoesUnicas: [] };
+  if (aba.getLastRow() <= 1) return { logs: [], pagina: 1, totalPaginas: 1, total: 0, acoesUnicas: [] };
 
   const CL = colIdx_(CABECALHOS_LOGS);
   
@@ -1100,16 +1100,22 @@ function buscarLogs(filtros) {
 
   linhas.sort((a, b) => b._ordenacao - a._ordenacao);
 
-  // Paginação
-  const offset = parseInt(filtros.offset, 10) || 0;
+  // Paginação por páginas. total/totalPaginas alimentam o controle
+  // "Página X de Y (N registros)" no cliente. O total reflete os registros
+  // filtrados dentro da janela de leitura (MAX_ROWS_TO_READ).
+  const total = linhas.length;
+  const totalPaginas = Math.max(1, Math.ceil(total / LIMITE_REGISTROS));
+  const pagina = Math.min(Math.max(1, parseInt(filtros.pagina, 10) || 1), totalPaginas);
+  const offset = (pagina - 1) * LIMITE_REGISTROS;
   const resultados = linhas.slice(offset, offset + LIMITE_REGISTROS);
-  const temMais = (offset + LIMITE_REGISTROS) < linhas.length;
 
   return {
     logs: resultados.map(l => ({
       dataHora: l.dataHora, usuario: l.usuario, acao: l.acao, referencia: l.referencia, detalhes: l.detalhes
     })),
-    temMais: temMais,
+    pagina: pagina,
+    totalPaginas: totalPaginas,
+    total: total,
     acoesUnicas: acoesUnicas
   };
 }

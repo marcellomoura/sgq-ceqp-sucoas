@@ -13,6 +13,39 @@ var currentActivities = [];
 // Id do cartão cuja busca de histórico está em voo — descarta respostas de um
 // cartão que não é mais o aberto (ver abrirModalTarefa).
 var atividadesTaskId = null;
+
+// ==========================================
+// Paginação compartilhada — Logs, Capacitações e Arquivados
+// Renderiza o controle "Anterior / Página X de Y (N registros) / Próxima"
+// dentro de containerId e conecta os callbacks direto nos botões. Como o
+// innerHTML é reescrito a cada chamada, os listeners antigos morrem com os nós
+// removidos (sem vazamento nem binding duplicado). Fonte de dados isolada: cada
+// tela passa seus próprios onPrev/onNext, então trocar uma delas para paginação
+// de servidor no futuro não afeta as demais nem este helper.
+// ==========================================
+function renderPaginacao(containerId, opts) {
+  const el = $id(containerId);
+  if (!el) return;
+  opts = opts || {};
+  const totalRegistros = opts.totalRegistros || 0;
+
+  // Sem registros a lista já mostra "nenhum ..."; o controle some.
+  if (totalRegistros <= 0) { el.innerHTML = ''; return; }
+
+  const totalPaginas = Math.max(1, opts.totalPaginas || 1);
+  const pagina       = Math.min(Math.max(1, opts.pagina || 1), totalPaginas);
+  const plural       = totalRegistros === 1 ? 'registro' : 'registros';
+
+  el.innerHTML =
+    `<button type="button" class="btn secondary btn-sm" data-pag="prev"${pagina <= 1 ? ' disabled' : ''}>Anterior</button>` +
+    `<span class="paginacao-info">Página ${pagina} de ${totalPaginas} (${totalRegistros} ${plural})</span>` +
+    `<button type="button" class="btn secondary btn-sm" data-pag="next"${pagina >= totalPaginas ? ' disabled' : ''}>Próxima</button>`;
+
+  const btnPrev = el.querySelector('[data-pag="prev"]');
+  const btnNext = el.querySelector('[data-pag="next"]');
+  if (btnPrev && opts.onPrev) btnPrev.addEventListener('click', opts.onPrev);
+  if (btnNext && opts.onNext) btnNext.addEventListener('click', opts.onNext);
+}
 var statusChartInst = null, memberChartInst = null, priorityChartInst = null, memberConcluidoChartInst = null;
 var capMesChartInst = null, capModalidadeChartInst = null, capMembroChartInst = null, capTemaChartInst = null;
 
@@ -285,7 +318,6 @@ function sincronizarSelectsUnidade() {
 var restoDataLoaded = false;
 var restoDataLoading = false;
 var restoDataFilaCallbacks = [];
-var logsCache = []; // B17: Declaração global explícita
 
 function garantirRestoData(callback) {
   if (restoDataLoaded) { callback(); return; }
@@ -810,7 +842,6 @@ document.addEventListener('click', function(e) {
   if(e.target.id === 'btn-confirmar-escala')     confirmarEscala();
   if(e.target.id === 'btn-confirmar-ferias')     confirmarFerias();
   if(e.target.id === 'btn-enviar-pdf') dispararEnvioPdf();
-  if(e.target.id === 'btn-load-more-logs') carregarLogs(true);
   if(e.target.id === 'assignee-display') $id('taskAssigneesContainer').classList.toggle('show');
   if(e.target.id === 'labels-display') $id('taskLabelsContainer').classList.toggle('show');
   // Botões add-card (têm data-add-card)
@@ -1242,8 +1273,7 @@ function _capturarElementoComoImg(el) {
 // Nunca fica em cache — busca sempre que a aba é visitada, já que é
 // uma trilha de auditoria e precisa refletir o estado mais recente.
 // ==========================================
-var currentLogsOffset = 0;
-var currentLogsHasMore = false;
+var currentLogsPage = 1;
 
 function getFiltrosLogs() {
   return {
@@ -1255,39 +1285,30 @@ function getFiltrosLogs() {
   };
 }
 
-function carregarLogs(isLoadMore = false) {
-  if (typeof isLoadMore !== 'boolean') isLoadMore = false; // Tratar chamadas de evento
+function carregarLogs(pagina) {
+  // Aceita o nº da página. Chamadas de evento (abertura da aba, botão atualizar,
+  // troca de filtro) chegam sem número — caem na página 1, resetando a navegação.
+  if (typeof pagina !== 'number' || !isFinite(pagina) || pagina < 1) pagina = 1;
 
-  if (!isLoadMore) {
-    currentLogsOffset = 0;
-    msgTabela('lista-logs', 5, 'A carregar...');
-    const btnMais = $id('btn-load-more-logs');
-    if (btnMais) btnMais.style.display = 'none';
-  } else {
-    const btnMais = $id('btn-load-more-logs');
-    if (btnMais) { btnMais.innerText = 'A carregar...'; btnMais.disabled = true; }
-  }
+  msgTabela('lista-logs', 5, 'A carregar...');
 
   const filtros = getFiltrosLogs();
-  filtros.offset = currentLogsOffset;
+  filtros.pagina = pagina;
 
   google.script.run
     .withFailureHandler(function(e) {
-      if (!isLoadMore) {
-        msgTabela('lista-logs', 5, 'Falha ao carregar: ' + (e.message || String(e)), true);
-      } else {
-        showAlerta('Falha ao carregar mais registros: ' + (e.message || String(e)));
-        const btnMais = $id('btn-load-more-logs');
-        if (btnMais) { btnMais.innerText = 'Carregar mais'; btnMais.disabled = false; }
-      }
+      msgTabela('lista-logs', 5, 'Falha ao carregar: ' + (e.message || String(e)), true);
+      renderPaginacao('paginacao-logs', { totalRegistros: 0 });
     })
     .withSuccessHandler(function(result) {
-      const logs = result.logs || [];
-      currentLogsHasMore = result.temMais || false;
-      const acoesUnicas = result.acoesUnicas || [];
+      const logs         = result.logs || [];
+      currentLogsPage    = result.pagina || 1;
+      const totalPaginas = result.totalPaginas || 1;
+      const total        = result.total || 0;
 
-      if (!isLoadMore && currentLogsOffset === 0) {
-
+      // Dropdown de usuários é montado só na página 1 (membros já carregados),
+      // preservando a seleção atual — mesmo momento da carga base anterior.
+      if (currentLogsPage === 1) {
         const selUsuario = $id('f-log-usuario');
         if (selUsuario) {
           const v = selUsuario.value;
@@ -1297,42 +1318,30 @@ function carregarLogs(isLoadMore = false) {
         }
       }
 
-      if (!isLoadMore) {
-        logsCache = logs;
-      } else {
-        logsCache = logsCache.concat(logs);
-      }
-      currentLogsOffset += logs.length;
-      
-      renderLogsHTML();
+      renderLogsHTML(logs);
+      renderPaginacao('paginacao-logs', {
+        pagina: currentLogsPage,
+        totalPaginas: totalPaginas,
+        totalRegistros: total,
+        onPrev: () => carregarLogs(currentLogsPage - 1),
+        onNext: () => carregarLogs(currentLogsPage + 1)
+      });
     }).buscarLogs(filtros);
 }
 
-function renderLogsHTML() {
-  if (!logsCache.length) {
+function renderLogsHTML(logs) {
+  logs = logs || [];
+  if (!logs.length) {
     msgTabela('lista-logs', 5, 'Nenhum registro encontrado.');
-    const btnMais = $id('btn-load-more-logs');
-    if (btnMais) btnMais.style.display = 'none';
     return;
   }
 
-  $id('lista-logs').innerHTML = logsCache.map(l => `<div class="grid-row-hover" style="display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,2fr); gap: 16px; align-items: center; background-color: #ffffff; padding: 12px 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); font-size: 13px; color: #111827; text-align: left; word-break: break-word;">
+  $id('lista-logs').innerHTML = logs.map(l => `<div class="grid-row-hover" style="display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,2fr); gap: 16px; align-items: center; background-color: #ffffff; padding: 12px 20px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); font-size: 13px; color: #111827; text-align: left; word-break: break-word;">
     <div style="font-size:12px; color:#4b5563;">${esc(l.dataHora)}</div>
     <div style="font-size:12px;">${esc(l.usuario)}</div>
     <div><span style="display:inline-block; font-weight:600; color:#4b5563; border:1px solid #e5e7eb; border-radius:12px; padding:2px 8px; background:#f9fafb; font-size:11px;">${esc(l.acao)}</span></div>
     <div style="font-weight:600; color:#111827;">${esc(l.referencia)}</div>
     <div style="font-size:12.5px; color:#4b5563; line-height: 1.4;">${esc(l.detalhes)}</div>
   </div>`).join('');
-
-  const btnMais = $id('btn-load-more-logs');
-  if (btnMais) {
-    if (currentLogsHasMore) {
-      btnMais.style.display = 'block';
-      btnMais.innerText = 'Carregar mais';
-      btnMais.disabled = false;
-    } else {
-      btnMais.style.display = 'none';
-    }
-  }
 }
 </script>

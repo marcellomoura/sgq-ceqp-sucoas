@@ -40,11 +40,9 @@ function renderCapacitacoes(resetPage = false) {
     });
   }
 
-  const btnMore = $id('btn-load-more-cap');
-
   if (!caps.length) {
     tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhuma capacitação encontrada.</div>';
-    if (btnMore) btnMore.style.display = 'none';
+    renderPaginacao('paginacao-cap', { totalRegistros: 0 });
     return;
   }
 
@@ -53,9 +51,22 @@ function renderCapacitacoes(resetPage = false) {
   // filtro ativo os dois divergem e editar/excluir atingia o registro errado.
   // Mesmo padrão de renderMembers/renderUnidades.
   const ordenadas = caps.map(c => ({ c, i: state.trainings.indexOf(c) })).sort((a, b) => b.c.idRow - a.c.idRow);
-  const exibidas = ordenadas.slice(0, capPage * capLimit);
-  
-  if (btnMore) btnMore.style.display = (ordenadas.length > exibidas.length) ? 'inline-block' : 'none';
+
+  // Paginação por páginas (cliente): os dados já estão em state.trainings, então
+  // isto controla só quais 20 são desenhadas. Se um filtro reduziu o total abaixo
+  // da página atual, recua para a última página válida.
+  const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / capLimit));
+  if (capPage > totalPaginas) capPage = totalPaginas;
+  const inicio = (capPage - 1) * capLimit;
+  const exibidas = ordenadas.slice(inicio, inicio + capLimit);
+
+  renderPaginacao('paginacao-cap', {
+    pagina: capPage,
+    totalPaginas: totalPaginas,
+    totalRegistros: ordenadas.length,
+    onPrev: () => { capPage--; renderCapacitacoes(); },
+    onNext: () => { capPage++; renderCapacitacoes(); }
+  });
 
   const fmtData   = s => (s && s !== '-') ? s.split('-').reverse().join('/') : '-';
 
@@ -317,9 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnSalvarCap = $id('btn-salvar-capacitacao');
   if (btnSalvarCap) btnSalvarCap.addEventListener('click', salvarFormCapacitacao);
-
-  const btnLoadMoreCap = $id('btn-load-more-cap');
-  if (btnLoadMoreCap) btnLoadMoreCap.addEventListener('click', () => { capPage++; renderCapacitacoes(); });
 
   const capYearFilter = $id('capYearFilter');
   if (capYearFilter) {
