@@ -6,12 +6,16 @@ function renderUnidades() {
   const tbody = $id('lista-unidades');
   let units = Array.isArray(state.units) ? state.units : [];
   
-  const chkInativas = $id('chk-unidades-inativas');
-  if (chkInativas && !chkInativas.checked) {
-    units = units.filter(u => u.ativo !== false);
-  }
+  const statusUnidades = ($id('f-unidades-status')||{value:'ativas'}).value;
+  if (statusUnidades === 'ativas')        units = units.filter(u => u.ativo !== false);
+  else if (statusUnidades === 'inativas') units = units.filter(u => u.ativo === false);
+  // 'todas' → sem filtro
 
-  if (!units.length) { tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhuma unidade cadastrada.</div>'; return; }
+  if (!units.length) {
+    const rotulo = statusUnidades === 'inativas' ? 'inativa ' : statusUnidades === 'todas' ? '' : 'ativa ';
+    tbody.innerHTML = `<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhuma unidade ${rotulo}cadastrada.</div>`;
+    return;
+  }
   const ordenadas = units
     .map(u => ({ u, i: state.units.indexOf(u) }))
     .sort((a, b) => a.u.unidade.localeCompare(b.u.unidade, 'pt-BR', { sensitivity: 'base' }));
