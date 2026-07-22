@@ -68,65 +68,6 @@ function atualizarUnidade(dados) {
   } catch(e) { return erroInterno_(e); }
 }
 
-function excluirUnidade(idRow, siglaEsperada) {
-  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
-  try {
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_UNITS);
-      const C = colIdx_(CABECALHOS_UNIDADES);
-      const linha = parseInt(idRow, 10);
-      if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
-        return { sucesso: false, mensagem: 'Registro não localizado.' };
-      // Linha inteira em uma leitura: sigla, ID e nome saíam de três getValue()
-      // separados (três round-trips à API, dentro do lock).
-      const linhaAtual = aba.getRange(linha, 1, 1, CABECALHOS_UNIDADES.length).getValues()[0];
-      const sigla = linhaAtual[C('Sigla')];
-      // Confere a sigla antes de excluir
-      if (siglaEsperada && sigla.toString().trim() !== String(siglaEsperada).trim())
-        return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
-      // Integridade referencial: Documentos/Riscos/Planos guardam a unidade
-      // responsável pelo id (ex.: "UN-5"). Excluir a unidade deixaria essas
-      // referências órfãs (passariam a exibir o id cru na tela). Bloqueia a
-      // exclusão enquanto houver itens vinculados. Dentro do lock, garante que
-      // nada passe a referenciá-la entre a checagem e a remoção.
-      const idUnidade   = String(linhaAtual[C('ID Unidade')]||'').trim();
-      const nomeUnidade = String(linhaAtual[C('Nome da Unidade')]||'').trim();
-      const refs = contarReferenciasUnidade_(idUnidade, sigla.toString().trim(), nomeUnidade);
-      if (refs.total > 0)
-        return { sucesso: false, mensagem: 'Não é possível excluir: a unidade ainda é responsável por ' + refs.descricao + '. Reatribua ou remova esses itens antes.' };
-      aba.deleteRow(linha);
-      registrarLog('Exclusão de Unidade', sigla, 'Unidade removida.');
-      return { sucesso: true, mensagem: 'Unidade excluída com sucesso!' };
-    });
-  } catch(e) { return erroInterno_(e); }
-}
-
-// Conta quantos Documentos/Riscos/Planos ainda apontam para uma unidade.
-// Aceita o id atual (ex.: "UN-5") e também o formato de texto legado
-// ("SIGLA - Nome"), já que dados antigos podem ter gravado o responsável
-// como texto antes de o sistema passar a referenciar por id.
-function contarReferenciasUnidade_(idUnidade, sigla, nome) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const alvos = {};
-  if (idUnidade) alvos[idUnidade] = true;
-  if (sigla && nome) alvos[sigla + ' - ' + nome] = true; // formato legado
-  const bate = v => !!alvos[String(v || '').trim()];
-
-  let docs = 0, riscos = 0, planos = 0;
-  const dData = safeGetSheetData(ss, SHEET_DOCS);
-  if (dData.length > 1) { const CD = colIdx_(CABECALHOS_DOCS);   docs   = dData.slice(1).filter(r => bate(r[CD('Responsável')])).length; }
-  const rData = safeGetSheetData(ss, SHEET_RISKS);
-  if (rData.length > 1) { const CR = colIdx_(CABECALHOS_RISCOS); riscos = rData.slice(1).filter(r => bate(r[CR('Responsável')])).length; }
-  const pData = safeGetSheetData(ss, SHEET_PLANS);
-  if (pData.length > 1) { const CP = colIdx_(CABECALHOS_PLANOS); planos = pData.slice(1).filter(r => bate(r[CP('Quem')])).length; }
-
-  const partes = [];
-  if (docs)   partes.push(docs   + (docs   === 1 ? ' documento' : ' documentos'));
-  if (riscos) partes.push(riscos + (riscos === 1 ? ' risco'     : ' riscos'));
-  if (planos) partes.push(planos + (planos === 1 ? ' plano de ação' : ' planos de ação'));
-  return { total: docs + riscos + planos, descricao: partes.join(', ') };
-}
-
 function _definirStatusUnidade_(idRow, siglaEsperada, statusAtivo) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {

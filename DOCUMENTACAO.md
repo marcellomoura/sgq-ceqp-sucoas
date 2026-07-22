@@ -38,7 +38,7 @@ O SGQ é um **web app monolítico de página única (SPA)** sobre Google Apps Sc
 | P8 | `Código.js` mistura responsabilidades (config + utils + auth + acesso a dados + PDF + endpoints) | Arquitetura/SoC | **Médio** — ❌ *Descartado por decisão (2026-07-16): manter arquivo único.* |
 | P9 | Ausência total de **testes automatizados**, mesmo para lógica pura testável | Qualidade | **Médio** — ⚙️ *Endereçado (Fase 5.2, 2026-07-16): `runTests_()` cobre a lógica pura (nível de risco, próxima revisão, status de plano/capacitação, arquivamento, sanitização, colIdx, links). 40 asserções. Rodar pelo editor.* |
 | P10 | Sanitização de HTML por **regex** (reconhecidamente não é parser) | Segurança | **Baixo** |
-| P11 | Código morto: `histJson` em `renderRiscosArquivados`; `state.afastamentos` fora da inicialização de `state` | Clean Code | **Baixo** |
+| P11 | Código morto: `histJson` em `renderRiscosArquivados`; `state.afastamentos` fora da inicialização de `state` | Clean Code | **Baixo** — ✅ *Resolvido: `histJson` removido e `afastamentos: []` já consta na inicialização de `state`. O endpoint latente `excluirUnidade`/`contarReferenciasUnidade_` (sem chamador de UI) também foi removido em 2026-07-22.* |
 | P12 | `gerarPdfDeHtml` (download) **sem** rate limit (só o envio por e-mail tem) | Performance | **Baixo** — ✅ *Resolvido (Fase 5.3, 2026-07-16): helper `_limitePdfExcedido_` compartilhado; download com janela curta (3s) e chave própria, sem bloquear downloads sequenciais legítimos.* |
 
 ---
@@ -111,7 +111,7 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 | `saveTask`/`updateTaskStatus`/`deleteTask`/`arquivarTarefaManual`/`restaurarTarefaArquivada` | Modulo_Kanban | `salvarTarefa`/`drop`/`confirmarExcluirTarefa`/`confirmarArquivarTarefa`/`restaurarTarefa` |
 | `saveMember`/`inativarMembro`/`reativarMembro` | Modulo_Kanban | `salvarMembro`/`inativarMembro`/`reativarMembro` |
 | `salvarEscala`/`salvarAfastamento` | Modulo_Pessoas | `confirmarEscala`/`confirmarFerias` |
-| `salvarUnidade`/`atualizarUnidade`/`excluirUnidade`/`inativarUnidade`/`reativarUnidade` | Modulo_Unidades | `confirmarUnidade`/`excluirUnidade`/… |
+| `salvarUnidade`/`atualizarUnidade`/`inativarUnidade`/`reativarUnidade` | Modulo_Unidades | `confirmarUnidade`/… |
 | `salvarDocumento`/`atualizarDocumento`/`salvarRevisaoDocumento`/`excluirDocumento` | Modulo_Documentos | `salvarDocumento`/`confirmarEdicaoDoc`/`publicarRevisaoDoc`/`excluirDoc` |
 | `salvarRisco`/`atualizarRisco`/`reavaliarRisco`/`excluirRisco`/`restaurarRisco` | Modulo_Riscos | módulo Riscos |
 | `salvarPlano`/`atualizarPlano`/`excluirPlano`/`revisarPlano`/`salvarEntregasEmLote` | Modulo_Riscos | módulo Riscos |
@@ -123,15 +123,27 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 - **Núcleo compartilhado (Código.js):** `colIdx_`, `comBloqueio`, `conectarAba`, `safeGetSheet(Data)`, `isMembro_`, `membrosParaAuth_` (+ cache), `getNextId_`, `registrarLog`, `formatarDataParaUI`, `_dataLocalISO_`, `linkPermitido_`, `calcularNivelRisco`, `calcularProximaRevisao` — **usados por todos os módulos.**
 - **`isMembro_` → `membrosParaAuth_` → `conectarAba(SHEET_MEMBERS)`** roda no início de **praticamente toda** chamada (mitigado por `ScriptCache` de 6h, invalidado em escrita de membro).
 - **Cadeia de setup/migração (crítica de ordem):** `setupDatabaseKanban` → `_migrarEremoverColunaAtividades_` → `_reordenarColunasTarefas_` → `conectarAba`. **Tem de rodar antes de qualquer leitura de Tarefas** (senão `colIdx_` cai na coluna errada). Idempotente via `ScriptProperties` + re-checagem dentro do lock.
-- **Acoplamento cruzado por dados:** `excluirUnidade` → `contarReferenciasUnidade_` lê Documentos/Riscos/Planos (integridade referencial); `reavaliarRisco` marca `Revisão Pendente` nos planos; `salvarEntregasEmLote` → `_reavaliarBaixa` lê Unidades.
+- **Acoplamento cruzado por dados:** `reavaliarRisco` marca `Revisão Pendente` nos planos; `salvarEntregasEmLote` → `_reavaliarBaixa` lê Unidades.
 
 ### 3.3 Estado do cliente
-`var state = { tasks, archivedTasks, members, units, docs, risks, plans, deliveries, history, trainings }` — fonte única no cliente. **Observação (P11):** `afastamentos` é usado (`state.afastamentos`) mas **não** está na inicialização de `state`, contradizendo o comentário que diz declarar tudo para evitar chaves que "aparecem só após a carga".
+`var state = { tasks, archivedTasks, members, units, docs, risks, plans, deliveries, history, trainings, afastamentos }` — fonte única no cliente. (P11 resolvido: `afastamentos: []` já consta na inicialização de `state`.)
 
 ### 3.4 Funções órfãs / código morto
-- `histJson` em `renderRiscosArquivados` (JS_Riscos.html ~L786): declarada, nunca usada, com comentário-nota em inglês (`// Wait, ... // Actually...`).
+- Nenhum item aberto (revisado em 2026-07-22): `histJson` foi removido e o endpoint latente `excluirUnidade`/`contarReferenciasUnidade_` (sem chamador de UI) foi removido.
 - Comentário final em Modulo_Riscos.js: nota sobre função de PDF que "não é mais necessária aqui" — ruído inofensivo.
 - Não há funções GS expostas sem chamador (todos os endpoints são invocados pelo cliente).
+
+### 3.5 Índice de tags de auditoria (rastreabilidade nos comentários)
+Alguns comentários do código carregam tags curtas de auditorias anteriores. O prefixo indica a série de auditoria de origem; abaixo, o que cada tag ainda presente no código significa (índice criado em 2026-07-22):
+
+| Tag | Onde | O que a mudança fez |
+|-----|------|---------------------|
+| `A03` | `JS_Utilitarios.html` — handler do botão `btn-confirmar-excluir` | Proteção imediata contra clique duplo: desabilita o botão já no 1º clique. |
+| `A13` | `JS_Utilitarios.html` — `inicializarSidebarRetratil`/modais | Acessibilidade: injeta ARIA roles nos modais e configura o Focus Trap. |
+| `C04` | `Código.js` — `enviarPdfDeHtml` | Restringe o envio de PDF exclusivamente a e-mails de membros cadastrados. |
+| `H03` | `Código.js` — `enviarPdfDeHtml` → `registrarLog` | Protege o `registrarLog` do envio de PDF com `comBloqueio`, evitando colisão com escrita concorrente na aba Logs. |
+
+> `B17` (declaração global de `logsCache`) foi removida em 2026-07-22 na migração da paginação de logs — a tag não existe mais no código.
 
 ---
 
@@ -161,7 +173,7 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 
 ### 4.6 Agente de Qualidade (Clean Code)
 - **Positivos:** nomes claros e consistentes; comentários explicam o *porquê*, não o *quê*; funções em geral coesas.
-- **Problemas:** funções longas com alta complexidade ciclomática — `renderTasks` (JS_Kanban), `renderFerias` (JS_Pessoas), `renderAcompanhamento`/`abrirModalAcompEntregas` (JS_Riscos), `saveTask` (Modulo_Kanban); código morto (P11); referências a auditorias antigas nos comentários (`A03`, `B17`, `C04`, `H03`) — rastreabilidade útil, mas viram ruído sem um índice.
+- **Problemas:** funções longas com alta complexidade ciclomática — `renderTasks` (JS_Kanban), `renderFerias` (JS_Pessoas), `renderAcompanhamento`/`abrirModalAcompEntregas` (JS_Riscos), `saveTask` (Modulo_Kanban); código morto (P11); referências a auditorias antigas nos comentários (`A03`, `A13`, `C04`, `H03`) — rastreabilidade útil, agora indexadas em §3.5.
 
 ---
 
@@ -170,11 +182,11 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 **Fase 1 — Correções críticas / segurança (baixo risco)**
 1. Revisar modelo de implantação (P1) — **DECIDIDO (2026-07-16): manter `USER_ACCESSING`.** A migração para `USER_DEPLOYING` foi descartada: como os membros logam com conta **pessoal** (@gmail), `Session.getActiveUser().getEmail()` retornaria vazio sob "executar como o dono" e bloquearia todos. A autenticação permanece inalterada. O furo (membro editar a planilha crua) é tradeoff inerente e deve ser mitigado por controle de compartilhamento da planilha, não por código.
 2. Fixar versões dos CDNs (P4): `chart.js@4.x.x`, e idealmente adotar Subresource Integrity (SRI) ou auto-hospedar os assets como `.html` servidos por `HtmlService`.
-3. Remover código morto (P11): `histJson`; adicionar `afastamentos: []` à inicialização de `state`.
+3. Remover código morto (P11) — **✅ FEITO:** `histJson` removido, `afastamentos: []` na inicialização de `state`, e endpoint latente `excluirUnidade`/`contarReferenciasUnidade_` removido (2026-07-22).
 
 **Fase 2 — Performance / escalabilidade**
 4. Rotação de `Logs` e `Atividades` (P3) — **✅ FEITO (Fase 2.1, 2026-07-16).** Duas funções admin em `Código.js` (nome com `_` final → não chamáveis pelo cliente; rodam pelo editor como o dono): `diagnosticoAbas_()` (relatório de células por aba × teto de 10M, só leitura) e `arquivarLogsAntigos_(mesesRetencao=12)` (move Logs antigos para `Logs_Arquivo`; **sempre preserva as últimas 2.000 linhas** — a janela que a UI exibe — então nunca reduz a tela; copia+flush antes de remover, remove em lote via `_deleteRowsBatch_`, nunca apaga sem salvar). `Atividades` **não** é rotacionada: está atrelada ao ciclo de vida do cartão (ativo/arquivado precisa do histórico) e já é limpa ao excluir o cartão (2.2) + contagem cacheada (2.3).
-5. Substituir `deleteRow` em laço por operações em lote (P5) — **✅ FEITO (Fase 2.2, 2026-07-16).** Criado o helper compartilhado `_deleteRowsBatch_` (Código.js), que agrupa as linhas-alvo em blocos contíguos e usa `deleteRows(início, quantidade)` por bloco. Aplicado em `_excluirAtividadesDaTarefa_`, `excluirDocumento` e `excluirPlano`. Optou-se por `deleteRows` em vez de reescrever a aba com `setValues` para não pagar custo O(N) numa aba grande (ex.: `Atividades`) nem abrir janela de perda de dados. Exclusões de linha única (`excluirUnidade`, `excluirCapacitacao`, `deleteTask`) seguem com `deleteRow`.
+5. Substituir `deleteRow` em laço por operações em lote (P5) — **✅ FEITO (Fase 2.2, 2026-07-16).** Criado o helper compartilhado `_deleteRowsBatch_` (Código.js), que agrupa as linhas-alvo em blocos contíguos e usa `deleteRows(início, quantidade)` por bloco. Aplicado em `_excluirAtividadesDaTarefa_`, `excluirDocumento` e `excluirPlano`. Optou-se por `deleteRows` em vez de reescrever a aba com `setValues` para não pagar custo O(N) numa aba grande (ex.: `Atividades`) nem abrir janela de perda de dados. Exclusões de linha única (`excluirCapacitacao`, `deleteTask`) seguem com `deleteRow`.
 6. Cache da contagem de comentários, invalidado em escrita (P2) — **✅ FEITO (Fase 2.3, 2026-07-16).** Novo `CACHE_KEY_COMENTARIOS` + `invalidarCacheComentarios_` (Código.js). `_contarComentariosPorTarefa_` virou cache-aware (lê o mapa do `ScriptCache`, calcula no miss, grava com guarda de 90KB). Invalidação **só** quando a contagem muda: `_registrarAtividades_` (apenas se houver item `comment`) e `_excluirAtividadesDaTarefa_`. Mover/editar cartão (itens `log`) não invalidam → deixam de reler a aba `Atividades`. Mesmo padrão de `membros_auth`. **Não** cacheado: payload do quadro (limite de 100KB) nem `Tarefas` (precisa vir fresco). Cache de Membros avaliado e descartado (aba pequena/limitada, ganho marginal, invalidação extra em `salvarEscala` fácil de esquecer).
 
 **Fase 3 — Arquitetura**
