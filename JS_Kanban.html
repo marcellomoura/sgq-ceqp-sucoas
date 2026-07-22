@@ -17,11 +17,15 @@ function sincronizarDropdownMembros() {
 function renderMembers() {
   const tbody = $id('members-list');
   if(!tbody) return;
-  const mostrarInativos = ($id('chk-membros-inativos')||{checked:false}).checked;
+  const statusMembros = ($id('f-membros-status')||{value:'ativos'}).value;
   // Índice ORIGINAL em state.members (usado pelos botões) preservado via indexOf.
-  const visiveis = state.members.filter(m => mostrarInativos || m.ativo !== false);
+  const visiveis = state.members.filter(m =>
+    statusMembros === 'todos'    ? true :
+    statusMembros === 'inativos' ? m.ativo === false :
+                                   m.ativo !== false);   // 'ativos' (padrão)
   if(!visiveis.length) {
-    tbody.innerHTML=`<div class="msg-empty">Nenhum membro ${(mostrarInativos?'':'ativo ')}cadastrado.</div>`;
+    const rotulo = statusMembros === 'inativos' ? 'inativo ' : statusMembros === 'todos' ? '' : 'ativo ';
+    tbody.innerHTML=`<div class="msg-empty">Nenhum membro ${rotulo}cadastrado.</div>`;
     return;
   }
   const ordenados = visiveis

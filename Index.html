@@ -294,10 +294,12 @@
           <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Membros</div>
 
           <div style="display: flex; align-items: center; gap: 20px;">
-            <label
-              style="display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary); cursor:pointer; margin: 0;">
-              <input type="checkbox" id="chk-membros-inativos" onchange="renderMembers()"> Mostrar inativos
-            </label>
+            <select id="f-membros-status" onchange="renderMembers()"
+              style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
+              <option value="ativos">Ativos</option>
+              <option value="inativos">Inativos</option>
+              <option value="todos">Todos</option>
+            </select>
             <button class="btn-create" id="btn-novo-membro" type="button"
               style="display: flex; align-items: center; justify-content: center; background-color: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: 9999px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
               Novo Membro
