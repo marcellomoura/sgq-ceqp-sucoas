@@ -37,14 +37,14 @@ function salvarEscala(dados) {
           aba.getRange(i + 1, C('Dias Semana')+1, 1, 2).setValues([[
             comboStr.join(', '),
             dados.diaPresencial || ''
-          ]]);
+          ].map(neutralizarFormula_)]);
           registrarLog('Edição de Escala', String(rows[i][C('Nome')]), 'Escala semanal atualizada.');
           return { sucesso: true };
         }
       }
       return { sucesso: false, mensagem: 'Membro não encontrado.' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 // ─── AFASTAMENTOS (Férias, Abonos, Licença) ────────────────────────────────────
@@ -153,16 +153,16 @@ function salvarAfastamento(dados) {
 
       for (let i = 1; i < rows.length; i++) {
         if (String(rows[i][CA('Membro ID')]) === String(dados.membroId) && String(rows[i][CA('Ano')]) === String(dados.ano)) {
-          aba.getRange(i + 1, CA('Férias 1')+1, 1, 7).setValues([valores]);
+          aba.getRange(i + 1, CA('Férias 1')+1, 1, 7).setValues([valores.map(neutralizarFormula_)]);
           registrarLog('Edição de Afastamentos', dados.membroNome + ' (' + dados.ano + ')', 'Afastamentos atualizados.');
           return { sucesso: true };
         }
       }
       // Não existia registro deste membro para este ano — cria um novo
       const id = getNextId_(aba, 'AF-');
-      aba.appendRow([id, dados.ano, dados.membroId, dados.membroNome].concat(valores));
+      aba.appendRow([id, dados.ano, dados.membroId, dados.membroNome].concat(valores).map(neutralizarFormula_));
       registrarLog('Cadastro de Afastamentos', dados.membroNome + ' (' + dados.ano + ')', 'Novo registro anual criado.');
       return { sucesso: true };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }

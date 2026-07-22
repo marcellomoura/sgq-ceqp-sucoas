@@ -173,6 +173,28 @@ function linkPermitido_(url) {
   return !v || /^https?:\/\//i.test(v);
 }
 
+// Neutraliza injeção de fórmula (CSV/Formula Injection): se um TEXTO começa com
+// um caractere que Sheets/Excel interpretam como fórmula (= + - @) ou com
+// tab/CR, prefixa um apóstrofo — que força texto e é removido de volta na
+// leitura (getValue não devolve o apóstrofo), então o app não percebe diferença.
+// No-op em números, datas, booleanos, JSON e textos comuns. Aplicado nos pontos
+// onde texto do usuário é gravado; migrações/arquivamento (que movem dados já
+// existentes, não entrada de usuário) ficam de fora de propósito.
+function neutralizarFormula_(v) {
+  return (typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) ? "'" + v : v;
+}
+
+// Erro interno: registra o detalhe real no log do servidor (Stackdriver, via
+// console.error) e devolve ao cliente uma mensagem genérica — sem vazar stack
+// trace nem detalhes internos. Mantém o contrato { sucesso:false, mensagem }
+// que todos os endpoints já usam, então o cliente continua exibindo a mensagem
+// normalmente. Erros de VALIDAÇÃO (campo obrigatório, e-mail inválido etc.)
+// continuam com texto próprio e explícito; este helper cobre só o inesperado.
+function erroInterno_(e, contexto) {
+  try { console.error('[' + (contexto || 'erro') + '] ' + (e && e.stack ? e.stack : e)); } catch (_) {}
+  return { sucesso: false, mensagem: 'Ocorreu um erro ao processar a solicitação. Tente novamente em instantes.' };
+}
+
 function getNowTimestamp() {
   return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
 }
@@ -346,7 +368,7 @@ function calcularProximaRevisao(dataStr) {
 function registrarLog(acao, ref, detalhe) {
   try {
     const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
-    aba.appendRow([new Date(), nomeUsuarioAtual_(), acao, ref, detalhe]);
+    aba.appendRow([new Date(), nomeUsuarioAtual_(), acao, ref, detalhe].map(neutralizarFormula_));
   } catch(e) { console.error('Log falhou: ' + e); }
 }
 
@@ -463,7 +485,7 @@ function _migrarEremoverColunaAtividades_() {
 function _registrarAtividades_(itens) {
   if (!itens || !itens.length) return;
   const aba = conectarAba(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
-  const linhas = itens.map(a => [String(a.tarefaId), String(a.tipo || 'log'), String(a.texto || ''), String(a.data || ''), String(a.autor || '')]);
+  const linhas = itens.map(a => [String(a.tarefaId), String(a.tipo || 'log'), String(a.texto || ''), String(a.data || ''), String(a.autor || '')].map(neutralizarFormula_));
   aba.getRange(aba.getLastRow() + 1, 1, linhas.length, CABECALHOS_ATIVIDADES.length).setValues(linhas);
   // Só 'comment' entra na contagem do badge; itens 'log' (mover/editar) não a
   // alteram e por isso não invalidam o cache.
@@ -1351,7 +1373,7 @@ function gerarPdfDeHtml(htmlContent, nomeArquivo) {
     const blob = Utilities.newBlob(htmlSeguro, MimeType.HTML, 'relatorio.html');
     const pdf = blob.getAs(MimeType.PDF).setName(nomeArquivo);
     return { sucesso: true, base64: Utilities.base64Encode(pdf.getBytes()) };
-  } catch (e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch (e) { return erroInterno_(e, 'gerarPdfDeHtml'); }
 }
 
 // Rate limit POR USUÁRIO (não global) para operações de PDF: evita que um clique
@@ -1415,5 +1437,5 @@ function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
     // concorrente na aba Logs (ver auditoria H03).
     comBloqueio(() => registrarLog('Envio de PDF', titulo || 'Relatório', 'Destinatário: ' + destinatario));
     return { sucesso: true, mensagem: 'Relatório enviado com sucesso!' };
-  } catch (e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch (e) { return erroInterno_(e, 'enviarPdfDeHtml'); }
 }

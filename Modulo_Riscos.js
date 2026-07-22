@@ -29,11 +29,11 @@ function salvarRisco(dados) {
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
       aba.appendRow([id, dados.macroetapa, nomeR, dados.causa, dados.consequencia,
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel,
-        dados.tipoTratamento, dados.responsavel, 'Ativo', '[]']);
+        dados.tipoTratamento, dados.responsavel, 'Ativo', '[]'].map(neutralizarFormula_));
       registrarLog('Cadastro de Risco', id, 'Risco criado: ' + nomeR);
       return { sucesso: true, mensagem: 'Risco mapeado com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function atualizarRisco(dados) {
@@ -75,18 +75,18 @@ function atualizarRisco(dados) {
         lastHist.responsavel = dados.responsavel;
         
         // Em SHEET_RISKS, preserva Prob, Imp, Trat, Resp originais
-        aba.getRange(linha, CR('Macroetapa')+1, 1, 5).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia, dados.categoria]]);
+        aba.getRange(linha, CR('Macroetapa')+1, 1, 5).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia, dados.categoria].map(neutralizarFormula_)]);
         aba.getRange(linha, CR('Histórico')+1).setValue(JSON.stringify(histArr));
       } else {
         // Risco não possui histórico. Atualiza o cadastro base.
         aba.getRange(linha, CR('Macroetapa')+1, 1, 11).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia,
-          dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel, dados.tipoTratamento, dados.responsavel, 'Ativo']]);
+          dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel, dados.tipoTratamento, dados.responsavel, 'Ativo'].map(neutralizarFormula_)]);
       }
       
       registrarLog('Edição de Risco', ref, 'Metadados atualizados.');
       return { sucesso: true, mensagem: 'Risco atualizado!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 // Soft delete: arquivar e restaurar diferiam apenas pelo valor de Status e
@@ -113,7 +113,7 @@ function _definirStatusRisco_(idRisco, novoStatus, acaoLog, detalheLog, msgOk) {
       registrarLog(acaoLog, ref, detalheLog);
       return { sucesso: true, mensagem: msgOk };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function excluirRisco(idRisco) {
@@ -181,11 +181,11 @@ function reavaliarRisco(dados) {
         }
       }
       
-      abaR.getRange(linhaR, CR('Tipo Tratamento')+1, 1, 2).setValues([[dados.tipoTratamento, dados.responsavel]]);
+      abaR.getRange(linhaR, CR('Tipo Tratamento')+1, 1, 2).setValues([[dados.tipoTratamento, dados.responsavel].map(neutralizarFormula_)]);
       registrarLog('Reavaliação de Risco', ref, 'Risco reavaliado.');
       return { sucesso: true, mensagem: 'Reavaliação salva!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function revisarPlano(dados) {
@@ -270,7 +270,7 @@ function revisarPlano(dados) {
       }
 
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 // ==========================================
@@ -306,11 +306,11 @@ function salvarPlano(dados) {
       }
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
       aba.appendRow([dados.riscoVinculado, dados.what, dados.why, dados.who,
-        dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, 'Não', '[]']);
+        dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, 'Não', '[]'].map(neutralizarFormula_));
       registrarLog('Cadastro de Plano', dados.riscoVinculado, 'Plano 5W2H criado: ' + dados.what);
       return { sucesso: true, mensagem: 'Plano registrado!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function atualizarPlano(dados) {
@@ -329,14 +329,14 @@ function atualizarPlano(dados) {
             String(rows[i][CP('O Que')]||'').trim() === dados.whatAntigo) {
           // Bloco contíguo O Que → Status (9 colunas)
           aba.getRange(i+1, CP('O Que')+1, 1, 9).setValues([[dados.what, dados.why, dados.who, dados.where,
-            dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status]]);
+            dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status].map(neutralizarFormula_)]);
           registrarLog('Edição de Plano', dados.riscoVinculado, 'Status: ' + status);
           return { sucesso: true, mensagem: 'Plano atualizado!' };
         }
       }
       return { sucesso: false, mensagem: 'Plano não localizado.' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 // --- Entregas ---
@@ -427,7 +427,7 @@ function salvarEntregasEmLote(riscoVinculado, whatPlano, entregas) {
       registrarLog('Acompanhamento de Entregas', riscoVinculado, 'Entregas do plano atualizadas. Registros: ' + entregas.length);
       return { sucesso: true, mensagem: 'Registros salvos com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 // PDF por e-mail: ver gerarPdfDeHtml/enviarPdfDeHtml em Código.js — a

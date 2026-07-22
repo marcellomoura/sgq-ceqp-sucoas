@@ -20,11 +20,11 @@ function salvarUnidade(dados) {
           return { sucesso: false, mensagem: "Já existe uma unidade com a sigla '" + dados.sigla + "'." };
       }
       const id = getNextId_(aba, 'UN-');
-      aba.appendRow([id, dados.unidade.trim(), dados.sigla.trim(), dados.email.trim(), (dados.linkDrive||'').trim(), 'Sim']);
+      aba.appendRow([id, dados.unidade.trim(), dados.sigla.trim(), dados.email.trim(), (dados.linkDrive||'').trim(), 'Sim'].map(neutralizarFormula_));
       registrarLog('Cadastro de Unidade', dados.sigla, 'Unidade incluída: ' + dados.unidade);
       return { sucesso: true, mensagem: 'Unidade cadastrada com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function atualizarUnidade(dados) {
@@ -61,11 +61,11 @@ function atualizarUnidade(dados) {
         if ((rows[i][C('Sigla')]||'').toString().trim().toUpperCase() === siglaNova)
           return { sucesso: false, mensagem: "Já existe uma unidade com a sigla '" + dados.sigla + "'." };
       }
-      aba.getRange(linha, C('Nome da Unidade')+1, 1, 4).setValues([[dados.unidade, dados.sigla, dados.email, (dados.linkDrive||'').trim()]]);
+      aba.getRange(linha, C('Nome da Unidade')+1, 1, 4).setValues([[dados.unidade, dados.sigla, dados.email, (dados.linkDrive||'').trim()].map(neutralizarFormula_)]);
       registrarLog('Edição de Unidade', dados.sigla, 'Dados atualizados.');
       return { sucesso: true, mensagem: 'Unidade atualizada com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function excluirUnidade(idRow, siglaEsperada) {
@@ -98,7 +98,7 @@ function excluirUnidade(idRow, siglaEsperada) {
       registrarLog('Exclusão de Unidade', sigla, 'Unidade removida.');
       return { sucesso: true, mensagem: 'Unidade excluída com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 // Conta quantos Documentos/Riscos/Planos ainda apontam para uma unidade.
@@ -145,7 +145,7 @@ function _definirStatusUnidade_(idRow, siglaEsperada, statusAtivo) {
       registrarLog(statusAtivo ? 'Reativação de Unidade' : 'Inativação de Unidade', sigla, statusAtivo ? 'Unidade reativada.' : 'Unidade inativada.');
       return { sucesso: true, mensagem: statusAtivo ? 'Unidade reativada com sucesso!' : 'Unidade inativada com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function inativarUnidade(idRow, sigla) { return _definirStatusUnidade_(idRow, sigla, false); }

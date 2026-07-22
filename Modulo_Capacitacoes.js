@@ -32,12 +32,12 @@ function salvarCapacitacao(dados) {
         st,
         (dados.materiais     || '').trim(),
         (dados.participantes || '')
-      ]);
+      ].map(neutralizarFormula_));
 
       registrarLog('Cadastro de Capacitação', id, 'Capacitação incluída: ' + dados.titulo);
       return { sucesso: true, mensagem: 'Capacitação cadastrada com sucesso!', novoId: id, novaLinha: aba.getLastRow() };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function atualizarCapacitacao(dados) {
@@ -73,12 +73,12 @@ function atualizarCapacitacao(dados) {
         st,
         (dados.materiais     || '').trim(),
         (dados.participantes || '')
-      ]]);
+      ].map(neutralizarFormula_)]);
 
       registrarLog('Edição de Capacitação', idAtual, 'Dados atualizados.');
       return { sucesso: true, mensagem: 'Capacitação atualizada com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function excluirCapacitacao(idRow, idEsperado) {
@@ -100,5 +100,5 @@ function excluirCapacitacao(idRow, idEsperado) {
       registrarLog('Exclusão de Capacitação', id, 'Capacitação removida.');
       return { sucesso: true, mensagem: 'Capacitação excluída com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }

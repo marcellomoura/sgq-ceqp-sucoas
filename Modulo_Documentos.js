@@ -45,11 +45,11 @@ function salvarDocumento(dados) {
       // Versão gravada como NÚMERO (não texto) — mantém consistência de
       // formatação e alinhamento na planilha com as revisões seguintes.
       aba.appendRow([codigo, 1, dados.tipo, dados.titulo, dados.dataAprovacao, proxRev,
-        'Vigente', dados.responsavel, dados.linkDoc, dados.docAuxiliar || '', dados.docAuxiliar2 || '', 'Emissão Inicial']);
+        'Vigente', dados.responsavel, dados.linkDoc, dados.docAuxiliar || '', dados.docAuxiliar2 || '', 'Emissão Inicial'].map(neutralizarFormula_));
       registrarLog('Cadastro de Documento', codigo, 'Documento publicado: ' + dados.titulo);
       return { sucesso: true, mensagem: 'Documento registrado com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function atualizarDocumento(dados) {
@@ -72,12 +72,12 @@ function atualizarDocumento(dados) {
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
       const proxRev = calcularProximaRevisao(dados.dataAprovacao);
       // Bloco Tipo→Próxima Revisão (4 colunas) e Responsável→Doc Auxiliar 2 (4 colunas)
-      aba.getRange(linha, C('Tipo')+1, 1, 4).setValues([[dados.tipo, dados.titulo, dados.dataAprovacao, proxRev]]);
-      aba.getRange(linha, C('Responsável')+1, 1, 4).setValues([[dados.responsavel, dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||'']]);
+      aba.getRange(linha, C('Tipo')+1, 1, 4).setValues([[dados.tipo, dados.titulo, dados.dataAprovacao, proxRev].map(neutralizarFormula_)]);
+      aba.getRange(linha, C('Responsável')+1, 1, 4).setValues([[dados.responsavel, dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||''].map(neutralizarFormula_)]);
       registrarLog('Edição de Documento', dados.codigo, 'Metadados atualizados.');
       return { sucesso: true, mensagem: 'Documento atualizado com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function salvarRevisaoDocumento(dados) {
@@ -116,11 +116,11 @@ function salvarRevisaoDocumento(dados) {
       const novaVersaoNum = Math.floor(versao) + 1;
       const proxRev = calcularProximaRevisao(dados.dataAprovacao);
       aba.appendRow([antiga[C('Código')], novaVersaoNum, antiga[C('Tipo')], antiga[C('Título')], dados.dataAprovacao, proxRev,
-        'Vigente', antiga[C('Responsável')], dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||'', dados.motivo]);
+        'Vigente', antiga[C('Responsável')], dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||'', dados.motivo].map(neutralizarFormula_));
       registrarLog('Revisão de Documento', antiga[C('Código')], 'Nova versão v' + novaVersaoNum.toFixed(1));
       return { sucesso: true, mensagem: 'Revisão publicada com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }
 
 function excluirDocumento(idRow, codigoEsperado) {
@@ -153,5 +153,5 @@ function excluirDocumento(idRow, codigoEsperado) {
       registrarLog('Exclusão de Documento', cod, 'Documento removido (' + linhasParaExcluir.length + ' versão(ões)).');
       return { sucesso: true, mensagem: 'Documento excluído com sucesso!' };
     });
-  } catch(e) { return { sucesso: false, mensagem: e.toString() }; }
+  } catch(e) { return erroInterno_(e); }
 }

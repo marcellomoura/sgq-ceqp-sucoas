@@ -72,7 +72,7 @@ function saveTask(task) {
           // controlados por updateTaskStatus/drag. Sem isso, salvar o cartão
           // depois de um arrastar revertia o status para o valor antigo.
           // Título→Prioridade são contíguos (cols Título..Prioridade).
-          sheet.getRange(i+1, C('Título')+1, 1, 4).setValues([[task.title, task.description, task.assigneeId, task.priority]]);
+          sheet.getRange(i+1, C('Título')+1, 1, 4).setValues([[task.title, task.description, task.assigneeId, task.priority].map(neutralizarFormula_)]);
           sheet.getRange(i+1, C('Prazo')+1).setValue(task.deadline || '');
           // Etiquetas..Última Atualização em uma escrita só. 'Arquivado' está no
           // meio do intervalo e NÃO é editável aqui — reescreve-se o valor que
@@ -126,7 +126,7 @@ function saveTask(task) {
         newId, task.status, task.title, task.description, task.assigneeId,
         task.priority, dateNow, startDate, task.deadline || '', completionDate, task.labels || '[]', '', String(new Date().getTime())
       ];
-      sheet.appendRow(novaLinha);
+      sheet.appendRow(novaLinha.map(neutralizarFormula_));
       _registrarAtividades_([{
         tarefaId: newId, tipo: 'log', texto: `Criou este cartão na lista "${task.status}"`, data: timeNow, autor: autor
       }]);
@@ -169,7 +169,7 @@ function updateTaskStatus(id, newStatus) {
 
         row[C('Arquivado')] = '';
 
-        sheet.getRange(i+1, 1, 1, row.length).setValues([row]);
+        sheet.getRange(i+1, 1, 1, row.length).setValues([row.map(neutralizarFormula_)]);
         _registrarAtividades_([{
           tarefaId: id, tipo: 'log', texto: `Moveu de "${oldStatus}" para "${newStatus}"`, data: timeNow, autor: autor
         }]);
@@ -276,10 +276,10 @@ function saveMember(member) {
       for (let i = 1; i < data.length; i++) {
         if (String(data[i][C('ID')]) === String(member.id)) {
           // Nome, Cargo e Email Funcional são contíguos (colunas 2-4)
-          sheet.getRange(i+1, C('Nome')+1, 1, 3).setValues([[member.name, member.role, member.email]]);
+          sheet.getRange(i+1, C('Nome')+1, 1, 3).setValues([[member.name, member.role, member.email].map(neutralizarFormula_)]);
           // E-mail pessoal na coluna do cabeçalho (antes ia para a 13ª por
           // engano, ficando invisível na leitura — ver getKanbanData_members_)
-          sheet.getRange(i+1, C('E-mail Pessoal')+1).setValue(member.emailPessoal || '');
+          sheet.getRange(i+1, C('E-mail Pessoal')+1).setValue(neutralizarFormula_(member.emailPessoal || ''));
           SpreadsheetApp.flush();
           invalidarCacheMembros_(); // nome/e-mails mudaram — refaz o cache de auth
           return { sucesso: true };
@@ -290,7 +290,7 @@ function saveMember(member) {
       // Nova linha no layout de CABECALHOS_MEMBROS (Dias Semana / Dia
       // Presencial ficam vazios até a edição da Escala; nasce Ativo = 'Sim')
       const row = [newId, member.name, member.role, member.email || '', member.emailPessoal || '', '', '', 'Sim'];
-      sheet.appendRow(row);
+      sheet.appendRow(row.map(neutralizarFormula_));
       SpreadsheetApp.flush();
       invalidarCacheMembros_(); // membro novo ganha acesso imediato (sem esperar TTL)
       return { sucesso: true };
