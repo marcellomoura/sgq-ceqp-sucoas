@@ -33,15 +33,15 @@ function renderMembers() {
       ? iconBtn('check', 'reativar-membro', 'Reativar membro', `data-idx="${i}"`)
       : `${iconBtn('edit','edit-membro','Editar',`data-idx="${i}"`)}${iconBtn('ban','inativar-membro','Inativar membro',`data-idx="${i}"`)}`;
       
-    return `<div class="grid-row-hover" style="display: grid; grid-template-columns: 2fr 1.5fr 2fr 2fr 100px; gap: 16px; align-items: center; padding: 12px 20px; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #f3f4f6; ${inativo?'opacity:0.6;':''}">
-      <div style="font-weight:600; display:flex; align-items:center; gap:12px;">
+    return `<div class="grid-row-hover member-row${inativo ? ' member-row--inativa' : ''}">
+      <div class="member-c-name">
         <div class="member-avatar ${corPastelPorNome(m.name)}" style="width: 38px; height: 38px; font-size: 13px;">${esc(iniciaisMembro(m.name))}</div>
-        <span style="font-size: 14px; color: #111827;">${esc(m.name)}${inativo?' '+badgeInativo():''}</span>
+        <span class="member-c-name-txt">${esc(m.name)}${inativo?' '+badgeInativo():''}</span>
       </div>
       <div><span class="member-role-badge" style="font-size: 12px;">${esc(m.role)}</span></div>
-      <div style="color:#4b5563; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(m.email)||'-'}</div>
-      <div style="color:#4b5563; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(m.emailPessoal)||'-'}</div>
-      <div style="text-align:center;">
+      <div class="member-c-email">${esc(m.email)||'-'}</div>
+      <div class="member-c-email">${esc(m.emailPessoal)||'-'}</div>
+      <div class="member-c-acoes">
         <div class="cell-actions" style="justify-content:center;">${btnStatus}</div>
       </div>
     </div>`;
@@ -259,7 +259,7 @@ function renderArquivados(resetPage = false) {
     // Mesma cor de CORES_STATUS['Alta'/'Media'/'Baixa'] (fonte única) — só o texto exibido usa acento.
     const [prioBg, prioCor] = CORES_STATUS[task.priority];
 
-    return `<div class="grid-row-hover" style="display: grid; grid-template-columns: 1.5fr 1.5fr 1.6fr 1fr 1fr 1.0fr 70px; gap: 8px; align-items: center; background-color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    return `<div class="grid-row-hover arq-row">
       <div style="font-weight:600;color:#111827;font-size:13px;" title="${esc(task.title)}">${esc(task.title)}</div>
       <div style="font-size:13px;">${esc(nomes)}</div>
       <div style="text-align:center;"><span class="tag-badge" style="background:${prioBg};color:${prioCor};">${esc(task.priority === 'Media' ? 'Média' : task.priority)}</span></div>

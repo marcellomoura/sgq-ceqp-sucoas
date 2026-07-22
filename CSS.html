@@ -349,6 +349,147 @@
      estado hover precisa sobrepor — o transform não conflita). */
   .grid-row-hover { transition: transform var(--transition-fast), box-shadow var(--transition-fast); }
   .grid-row-hover:hover { transform: translateY(-1px); box-shadow: var(--shadow-md) !important; }
+  /* Lista de Logs / Auditoria — migrado de estilos inline (Tarefa 3, parte 1).
+     Cores com token exato usam var(); #111827 fica literal (sem token equivalente)
+     e será tratado no futuro trabalho de modo noturno. Visual idêntico ao inline. */
+  .log-row {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,2fr);
+    gap: 16px; align-items: center;
+    background-color: var(--bg-card);
+    padding: 12px 20px; border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    font-size: 13px; color: #111827;
+    text-align: left; word-break: break-word;
+  }
+  .log-c-data { font-size: 12px; color: var(--text-secondary); }
+  .log-c-user { font-size: 12px; }
+  .log-badge {
+    display: inline-block; font-weight: 600; color: var(--text-secondary);
+    border: 1px solid var(--border-color); border-radius: 12px;
+    padding: 2px 8px; background: var(--bg-panel); font-size: 11px;
+  }
+  .log-c-ref { font-weight: 600; color: #111827; }
+  .log-c-det { font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; }
+  /* Lista de Capacitações — migrado de inline (Tarefa 3, parte 2). Badge de status
+     e link de materiais seguem inline (dinâmicos). #111827 literal. Visual idêntico. */
+  .cap-row {
+    display: grid;
+    grid-template-columns: minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1.15fr) minmax(0,1.2fr) minmax(0,0.8fr) minmax(0,0.8fr);
+    gap: 8px; align-items: center;
+    background-color: var(--bg-card);
+    border-radius: 12px; padding: 16px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-align: left; word-break: break-word;
+  }
+  .cap-c { font-size: 13px; }
+  .cap-c-titulo { font-weight: 600; color: #111827; font-size: 13px; }
+  .cap-c-sec { color: var(--text-secondary); font-size: 13px; }
+  .cap-c-center { text-align: center; }
+  .cap-c-mat { text-align: center; font-size: 13px; }
+  .cap-c-acoes { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
+  /* Lista de Unidades — migrado de inline (Tarefa 3, parte 3). #111827/#374151 literais.
+     A opacidade de "inativa" vira classe modificadora: escurece só as 4 células de
+     dados (não os botões de ação), idêntico ao inline anterior. */
+  .unid-row {
+    display: grid; grid-template-columns: 1fr 3fr 2.5fr 1fr 90px;
+    gap: 16px; align-items: center;
+    background-color: var(--bg-card);
+    border-radius: 12px; padding: 16px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .unid-row--inativa > div:not(.unid-c-acoes) { opacity: 0.6; }
+  .unid-c-sigla { font-weight: 700; color: #111827; font-size: 13px; }
+  .unid-c-nome { font-size: 13px; color: #374151; }
+  .unid-c-email { color: var(--text-secondary); font-size: 13px; }
+  .unid-c-drive { text-align: center; font-size: 13px; }
+  .unid-c-acoes { display: flex; justify-content: center; gap: 4px; }
+  /* Lista de Documentos (mestra + revisões) — migrado de inline (Tarefa 3, parte 4).
+     #111827 literal; badges/links via helpers. Visual idêntico. */
+  .doc-row {
+    display: grid; gap: 8px; align-items: center;
+    background-color: var(--bg-card);
+    border-radius: 12px; padding: 16px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-align: left; word-break: break-word;
+  }
+  .doc-row--mestra { grid-template-columns: minmax(0,0.95fr) minmax(0,0.45fr) minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,0.9fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr) minmax(0,0.8fr); }
+  .doc-row--rev { grid-template-columns: minmax(0,0.85fr) minmax(0,0.45fr) minmax(0,1.2fr) minmax(0,2.0fr) minmax(0,0.9fr) minmax(0,0.85fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr); }
+  .doc-c-codigo { font-weight: 700; color: #111827; font-size: 13px; }
+  .doc-c-titulo { font-weight: 500; font-size: 13px; color: #111827; }
+  .doc-c-sec { font-size: 13px; color: var(--text-secondary); }
+  .doc-c-sec-c { text-align: center; font-size: 13px; color: var(--text-secondary); }
+  .doc-c-center { text-align: center; font-size: 13px; }
+  .doc-c-motivo { font-size: 12px; color: var(--text-secondary); }
+  .doc-c-motivo-c { text-align: center; font-size: 12px; color: var(--text-secondary); }
+  .doc-c-status { text-align: center; }
+  .doc-c-acoes { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
+  /* Lista de Membros (Kanban) — migrado de inline (Tarefa 3, parte 5). #111827 e
+     #f3f4f6 (borda) literais. Opacidade de inativo via classe modificadora (linha inteira). */
+  .member-row {
+    display: grid; grid-template-columns: 2fr 1.5fr 2fr 2fr 100px;
+    gap: 16px; align-items: center; padding: 12px 20px;
+    background: var(--bg-card); border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    border: 1px solid #f3f4f6;
+  }
+  .member-row--inativa { opacity: 0.6; }
+  .member-c-name { font-weight: 600; display: flex; align-items: center; gap: 12px; }
+  .member-c-name-txt { font-size: 14px; color: #111827; }
+  .member-c-email { color: var(--text-secondary); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .member-c-acoes { text-align: center; }
+  /* Escala semanal (lista) — migrado de inline (Tarefa 3, parte 5b). Células de dia,
+     badges de presencial e horários seguem inline (dinâmicos). #111827/#f3f4f6 literais. */
+  .escala-row {
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 70px;
+    gap: 8px; align-items: center; padding: 12px 20px;
+    background: var(--bg-card); border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    border: 1px solid #f3f4f6;
+  }
+  .escala-c-name { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .escala-c-nome { font-weight: 600; font-size: 14px; color: #111827; }
+  .escala-c-role { font-size: 12px; color: var(--text-secondary); }
+  /* Afastamentos/Férias (lista) — migrado de inline (Tarefa 3, parte 5b). As tags de
+     período (destaque "em andamento") seguem inline (condicionais/dinâmicas). #111827 literal. */
+  .ferias-row {
+    display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px;
+    gap: 8px; align-items: center;
+    background-color: var(--bg-card);
+    border-radius: 12px; padding: 16px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .ferias-c-name { display: flex; align-items: center; gap: 10px; }
+  .ferias-c-nome { font-weight: 600; font-size: 13px; color: #111827; }
+  .ferias-c-role { font-size: 11px; color: var(--text-secondary); }
+  .ferias-c-acoes { display: flex; justify-content: flex-start; }
+  /* Kanban Arquivados (lista) — SÓ o container vira classe. As CÉLULAS ficam inline
+     de propósito: _gridRowsParaPdf copia o style inline de cada célula para o <td>
+     do PDF; convertê-las deixaria as células sem estilo no PDF. (Tarefa 3, parte 6.) */
+  .arq-row {
+    display: grid; grid-template-columns: 1.5fr 1.5fr 1.6fr 1fr 1fr 1.0fr 70px;
+    gap: 8px; align-items: center;
+    background-color: var(--bg-card);
+    border-radius: 12px; padding: 16px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  /* Matriz de Riscos (lista #lista-riscos) — SÓ o container vira classe. As CÉLULAS
+     ficam inline: _linhasMatrizParaPdf_ copia o style inline de cada célula para o
+     <td> do PDF. #111827 literal. renderAcompanhamento e renderRiscosArquivados NÃO
+     foram migrados de propósito (usam clone.innerHTML → tudo vai verbatim ao PDF).
+     (Tarefa 3, parte 7.) */
+  .risco-row {
+    display: grid;
+    grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 70px;
+    gap: 8px; align-items: center;
+    background-color: var(--bg-card);
+    padding: 12px 20px; border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    font-size: 13px; color: #111827;
+    text-align: left; word-break: break-word;
+  }
   .data-table tbody tr.row-warning td { background-color: var(--warning-bg) !important; }
   .data-table tbody tr.row-cancelled td { background-color: var(--bg-panel) !important; opacity: 0.6; }
   .group-row td { background: var(--bg-panel) !important; font-weight: 700; color: var(--text-secondary); font-size: var(--fs-sm); }
