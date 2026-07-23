@@ -1,0 +1,62 @@
+<!-- ============================================================
+     MODULO: COMUM
+     Extraido de Index.html.
+     Incluido via <?!= include_('View_Comum'); ?>
+     ============================================================ -->
+  <!-- Modal: PDF por e-mail -->
+  <div id="modal-pdf-email" class="modal-overlay">
+    <div class="modal-box" style="max-width:440px;">
+      <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-pdf-email"
+          aria-label="Fechar">&times;</button></div>
+      <h3 class="modal-title">Enviar Relatório por E-mail</h3>
+      <p style="font-size:13px; color:var(--text-secondary); margin:8px 0 18px;">Informe o e-mail do destinatário para envio direto do
+        PDF.</p>
+      <label class="field-label" for="pdf-email-select">Selecionar Unidade (Opcional)</label>
+      <div id="pdf-email-select" style="margin-bottom: 8px; height: 140px; overflow-y: auto; padding: 4px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-input);">
+        <div style="font-size: 13px; color: var(--text-muted); padding: 8px;">Carregando unidades...</div>
+      </div>
+      <button type="button" class="btn secondary" style="width: 100%; margin-bottom: 14px; display: flex; justify-content: center; gap: 8px;" onclick="adicionarEmailsSelecionados()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+        OK - Adicionar Selecionados
+      </button>
+      <label class="field-label" for="pdf-email-dest">E-mail do Destinatário</label><input type="email"
+        id="pdf-email-dest" class="field-input" placeholder="Ex: gestao@saude.df.gov.br">
+      <div class="modal-footer"><button class="btn secondary" data-close="modal-pdf-email">Cancelar</button><button
+          class="btn primary" id="btn-enviar-pdf">Enviar PDF</button></div>
+    </div>
+  </div>
+
+  <!-- Modal: Confirmar Exclusão -->
+  <div id="modal-confirmar" class="modal-overlay" style="z-index:300;">
+    <div class="modal-box narrow" id="confirm-box"
+      style="max-width:400px; padding:30px 20px 24px; text-align:center; border-top: 4px solid #D8483A;">
+      <div id="confirm-icon-wrap"
+        style="width:56px; height:56px; border-radius:50%; background:#FCE1DE; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+        <svg id="confirm-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D8483A" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
+        </svg>
+      </div>
+      <h3 class="modal-title" id="confirm-title" style="color:var(--text-main); font-size:18px; margin-bottom:8px;">Confirmação
+        de Exclusão</h3>
+      <p id="confirm-msg" style="font-size:14px; color:var(--text-secondary); margin:0 0 24px; line-height:1.5;"></p>
+      <div class="modal-footer" style="justify-content:center; gap:12px; border-top:none; padding-top:0;">
+        <button class="btn secondary" data-close="modal-confirmar"
+          style="width:100px; justify-content:center;">Cancelar</button>
+        <button class="btn"
+          style="background:#D8483A; color:white; width:100px; border-color:#791E15; justify-content:center;"
+          id="btn-confirmar-excluir">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Alerta simples -->
+  <div id="modal-alerta" class="modal-overlay" style="z-index:300;">
+    <div class="modal-box narrow" style="max-width:360px;">
+      <h3 style="color:var(--text-main); margin-bottom:10px;">Aviso</h3>
+      <p id="alerta-msg" style="font-size:13px; color:var(--text-secondary); margin-bottom:18px; line-height:1.5;"></p>
+      <button class="btn primary" id="btn-fechar-alerta">Entendi</button>
+    </div>
+  </div>
+

@@ -1,0 +1,274 @@
+<!-- ============================================================
+     MODULO: DOCUMENTOS
+     Extraido de Index.html.
+     Incluido via <?!= include_('View_Documentos'); ?>
+     ============================================================ -->
+      <!-- ======================== MÓDULO 3: CADASTRO DOC ======================== -->
+      <!-- ======================== MÓDULO 3: LISTA MESTRA ======================== -->
+      <section id="view-doc-lista" class="view-section">
+        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box;">
+          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Lista Mestra de Documentos</div>
+          
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select id="f-doc-unidade" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
+                <option value="">Todas Unidades</option>
+              </select>
+              <select id="f-doc-tipo" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
+                <option value="">Todos Tipos</option>
+                <option>Instrução de Trabalho</option>
+                <option>Plano de Fiscalização</option>
+                <option>Procedimento</option>
+                <option>Política</option>
+                <option>Regimento Interno</option>
+                <option>Manual</option>
+                <option>Guia</option>
+                <option>Formulário</option>
+              </select>
+              <select id="f-doc-status" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
+                <option value="">Todos Status</option>
+                <option>Em Elaboração</option>
+                <option>Vigente</option>
+                <option>Próximo da Revisão</option>
+                <option>Vencido</option>
+              </select>
+            </div>
+            
+            <button class="btn-create" id="btn-novo-doc" type="button" style="display: flex; align-items: center; justify-content: center; background-color: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: 9999px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              Novo Documento
+            </button>
+          </div>
+        </header>
+
+        <div class="kpi-grid compact-view" style="margin: 24px 28px 16px; flex-shrink: 0;">
+          <div class="kpi-card kpi-fill-sky">
+            <div class="kpi-icon icon-sky"><svg viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg></div>
+            <div>
+              <div class="kpi-label">Total</div>
+              <div class="kpi-value" id="kpi-d-total">0</div>
+            </div>
+          </div>
+          <div class="kpi-card kpi-fill-blue">
+            <div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg></div>
+            <div>
+              <div class="kpi-label">Em Elaboração</div>
+              <div class="kpi-value" id="kpi-d-elab">0</div>
+            </div>
+          </div>
+          <div class="kpi-card kpi-fill-green">
+            <div class="kpi-icon icon-green"><svg viewBox="0 0 24 24">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg></div>
+            <div>
+              <div class="kpi-label">Vigentes</div>
+              <div class="kpi-value" id="kpi-d-vig">0</div>
+            </div>
+          </div>
+          <div class="kpi-card kpi-fill-yellow">
+            <div class="kpi-icon icon-yellow"><svg viewBox="0 0 24 24">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg></div>
+            <div>
+              <div class="kpi-label">Próximos da Revisão</div>
+              <div class="kpi-value" id="kpi-d-prox">0</div>
+            </div>
+          </div>
+          <div class="kpi-card kpi-fill-red">
+            <div class="kpi-icon icon-red"><svg viewBox="0 0 24 24">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                </path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg></div>
+            <div>
+              <div class="kpi-label">Vencidos</div>
+              <div class="kpi-value" id="kpi-d-ven">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 1500px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: minmax(0,0.95fr) minmax(0,0.45fr) minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,0.9fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr) minmax(0,0.8fr); text-align: left;">
+              <div>Código</div>
+              <div style="text-align:center;">Ver.</div>
+              <div>Tipo</div>
+              <div>Título</div>
+              <div style="text-align:center;">Responsável</div>
+              <div>Aprovação</div>
+              <div>Revisão</div>
+              <div style="text-align:center;">Link</div>
+              <div style="text-align:center;">Auxiliares</div>
+              <div>Histórico</div>
+              <div style="text-align:center;">Status</div>
+              <div class="no-print" style="text-align:center;">Ações</div>
+            </div>
+            <div id="lista-mestra" class="list-body">
+              <div class="msg-empty">A carregar...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================== MÓDULO 3: HISTÓRICO REVISÕES ======================== -->
+      <section id="view-doc-revisoes" class="view-section">
+        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box; margin-bottom: 24px;">
+          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Histórico de Revisões</div>
+          
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select id="f-rev-unidade" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
+                <option value="">Todas Unidades</option>
+              </select>
+            </div>
+          </div>
+        </header>
+
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 1400px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: minmax(0,0.85fr) minmax(0,0.45fr) minmax(0,1.2fr) minmax(0,2.0fr) minmax(0,0.9fr) minmax(0,0.85fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr); text-align: left;">
+              <div>Código</div>
+              <div>Ver.</div>
+              <div>Tipo</div>
+              <div>Título</div>
+              <div style="text-align:center;">Responsável</div>
+              <div>Aprovação</div>
+              <div style="text-align:center;">Link</div>
+              <div style="text-align:center;">Auxiliares</div>
+              <div style="text-align:center;">Histórico</div>
+              <div style="text-align:center;">Status</div>
+            </div>
+            <div id="lista-revisoes" class="list-body">
+              <div class="msg-empty">A carregar...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+  <!-- Modal: Novo Documento -->
+  <div id="modal-doc-novo" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-doc-novo"
+          aria-label="Fechar">&times;</button></div>
+      <h3 class="modal-title">Novo Documento</h3>
+      <div class="form-row">
+        <div style="flex:1;"><label class="field-label" for="d-tipo">Tipo de Documento</label>
+          <select id="d-tipo" class="field-select">
+            <option value="" disabled selected>Selecione...</option>
+            <option>Instrução de Trabalho</option>
+            <option>Plano de Fiscalização</option>
+            <option>Procedimento</option>
+            <option>Política</option>
+            <option>Regimento Interno</option>
+            <option>Manual</option>
+            <option>Guia</option>
+            <option>Formulário</option>
+          </select>
+        </div>
+        <div style="flex:2;"><label class="field-label" for="d-titulo">Título do Documento</label><input type="text"
+            id="d-titulo" class="field-input" placeholder="Ex: Fluxo de Análise da Fatura"></div>
+      </div>
+      <div class="form-row">
+        <div style="flex:2;"><label class="field-label" for="d-resp">Responsável (Unidade)</label><select id="d-resp"
+            class="field-select">
+            <option value="" disabled selected>A carregar...</option>
+          </select></div>
+        <div style="flex:1;"><label class="field-label" for="d-data-aprov">Data de Aprovação</label><input type="date"
+            id="d-data-aprov" class="field-input"></div>
+      </div>
+      <div class="form-row">
+        <div style="flex:1;"><label class="field-label" for="d-link">Link Principal (Drive)</label><input type="text"
+            id="d-link" class="field-input" placeholder="Link do documento"></div>
+        <div style="flex:1;"><label class="field-label" for="d-link-aux1">Doc. Auxiliar 1 (Opcional)</label><input
+            type="text" id="d-link-aux1" class="field-input" placeholder="Link do anexo 1"></div>
+        <div style="flex:1;"><label class="field-label" for="d-link-aux2">Doc. Auxiliar 2 (Opcional)</label><input
+            type="text" id="d-link-aux2" class="field-input" placeholder="Link do anexo 2"></div>
+      </div>
+      <div class="modal-footer"><button class="btn secondary" data-close="modal-doc-novo">Cancelar</button><button
+          class="btn primary" id="btn-salvar-doc">Salvar Documento</button></div>
+    </div>
+  </div>
+
+  <!-- Modal: Editar Documento -->
+  <div id="modal-doc-editar" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-doc-editar"
+          aria-label="Fechar">&times;</button></div>
+      <h3 class="modal-title">Editar Documento</h3>
+      <input type="hidden" id="ed-idrow"><input type="hidden" id="ed-codigo">
+      <div class="form-row" style="margin-top:10px;">
+        <div style="flex:1;"><label class="field-label">Código</label><input type="text" id="ed-cod-display" readonly
+            style="background:var(--border-color);"></div>
+        <div style="flex:1;"><label class="field-label">Versão</label><input type="text" id="ed-versao-display" readonly
+            style="background:var(--border-color);"></div>
+        <div style="flex:2;"><label class="field-label" for="ed-tipo">Tipo</label><select id="ed-tipo"
+            class="field-select">
+            <option>Instrução de Trabalho</option>
+            <option>Plano de Fiscalização</option>
+            <option>Procedimento</option>
+            <option>Política</option>
+            <option>Regimento Interno</option>
+            <option>Manual</option>
+            <option>Guia</option>
+            <option>Formulário</option>
+          </select></div>
+      </div>
+      <label class="field-label" for="ed-titulo">Título</label><input type="text" id="ed-titulo" class="field-input">
+      <div class="form-row">
+        <div style="flex:2;"><label class="field-label" for="ed-resp">Responsável</label><select id="ed-resp"
+            class="field-select"></select></div>
+        <div style="flex:1;"><label class="field-label" for="ed-data">Data Aprovação</label><input type="date"
+            id="ed-data" class="field-input"></div>
+      </div>
+      <div class="form-row">
+        <div style="flex:1;"><label class="field-label" for="ed-link">Link Principal</label><input type="text"
+            id="ed-link" class="field-input"></div>
+        <div style="flex:1;"><label class="field-label" for="ed-aux1">Auxiliar 1</label><input type="text" id="ed-aux1"
+            class="field-input"></div>
+        <div style="flex:1;"><label class="field-label" for="ed-aux2">Auxiliar 2</label><input type="text" id="ed-aux2"
+            class="field-input"></div>
+      </div>
+      <div class="modal-footer"><button class="btn secondary" data-close="modal-doc-editar">Cancelar</button><button
+          class="btn primary" id="btn-confirmar-doc">Salvar Documento</button></div>
+    </div>
+  </div>
+
+  <!-- Modal: Revisão Documento -->
+  <div id="modal-doc-revisao" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-doc-revisao"
+          aria-label="Fechar">&times;</button></div>
+      <h3 class="modal-title">Nova Revisão do Documento</h3>
+      <div class="modal-info"><strong>Documento:</strong> <span id="rev-doc-cod"></span><br><strong>Título:</strong>
+        <span id="rev-doc-titulo"></span><br><strong style="color:#0f766e;">Versão Atual: v<span
+            id="rev-doc-versao"></span></strong></div>
+      <input type="hidden" id="rev-doc-idrow"><input type="hidden" id="rev-doc-versao-hidden">
+      <div class="form-row">
+        <div style="flex:1;"><label class="field-label" for="rev-doc-data">Nova Data de Aprovação</label><input
+            type="date" id="rev-doc-data" class="field-input"></div>
+      </div>
+      <label class="field-label" for="rev-doc-motivo">Descrição da Revisão</label><textarea id="rev-doc-motivo"
+        class="field-area" rows="2" placeholder="O que foi alterado nesta versão?"></textarea>
+      <div class="form-row">
+        <div style="flex:1;"><label class="field-label" for="rev-doc-link">Novo Link Principal</label><input type="text"
+            id="rev-doc-link" class="field-input"></div>
+        <div style="flex:1;"><label class="field-label" for="rev-doc-aux1">Auxiliar 1</label><input type="text"
+            id="rev-doc-aux1" class="field-input"></div>
+        <div style="flex:1;"><label class="field-label" for="rev-doc-aux2">Auxiliar 2</label><input type="text"
+            id="rev-doc-aux2" class="field-input"></div>
+      </div>
+      <div class="modal-footer"><button class="btn secondary" data-close="modal-doc-revisao">Cancelar</button><button
+          class="btn primary" id="btn-publicar-doc">Publicar Revisão</button></div>
+    </div>
+  </div>
+

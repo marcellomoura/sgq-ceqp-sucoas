@@ -1,0 +1,177 @@
+<!-- ============================================================
+     MODULO: MONITORAMENTO
+     Extraido de Index.html.
+     Incluido via <?!= include_('View_Monitoramento'); ?>
+     ============================================================ -->
+      <section id="view-indicadores" class="view-section print-target">
+        <!-- Cabeçalho Personalizado -->
+        <header class="no-print" style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box;">
+          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Painel de Indicadores</div>
+          
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select id="dashYearFilter" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;"></select>
+              <select id="dashMemberFilter" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
+                <option value="">Todos os Membros</option>
+              </select>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button id="btn-download-pdf" class="btn-pdf-download" type="button" title="Baixar PDF" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background-color: var(--bg-card); border-radius: 50%; border: none; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); color: var(--text-secondary);">
+                <svg style="pointer-events: none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+              <button id="btn-email-dashboard" type="button" title="Enviar por E-mail" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background-color: var(--bg-card); border-radius: 50%; border: none; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); color: var(--text-secondary);">
+                <svg style="pointer-events: none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div style="display: flex; flex-direction: column; flex: 1; overflow-y: auto; padding: 0 28px; margin-top: 24px;">
+        <div class="tl-kpi-grid" id="dash-kpis-geral">
+          <div class="tl-kpi-card kpi-fill-blue">
+            <div class="tl-kpi-icon c-blue">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              </svg>
+            </div>
+            <div class="tl-kpi-info">
+              <div class="tl-kpi-title">Tarefas em Andamento</div>
+              <div class="tl-kpi-value" id="kpi-dash-tarefas">0</div>
+            </div>
+          </div>
+          <div class="tl-kpi-card kpi-fill-green">
+            <div class="tl-kpi-icon c-green">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+            <div class="tl-kpi-info">
+              <div class="tl-kpi-title">Tarefas Concluídas</div>
+              <div class="tl-kpi-value" id="kpi-dash-tarefas-conc">0</div>
+            </div>
+          </div>
+          <div class="tl-kpi-card kpi-fill-purple">
+            <div class="tl-kpi-icon c-purple">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg>
+            </div>
+            <div class="tl-kpi-info">
+              <div class="tl-kpi-title">Capacitações Ativas</div>
+              <div class="tl-kpi-value" id="kpi-dash-cap">0</div>
+            </div>
+          </div>
+          <div class="tl-kpi-card kpi-fill-green">
+            <div class="tl-kpi-icon c-green">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+              </svg>
+            </div>
+            <div class="tl-kpi-info">
+              <div class="tl-kpi-title">Capacitações Realizadas</div>
+              <div class="tl-kpi-value" id="kpi-dash-cap-conc">0</div>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="tl-section-title">Gestão de Tarefas</h3>
+        <div class="tl-chart-grid">
+          <div class="tl-chart-card">
+            <div class="tl-chart-header">Tarefas por Status</div>
+            <div class="tl-chart-wrap"><canvas id="statusChart"></canvas></div>
+          </div>
+          <div class="tl-chart-card">
+            <div class="tl-chart-header">Tarefas por Nível de Prioridade</div>
+            <div class="tl-chart-wrap"><canvas id="priorityChart"></canvas></div>
+          </div>
+          <div class="tl-chart-card">
+            <div class="tl-chart-header">Tarefas em Andamento por Membro</div>
+            <div class="tl-chart-wrap"><canvas id="memberChart"></canvas></div>
+          </div>
+          <div class="tl-chart-card">
+            <div class="tl-chart-header">Tarefas Concluídas por Membro</div>
+            <div class="tl-chart-wrap"><canvas id="memberConcluidoChart"></canvas></div>
+          </div>
+        </div>
+
+        <h3 class="tl-section-title">Gestão de Capacitações</h3>
+        <div class="tl-chart-grid">
+          <div class="tl-chart-card">
+            <div class="tl-chart-header">Evolução Mensal das Capacitações</div>
+            <div class="tl-chart-wrap"><canvas id="capMesChart"></canvas></div>
+          </div>
+          <div class="tl-chart-card">
+            <div class="tl-chart-header">Capacitações por Tema</div>
+            <div class="tl-chart-wrap"><canvas id="capTemaChart"></canvas></div>
+          </div>
+        </div>
+        <div class="tl-chart-grid">
+          <div class="tl-chart-card">
+            <div class="tl-chart-header">Capacitações por Modalidade</div>
+            <div class="tl-chart-wrap"><canvas id="capModalidadeChart"></canvas></div>
+          </div>
+          <div class="tl-chart-card">
+            <div class="tl-chart-header">Capacitações por Membro</div>
+            <div class="tl-chart-wrap"><canvas id="capMembroChart"></canvas></div>
+          </div>
+        </div>
+        </div>
+      </section>
+
+      <!-- ======================== MÓDULO 5: LOG DE ALTERAÇÕES ======================== -->
+      <section id="view-logs" class="view-section">
+        <!-- Cabeçalho Personalizado -->
+        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box;">
+          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Registros no Sistema</div>
+          
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select id="f-log-usuario" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
+                <option value="">Todos os Membros</option>
+              </select>
+            </div>
+            
+            <div style="display: flex; align-items: center; padding: 0 4px; border-radius: 9999px; background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);">
+              <input type="date" id="f-log-data-ini" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
+              <span style="color:var(--text-muted); font-size:12px; font-weight: 500;">até</span>
+              <input type="date" id="f-log-data-fim" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
+            </div>
+            
+            <input type="text" id="f-log-busca" style="padding: 10px 20px; border: none; border-radius: 9999px; background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0,0,0,0.05); font-size: 13px; color: var(--text-main); width: 200px; outline: none;" placeholder="Referência ou detalhes...">
+          </div>
+        </header>
+
+        <!-- Lista de Logs (Grid Header + Conteúdo) -->
+        <div class="list-scroll x" style="padding: 0 28px; margin-top: 24px;">
+          <div style="min-width: 1000px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,2fr); text-align: left; gap: 16px;">
+              <div>Data/Hora</div>
+              <div>Usuário</div>
+              <div>Ação</div>
+              <div>Referência</div>
+              <div>Detalhes</div>
+            </div>
+            <div id="lista-logs" class="list-body">
+              <div class="msg-empty">A carregar...</div>
+            </div>
+          </div>
+        </div>
+        <div id="paginacao-logs" class="paginacao no-print"></div>
+      </section>
+

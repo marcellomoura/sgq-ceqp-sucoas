@@ -1,0 +1,155 @@
+<!-- ============================================================
+     MODULO: CAPACITACOES
+     Extraido de Index.html.
+     Incluido via <?!= include_('View_Capacitacoes'); ?>
+     ============================================================ -->
+      <!-- ======================== MÓDULO 6: CAPACITAÇÕES ======================== -->
+      <section id="view-capacitacoes-lista" class="view-section">
+        <!-- Cabeçalho Personalizado -->
+        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box;">
+          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Capacitações</div>
+          
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <select id="f-cap-membro" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
+              <option value="">Todos os Membros</option>
+            </select>
+            <select id="capYearFilter" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;"></select>
+            <div style="display: flex; align-items: center; padding: 0 4px; border-radius: 9999px; background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);">
+              <input type="date" id="f-cap-data-ini" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
+              <span style="color:var(--text-muted); font-size:12px; font-weight: 500;">até</span>
+              <input type="date" id="f-cap-data-fim" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
+            </div>
+            
+            <button class="btn-create" id="btn-nova-capacitacao" type="button" style="display: flex; align-items: center; justify-content: center; background-color: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: 9999px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              Nova Capacitação
+            </button>
+          </div>
+        </header>
+
+        <div class="kpi-grid compact-view" id="dash-kpis-capacitacoes" style="margin: 24px 28px 16px; flex-shrink: 0;">
+          <div class="kpi-card kpi-fill-sky">
+            <div class="kpi-icon icon-sky"><svg viewBox="0 0 24 24">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg></div>
+            <div>
+              <div class="kpi-label">Total</div>
+              <div class="kpi-value" id="kpi-cap-total">0</div>
+            </div>
+          </div>
+          <div class="kpi-card kpi-fill-blue">
+            <div class="kpi-icon icon-blue"><svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg></div>
+            <div>
+              <div class="kpi-label">Em Andamento</div>
+              <div class="kpi-value" id="kpi-cap-andamento">0</div>
+            </div>
+          </div>
+          <div class="kpi-card kpi-fill-green">
+            <div class="kpi-icon icon-green"><svg viewBox="0 0 24 24">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg></div>
+            <div>
+              <div class="kpi-label">Concluídas</div>
+              <div class="kpi-value" id="kpi-cap-concluidas">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 1150px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1.15fr) minmax(0,1.2fr) minmax(0,0.8fr) minmax(0,0.8fr); text-align: left;">
+              <div>Título da Capacitação</div>
+              <div>Tema</div>
+              <div>Público-alvo</div>
+              <div>Modalidade</div>
+              <div>Data Prevista</div>
+              <div>Data Realizada</div>
+              <div style="text-align:center;">Status</div>
+              <div>Responsáveis</div>
+              <div style="text-align:center;">Presença</div>
+              <div class="no-print" style="text-align:center;">Ações</div>
+            </div>
+            <div id="lista-capacitacoes" class="list-body">
+              <div class="msg-empty">A carregar...</div>
+            </div>
+          </div>
+        </div>
+        <div id="paginacao-cap" class="paginacao no-print"></div>
+      </section>
+
+  <!-- Modal: Nova Capacitação -->
+  <div id="modal-capacitacao" class="modal-overlay">
+    <div class="modal-box" style="max-width:580px;">
+      <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-capacitacao"
+          aria-label="Fechar">&times;</button></div>
+      <h3 class="modal-title" id="modal-capacitacao-title">Nova Capacitação</h3>
+      <input type="hidden" id="cap-idrow">
+
+      <label class="field-label" for="cap-titulo">Título da Capacitação</label>
+      <input type="text" id="cap-titulo" class="field-input" placeholder="Ex: Treinamento sobre Processos">
+
+      <div class="form-row">
+        <div style="flex:1;">
+          <label class="field-label" for="cap-tema">Tema</label>
+          <select id="cap-tema" class="field-select">
+            <option value="" disabled selected>Selecione...</option>
+            <option>Liderança</option>
+            <option>Gestão da Qualidade</option>
+            <option>Tecnologia e Ferramentas</option>
+            <option>Legislação e Normas</option>
+            <option>Comportamental</option>
+            <option>Outros</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label class="field-label" for="cap-modalidade">Modalidade</label>
+          <select id="cap-modalidade" class="field-select">
+            <option value="" disabled selected>Selecione...</option>
+            <option>Presencial</option>
+            <option>Online (Ao Vivo)</option>
+            <option>Online (Gravado)</option>
+            <option>Híbrido</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div style="flex:1;">
+          <label class="field-label" for="cap-publico">Público-alvo</label>
+          <input type="text" id="cap-publico" class="field-input" placeholder="Ex: Todos, Gestores, etc.">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div style="flex:1;"><label class="field-label" for="cap-data-prevista">Data Prevista</label><input type="date"
+            id="cap-data-prevista" class="field-input"></div>
+        <div style="flex:1;"><label class="field-label" for="cap-data-realizada">Data Realizada</label><input
+            type="date" id="cap-data-realizada" class="field-input"></div>
+      </div>
+
+      <label class="field-label">Responsáveis</label>
+      <div class="custom-select-wrapper" style="position:relative;">
+        <div id="cap-participantes-trigger"
+          style="width:100%; padding:9px 12px; border:1px solid var(--border-strong); border-radius:6px; font-size:13.5px; background:var(--bg-panel); font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:space-between; user-select:none; box-sizing:border-box; transition:border-color 0.15s;">
+          <span id="cap-participantes-label" style="color:var(--text-muted);">Selecionar responsáveis...</span>
+          <span style="font-size:9px; color:var(--text-muted); pointer-events:none;">▼</span>
+        </div>
+        <div id="cap-participantes-options" class="custom-select-options"></div>
+      </div>
+      <div class="selected-tags" id="cap-participantes-tags" style="margin-top:6px;"></div>
+
+      <label class="field-label" for="cap-materiais" style="margin-top:8px;">Lista de Presença (Link)</label>
+      <input type="text" id="cap-materiais" class="field-input"
+        placeholder="Link para a lista de presença, pasta no Drive, etc.">
+
+      <div class="modal-footer">
+        <button class="btn secondary" data-close="modal-capacitacao">Cancelar</button>
+        <button class="btn primary" id="btn-salvar-capacitacao">Salvar</button>
+      </div>
+    </div>
+  </div>
+
