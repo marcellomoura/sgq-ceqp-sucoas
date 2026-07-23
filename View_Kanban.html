@@ -1,0 +1,217 @@
+<!-- ============================================================
+     MODULO: KANBAN
+     Extraido de Index.html.
+     Incluido via <?!= include_('View_Kanban'); ?>
+     ============================================================ -->
+      <!-- ======================== MÓDULO 1: KANBAN ======================== -->
+      <section id="view-kanban" class="view-section kanban-view">
+        <!-- Cabeçalho Personalizado -->
+        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box;">
+          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Kanban</div>
+          
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select id="memberFilterSelect" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
+                <option value="">Todos os Membros</option>
+              </select>
+            </div>
+          </div>
+        </header>
+
+        <div class="board-canvas">
+          <div class="list-wrapper">
+            <div class="list-header">Backlog <span id="cnt-backlog" class="count">0</span></div>
+            <div class="list-cards" id="list-backlog" data-status="Backlog"></div>
+            <button class="btn-add-card" data-add-card="Backlog">+ Adicionar Cartão</button>
+          </div>
+          <div class="list-wrapper">
+            <div class="list-header">A Fazer <span id="cnt-todo" class="count">0</span></div>
+            <div class="list-cards" id="list-todo" data-status="A Fazer"></div>
+            <button class="btn-add-card" data-add-card="A Fazer">+ Adicionar Cartão</button>
+          </div>
+          <div class="list-wrapper">
+            <div class="list-header">Em Andamento <span id="cnt-inprogress" class="count">0</span></div>
+            <div class="list-cards" id="list-inprogress" data-status="Em Andamento"></div>
+            <button class="btn-add-card" data-add-card="Em Andamento">+ Adicionar Cartão</button>
+          </div>
+          <div class="list-wrapper">
+            <div class="list-header">Em Revisão <span id="cnt-review" class="count">0</span></div>
+            <div class="list-cards" id="list-review" data-status="Em Revisão"></div>
+            <button class="btn-add-card" data-add-card="Em Revisão">+ Adicionar Cartão</button>
+          </div>
+          <div class="list-wrapper">
+            <div class="list-header">Concluído <span id="cnt-done" class="count">0</span></div>
+            <div class="list-cards" id="list-done" data-status="Concluído"></div>
+            <button class="btn-add-card" data-add-card="Concluído">+ Adicionar Cartão</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================== MÓDULO 1: ARQUIVADOS ======================== -->
+      <section id="view-archived" class="view-section compact-view print-target">
+        <!-- Cabeçalho Personalizado -->
+        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box;">
+          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Cartões Arquivados</div>
+          
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select id="f-archived-membro" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
+                <option value="">Todos os Membros</option>
+              </select>
+              <select id="archivedYearFilter" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;"></select>
+              <div style="display: flex; align-items: center; padding: 0 4px; border-radius: 9999px; background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);">
+                <input type="date" id="f-archived-data-ini" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
+                <span style="color:var(--text-muted); font-size:12px; font-weight: 500;">até</span>
+                <input type="date" id="f-archived-data-fim" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
+              </div>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button id="btn-pdf-archived" class="btn-pdf-download" type="button" title="Baixar PDF" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background-color: var(--bg-card); border-radius: 50%; border: none; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); color: var(--text-secondary);">
+                <svg style="pointer-events: none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+              <button id="btn-email-archived" type="button" title="Enviar por E-mail" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background-color: var(--bg-card); border-radius: 50%; border: none; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); color: var(--text-secondary);">
+                <svg style="pointer-events: none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="pdf-header" id="pdf-header-archived" style="display: none;">
+            <h1>Sistema de Gestão da Qualidade</h1>
+            <div class="pdf-sub">Comissão Especial de Qualidade e Padronização · CEQP | SUCOAS - SES/DF</div>
+            <h2>Cartões Arquivados</h2>
+          </div>
+        </header>
+
+        <p style="font-size:13px; color:var(--text-secondary); margin: 8px 28px 24px; flex-shrink: 0;" class="no-print">
+          Cartões concluídos há 15 dias ou mais saem do quadro automaticamente e ficam guardados aqui. Você também pode arquivar um cartão concluído manualmente a qualquer momento.
+        </p>
+
+        <!-- Lista de Cartões (Grid Header + Conteúdo) -->
+        <div class="list-scroll x" style="padding: 0 28px;">
+          <div style="min-width: 850px; display: flex; flex-direction: column;">
+            <div class="list-head" style="grid-template-columns: 1.5fr 1.5fr 1.6fr 1fr 1fr 1.0fr 70px; text-align: left;">
+              <div>Cartão</div>
+              <div>Responsável(is)</div>
+              <div style="text-align:center;">Prioridade</div>
+              <div style="text-align:center;">Início</div>
+              <div style="text-align:center;">Conclusão</div>
+              <div style="text-align:center;">Tempo de Execução</div>
+              <div class="no-print" style="text-align:center;">Ações</div>
+            </div>
+            <div id="archived-list" class="list-body">
+              <div class="msg-empty">Nenhum cartão arquivado.</div>
+            </div>
+          </div>
+        </div>
+        <div id="paginacao-archived" class="paginacao no-print"></div>
+      </section>
+
+  <!-- Modal: Tarefa (Kanban) -->
+  <div id="modal-task" class="modal-overlay">
+    <div class="modal-box wide card-detail-modal" style="padding:0;">
+      <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-task"
+          aria-label="Fechar">&times;</button></div>
+      <div class="modal-split-layout">
+        <div class="modal-main-content">
+          <div>
+            <textarea id="taskTitle" class="modal-title-field" placeholder="Título do Cartão" rows="1"
+              oninput="this.style.height='';this.style.height=this.scrollHeight+'px'"></textarea>
+            <div class="modal-subtitle-text">na lista <span id="taskStatusDisplay"
+                style="font-weight:600; text-decoration:underline;"></span></div>
+            <input type="hidden" id="taskId"><input type="hidden" id="taskStatus"><input type="hidden"
+              id="taskCreation"><input type="hidden" id="taskCompletion"><input type="hidden" id="taskStartDate"><input
+              type="hidden" id="taskUpdatedAt">
+          </div>
+          <div class="modal-content-section">
+            <div class="section-label-header"><svg class="icon-svg" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M4 6h16M4 12h16M4 18h7" />
+              </svg>
+              <h4>Descrição</h4>
+            </div>
+            <textarea id="taskDesc" class="modal-desc-field" placeholder="Adicionar uma descrição..."></textarea>
+          </div>
+          <div class="modal-content-section">
+            <div class="section-label-header"><svg class="icon-svg" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <h4>Atividades</h4>
+            </div>
+            <div style="margin-bottom:8px;">
+              <textarea id="taskNewComment" placeholder="Escrever um comentário..."
+                class="modal-comment-field"></textarea>
+              <div style="margin-top:6px;"><button type="button" class="btn primary btn-sm" id="btn-add-comment">Salvar
+                  Comentário</button></div>
+            </div>
+            <div class="activity-feed" id="activity-feed"></div>
+          </div>
+        </div>
+        <div class="modal-sidebar-actions">
+          <h4 id="sidebar-add-title" style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase;">
+            Adicionar ao cartão</h4>
+          <div class="sidebar-field-group">
+            <label><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>Responsáveis</label>
+            <div class="custom-select-wrapper">
+              <div class="custom-select-display" id="assignee-display">Selecionar...</div>
+              <div class="custom-select-options" id="taskAssigneesContainer"></div>
+            </div>
+            <div class="selected-tags" id="selected-assignees-tags"></div>
+          </div>
+          <div class="sidebar-field-group">
+            <label><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                <line x1="4" y1="22" x2="4" y2="15"></line>
+              </svg>Prioridade</label>
+            <select id="taskPriority" class="sidebar-select">
+              <option value="" disabled selected>Selecionar...</option>
+              <option value="Baixa">Baixa</option>
+              <option value="Media">Média</option>
+              <option value="Alta">Alta</option>
+            </select>
+          </div>
+          <div class="sidebar-field-group">
+            <label><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                <line x1="7" y1="7" x2="7.01" y2="7"></line>
+              </svg>Etiquetas</label>
+            <div class="custom-select-wrapper">
+              <div class="custom-select-display" id="labels-display">Selecionar...</div>
+              <div class="custom-select-options" id="taskLabelsContainer"></div>
+            </div>
+            <div class="selected-tags" id="selected-labels-tags"></div>
+          </div>
+          <div class="sidebar-field-group">
+            <label><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>Prazo de Entrega</label>
+            <input type="date" id="taskDeadline" class="sidebar-date">
+          </div>
+          <div style="margin-top:18px;">
+            <button type="button" class="sidebar-action-btn save-btn" id="btn-save-task">Salvar Cartão</button>
+            <button type="button" class="sidebar-action-btn archive-btn" id="btn-archive-task"
+              style="display:none;">Arquivar</button>
+            <button type="button" class="sidebar-action-btn del-btn" id="btn-delete-task" style="display:none;">Excluir
+              Cartão</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+

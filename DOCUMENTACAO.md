@@ -2,7 +2,7 @@
 
 > **Documento oficial do projeto.** Auditoria técnica + documentação de engenharia reversa produzida a partir da leitura integral do código-fonte (16 arquivos, ~8.400 linhas). Toda afirmação foi extraída do código; onde há incerteza, está sinalizado explicitamente. Data-base: 2026-07-16.
 >
-> **Escopo:** 7 arquivos `.js` (backend Apps Script, ~2.478 linhas) + 9 arquivos `.html` (cliente: 1 view, 1 CSS, 7 módulos JS, ~5.900 linhas).
+> **Escopo:** 7 arquivos `.js` (backend Apps Script, ~2.478 linhas) + arquivos `.html` (cliente: 1 CSS, 7 módulos JS, e — desde 2026-07-23 — as telas separadas em 8 arquivos `View_*` por módulo; ver §8.8). Originalmente as views/modais viviam num único `Index.html`; o total de linhas de cliente é ~o mesmo (~5.900), só redistribuído.
 
 ---
 
@@ -53,7 +53,8 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ CLIENTE (navegador) — SPA renderizada via HtmlService        │
-│  Index.html  ← estrutura (views + modais), inclui os JS      │
+│  Index.html  ← shell: head/CDNs, sidebar (menu), includes    │
+│  View_*.html ← telas+modais por módulo (8 arq., ver §8.8)    │
 │  CSS.html    ← design system (tokens :root, sem framework)   │
 │  JS_Utilitarios.html ← núcleo: state, navegação, delegação   │
 │  JS_Kanban / JS_Riscos / JS_Pessoas / JS_Documentos /        │
@@ -76,7 +77,7 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 
 ### 2.3 Fluxo de execução (inicialização)
 
-1. `doGet()` → `isMembro_()` (bloqueia não-membros com "Acesso Negado") → renderiza `Index` template, que faz `include_()` de CSS e dos 7 JS.
+1. `doGet()` → `isMembro_()` (bloqueia não-membros com "Acesso Negado") → renderiza `Index` template, que faz `include_()` de CSS, das 8 `View_*` (telas+modais por módulo) e dos 7 JS. O servidor concatena tudo num único HTML antes de enviar ao navegador — a separação em arquivos não muda o DOM final nem adiciona round-trips (ver §8.8).
 2. `DOMContentLoaded` (JS_Utilitarios): abre o grupo Tarefas e ativa o Kanban **imediatamente** (UI aparece sem esperar dados).
 3. **Duas chamadas paralelas** ao servidor:
    - `getKanbanData()` → Tarefas + Membros (etapa 1). No sucesso: `renderTasks()`, re-renderiza a aba ativa se necessário, e agenda (`setTimeout 400ms`) o pré-carregamento do "resto".
@@ -244,7 +245,15 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 | `Modulo_Documentos.js` | Documentos: cadastro, edição, revisão (versionamento), exclusão. |
 | `Modulo_Riscos.js` | Riscos, Planos 5W2H, Entregas, reavaliação, revisão de plano. |
 | `Modulo_Capacitacoes.js` | CRUD de Capacitações. |
-| `Index.html` | Estrutura da SPA: sidebar, header por aba (`hdr-*`), 14 views (`view-*`), ~20 modais; inclui CSS e os 7 JS. |
+| `Index.html` | **Shell da SPA** (desde 2026-07-23, ver §8.8): `<head>` + CDNs, a sidebar/menu único, e a lista de `include_()`. As telas (14 `view-*`) e os 19 modais foram movidos para os `View_*`. |
+| `View_Kanban.html` | Telas Kanban e Arquivados + `modal-task`. |
+| `View_Pessoas.html` | Telas Membros, Escala e Afastamentos + modais `modal-member`/`modal-escala`/`modal-ferias`. |
+| `View_Unidades.html` | Tela Unidades + `modal-unidade`. |
+| `View_Documentos.html` | Telas Lista Mestra e Histórico de Revisões + modais `modal-doc-novo`/`modal-doc-editar`/`modal-doc-revisao`. |
+| `View_Riscos.html` | Telas Matriz, Plano de Ação e Riscos Arquivados + 7 modais (risco-novo/editar, plano-novo/editar, reavaliar-risco, revisar-plano, acomp-entregas). |
+| `View_Capacitacoes.html` | Tela Capacitações + `modal-capacitacao`. |
+| `View_Monitoramento.html` | Telas Painel de Indicadores e Registros (logs). |
+| `View_Comum.html` | Modais genéricos compartilhados: `modal-pdf-email`, `modal-confirmar`, `modal-alerta`. |
 | `CSS.html` | Design system: tokens `:root` (cor primária `#030712` + acento azul `#2b7fff` — ver §8.7), sem framework; `@media` (768/900px), `@keyframes`, estilos de impressão (`.no-print`, `.pdf-header`). |
 | `JS_Utilitarios.html` | Núcleo do cliente: `state`, navegação (`mudarTab`), delegação de eventos, `garantirRestoData`, helpers (`esc`, `badge`, `linkA`, `showConfirm`), geração de PDF (montagem HTML), logs. |
 | `JS_Kanban.html` | Membros, quadro Kanban, arquivados, modal de tarefa, gráficos do Kanban, `recarregarKanban/RiscosPlanos`. |
@@ -323,6 +332,23 @@ Aplicação de um novo design system a todo o cliente (`CSS.html`, `Index.html`,
 - Geração de PDF (`_envelopeHtml`/`_pdfKpiCell`/`_pdfGraficoCel` em `JS_Utilitarios.html`) — paleta própria, documentada no código como intencionalmente independente do `CSS.html` (o conversor de PDF do Apps Script não lida bem com flex/grid do app); nunca usou a marca antiga.
 - Formatação de células da planilha Google Sheets (`Código.js`, `setBackground('#f1f5f9')` em cabeçalhos) — superfície diferente (banco de dados), não é UI do app.
 - Badge de variação percentual em KPIs/gráficos (ex.: "+18%") e paleta categórica das etiquetas do Kanban (`LABELS_DISPONIVEIS`) — o primeiro exigiria calcular tendência vs. período anterior (dado que o sistema não tem hoje); o segundo é uma paleta multi-hue já madura e não ligada à marca antiga.
+
+### 8.8 Separação das Views por módulo (2026-07-23)
+
+Refatoração **puramente organizacional** (zero mudança funcional): o `Index.html`, antes monolítico (~2.230 linhas com todas as telas e modais), foi reduzido a um **shell** (~275 linhas: `<head>`, CDNs, sidebar/menu único e a lista de `include_()`). As 14 telas (`view-*`) e os 19 modais (`.modal-overlay`) foram distribuídos em **8 arquivos `View_*.html`**, um por módulo, incluídos via `<?!= include_('View_X'); ?>` — o mesmo padrão modular que `JS_*.html` e `Modulo_*.js` já seguiam.
+
+**Motivação:** consistência. Front (JS) e back (GS) já eram modulares por domínio; só as telas ficaram monolíticas. Agora, mexer num módulo é abrir `View_X.html` + `JS_X.html` + `Modulo_X.js`.
+
+**Por que não impacta performance:** o Apps Script concatena todos os `include_()` **no servidor** e entrega um HTML único ao navegador. A troca de aba/abertura de modal roda 100% no cliente (mostrar/esconder seções já carregadas). Mais arquivos = mais algumas leituras de arquivo no servidor no carregamento inicial (milissegundos, uma vez), **não** mais round-trips nem lazy-loading. O DOM final é idêntico ao de antes.
+
+**Por que nenhuma vinculação quebrou:**
+- Os `JS_*.html` localizam telas/modais **por ID** (`getElementById`/`abrirModal('modal-x')`), nunca por arquivo ou posição — e nenhum ID mudou.
+- O GS não precisou de ajuste: `include_()` já é genérico e `createTemplateFromFile('Index')` continua apontando para o mesmo `Index.html`.
+- Modais são `.modal-overlay { position: fixed }` sem seletor CSS de adjacência (`+`/`~`) dependente de ordem, então movê-los para junto de suas telas não altera renderização.
+
+**Garantia de fidelidade (como foi verificado):** os blocos foram extraídos preservando bytes (CRLF), com *guardas* que abortam se um marcador de linha não bater. A prova final foi um **invariante**: o multiset de linhas não-vazias de (`Index.html` + todos os `View_*.html`) é **idêntico** ao `Index.html` original (0 divergências) — nada perdido, alterado ou duplicado; cada uma das 14 views e 19 modais aparece exatamente uma vez. Menu ↔ tela: as 14 abas (`data-tab`) continuam todas ligadas a uma `view-*` existente.
+
+**Como reverter, se necessário (rollback):** o `Index.html` monolítico original está preservado no histórico do git (commit `e86f690`, anterior à refatoração). Para voltar ao estado de arquivo único: `git checkout e86f690 -- Index.html` e apagar os `View_*.html` (removendo antes as linhas `include_('View_*')` — que na verdade voltam junto com o `Index.html` restaurado). Como o back-end nunca foi tocado, o rollback é só de front-end. Alternativamente, mover um bloco de volta para o `Index.html` é seguro desde que os IDs não mudem.
 
 ---
 
