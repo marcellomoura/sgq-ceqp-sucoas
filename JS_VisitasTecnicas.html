@@ -1,0 +1,414 @@
+<script>
+// ==========================================
+// MÓDULO 7 — VISITAS TÉCNICAS
+// Carregamento SOB DEMANDA (deliberado): ao contrário de Capacitações/
+// Documentos/Riscos/Unidades (que vêm todos no pacote getRestoData(),
+// pré-carregado em segundo plano logo na abertura do app), os dados de
+// Visitas Técnicas só são buscados quando o usuário abre esta aba pela
+// primeira vez — ver garantirVisitasData() e o case 'visitas-lista' em
+// mudarTab() (JS_Utilitarios.html). Mantém a abertura do sistema e o
+// getRestoData() exatamente como eram antes deste módulo existir.
+// ==========================================
+
+var visitasLoaded = false;
+var visitasLoading = false;
+var visitasFilaCallbacks = [];
+
+function garantirVisitasData(cb) {
+  if (visitasLoaded) { if (cb) cb(); return; }
+  if (cb) visitasFilaCallbacks.push(cb);
+  if (visitasLoading) return; // já tem uma busca em andamento, só entra na fila
+  visitasLoading = true;
+  google.script.run
+    .withFailureHandler(function(e) {
+      visitasLoading = false;
+      visitasFilaCallbacks = [];
+      showAlerta('Falha ao carregar as visitas técnicas: ' + (e.message || String(e)));
+    })
+    .withSuccessHandler(function(lista) {
+      state.visitas = Array.isArray(lista) ? lista : [];
+      visitasLoaded = true;
+      visitasLoading = false;
+      var fila = visitasFilaCallbacks; visitasFilaCallbacks = [];
+      fila.forEach(function(fn) {
+        try { fn(); } catch (err) { console.error('Erro ao renderizar visitas técnicas:', err); }
+      });
+    })
+    .getVisitasTecnicasData();
+}
+
+let vtPage = 1;
+const vtLimit = 20;
+
+function renderVisitasTecnicas(resetPage = false) {
+  if (resetPage) vtPage = 1;
+  const tbody = $id('lista-visitas');
+  let visitas = Array.isArray(state.visitas) ? state.visitas : [];
+
+  const selMembro = $id('f-vt-membro');
+  if (selMembro) {
+    const v = selMembro.value;
+    selMembro.innerHTML = optsMembros();
+    if (v) selMembro.value = v;
+  }
+  const filtroMembro = selMembro ? selMembro.value : '';
+  if (filtroMembro) {
+    visitas = visitas.filter(v => v.participantes && parseIdsResponsaveis(v.participantes).includes(String(filtroMembro)));
+  }
+
+  const vtYear = ($id('vtYearFilter')||{value:''}).value;
+  if (vtYear) visitas = visitas.filter(v => v.data && String(v.data).substring(0,4) === vtYear);
+
+  const ini = $id('f-vt-data-ini') ? $id('f-vt-data-ini').value : '';
+  const fim = $id('f-vt-data-fim') ? $id('f-vt-data-fim').value : '';
+
+  if (ini || fim) {
+    visitas = visitas.filter(v => {
+      if (!v.data) return false;
+      if (ini && v.data < ini) return false;
+      if (fim && v.data > fim) return false;
+      return true;
+    });
+  }
+
+  if (!visitas.length) {
+    tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhuma visita técnica encontrada.</div>';
+    renderPaginacao('paginacao-vt', { totalRegistros: 0 });
+    return;
+  }
+
+  // data-idx precisa ser o índice em state.visitas (a fonte que o delegate
+  // resolve), NÃO em `visitas` — que aqui já pode estar filtrado. Mesmo
+  // padrão de renderCapacitacoes/renderMembers/renderUnidades.
+  const ordenadas = visitas.map(v => ({ v, i: state.visitas.indexOf(v) })).sort((a, b) => b.v.idRow - a.v.idRow);
+
+  const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / vtLimit));
+  if (vtPage > totalPaginas) vtPage = totalPaginas;
+  const inicio = (vtPage - 1) * vtLimit;
+  const exibidas = ordenadas.slice(inicio, inicio + vtLimit);
+
+  renderPaginacao('paginacao-vt', {
+    pagina: vtPage,
+    totalPaginas: totalPaginas,
+    totalRegistros: ordenadas.length,
+    onPrev: () => { vtPage--; renderVisitasTecnicas(); },
+    onNext: () => { vtPage++; renderVisitasTecnicas(); }
+  });
+
+  const fmtData = s => (s && s !== '-') ? s.split('-').reverse().join('/') : '-';
+
+  tbody.innerHTML = exibidas.map(({v, i}) => {
+    const status = v.data ? 'Realizada' : 'Planejada';
+    const [statusBg, statusColor] = CORES_STATUS[status];
+
+    const relatorioLink = v.relatorio
+      ? `<a href="${v.relatorio.startsWith('http') ? esc(v.relatorio) : 'https://' + esc(v.relatorio)}" target="_blank" rel="noopener noreferrer" style="color:#2b7fff; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
+      : '<span style="color:#d1d5db;">-</span>';
+
+    const nomes = v.participantes ? nomesMembros(parseIdsResponsaveis(v.participantes)) : '';
+
+    return `<div class="grid-row-hover cap-row" style="grid-template-columns: minmax(0,2fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.8fr);">
+      <div class="cap-c-titulo">${esc(v.objetivo)}</div>
+      <div class="cap-c-sec">${esc(v.local || '-')}</div>
+      <div class="cap-c-sec">${fmtData(v.data)}</div>
+      <div class="cap-c-center"><span style="display:inline-block; padding:4px 12px; border-radius:9999px; font-size:11.5px; font-weight:600; background:${statusBg}; color:${statusColor};">${status}</span></div>
+      <div class="cap-c-sec">${esc(nomes || '-')}</div>
+      <div class="cap-c-mat">${relatorioLink}</div>
+      <div class="no-print cap-c-acoes">
+        ${iconBtn('edit','edit-visita','Editar Visita Técnica',`data-idx="${i}"`)}${iconBtn('del','del-visita','Excluir Visita Técnica',`data-idx="${i}"`)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ------------------------------------------
+// PAINEL DE INDICADORES: gráficos de Visitas Técnicas
+// Mesmo padrão de renderGraficosCapacitacoes (JS_Capacitacoes.html): recebe o
+// id de membro do filtro geral do Painel (fid) e o ano de dashYearFilter.
+// Só 2 gráficos (Evolução Mensal e por Membro) — Visitas Técnicas não tem
+// campos categóricos equivalentes a Tema/Modalidade de Capacitações.
+// ------------------------------------------
+let vtMesChartInst = null, vtMembroChartInst = null;
+
+function renderGraficosVisitas(fid) {
+  let visitas = Array.isArray(state.visitas) ? state.visitas : [];
+  if (fid) {
+    visitas = visitas.filter(v => v.participantes && parseIdsResponsaveis(v.participantes).includes(String(fid)));
+  }
+  const yid = ($id('dashYearFilter')||{value:''}).value;
+  if (yid) {
+    visitas = visitas.filter(v => v.data && String(v.data).substring(0,4) === String(yid));
+  }
+
+  let pMes = {};
+  const membrosGrafico = state.members.filter(m => m.ativo !== false);
+  const pMembro = {};
+  membrosGrafico.forEach(m => pMembro[m.id] = 0);
+
+  let qtdPlanejadas = 0, qtdRealizadas = 0;
+
+  visitas.forEach(v => {
+    if (v.data) qtdRealizadas++; else qtdPlanejadas++;
+
+    if (v.data) {
+      const p = v.data.split('-');
+      if (p.length === 3) {
+        const mesAno = p[1] + '/' + p[0]; // MM/YYYY
+        pMes[mesAno] = (pMes[mesAno] || 0) + 1;
+      }
+    }
+
+    if (v.participantes) {
+      parseIdsResponsaveis(v.participantes).forEach(id => {
+        if (id in pMembro) pMembro[id]++;
+      });
+    }
+  });
+
+  const elDashVt = $id('kpi-dash-vt');
+  if (elDashVt) elDashVt.innerText = qtdPlanejadas;
+  const elDashVtConc = $id('kpi-dash-vt-conc');
+  if (elDashVtConc) elDashVtConc.innerText = qtdRealizadas;
+
+  [vtMesChartInst, vtMembroChartInst].forEach(c => { if (c) c.destroy(); });
+
+  // Gráfico: Visitas Técnicas por Mês (chaves ordenadas cronologicamente)
+  const chavesMes = Object.keys(pMes).sort((a, b) => {
+    const [ma, ya] = a.split('/'), [mb, yb] = b.split('/');
+    return (ya + ma).localeCompare(yb + mb);
+  });
+  const cMes = $id('vtMesChart');
+  const dadosMes = chavesMes.map(k => pMes[k]);
+  if (cMes) {
+    const ctxMes = cMes.getContext('2d');
+    const gradMes = ctxMes.createLinearGradient(0, 0, 0, 260);
+    gradMes.addColorStop(0, 'rgba(44,169,143,0.28)');
+    gradMes.addColorStop(1, 'rgba(44,169,143,0)');
+    vtMesChartInst = new Chart(ctxMes, {
+      type: 'line',
+      data: {
+        labels: chavesMes,
+        datasets: [{
+          label: 'Visitas Técnicas',
+          data: dadosMes,
+          borderColor: '#2CA98F', backgroundColor: gradMes, fill: true,
+          tension: 0.4, borderWidth: 2.5,
+          pointRadius: 0, pointHoverRadius: 5, pointHitRadius: 12,
+          pointHoverBackgroundColor: '#2CA98F', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} visita(s)` } }, datalabels: { display: false } },
+        scales: CHART_SCALES_BASE
+      }
+    });
+  }
+
+  // Gráfico: Visitas Técnicas por Membro
+  const nomesMembrosVt = membrosGrafico.map(m => m.name);
+  const dadosMembrosVt = membrosGrafico.map(m => pMembro[m.id]);
+
+  const cMembro = $id('vtMembroChart');
+  if (cMembro) vtMembroChartInst = new Chart(cMembro.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: nomesMembrosVt,
+      datasets: [{
+        label: 'Visitas Técnicas',
+        data: dadosMembrosVt,
+        backgroundColor: '#3D8FC4',
+        borderWidth: 0, borderRadius: 20, borderSkipped: false, maxBarThickness: 26
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} visita(s)` } }, datalabels: { display: false } },
+      scales: CHART_SCALES_BASE
+    }
+  });
+}
+
+// Fragmento do relatório do Painel de Indicadores com os 2 gráficos de
+// Visitas Técnicas (viram imagem estática, mesmo padrão de
+// graficosCapacitacoesPdfHtml em JS_Capacitacoes.html).
+function graficosVisitasPdfHtml() {
+  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Evolução Mensal das Visitas Técnicas','vtMesChart')}${_pdfGraficoCel('Visitas Técnicas por Membro','vtMembroChart')}</tr></table>`;
+}
+
+// ------------------------------------------
+// KPIs DE VISITAS TÉCNICAS
+// ------------------------------------------
+function renderKpisVisitas() {
+  let visitas = Array.isArray(state.visitas) ? state.visitas : [];
+  const vtYear = ($id('vtYearFilter')||{value:''}).value;
+  if (vtYear) visitas = visitas.filter(v => v.data && String(v.data).substring(0,4) === vtYear);
+
+  let planejadas = 0, realizadas = 0;
+  visitas.forEach(v => { v.data ? realizadas++ : planejadas++; });
+
+  $id('kpi-vt-total').innerText      = visitas.length;
+  $id('kpi-vt-planejadas').innerText = planejadas;
+  $id('kpi-vt-realizadas').innerText = realizadas;
+}
+
+// ------------------------------------------
+// SELETOR DE PARTICIPANTES
+// ------------------------------------------
+function populateVtParticipantes(selectedIds = []) {
+  const c = $id('vt-participantes-options');
+  if (!c) return;
+  const membros = membrosOrdenados();
+  if (!membros.length) {
+    c.innerHTML = '<div style="font-size:12px;color:#4b5563;padding:8px;">Nenhum membro cadastrado.</div>';
+  } else {
+    c.innerHTML = membros.map(m =>
+      `<label class="checkbox-label"><input type="checkbox" value="${esc(String(m.id))}" ${selectedIds.includes(String(m.id)) ? 'checked' : ''}> ${esc(m.name)}</label>`
+    ).join('');
+    c.querySelectorAll('input').forEach(i => i.addEventListener('change', atualizarTagsVtParticipantes));
+  }
+  atualizarTagsVtParticipantes();
+}
+
+function atualizarTagsVtParticipantes() {
+  const opts = $id('vt-participantes-options');
+  const tags = $id('vt-participantes-tags');
+  if (!opts || !tags) return;
+  const checked = Array.from(opts.querySelectorAll('input:checked'));
+  tags.innerHTML = checked.map(ch => {
+    const m = state.members.find(x => String(x.id) === ch.value);
+    return m ? `<span class="assignee-tag">${esc(m.name)}</span>` : '';
+  }).join('');
+}
+
+function getIdsParticipantesSelecionadosVt() {
+  const opts = $id('vt-participantes-options');
+  if (!opts) return '[]';
+  return JSON.stringify(Array.from(opts.querySelectorAll('input:checked')).map(i => i.value));
+}
+
+// ------------------------------------------
+// INTERAÇÕES E MODAIS
+// ------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  const btnNovaVt = $id('btn-nova-visita');
+  if (btnNovaVt) btnNovaVt.addEventListener('click', abrirModalVisitaNova);
+
+  const btnSalvarVt = $id('btn-salvar-visita');
+  if (btnSalvarVt) btnSalvarVt.addEventListener('click', salvarFormVisita);
+
+  const vtYearFilter = $id('vtYearFilter');
+  if (vtYearFilter) {
+    const anoAtual = new Date().getFullYear();
+    let opts = '<option value="">Todos</option>';
+    const maxAno = Math.max(2028, anoAtual + 2);
+    for (let ano = 2026; ano <= maxAno; ano++) opts += `<option value="${ano}">${ano}</option>`;
+    vtYearFilter.innerHTML = opts;
+    vtYearFilter.value = anoAtual;
+    vtYearFilter.addEventListener('change', () => { renderVisitasTecnicas(true); renderKpisVisitas(); });
+  }
+
+  const fIni = $id('f-vt-data-ini'), fFim = $id('f-vt-data-fim');
+  if (fIni) fIni.addEventListener('change', () => renderVisitasTecnicas(true));
+  if (fFim) fFim.addEventListener('change', () => renderVisitasTecnicas(true));
+
+  const fMembro = $id('f-vt-membro');
+  if (fMembro) fMembro.addEventListener('change', () => renderVisitasTecnicas(true));
+
+  // Toggle dropdown de participantes
+  const trigger = $id('vt-participantes-trigger');
+  if (trigger) trigger.addEventListener('click', () => {
+    $id('vt-participantes-options').classList.toggle('show');
+  });
+});
+
+let vtIdOriginal = '';
+
+function abrirModalVisitaNova() {
+  $id('vt-idrow').value    = '';
+  vtIdOriginal             = '';
+  $id('vt-objetivo').value = '';
+  $id('vt-local').value    = '';
+  $id('vt-data').value     = '';
+  $id('vt-relatorio').value = '';
+  populateVtParticipantes([]);
+
+  $id('modal-visita-title').innerText = 'Nova Visita Técnica';
+  abrirModal('modal-visita');
+}
+
+function abrirEditarVisita(obj) {
+  $id('vt-idrow').value    = obj.idRow;
+  vtIdOriginal             = obj.id;
+  $id('vt-objetivo').value = obj.objetivo;
+  $id('vt-local').value    = obj.local || '';
+  $id('vt-data').value     = obj.data || '';
+  $id('vt-relatorio').value = obj.relatorio || '';
+  populateVtParticipantes(obj.participantes ? parseIdsResponsaveis(obj.participantes) : []);
+
+  $id('modal-visita-title').innerText = 'Editar Visita Técnica';
+  abrirModal('modal-visita');
+}
+
+function salvarFormVisita() {
+  const btn   = $id('btn-salvar-visita');
+  const idRow = $id('vt-idrow').value;
+
+  const dados = {
+    idRow,
+    idEsperado:    vtIdOriginal,
+    objetivo:      $id('vt-objetivo').value.trim(),
+    local:         $id('vt-local').value.trim(),
+    data:          $id('vt-data').value,
+    relatorio:     $id('vt-relatorio').value.trim(),
+    participantes: getIdsParticipantesSelecionadosVt()
+  };
+
+  if (!dados.objetivo) return showAlerta('O Objetivo/Motivo da Visita é obrigatório.');
+
+  btn.disabled = true;
+  btn.innerText = idRow ? 'Atualizando...' : 'Salvando...';
+
+  function tratarRespostaVt(r) {
+    if (r.sucesso) {
+      if (idRow) {
+        const idx = state.visitas.findIndex(v => String(v.idRow) === String(idRow));
+        if (idx >= 0) state.visitas[idx] = { ...state.visitas[idx], ...dados };
+      } else {
+        state.visitas.push({ ...dados, idRow: r.novaLinha, id: r.novoId });
+      }
+      fecharModal('modal-visita');
+      renderVisitasTecnicas();
+      renderKpisVisitas();
+      recarregarVisitas(() => {
+        renderVisitasTecnicas();
+        renderKpisVisitas();
+      });
+      feedbackBtn(btn, '✅ Salvo!', 'Salvar', null);
+    }
+    else { btn.disabled = false; btn.innerText = 'Salvar'; showAlerta(r.mensagem); }
+  }
+
+  if (idRow)
+    google.script.run.withSuccessHandler(tratarRespostaVt).withFailureHandler(falha(btn, 'Salvar', null)).atualizarVisitaTecnica(dados);
+  else
+    google.script.run.withSuccessHandler(tratarRespostaVt).withFailureHandler(falha(btn, 'Salvar', null)).salvarVisitaTecnica(dados);
+}
+
+function recarregarVisitas(cb) {
+  google.script.run
+    .withSuccessHandler(visitas => { state.visitas = visitas; if (cb) cb(); })
+    .withFailureHandler(e => showAlerta('Falha ao sincronizar visitas técnicas: ' + String(e)))
+    .getVisitasTecnicasData();
+}
+
+function excluirVisitaConfirm(idRow, id) {
+  google.script.run
+    .withSuccessHandler(r => {
+      if (r && r.sucesso === false) { showAlerta(r.mensagem); return; }
+      recarregarVisitas(() => { renderVisitasTecnicas(); renderKpisVisitas(); });
+    })
+    .withFailureHandler(e => showAlerta(String(e)))
+    .excluirVisitaTecnica(idRow, id);
+}
+</script>

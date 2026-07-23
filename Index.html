@@ -132,6 +132,24 @@
               </svg></span>Capacitações</button>
         </div>
 
+        <!-- Módulo 7: Visitas Técnicas -->
+        <button class="nav-group-title" data-group="g-visitas">
+          <span class="nav-group-icon"><svg viewBox="0 0 24 24">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg></span>
+          <span class="nav-group-label">VISITAS TÉCNICAS</span>
+          <span class="arrow"><svg viewBox="0 0 24 24">
+              <polyline points="6 9 12 15 18 9" />
+            </svg></span>
+        </button>
+        <div class="nav-group-items" id="g-visitas">
+          <button class="menu-item" data-tab="visitas-lista"><span class="menu-item-icon"><svg viewBox="0 0 24 24">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg></span>Visitas Técnicas</button>
+        </div>
+
         <!-- Módulo 2: Unidades -->
         <button class="nav-group-title" data-group="g-unidades">
           <span class="nav-group-icon"><svg viewBox="0 0 24 24">
@@ -256,6 +274,8 @@
 
       <?!= include_('View_Capacitacoes'); ?>
 
+      <?!= include_('View_VisitasTecnicas'); ?>
+
     </div><!-- /main-content -->
   </div><!-- /app-layout -->
 
@@ -270,6 +290,7 @@
   <?!= include_('JS_Riscos'); ?>
   <?!= include_('JS_Pessoas'); ?>
   <?!= include_('JS_Capacitacoes'); ?>
+  <?!= include_('JS_VisitasTecnicas'); ?>
 </body>
 
 </html>

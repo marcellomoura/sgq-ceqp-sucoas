@@ -14,6 +14,11 @@ const SHEET_LOGS_ARQUIVO = 'Logs_Arquivo';
 const SHEET_AFASTAMENTOS = 'Afastamentos';
 const SHEET_CAPACITACOES = 'Capacitacoes';
 const SHEET_ATIVIDADES   = 'Atividades';
+// Visitas Técnicas: NÃO entra no setup de abas (setupDatabaseResto) de propósito
+// — carregamento é sob demanda (ver getVisitasTecnicasData), então a aba só é
+// criada por conectarAba na primeira vez que alguém abre a tela ou salva um
+// registro, em vez de em toda abertura do sistema.
+const SHEET_VISITAS      = 'Visitas_Tecnicas';
 
 // Layouts de colunas usados em vários pontos (setup, leitura e escrita).
 // Uma única fonte de verdade evita que uma migração futura esqueça algum lugar.
@@ -54,6 +59,7 @@ const CABECALHOS_RISCOS   = ['ID_Risco','Macroetapa','Risco','Causa','Consequenc
 const CABECALHOS_PLANOS   = ['ID_Risco','O_Que','Por_Que','Quem','Onde','Data_Prevista','Data_Finalizacao','Como','Quanto_Custa','Status','Revisao_Pendente','Historico','Entregas'];
 const CABECALHOS_LOGS     = ['Data_Hora','Usuario','Acao','Referencia','Detalhes'];
 const CABECALHOS_CAPACITACOES = ['ID_Capacitacoes', 'Titulo_Da_Capacitacao', 'Tema', 'Publico_Alvo', 'Modalidade', 'Data_Prevista', 'Data_Realizada', 'Status', 'Lista_De_Presenca', 'Responsaveis'];
+const CABECALHOS_VISITAS = ['ID_Visitas_Tecnicas', 'Objetivo_Da_Visita', 'Local_Visitado', 'Data_Da_Visita', 'Status', 'Responsaveis', 'Relatorio_Anexo'];
 
 // Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
 // (a mesma fonte única usada no setup da planilha). Elimina os índices
@@ -661,7 +667,9 @@ function setupDatabaseResto() {
   conectarAba(SHEET_RISKS,    CABECALHOS_RISCOS);
   conectarAba(SHEET_PLANS,    CABECALHOS_PLANOS);
   conectarAba(SHEET_LOGS,     CABECALHOS_LOGS);
-  conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
+  // Capacitações NÃO entra mais aqui (2026-07-23): passou a ser sob demanda,
+  // igual Visitas Técnicas — ver getCapacitacoesData(). A aba é criada por
+  // conectarAba na 1ª leitura/gravação, fora deste setup eager.
 
   try { CacheService.getScriptCache().put('setup_resto_ok_v4', '1', 21600); } catch (e) {}
 }
@@ -1011,41 +1019,28 @@ function getRestoData() {
   const rpe = _lerRiscosPlanosEntregas_(ss);
   const risks = rpe.risks, plans = rpe.plans, deliveries = rpe.deliveries;
 
-  // --- Capacitações ---
-  const CCAP = colIdx_(CABECALHOS_CAPACITACOES);
-  const capData = safeGetSheetData(ss, SHEET_CAPACITACOES);
-  const trainings = capData.length > 1 ? capData.slice(1)
-    .map((r, i) => ({
-      idRow: i + 2,
-      id: String(r[CCAP('ID_Capacitacoes')]||''),
-      titulo: String(r[CCAP('Titulo_Da_Capacitacao')]||''),
-      tema: String(r[CCAP('Tema')]||''),
-      publico: String(r[CCAP('Publico_Alvo')]||''),
-      modalidade: String(r[CCAP('Modalidade')]||''),
-      dataPrevista: formatarDataParaUI(r[CCAP('Data_Prevista')]),
-      dataPrevistaRaw: r[CCAP('Data_Prevista')] instanceof Date ? r[CCAP('Data_Prevista')].getTime() : null,
-      dataRealizada: formatarDataParaUI(r[CCAP('Data_Realizada')]),
-      status: String(r[CCAP('Status')]||'Planejada'),
-      materiais: String(r[CCAP('Lista_De_Presenca')]||''),
-      participantes: String(r[CCAP('Responsaveis')]||'')
-    })) : [];
-
-  return { 
-    units: units, 
-    docs: docs, 
-    risks: risks, 
-    plans: plans, 
+  return {
+    units: units,
+    docs: docs,
+    risks: risks,
+    plans: plans,
     deliveries: deliveries,
-    history: rpe.history,
-    trainings: trainings 
+    history: rpe.history
   };
 }
 
+// Endpoint LEVE para a aba Capacitações — desde 2026-07-23, deliberadamente
+// FORA de getRestoData() (que roda sempre em segundo plano na abertura do
+// app), no mesmo padrão de getVisitasTecnicasData(): só é chamado pelo
+// cliente quando o usuário abre a aba "Capacitações" pela primeira vez
+// (garantirCapacitacoesData, em JS_Capacitacoes.html), ou pelo Painel de
+// Indicadores antes de desenhar os gráficos. conectarAba cria a planilha (com
+// cabeçalhos) na primeira chamada, se ainda não existir.
 function getCapacitacoesData() {
   if (!isMembro_()) throw new Error('Acesso Negado.');
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
   const CCAP = colIdx_(CABECALHOS_CAPACITACOES);
-  const capData = safeGetSheetData(ss, SHEET_CAPACITACOES);
+  const capData = aba.getDataRange().getValues();
   return capData.length > 1 ? capData.slice(1).map((r, i) => ({
     idRow: i + 2,
     id: String(r[CCAP('ID_Capacitacoes')]||''),
@@ -1062,6 +1057,29 @@ function getCapacitacoesData() {
     // recarregarCapacitacoes() (após salvar/editar/excluir) zerava a coluna
     // Responsáveis na UI até um reload completo.
     participantes: String(r[CCAP('Responsaveis')]||'')
+  })) : [];
+}
+
+// Endpoint LEVE para a aba Visitas Técnicas — deliberadamente FORA de
+// getRestoData()/getKanbanData() (que rodam sempre na abertura do app). Só é
+// chamado pelo cliente quando o usuário abre a aba "Visitas Técnicas" pela
+// primeira vez (garantirVisitasData), então o sistema não busca essa aba a
+// mais em toda abertura/atualização das outras telas. conectarAba cria a
+// planilha (com cabeçalhos) na primeira chamada, se ainda não existir.
+function getVisitasTecnicasData() {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  const aba = conectarAba(SHEET_VISITAS, CABECALHOS_VISITAS);
+  const CV  = colIdx_(CABECALHOS_VISITAS);
+  const dados = aba.getDataRange().getValues();
+  return dados.length > 1 ? dados.slice(1).map((r, i) => ({
+    idRow: i + 2,
+    id: String(r[CV('ID_Visitas_Tecnicas')]||''),
+    objetivo: String(r[CV('Objetivo_Da_Visita')]||''),
+    local: String(r[CV('Local_Visitado')]||''),
+    data: formatarDataParaUI(r[CV('Data_Da_Visita')]),
+    status: String(r[CV('Status')]||'Planejada'),
+    participantes: String(r[CV('Responsaveis')]||''),
+    relatorio: String(r[CV('Relatorio_Anexo')]||'')
   })) : [];
 }
 

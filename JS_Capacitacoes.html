@@ -1,7 +1,38 @@
 <script>
 // ==========================================
 // MÓDULO 6 — GESTÃO DE CAPACITAÇÕES
+// Carregamento SOB DEMANDA desde 2026-07-23 (antes vinha em getRestoData()):
+// mesmo padrão de Visitas Técnicas (garantirVisitasData, JS_VisitasTecnicas.
+// html) — busca só na 1ª vez que a aba "Capacitações" é aberta, ou quando o
+// Painel de Indicadores precisa dos dados para os gráficos.
 // ==========================================
+
+var capacitacoesLoaded = false;
+var capacitacoesLoading = false;
+var capacitacoesFilaCallbacks = [];
+
+function garantirCapacitacoesData(cb) {
+  if (capacitacoesLoaded) { if (cb) cb(); return; }
+  if (cb) capacitacoesFilaCallbacks.push(cb);
+  if (capacitacoesLoading) return; // já tem uma busca em andamento, só entra na fila
+  capacitacoesLoading = true;
+  google.script.run
+    .withFailureHandler(function(e) {
+      capacitacoesLoading = false;
+      capacitacoesFilaCallbacks = [];
+      showAlerta('Falha ao carregar as capacitações: ' + (e.message || String(e)));
+    })
+    .withSuccessHandler(function(lista) {
+      state.trainings = Array.isArray(lista) ? lista : [];
+      capacitacoesLoaded = true;
+      capacitacoesLoading = false;
+      var fila = capacitacoesFilaCallbacks; capacitacoesFilaCallbacks = [];
+      fila.forEach(function(fn) {
+        try { fn(); } catch (err) { console.error('Erro ao renderizar capacitações:', err); }
+      });
+    })
+    .getCapacitacoesData();
+}
 
 let capPage = 1;
 const capLimit = 20;

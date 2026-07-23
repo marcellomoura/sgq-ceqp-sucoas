@@ -6,7 +6,7 @@
 // tasks = só os cartões ATIVOS do quadro. archivedTasks tem busca própria e sob
 // demanda (getTarefasArquivadas), como trainings/history — declarados aqui para
 // que nenhum consumidor dependa de uma chave que "aparece" só após a carga.
-var state = { tasks: [], archivedTasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [], history: [], trainings: [], afastamentos: [] };
+var state = { tasks: [], archivedTasks: [], members: [], units: [], docs: [], risks: [], plans: [], deliveries: [], history: [], trainings: [], afastamentos: [], visitas: [] };
 var currentTab  = 'kanban';
 var itemExcluir = null, tipoPdfAtual = null;
 var currentActivities = [];
@@ -85,7 +85,7 @@ const CHART_SCALES_BASE = {
 // Paleta unificada (ver CSS.html --success/--warning/--danger/--info):
 // Menta=sucesso, Dourado=aviso, Tijolo=perigo, Lavanda=info/andamento, Pêssego=Alto.
 const CORES_STATUS = {
-  'Vigente':['#DFF6EF','#157965'], 'Concluído':['#DFF6EF','#157965'], 'Concluída':['#DFF6EF','#157965'], 'Entregue':['#DFF6EF','#157965'],
+  'Vigente':['#DFF6EF','#157965'], 'Concluído':['#DFF6EF','#157965'], 'Concluída':['#DFF6EF','#157965'], 'Entregue':['#DFF6EF','#157965'], 'Realizada':['#DFF6EF','#157965'],
   'Próximo da Revisão':['#FBF3D3','#795B15'], 'Pendente':['#FBF3D3','#795B15'], 'Planejada':['#FBF3D3','#795B15'],
   'Em Andamento':['#E9E6FB','#3424A8'], 'Em Elaboração':['#E9E6FB','#3424A8'],
   'Vencido':['#FCE1DE','#791E15'], 'Atrasado':['#FCE1DE','#791E15'],
@@ -340,7 +340,6 @@ function garantirRestoData(callback) {
         state.risks = resto.risks;
         state.plans = resto.plans;
         state.deliveries = resto.deliveries;
-        state.trainings = resto.trainings;
         // Sem isto a Matriz de Risco plota probabilidade/impacto ORIGINAIS até
         // que alguma escrita dispare recarregarRiscosPlanos(), e o modal de
         // reavaliação pré-preenche com os valores antigos (salvar "manter"
@@ -376,7 +375,7 @@ function mudarTab(tab, botao) {
   if(view) view.classList.add('active');
 
   atualizarTopBar();
-  const SGQ_TABS = ['unidades','doc-lista','doc-revisoes','risco-matriz','plano-acomp','capacitacoes-lista','indicadores'];
+  const SGQ_TABS = ['unidades','doc-lista','doc-revisoes','risco-matriz','plano-acomp','indicadores'];
 
   const rotinas = {
     'kanban': ()=>renderTasks(),
@@ -389,7 +388,11 @@ function mudarTab(tab, botao) {
     'members': ()=>renderMembers(),
     // Os gráficos do Kanban no Painel somam ativos + arquivados (métrica
     // histórica), então os arquivados precisam estar carregados antes.
-    'indicadores': ()=>garantirArquivados(()=>setTimeout(renderIndicadores, 50)),
+    // Capacitações e Visitas Técnicas são buscadas aqui também — nenhuma das
+    // duas vem mais no getRestoData()/SGQ_TABS (ambas sob demanda desde
+    // 2026-07-23, ver §8.9 da documentação) — para o Painel não renderizar
+    // os gráficos vazios na primeira abertura direta desta aba.
+    'indicadores': ()=>garantirArquivados(()=>garantirCapacitacoesData(()=>garantirVisitasData(()=>setTimeout(renderIndicadores, 50)))),
     'escala': ()=>renderEscala(),
     'unidades': ()=>renderUnidades(),
     'doc-lista': ()=>renderDocumentos('mestra'),
@@ -397,18 +400,35 @@ function mudarTab(tab, botao) {
     'risco-matriz': ()=>renderMatriz(),
     'plano-acomp': ()=>renderAcompanhamento(),
     'risco-arquivado': ()=>renderRiscosArquivados(),
-    'capacitacoes-lista': ()=>{ renderCapacitacoes(); renderKpisCapacitacoes(); },
-    'ferias': ()=>carregarFerias()
+    // Capacitações: carregamento sob demanda (não faz parte do getRestoData()
+    // pré-carregado, desde 2026-07-23) — mesmo padrão de 'visitas-lista'
+    // abaixo, com sua própria busca/fila (garantirCapacitacoesData, em
+    // JS_Capacitacoes.html).
+    'capacitacoes-lista': ()=>{
+      if (!capacitacoesLoaded) msgTabela('lista-capacitacoes', 10, 'A carregar...');
+      garantirCapacitacoesData(()=>{ renderCapacitacoes(); renderKpisCapacitacoes(); });
+    },
+    'ferias': ()=>carregarFerias(),
+    // Visitas Técnicas: carregamento sob demanda (não faz parte do
+    // getRestoData() pré-carregado) — mesmo padrão de 'archived' acima, com
+    // sua própria busca/fila (garantirVisitasData, em JS_VisitasTecnicas.html).
+    'visitas-lista': ()=>{
+      if (!visitasLoaded) msgTabela('lista-visitas', 7, 'A carregar...');
+      garantirVisitasData(()=>{ renderVisitasTecnicas(); renderKpisVisitas(); });
+    }
   };
 
   if (tab === 'logs')   { carregarLogs();   return; }
 
-  // Mostra "A carregar..." nas tabelas das abas do SGQ enquanto os dados
-  // não chegam (só na primeira visita — depois fica em cache)
+  // Mostra "A carregar..." nas tabelas das abas do SGQ eager (pacote
+  // getRestoData) enquanto os dados não chegam (só na primeira visita —
+  // depois fica em cache). Capacitações/Visitas Técnicas/Arquivados têm seu
+  // próprio "A carregar..." embutido na respectiva rotina acima, porque
+  // seguem um carregamento sob demanda independente deste pacote.
   const MSG_TABELA_POR_ABA = {
     'unidades': ['lista-unidades', 4], 'doc-lista': ['lista-mestra', 12],
     'doc-revisoes': ['lista-revisoes', 10], 'risco-matriz': ['lista-riscos', 12],
-    'plano-acomp': ['lista-acomp', 11], 'capacitacoes-lista': ['lista-capacitacoes', 10],
+    'plano-acomp': ['lista-acomp', 11],
     'risco-arquivado': ['lista-riscos-arquivados', 9]
   };
 
@@ -457,6 +477,7 @@ function renderIndicadores() {
   const fid = ($id('dashMemberFilter')||{value:''}).value;
   renderGraficosKanban(fid);
   renderGraficosCapacitacoes(fid);
+  renderGraficosVisitas(fid);
 }
 
 // Aviso (idempotente) exibido no topo do Painel quando o Chart.js não está
@@ -489,10 +510,15 @@ function montarHtmlIndicadoresPdf() {
     ${_pdfKpiCell('Capacitações Ativas', getTxt('kpi-dash-cap'), '#8b5cf6')}
     ${_pdfKpiCell('Capacitações Realizadas', getTxt('kpi-dash-cap-conc'), '#2CA98F')}
   </tr></table>`;
+  const kpisVt = `<table style="margin-bottom:20px;"><tr>
+    ${_pdfKpiCell('Visitas Planejadas', getTxt('kpi-dash-vt'), '#8b5cf6', '50%')}
+    ${_pdfKpiCell('Visitas Realizadas', getTxt('kpi-dash-vt-conc'), '#2CA98F', '50%')}
+  </tr></table>`;
 
-  const tKanban = _pdfSecaoTitulo('Gestão de Tarefas');
-  const tCap    = `<div style="page-break-before: always;">${_pdfSecaoTitulo('Gestão de Capacitações')}</div>`;
-  return kpis + tKanban + graficosKanbanPdfHtml() + tCap + graficosCapacitacoesPdfHtml();
+  const tKanban = _pdfSecaoTitulo('Tarefas');
+  const tCap    = `<div style="page-break-before: always;">${_pdfSecaoTitulo('Capacitações')}</div>`;
+  const tVt     = `<div style="page-break-before: always;">${_pdfSecaoTitulo('Visitas Técnicas')}</div>`;
+  return kpis + tKanban + graficosKanbanPdfHtml() + tCap + graficosCapacitacoesPdfHtml() + tVt + kpisVt + graficosVisitasPdfHtml();
 }
 
 // ==========================================
@@ -554,7 +580,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const rotinasPosCargaInicial = {
         'members': renderMembers, 'escala': renderEscala,
         'ferias': carregarFerias,
-        'indicadores': ()=>garantirArquivados(renderIndicadores),
+        'indicadores': ()=>garantirArquivados(()=>garantirCapacitacoesData(()=>garantirVisitasData(renderIndicadores))),
         'archived': renderArquivados, 'risco-arquivado': renderRiscosArquivados
       };
       if (rotinasPosCargaInicial[currentTab]) rotinasPosCargaInicial[currentTab]();
@@ -776,7 +802,10 @@ document.addEventListener('click', function(e) {
     'acomp-entregas'  : () => abrirModalAcompEntregas(idx),
     // Capacitações
     'edit-capacitacao': () => abrirEditarCapacitacao(state.trainings[idx]),
-    'del-capacitacao' : () => { const c=state.trainings[idx]; showConfirm(`Excluir a capacitação "${c.id} - ${c.titulo}"?`, ()=>excluirCapacitacaoConfirm(c.idRow, c.id)); }
+    'del-capacitacao' : () => { const c=state.trainings[idx]; showConfirm(`Excluir a capacitação "${c.id} - ${c.titulo}"?`, ()=>excluirCapacitacaoConfirm(c.idRow, c.id)); },
+    // Visitas Técnicas
+    'edit-visita'     : () => abrirEditarVisita(state.visitas[idx]),
+    'del-visita'      : () => { const v=state.visitas[idx]; showConfirm(`Excluir a visita técnica "${v.id} - ${v.objetivo}"?`, ()=>excluirVisitaConfirm(v.idRow, v.id)); }
   };
   if (acoes[acao]) acoes[acao]();
 });
@@ -1031,8 +1060,8 @@ function _pdfSecaoTitulo(texto) {
   return `<table style="margin:16px 0 8px;"><tr><td style="border:none;padding:0;font-size:14px;font-weight:700;color:#030712;">${esc(texto)}</td></tr></table>`;
 }
 
-function _pdfKpiCell(label, valor, cor) {
-  return `<td bgcolor="#ffffff" style="background:#ffffff;width:25%;padding:14px 16px;border:1px solid #e5e7eb;">
+function _pdfKpiCell(label, valor, cor, largura) {
+  return `<td bgcolor="#ffffff" style="background:#ffffff;width:${largura||'25%'};padding:14px 16px;border:1px solid #e5e7eb;">
     <span style="font-size:10.5px;font-weight:700;color:#4b5563;">${esc(label)}</span><br>
     <div style="font-size:24px;font-weight:700;color:${cor};margin-top:8px;">${esc(String(valor))}</div>
   </td>`;

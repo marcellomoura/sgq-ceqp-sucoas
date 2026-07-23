@@ -245,13 +245,15 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 | `Modulo_Documentos.js` | Documentos: cadastro, edição, revisão (versionamento), exclusão. |
 | `Modulo_Riscos.js` | Riscos, Planos 5W2H, Entregas, reavaliação, revisão de plano. |
 | `Modulo_Capacitacoes.js` | CRUD de Capacitações. |
-| `Index.html` | **Shell da SPA** (desde 2026-07-23, ver §8.8): `<head>` + CDNs, a sidebar/menu único, e a lista de `include_()`. As telas (14 `view-*`) e os 19 modais foram movidos para os `View_*`. |
+| `Modulo_VisitasTecnicas.js` | CRUD de Visitas Técnicas (ver §8.9). |
+| `Index.html` | **Shell da SPA** (desde 2026-07-23, ver §8.8): `<head>` + CDNs, a sidebar/menu único, e a lista de `include_()`. As telas (15 `view-*`) e os 19+1 modais foram movidos para os `View_*`. |
 | `View_Kanban.html` | Telas Kanban e Arquivados + `modal-task`. |
 | `View_Pessoas.html` | Telas Membros, Escala e Afastamentos + modais `modal-member`/`modal-escala`/`modal-ferias`. |
 | `View_Unidades.html` | Tela Unidades + `modal-unidade`. |
 | `View_Documentos.html` | Telas Lista Mestra e Histórico de Revisões + modais `modal-doc-novo`/`modal-doc-editar`/`modal-doc-revisao`. |
 | `View_Riscos.html` | Telas Matriz, Plano de Ação e Riscos Arquivados + 7 modais (risco-novo/editar, plano-novo/editar, reavaliar-risco, revisar-plano, acomp-entregas). |
 | `View_Capacitacoes.html` | Tela Capacitações + `modal-capacitacao`. |
+| `View_VisitasTecnicas.html` | Tela Visitas Técnicas + `modal-visita` (ver §8.9). |
 | `View_Monitoramento.html` | Telas Painel de Indicadores e Registros (logs). |
 | `View_Comum.html` | Modais genéricos compartilhados: `modal-pdf-email`, `modal-confirmar`, `modal-alerta`. |
 | `CSS.html` | Design system: tokens `:root` (cor primária `#030712` + acento azul `#2b7fff` — ver §8.7), sem framework; `@media` (768/900px), `@keyframes`, estilos de impressão (`.no-print`, `.pdf-header`). |
@@ -261,9 +263,10 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 | `JS_Pessoas.html` | Escala semanal e afastamentos (render + modais). |
 | `JS_Documentos.html` | Lista mestra, histórico de revisões, modais de documento. |
 | `JS_Unidades.html` | Render e CRUD de unidades. |
-| `JS_Capacitacoes.html` | Render, KPIs, gráficos e CRUD de capacitações. |
+| `JS_Capacitacoes.html` | Render, KPIs, gráficos e CRUD de capacitações; carregamento sob demanda (`garantirCapacitacoesData`, desde 2026-07-23, ver §8.9). |
+| `JS_VisitasTecnicas.html` | Render, KPIs e CRUD de visitas técnicas; carregamento sob demanda (`garantirVisitasData`, ver §8.9). |
 
-### 8.2 Modelo de dados (11 abas)
+### 8.2 Modelo de dados (12 abas)
 
 | Aba (`SHEET_*`) | Colunas (`CABECALHOS_*`) | Chave/observações |
 |---|---|---|
@@ -274,11 +277,12 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 | `Riscos` | ID_Risco, Macroetapa, Risco, Causa, Consequencia, Categoria, Probabilidade, Impacto, Nivel, Tipo_Tratamento, Responsavel, Status, Historico (JSON) | ID `Rn`. Soft delete (`Status=Arquivado`). Histórico = reavaliações. |
 | `Planos_Acao` | ID_Risco, O_Que, Por_Que, Quem, Onde, Data_Prevista, Data_Finalizacao, Como, Quanto_Custa, Status, Revisao_Pendente, Historico (JSON), Entregas (JSON) | Vincula a Risco (`Rn`). Entregas embutidas em JSON. |
 | `Afastamentos` | ID_Afastamento, Ano, ID_Membro, Membro_Nome, Ferias_1/2/3, Abonos, Abono_Aniversario, Licenca_Servidor_Premio (JSON), Demais_Afastamentos (JSON) | ID `AF-n`. Uma linha por (Membro+Ano). |
-| `Capacitacoes` | ID_Capacitacoes, Titulo_Da_Capacitacao, Tema, Publico_Alvo, Modalidade, Data_Prevista, Data_Realizada, Status, Lista_De_Presenca, Responsaveis (JSON de ids) | ID `CAP-n`. Status derivado das datas. |
+| `Capacitacoes` | ID_Capacitacoes, Titulo_Da_Capacitacao, Tema, Publico_Alvo, Modalidade, Data_Prevista, Data_Realizada, Status, Lista_De_Presenca, Responsaveis (JSON de ids) | ID `CAP-n`. Status derivado das datas. **Não entra mais no setup automático** desde 2026-07-23 (ver §8.9) — sob demanda, igual `Visitas_Tecnicas`. |
+| `Visitas_Tecnicas` | ID_Visitas_Tecnicas, Objetivo_Da_Visita, Local_Visitado, Data_Da_Visita, Status, Responsaveis (JSON de ids), Relatorio_Anexo | ID `VT-n`. Status derivado só de Data_Da_Visita (sem "prevista", ver §8.9). **Não entra no setup automático** (`setupDatabaseResto`) — criada por `conectarAba` na 1ª leitura/gravação sob demanda. |
 | `Atividades` | ID_Tarefas, Tipo (comment/log), Texto, Data, Autor | Append-only, uma linha por item (substitui blob JSON que estourava 50k chars). |
 | `Logs` | Data_Hora, Usuario, Acao, Referencia, Detalhes | Trilha de auditoria append-only. |
 
-> Observação: `SHEET_ATIVIDADES` (`Atividades`) e `SHEET_LOGS` (`Logs`) somam com as 8 abas de domínio acima o total de 10 abas de dados + a aba `Planos_Acao` — 11 abas no total gerenciadas pelo setup.
+> Observação: `SHEET_ATIVIDADES` (`Atividades`) e `SHEET_LOGS` (`Logs`) somam com as 9 abas de domínio acima o total de 11 abas de dados + a aba `Planos_Acao` — 12 abas no total (10 gerenciadas pelo setup automático `setupDatabaseResto`/`Kanban`; `Capacitacoes` e `Visitas_Tecnicas` são criadas sob demanda, fora do setup — ver §8.9).
 
 ### 8.3 Regras de negócio identificadas
 - **Autenticação/autorização:** membro = e-mail (funcional ou pessoal) presente e ativo na aba Membros. Não-membros são bloqueados em `doGet` e em cada endpoint.
@@ -349,6 +353,31 @@ Refatoração **puramente organizacional** (zero mudança funcional): o `Index.h
 **Garantia de fidelidade (como foi verificado):** os blocos foram extraídos preservando bytes (CRLF), com *guardas* que abortam se um marcador de linha não bater. A prova final foi um **invariante**: o multiset de linhas não-vazias de (`Index.html` + todos os `View_*.html`) é **idêntico** ao `Index.html` original (0 divergências) — nada perdido, alterado ou duplicado; cada uma das 14 views e 19 modais aparece exatamente uma vez. Menu ↔ tela: as 14 abas (`data-tab`) continuam todas ligadas a uma `view-*` existente.
 
 **Como reverter, se necessário (rollback):** o `Index.html` monolítico original está preservado no histórico do git (commit `e86f690`, anterior à refatoração). Para voltar ao estado de arquivo único: `git checkout e86f690 -- Index.html` e apagar os `View_*.html` (removendo antes as linhas `include_('View_*')` — que na verdade voltam junto com o `Index.html` restaurado). Como o back-end nunca foi tocado, o rollback é só de front-end. Alternativamente, mover um bloco de volta para o `Index.html` é seguro desde que os IDs não mudem.
+
+### 8.9 Módulo Visitas Técnicas (2026-07-23)
+
+Novo módulo de domínio, seguindo à risca a mesma estrutura de arquivos de Capacitações: `Modulo_VisitasTecnicas.js` (CRUD) + `View_VisitasTecnicas.html` (tela + modal) + `JS_VisitasTecnicas.html` (render/KPIs/interações). Reaproveita 100% dos utilitários genéricos existentes (`conectarAba`, `colIdx_`, `getNextId_`, `comBloqueio`, `neutralizarFormula_`, `erroInterno_`, `registrarLog`, `isMembro_`, `renderPaginacao`, `iconBtn`, seletor de responsáveis) — nenhuma alteração em autenticação/autorização.
+
+**Modelo de dados** (decisão do usuário, 2026-07-23): entidade visitada é local/instituição externa em texto livre (não vinculado a `Unidades`); sem Data Prevista (só Data da Visita); Status derivado (`Planejada` sem data / `Realizada` com data); campo de Relatório/Anexo (link), no mesmo padrão do "Lista de Presença" de Capacitações.
+
+**Decisão arquitetural: carregamento SOB DEMANDA (única diferença de padrão em relação a Capacitações).** Capacitações, Documentos, Riscos, Planos e Unidades são todos lidos juntos em `getRestoData()`, pré-carregado em segundo plano ~400ms após o Kanban abrir (ver §8.2 e o comentário em `JS_Utilitarios.html` sobre `garantirRestoData`). Visitas Técnicas **não** entra nesse pacote: tem seu próprio endpoint leve (`getVisitasTecnicasData()`, em `Código.js`) e seu próprio mecanismo de carregamento no cliente (`garantirVisitasData()`, em `JS_VisitasTecnicas.html`), espelhando o padrão já usado por "Arquivados" (`garantirArquivados`/`archivedLoaded` em `JS_Kanban.html`) — busca só na 1ª vez que o usuário abre a aba "Visitas Técnicas", com fila de callbacks caso o clique aconteça durante uma busca em andamento.
+
+**Por quê:** era o ponto de atenção do usuário ao pedir o módulo — não pesar a abertura/atualização do sistema a cada novo módulo agregado ao pacote eager. Resultado prático: `getKanbanData()` e `getRestoData()` (e portanto a abertura do app e toda ação de Kanban/Capacitações/Riscos/etc.) permanecem **byte a byte** como eram antes deste módulo existir — zero linhas alteradas nessas funções. O único custo é a própria aba `Visitas_Tecnicas` (criada por `conectarAba` na 1ª leitura), que cresce de forma independente e não é lida por nenhuma outra tela.
+
+**Trade-off aceito:** ao contrário de Capacitações (que já está pronta quando o usuário clica, por já ter sido pré-carregada), a primeira visita à aba "Visitas Técnicas" numa sessão mostra "A carregar..." por um instante — mesma UX que "Arquivados" já tem hoje. Cliques seguintes na mesma sessão são instantâneos (cache em `state.visitas`).
+
+**Integração com o Painel de Indicadores (2026-07-23, mesmo dia):** adicionados 2 gráficos ("Evolução Mensal das Visitas Técnicas" e "Visitas Técnicas por Membro", em `renderGraficosVisitas`, JS_VisitasTecnicas.html) e 2 KPIs ("Visitas Planejadas"/"Visitas Realizadas") ao `#view-indicadores`, seguindo à risca o padrão de `renderGraficosCapacitacoes`. Sem Tema/Modalidade equivalentes (o módulo não tem esses campos), por isso só 2 gráficos em vez de 4. Também estendido ao PDF/e-mail do Painel (`montarHtmlIndicadoresPdf`/`graficosVisitasPdfHtml`), para não ficar inconsistente com a tela.
+
+**Consequência da carga sob demanda para o Painel:** como Visitas Técnicas não vem em `getRestoData()`, a aba "indicadores" (que já dependia de `garantirArquivados()` antes de renderizar) passou a depender também de `garantirVisitasData()` — senão os 2 gráficos novos apareceriam vazios na primeira vez que alguém abrisse o Painel sem antes visitar a aba "Visitas Técnicas". Isso é uma busca isolada da aba `Visitas_Tecnicas`, disparada só ao abrir o Painel — não reintroduz o pacote pesado no carregamento inicial do app.
+
+**Capacitações migrada para o mesmo padrão sob demanda (2026-07-23, mesmo dia, a pedido do usuário):** depois de discutir o trade-off (pacote eager sempre paga o custo da leitura, mesmo se a aba nunca for visitada na sessão; sob demanda só paga se for usada — o critério que decide é a frequência de uso, não "peso" em termos absolutos), decidiu-se tirar Capacitações do `getRestoData()`/`setupDatabaseResto()` e replicar exatamente o mecanismo de Visitas Técnicas:
+- `getCapacitacoesData()` (Código.js) passou a criar a aba sozinha via `conectarAba` (antes usava `safeGetSheetData`, que não cria) — mesmo comportamento de `getVisitasTecnicasData()`.
+- `garantirCapacitacoesData()` novo, em `JS_Capacitacoes.html`, espelhando `garantirVisitasData()` (mesma fila de callbacks, mesmas flags `capacitacoesLoaded`/`capacitacoesLoading`).
+- `'capacitacoes-lista'` saiu de `SGQ_TABS`; ganhou o mesmo gate inline (`msgTabela` + `garantir...Data`) que `'visitas-lista'` já tinha.
+- A cadeia de dependências do Painel de Indicadores (nos dois pontos que chamam `renderIndicadores`) passou a ser `garantirArquivados → garantirCapacitacoesData → garantirVisitasData → renderIndicadores`.
+- **Importante:** `garantirRestoData()` (JS_Utilitarios.html) parou de fazer `state.trainings = resto.trainings` — como esse campo não existe mais na resposta de `getRestoData()`, deixar essa linha sobrescreveria (com `undefined`) um `state.trainings` já carregado por `garantirCapacitacoesData()`, dependendo da ordem de chegada das duas respostas.
+
+Paginação (client-side, 20 por página) não foi afetada por essa mudança — já era 100% em memória antes e continua sendo; a única coisa que mudou é o momento em que a única busca completa acontece (automática em segundo plano → sob demanda no primeiro clique/abertura do Painel).
 
 ---
 
