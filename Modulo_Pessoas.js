@@ -27,14 +27,14 @@ function salvarEscala(dados) {
       const rows = aba.getDataRange().getValues();
       const membroId = String(dados.membroId || '');
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][C('ID')]) === membroId) {
+        if (String(rows[i][C('ID_Membro')]) === membroId) {
           // Dias gravados como texto legível na planilha: "Segunda (08h-12h), Terça"
           const comboStr = (dados.diasSemana || []).map(d => {
             const h = (dados.horarios && dados.horarios[d]) ? dados.horarios[d] : '';
             return h ? `${d} (${h})` : d;
           });
           // Colunas contíguas Dias Semana + Dia Presencial
-          aba.getRange(i + 1, C('Dias Semana')+1, 1, 2).setValues([[
+          aba.getRange(i + 1, C('Dias_Semana')+1, 1, 2).setValues([[
             comboStr.join(', '),
             dados.diaPresencial || ''
           ].map(neutralizarFormula_)]);
@@ -73,14 +73,14 @@ function _lerAfastamentos_() {
     };
 
     return rows.slice(1).map(r => {
-      const p1 = String(r[CA('Férias 1')] || '').trim();
-      const p2 = String(r[CA('Férias 2')] || '').trim();
-      const p3 = String(r[CA('Férias 3')] || '').trim();
+      const p1 = String(r[CA('Ferias_1')] || '').trim();
+      const p2 = String(r[CA('Ferias_2')] || '').trim();
+      const p3 = String(r[CA('Ferias_3')] || '').trim();
       const abonosCell = r[CA('Abonos')];
       const abonosSt = Object.prototype.toString.call(abonosCell) === '[object Date]' ? dataParaISO_(abonosCell) : String(abonosCell || '').trim();
-      const aniversario = dataParaISO_(r[CA('Abono Aniversário')]);
-      const licencaSt = String(r[CA('Licença Servidor/Prêmio')] || '').trim();
-      const demaisSt = String(r[CA('Demais Afastamentos')] || '').trim();
+      const aniversario = dataParaISO_(r[CA('Abono_Aniversario')]);
+      const licencaSt = String(r[CA('Licenca_Servidor_Premio')] || '').trim();
+      const demaisSt = String(r[CA('Demais_Afastamentos')] || '').trim();
 
       // Licença Servidor/Prêmio: pode ter várias. Formato novo = JSON
       // [{inicio,fim}]; formato antigo = "inicio a fim" (um período), migrado
@@ -105,10 +105,10 @@ function _lerAfastamentos_() {
       if (demaisSt) { try { const arr = JSON.parse(demaisSt); if (Array.isArray(arr)) demais = arr; } catch(e) {} }
 
       return {
-        id: String(r[CA('ID')]),
+        id: String(r[CA('ID_Afastamento')]),
         ano: String(r[CA('Ano')]),
-        membroId: String(r[CA('Membro ID')]),
-        membroNome: String(r[CA('Membro Nome')]),
+        membroId: String(r[CA('ID_Membro')]),
+        membroNome: String(r[CA('Membro_Nome')]),
         ferias: ferias,
         abonosFixos: abonosSt ? abonosSt.split(',').map(s => s.trim()).filter(x => x) : [],
         abonoAniv: aniversario ? { inicio: aniversario, fim: aniversario } : null,
@@ -152,8 +152,8 @@ function salvarAfastamento(dados) {
       ];
 
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][CA('Membro ID')]) === String(dados.membroId) && String(rows[i][CA('Ano')]) === String(dados.ano)) {
-          aba.getRange(i + 1, CA('Férias 1')+1, 1, 7).setValues([valores.map(neutralizarFormula_)]);
+        if (String(rows[i][CA('ID_Membro')]) === String(dados.membroId) && String(rows[i][CA('Ano')]) === String(dados.ano)) {
+          aba.getRange(i + 1, CA('Ferias_1')+1, 1, 7).setValues([valores.map(neutralizarFormula_)]);
           registrarLog('Edição de Afastamentos', dados.membroNome + ' (' + dados.ano + ')', 'Afastamentos atualizados.');
           return { sucesso: true };
         }

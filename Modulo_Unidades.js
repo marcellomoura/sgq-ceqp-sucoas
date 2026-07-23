@@ -61,7 +61,7 @@ function atualizarUnidade(dados) {
         if ((rows[i][C('Sigla')]||'').toString().trim().toUpperCase() === siglaNova)
           return { sucesso: false, mensagem: "Já existe uma unidade com a sigla '" + dados.sigla + "'." };
       }
-      aba.getRange(linha, C('Nome da Unidade')+1, 1, 4).setValues([[dados.unidade, dados.sigla, dados.email, (dados.linkDrive||'').trim()].map(neutralizarFormula_)]);
+      aba.getRange(linha, C('Nome_Da_Unidade')+1, 1, 4).setValues([[dados.unidade, dados.sigla, dados.email, (dados.linkDrive||'').trim()].map(neutralizarFormula_)]);
       registrarLog('Edição de Unidade', dados.sigla, 'Dados atualizados.');
       return { sucesso: true, mensagem: 'Unidade atualizada com sucesso!' };
     });

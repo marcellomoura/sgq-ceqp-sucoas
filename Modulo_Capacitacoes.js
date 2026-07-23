@@ -54,7 +54,7 @@ function atualizarCapacitacao(dados) {
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Registro não localizado.' };
 
-      const idAtual = aba.getRange(linha, C('ID')+1).getValue().toString();
+      const idAtual = aba.getRange(linha, C('ID_Capacitacoes')+1).getValue().toString();
       if (dados.idEsperado && idAtual !== dados.idEsperado.toString())
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
 
@@ -63,7 +63,7 @@ function atualizarCapacitacao(dados) {
       const st  = calcularStatusCapacitacao_(dados.dataPrevista, dados.dataRealizada);
 
       // 9 colunas: Título da Capacitação → Participantes
-      aba.getRange(linha, C('Título da Capacitação')+1, 1, 9).setValues([[
+      aba.getRange(linha, C('Titulo_Da_Capacitacao')+1, 1, 9).setValues([[
         dados.titulo.trim(),
         (dados.tema       || '').trim(),
         (dados.publico    || '').trim(),
@@ -92,7 +92,7 @@ function excluirCapacitacao(idRow, idEsperado) {
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Registro não localizado.' };
 
-      const id = aba.getRange(linha, C('ID')+1).getValue().toString();
+      const id = aba.getRange(linha, C('ID_Capacitacoes')+1).getValue().toString();
       if (idEsperado && id !== idEsperado.toString())
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
 

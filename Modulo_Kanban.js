@@ -15,7 +15,7 @@ function saveTask(task) {
     if (task.id && task.id !== 'null' && task.id !== '') {
       const data = sheet.getDataRange().getValues();
       for (let i = 1; i < data.length; i++) {
-        if (String(data[i][C('ID')]) === String(task.id)) {
+        if (String(data[i][C('ID_Tarefas')]) === String(task.id)) {
           // Trava otimista: se o carimbo que o cliente tinha ao abrir o editor
           // não bate com o que está na planilha agora, alguém mais salvou este
           // cartão nesse meio-tempo. Sem isso, esta gravação sobrescreveria em
@@ -23,7 +23,7 @@ function saveTask(task) {
           // com os valores desatualizados que o cliente carregou antes.
           // Vazio de qualquer lado (linha migrada sem o carimbo ainda, ou
           // cartão recém-criado) não bloqueia — só a divergência real bloqueia.
-          const versaoAtual = String(data[i][C('Última Atualização')] || '');
+          const versaoAtual = String(data[i][C('Ultima_Atualizacao')] || '');
           const versaoCliente = String(task.updatedAt || '');
           if (versaoCliente && versaoAtual && versaoCliente !== versaoAtual) {
             return { sucesso: false, conflito: true, mensagem: 'Este cartão foi alterado por outra pessoa enquanto você editava. Recarregue a página para ver a versão mais recente e refaça sua edição.' };
@@ -54,9 +54,9 @@ function saveTask(task) {
           // Detecta quais campos mudaram comparando a linha atual da planilha
           // com o payload. Status/datas ficam de fora de propósito (ver abaixo).
           const campos = [
-            { label: 'Título',           antes: String(data[i][C('Título')]||''),          depois: String(task.title||'') },
-            { label: 'Descrição',        antes: String(data[i][C('Descrição')]||''),       depois: String(task.description||'') },
-            { label: 'Responsáveis',     antes: String(data[i][C('Responsável_ID')]||''),  depois: String(task.assigneeId||'') },
+            { label: 'Título',           antes: String(data[i][C('Titulo')]||''),          depois: String(task.title||'') },
+            { label: 'Descrição',        antes: String(data[i][C('Descricao')]||''),       depois: String(task.description||'') },
+            { label: 'Responsáveis',     antes: String(data[i][C('ID_Membro')]||''),  depois: String(task.assigneeId||'') },
             { label: 'Prioridade',       antes: String(data[i][C('Prioridade')]||''),      depois: String(task.priority||'') },
             { label: 'Prazo de Entrega', antes: formatarDataParaUI(data[i][C('Prazo')]),   depois: String(task.deadline||'') },
             { label: 'Etiquetas',        antes: String(data[i][C('Etiquetas')]||'[]'),     depois: String(task.labels||'[]') }
@@ -72,7 +72,7 @@ function saveTask(task) {
           // controlados por updateTaskStatus/drag. Sem isso, salvar o cartão
           // depois de um arrastar revertia o status para o valor antigo.
           // Título→Prioridade são contíguos (cols Título..Prioridade).
-          sheet.getRange(i+1, C('Título')+1, 1, 4).setValues([[task.title, task.description, task.assigneeId, task.priority].map(neutralizarFormula_)]);
+          sheet.getRange(i+1, C('Titulo')+1, 1, 4).setValues([[task.title, task.description, task.assigneeId, task.priority].map(neutralizarFormula_)]);
           sheet.getRange(i+1, C('Prazo')+1).setValue(task.deadline || '');
           // Etiquetas..Última Atualização em uma escrita só. 'Arquivado' está no
           // meio do intervalo e NÃO é editável aqui — reescreve-se o valor que
@@ -94,13 +94,13 @@ function saveTask(task) {
           // para garantir EXATAMENTE o mesmo formato que o quadro recebe em
           // getKanbanData (status/datas preservados vêm da própria linha).
           const linhaAtualizada = data[i].slice();
-          linhaAtualizada[C('Título')]             = task.title;
-          linhaAtualizada[C('Descrição')]          = task.description;
-          linhaAtualizada[C('Responsável_ID')]     = task.assigneeId;
+          linhaAtualizada[C('Titulo')]             = task.title;
+          linhaAtualizada[C('Descricao')]          = task.description;
+          linhaAtualizada[C('ID_Membro')]     = task.assigneeId;
           linhaAtualizada[C('Prioridade')]         = task.priority;
           linhaAtualizada[C('Prazo')]              = task.deadline || '';
           linhaAtualizada[C('Etiquetas')]          = task.labels || '[]';
-          linhaAtualizada[C('Última Atualização')] = novoCarimbo;
+          linhaAtualizada[C('Ultima_Atualizacao')] = novoCarimbo;
           return { sucesso: true, task: _mapearTarefa_(linhaAtualizada, C) };
         }
       }
@@ -151,7 +151,7 @@ function updateTaskStatus(id, newStatus) {
     const autor = nomeUsuarioAtual_();
 
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][C('ID')]) === String(id)) {
+      if (String(data[i][C('ID_Tarefas')]) === String(id)) {
         const oldStatus = String(data[i][C('Status')]);
         if (oldStatus === newStatus) { SpreadsheetApp.flush(); return { sucesso: true }; }
 
@@ -162,10 +162,10 @@ function updateTaskStatus(id, newStatus) {
         // movimento vira uma linha na aba Atividades. O valor legado que
         // porventura exista na célula é reescrito como está pelo setValues
         // abaixo (preservado, nunca reinterpretado).
-        if (newStatus === 'Concluído') row[C('Data Conclusão')] = dateNow;
-        else row[C('Data Conclusão')] = '';
+        if (newStatus === 'Concluído') row[C('Data_Conclusao')] = dateNow;
+        else row[C('Data_Conclusao')] = '';
         
-        if (newStatus !== 'Backlog' && !String(row[C('Data Início')] || '')) row[C('Data Início')] = dateNow;
+        if (newStatus !== 'Backlog' && !String(row[C('Data_Inicio')] || '')) row[C('Data_Inicio')] = dateNow;
 
         row[C('Arquivado')] = '';
 
@@ -188,7 +188,7 @@ function deleteTask(id) {
     const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][C('ID')]) === String(id)) {
+      if (String(data[i][C('ID_Tarefas')]) === String(id)) {
         sheet.deleteRow(i+1);
         // O histórico do cartão vive na aba Atividades: sem esta limpeza, as
         // linhas dele ficariam órfãs para sempre (e um TAR- reaproveitado no
@@ -211,7 +211,7 @@ function arquivarTarefaManual(id) {
     const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][C('ID')]) === String(id)) {
+      if (String(data[i][C('ID_Tarefas')]) === String(id)) {
         if (String(data[i][C('Status')]) !== 'Concluído') {
           return { sucesso: false, mensagem: 'Só é possível arquivar cartões já concluídos.' };
         }
@@ -235,7 +235,7 @@ function restaurarTarefaArquivada(id) {
     const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][C('ID')]) === String(id)) {
+      if (String(data[i][C('ID_Tarefas')]) === String(id)) {
         sheet.getRange(i+1, C('Arquivado')+1).setValue('Não');
         SpreadsheetApp.flush();
         registrarLog('Restauração de Arquivo', id, 'Cartão restaurado ao quadro.');
@@ -266,20 +266,20 @@ function saveMember(member) {
     const emailF = String(member.email).trim().toLowerCase();
     const emailP = String(member.emailPessoal).trim().toLowerCase();
     for (let i = 1; i < data.length; i++) {
-      if (member.id && String(data[i][C('ID')]) === String(member.id)) continue;
-      const f = String(data[i][C('Email Funcional')]||'').trim().toLowerCase();
-      const p = String(data[i][C('E-mail Pessoal')]||'').trim().toLowerCase();
+      if (member.id && String(data[i][C('ID_Membro')]) === String(member.id)) continue;
+      const f = String(data[i][C('Email_Funcional')]||'').trim().toLowerCase();
+      const p = String(data[i][C('Email_Pessoal')]||'').trim().toLowerCase();
       if ((emailF && (emailF === f || emailF === p)) || (emailP && (emailP === f || emailP === p)))
         return { sucesso: false, mensagem: 'Já existe um membro cadastrado com esse e-mail.' };
     }
     if (member.id && member.id !== 'null' && member.id !== '') {
       for (let i = 1; i < data.length; i++) {
-        if (String(data[i][C('ID')]) === String(member.id)) {
+        if (String(data[i][C('ID_Membro')]) === String(member.id)) {
           // Nome, Cargo e Email Funcional são contíguos (colunas 2-4)
           sheet.getRange(i+1, C('Nome')+1, 1, 3).setValues([[member.name, member.role, member.email].map(neutralizarFormula_)]);
           // E-mail pessoal na coluna do cabeçalho (antes ia para a 13ª por
           // engano, ficando invisível na leitura — ver getKanbanData_members_)
-          sheet.getRange(i+1, C('E-mail Pessoal')+1).setValue(neutralizarFormula_(member.emailPessoal || ''));
+          sheet.getRange(i+1, C('Email_Pessoal')+1).setValue(neutralizarFormula_(member.emailPessoal || ''));
           SpreadsheetApp.flush();
           invalidarCacheMembros_(); // nome/e-mails mudaram — refaz o cache de auth
           return { sucesso: true };
@@ -312,7 +312,7 @@ function _definirStatusMembro_(id, ativo) {
     const C = colIdx_(CABECALHOS_MEMBROS);
     const data  = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][C('ID')]) === String(id)) {
+      if (String(data[i][C('ID_Membro')]) === String(id)) {
         sheet.getRange(i+1, C('Ativo')+1).setValue(ativo ? 'Sim' : 'Não');
         SpreadsheetApp.flush();
         invalidarCacheMembros_(); // muda quem tem acesso — refaz o cache de auth

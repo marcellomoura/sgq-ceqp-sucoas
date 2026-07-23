@@ -23,7 +23,7 @@ function salvarDocumento(dados) {
     if (dados.responsavel) {
       const uData = conectarAba(SHEET_UNITS).getDataRange().getValues();
       const C_UN = colIdx_(CABECALHOS_UNIDADES);
-      const unRow = uData.slice(1).find(r => String(r[C_UN('ID Unidade')]) === String(dados.responsavel));
+      const unRow = uData.slice(1).find(r => String(r[C_UN('ID_Unidade')]) === String(dados.responsavel));
       siglaUnd = unRow ? String(unRow[C_UN('Sigla')] || 'UND').trim()
                        : dados.responsavel.split(' - ')[0];
     }
@@ -34,7 +34,7 @@ function salvarDocumento(dados) {
       const rows = aba.getDataRange().getValues();
       let max = 0;
       rows.slice(1).forEach(r => {
-        const cod = String(r[C('Código')]||'');
+        const cod = String(r[C('Codigo')]||'');
         if (cod.startsWith(prefixo)) {
           const n = parseInt(cod.split('-').pop(), 10);
           if (!isNaN(n) && n > max) max = n;
@@ -68,12 +68,12 @@ function atualizarDocumento(dados) {
       const linha = parseInt(dados.idRow, 10);
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Documento não localizado.' };
-      if (dados.codigo && aba.getRange(linha, C('Código')+1).getValue().toString() !== dados.codigo.toString())
+      if (dados.codigo && aba.getRange(linha, C('Codigo')+1).getValue().toString() !== dados.codigo.toString())
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
       const proxRev = calcularProximaRevisao(dados.dataAprovacao);
       // Bloco Tipo→Próxima Revisão (4 colunas) e Responsável→Doc Auxiliar 2 (4 colunas)
       aba.getRange(linha, C('Tipo')+1, 1, 4).setValues([[dados.tipo, dados.titulo, dados.dataAprovacao, proxRev].map(neutralizarFormula_)]);
-      aba.getRange(linha, C('Responsável')+1, 1, 4).setValues([[dados.responsavel, dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||''].map(neutralizarFormula_)]);
+      aba.getRange(linha, C('Responsavel')+1, 1, 4).setValues([[dados.responsavel, dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||''].map(neutralizarFormula_)]);
       registrarLog('Edição de Documento', dados.codigo, 'Metadados atualizados.');
       return { sucesso: true, mensagem: 'Documento atualizado com sucesso!' };
     });
@@ -101,7 +101,7 @@ function salvarRevisaoDocumento(dados) {
       // via na tela. Sem isto, uma lista desatualizada (ex.: outro usuário
       // excluiu/inseriu uma linha acima) faria a revisão obsoletar e versionar
       // o documento ERRADO. Mesma proteção já usada em editar/excluir.
-      if (dados.codigo && aba.getRange(linha, C('Código')+1).getValue().toString() !== dados.codigo.toString())
+      if (dados.codigo && aba.getRange(linha, C('Codigo')+1).getValue().toString() !== dados.codigo.toString())
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
       const antiga = aba.getRange(linha, 1, 1, aba.getLastColumn()).getValues()[0];
       aba.getRange(linha, C('Status')+1).setValue('Obsoleto');
@@ -115,9 +115,9 @@ function salvarRevisaoDocumento(dados) {
       // coluna diferentes entre a primeira versão e as revisões seguintes.
       const novaVersaoNum = Math.floor(versao) + 1;
       const proxRev = calcularProximaRevisao(dados.dataAprovacao);
-      aba.appendRow([antiga[C('Código')], novaVersaoNum, antiga[C('Tipo')], antiga[C('Título')], dados.dataAprovacao, proxRev,
-        'Vigente', antiga[C('Responsável')], dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||'', dados.motivo].map(neutralizarFormula_));
-      registrarLog('Revisão de Documento', antiga[C('Código')], 'Nova versão v' + novaVersaoNum.toFixed(1));
+      aba.appendRow([antiga[C('Codigo')], novaVersaoNum, antiga[C('Tipo')], antiga[C('Titulo')], dados.dataAprovacao, proxRev,
+        'Vigente', antiga[C('Responsavel')], dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||'', dados.motivo].map(neutralizarFormula_));
+      registrarLog('Revisão de Documento', antiga[C('Codigo')], 'Nova versão v' + novaVersaoNum.toFixed(1));
       return { sucesso: true, mensagem: 'Revisão publicada com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -132,14 +132,14 @@ function excluirDocumento(idRow, codigoEsperado) {
       const linha = parseInt(idRow, 10);
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Documento não localizado.' };
-      const cod = aba.getRange(linha, C('Código')+1).getValue().toString();
+      const cod = aba.getRange(linha, C('Codigo')+1).getValue().toString();
       if (codigoEsperado && cod !== codigoEsperado.toString())
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
       // Exclui TODAS as versões deste documento — a vigente e as revisões
       // arquivadas/obsoletas, que ficam em linhas separadas com o mesmo Código.
       // Antes só a linha selecionada era removida, deixando as versões antigas
       // órfãs na planilha.
-      const colCod = C('Código');
+      const colCod = C('Codigo');
       const valores = aba.getDataRange().getValues();
       let linhasParaExcluir = [];
       if (cod) {

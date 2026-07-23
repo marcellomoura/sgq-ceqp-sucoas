@@ -124,7 +124,7 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 - **Núcleo compartilhado (Código.js):** `colIdx_`, `comBloqueio`, `conectarAba`, `safeGetSheet(Data)`, `isMembro_`, `membrosParaAuth_` (+ cache), `getNextId_`, `registrarLog`, `formatarDataParaUI`, `_dataLocalISO_`, `linkPermitido_`, `calcularNivelRisco`, `calcularProximaRevisao` — **usados por todos os módulos.**
 - **`isMembro_` → `membrosParaAuth_` → `conectarAba(SHEET_MEMBERS)`** roda no início de **praticamente toda** chamada (mitigado por `ScriptCache` de 6h, invalidado em escrita de membro).
 - **Cadeia de setup/migração (crítica de ordem):** `setupDatabaseKanban` → `_migrarEremoverColunaAtividades_` → `_reordenarColunasTarefas_` → `conectarAba`. **Tem de rodar antes de qualquer leitura de Tarefas** (senão `colIdx_` cai na coluna errada). Idempotente via `ScriptProperties` + re-checagem dentro do lock.
-- **Acoplamento cruzado por dados:** `reavaliarRisco` marca `Revisão Pendente` nos planos; `salvarEntregasEmLote` → `_reavaliarBaixa` lê Unidades.
+- **Acoplamento cruzado por dados:** `reavaliarRisco` marca `Revisao_Pendente` nos planos; `salvarEntregasEmLote` → `_reavaliarBaixa` lê Unidades.
 
 ### 3.3 Estado do cliente
 `var state = { tasks, archivedTasks, members, units, docs, risks, plans, deliveries, history, trainings, afastamentos }` — fonte única no cliente. (P11 resolvido: `afastamentos: []` já consta na inicialização de `state`.)
@@ -267,16 +267,16 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 
 | Aba (`SHEET_*`) | Colunas (`CABECALHOS_*`) | Chave/observações |
 |---|---|---|
-| `Tarefas` | ID, Status, Título, Descrição, Responsável_ID (JSON de ids), Prioridade, Data Criação, Data Início, Prazo, Data Conclusão, Etiquetas (JSON), Arquivado, Última Atualização (ms) | ID `TAR-n`. "Última Atualização" = trava otimista. Coluna legada "Atividades" migrada e removida. |
-| `Membros` | ID, Nome, Cargo, Email Funcional, E-mail Pessoal, Dias Semana, Dia Presencial, Ativo | ID `MEM-n`. Email(s) = login. Inativação preserva histórico. |
-| `Unidades` | ID Unidade, Nome, Sigla, E-mail Funcional, Link do Drive, Ativo | ID `UN-n`. Sigla única. Link do Drive aceita texto livre. |
-| `Documentos` | Código, Versão, Tipo, Título, Data Aprovação, Próxima Revisão, Status, Responsável (id de unidade), Link Principal, Doc Auxiliar 1/2, Revisão | Código `SIGLATIPO-SIGLAUND-NN`. Revisão = nova linha + antiga vira "Obsoleto". |
-| `Riscos` | ID Risco, Macroetapa, Risco, Causa, Consequência, Categoria, Probabilidade, Impacto, Nível, Tipo Tratamento, Responsável, Status, Histórico (JSON) | ID `Rn`. Soft delete (`Status=Arquivado`). Histórico = reavaliações. |
-| `Planos_Acao` | ID Risco, O Que, Por Que, Quem, Onde, Data Prevista, Data Finalização, Como, Quanto Custa, Status, Revisão Pendente, Histórico (JSON), Entregas (JSON) | Vincula a Risco (`Rn`). Entregas embutidas em JSON. |
-| `Afastamentos` | ID, Ano, Membro ID, Membro Nome, Férias 1/2/3, Abonos, Abono Aniversário, Licença Servidor/Prêmio (JSON), Demais Afastamentos (JSON) | ID `AF-n`. Uma linha por (Membro+Ano). |
-| `Capacitações` | ID, Título, Tema, Público-alvo, Modalidade, Data Prevista, Data Realizada, Status, Lista de Presença, Responsáveis (JSON de ids) | ID `CAP-n`. Status derivado das datas. |
-| `Atividades` | Tarefa ID, Tipo (comment/log), Texto, Data, Autor | Append-only, uma linha por item (substitui blob JSON que estourava 50k chars). |
-| `Logs` | Data/Hora, Usuário, Ação, Referência, Detalhes | Trilha de auditoria append-only. |
+| `Tarefas` | ID_Tarefas, Status, Titulo, Descricao, ID_Membro (JSON de ids), Prioridade, Data_Criacao, Data_Inicio, Prazo, Data_Conclusao, Etiquetas (JSON), Arquivado, Ultima_Atualizacao (ms) | ID `TAR-n`. "Ultima_Atualizacao" = trava otimista. Coluna legada "Atividades" migrada e removida. |
+| `Membros` | ID_Membro, Nome, Cargo, Email_Funcional, Email_Pessoal, Dias_Semana, Dia_Presencial, Ativo | ID `MEM-n`. Email(s) = login. Inativação preserva histórico. |
+| `Unidades` | ID_Unidade, Nome_Da_Unidade, Sigla, Email_Funcional, Link_Do_Drive, Ativo | ID `UN-n`. Sigla única. Link do Drive aceita texto livre. |
+| `Documentos` | Codigo, Versao, Tipo, Titulo, Data_Aprovacao, Proxima_Revisao, Status, Responsavel (id de unidade), Link_Principal, Doc_Auxiliar_1/2, Revisao | Código `SIGLATIPO-SIGLAUND-NN`. Revisão = nova linha + antiga vira "Obsoleto". |
+| `Riscos` | ID_Risco, Macroetapa, Risco, Causa, Consequencia, Categoria, Probabilidade, Impacto, Nivel, Tipo_Tratamento, Responsavel, Status, Historico (JSON) | ID `Rn`. Soft delete (`Status=Arquivado`). Histórico = reavaliações. |
+| `Planos_Acao` | ID_Risco, O_Que, Por_Que, Quem, Onde, Data_Prevista, Data_Finalizacao, Como, Quanto_Custa, Status, Revisao_Pendente, Historico (JSON), Entregas (JSON) | Vincula a Risco (`Rn`). Entregas embutidas em JSON. |
+| `Afastamentos` | ID_Afastamento, Ano, ID_Membro, Membro_Nome, Ferias_1/2/3, Abonos, Abono_Aniversario, Licenca_Servidor_Premio (JSON), Demais_Afastamentos (JSON) | ID `AF-n`. Uma linha por (Membro+Ano). |
+| `Capacitacoes` | ID_Capacitacoes, Titulo_Da_Capacitacao, Tema, Publico_Alvo, Modalidade, Data_Prevista, Data_Realizada, Status, Lista_De_Presenca, Responsaveis (JSON de ids) | ID `CAP-n`. Status derivado das datas. |
+| `Atividades` | ID_Tarefas, Tipo (comment/log), Texto, Data, Autor | Append-only, uma linha por item (substitui blob JSON que estourava 50k chars). |
+| `Logs` | Data_Hora, Usuario, Acao, Referencia, Detalhes | Trilha de auditoria append-only. |
 
 > Observação: `SHEET_ATIVIDADES` (`Atividades`) e `SHEET_LOGS` (`Logs`) somam com as 8 abas de domínio acima o total de 10 abas de dados + a aba `Planos_Acao` — 11 abas no total gerenciadas pelo setup.
 
@@ -287,9 +287,9 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 - **Auto-arquivamento de tarefa:** concluída há ≥15 dias (`DIAS_PARA_ARQUIVAR`) e coluna Arquivado em branco → arquivada (só em memória). `Arquivado='Não'` (restauração manual) impede re-arquivamento.
 - **Status de plano:** finalizado → "Concluído"; previsto no passado → "Atrasado"; senão "Em Andamento" (`_statusPlano`).
 - **Baixa automática de plano:** plano "global" (contém "TODAS") conclui quando todas as subcomissões entregam; plano específico conclui quando há ≥1 entrega "Sim" (`_reavaliarBaixa`). Status "Concluído" não reabre.
-- **Reavaliação de risco** marca `Revisão Pendente=Sim` nos planos vinculados.
+- **Reavaliação de risco** marca `Revisao_Pendente=Sim` nos planos vinculados.
 - **Integridade referencial:** unidade não pode ser excluída enquanto houver Documentos/Riscos/Planos apontando para ela.
-- **Trava otimista:** `saveTask` (via "Última Atualização") e edições de documento/unidade/capacitação (via conferência de código/sigla/id) rejeitam gravações sobre listas desatualizadas.
+- **Trava otimista:** `saveTask` (via "Ultima_Atualizacao") e edições de documento/unidade/capacitação (via conferência de código/sigla/id) rejeitam gravações sobre listas desatualizadas.
 
 ### 8.4 Integrações e serviços Google usados
 `SpreadsheetApp`, `HtmlService` (template + include), `CacheService` (Script + User), `PropertiesService` (Script), `LockService` (Script), `MailApp` (envio de PDF), `Utilities` (formatDate, newBlob, base64, getAs PDF, sleep), `Session` (email/timezone). **Externas (CDN):** Google Fonts (Inter), `drag-drop-touch`, `chart.js` + `chartjs-plugin-datalabels`, `html2canvas`.

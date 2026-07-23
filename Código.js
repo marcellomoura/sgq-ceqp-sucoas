@@ -12,7 +12,7 @@ const SHEET_LOGS     = 'Logs';
 // sob demanda por conectarAba na primeira execução — NÃO entra no setup.
 const SHEET_LOGS_ARQUIVO = 'Logs_Arquivo';
 const SHEET_AFASTAMENTOS = 'Afastamentos';
-const SHEET_CAPACITACOES = 'Capacitações';
+const SHEET_CAPACITACOES = 'Capacitacoes';
 const SHEET_ATIVIDADES   = 'Atividades';
 
 // Layouts de colunas usados em vários pontos (setup, leitura e escrita).
@@ -20,10 +20,10 @@ const SHEET_ATIVIDADES   = 'Atividades';
 // 'Ativo' (Sim/Não) controla se o membro tem acesso ao sistema e aparece nas
 // telas. Em branco = ativo (compatível com linhas anteriores à coluna). Membro
 // inativo preserva o histórico (tarefas/afastamentos/logs) mas perde o login.
-const CABECALHOS_MEMBROS = ['ID','Nome','Cargo','Email Funcional','E-mail Pessoal','Dias Semana','Dia Presencial','Ativo'];
+const CABECALHOS_MEMBROS = ['ID_Membro','Nome','Cargo','Email_Funcional','Email_Pessoal','Dias_Semana','Dia_Presencial','Ativo'];
 // Uma linha por (Membro + Ano) — permite manter vários anos abertos ao
 // mesmo tempo sem perder histórico (ver Modulo_Pessoas.js).
-const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1','Férias 2','Férias 3','Abonos','Abono Aniversário','Licença Servidor/Prêmio','Demais Afastamentos'];
+const CABECALHOS_AFASTAMENTOS = ['ID_Afastamento','Ano','ID_Membro','Membro_Nome','Ferias_1','Ferias_2','Ferias_3','Abonos','Abono_Aniversario','Licenca_Servidor_Premio','Demais_Afastamentos'];
 // Demais abas — mesma ideia de fonte única de verdade para o layout.
 // 'Última Atualização' (carimbo de milissegundos) sustenta a trava otimista de
 // saveTask(): detecta quando o cartão foi alterado por outra pessoa entre o
@@ -36,7 +36,7 @@ const CABECALHOS_AFASTAMENTOS = ['ID','Ano','Membro ID','Membro Nome','Férias 1
 // discordam, e todo campo depois de 'Atividades' gravaria na coluna errada.
 // 'Arquivado' vem depois de 'Etiquetas'. A ordem física é alinhada a esta
 // constante por _reordenarColunasTarefas_, no setup, antes de qualquer leitura.
-const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável_ID','Prioridade','Data Criação','Data Início','Prazo','Data Conclusão','Etiquetas','Arquivado','Última Atualização'];
+const CABECALHOS_TAREFAS  = ['ID_Tarefas','Status','Titulo','Descricao','ID_Membro','Prioridade','Data_Criacao','Data_Inicio','Prazo','Data_Conclusao','Etiquetas','Arquivado','Ultima_Atualizacao'];
 // Histórico do cartão NORMALIZADO: uma linha por comentário/log, em vez de um
 // blob JSON na coluna 'Atividades' de Tarefas. Motivo: uma célula do Sheets
 // comporta 50.000 caracteres — um cartão muito comentado estourava esse teto,
@@ -47,13 +47,13 @@ const CABECALHOS_TAREFAS  = ['ID','Status','Título','Descrição','Responsável
 // Append-only e nunca referenciada por id — por isso não tem coluna 'ID'.
 // A antiga coluna 'Atividades' de Tarefas foi removida do layout: o dado legado
 // é migrado para cá e a coluna excluída por _migrarEremoverColunaAtividades_.
-const CABECALHOS_ATIVIDADES = ['Tarefa ID','Tipo','Texto','Data','Autor'];
-const CABECALHOS_UNIDADES = ['ID Unidade', 'Nome da Unidade','Sigla','E-mail Funcional','Link do Drive', 'Ativo'];
-const CABECALHOS_DOCS     = ['Código','Versão','Tipo','Título','Data Aprovação','Próxima Revisão','Status','Responsável','Link Principal','Doc Auxiliar 1','Doc Auxiliar 2','Revisão'];
-const CABECALHOS_RISCOS   = ['ID Risco','Macroetapa','Risco','Causa','Consequência','Categoria','Probabilidade','Impacto','Nível','Tipo Tratamento','Responsável','Status','Histórico'];
-const CABECALHOS_PLANOS   = ['ID Risco','O Que','Por Que','Quem','Onde','Data Prevista','Data Finalização','Como','Quanto Custa','Status','Revisão Pendente','Histórico','Entregas'];
-const CABECALHOS_LOGS     = ['Data/Hora','Usuário','Ação','Referência','Detalhes'];
-const CABECALHOS_CAPACITACOES = ['ID', 'Título da Capacitação', 'Tema', 'Público-alvo', 'Modalidade', 'Data Prevista', 'Data Realizada', 'Status', 'Lista de Presença', 'Responsáveis'];
+const CABECALHOS_ATIVIDADES = ['ID_Tarefas','Tipo','Texto','Data','Autor'];
+const CABECALHOS_UNIDADES = ['ID_Unidade', 'Nome_Da_Unidade','Sigla','Email_Funcional','Link_Do_Drive', 'Ativo'];
+const CABECALHOS_DOCS     = ['Codigo','Versao','Tipo','Titulo','Data_Aprovacao','Proxima_Revisao','Status','Responsavel','Link_Principal','Doc_Auxiliar_1','Doc_Auxiliar_2','Revisao'];
+const CABECALHOS_RISCOS   = ['ID_Risco','Macroetapa','Risco','Causa','Consequencia','Categoria','Probabilidade','Impacto','Nivel','Tipo_Tratamento','Responsavel','Status','Historico'];
+const CABECALHOS_PLANOS   = ['ID_Risco','O_Que','Por_Que','Quem','Onde','Data_Prevista','Data_Finalizacao','Como','Quanto_Custa','Status','Revisao_Pendente','Historico','Entregas'];
+const CABECALHOS_LOGS     = ['Data_Hora','Usuario','Acao','Referencia','Detalhes'];
+const CABECALHOS_CAPACITACOES = ['ID_Capacitacoes', 'Titulo_Da_Capacitacao', 'Tema', 'Publico_Alvo', 'Modalidade', 'Data_Prevista', 'Data_Realizada', 'Status', 'Lista_De_Presenca', 'Responsaveis'];
 
 // Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
 // (a mesma fonte única usada no setup da planilha). Elimina os índices
@@ -244,8 +244,8 @@ function membrosParaAuth_() {
         const at = String(mData[i][C('Ativo')] || '').trim().toLowerCase();
         if (at === 'não' || at === 'nao') continue;
         lista.push([
-          String(mData[i][C('Email Funcional')] || '').trim().toLowerCase(),
-          String(mData[i][C('E-mail Pessoal')] || '').trim().toLowerCase(),
+          String(mData[i][C('Email_Funcional')] || '').trim().toLowerCase(),
+          String(mData[i][C('Email_Pessoal')] || '').trim().toLowerCase(),
           String(mData[i][C('Nome')] || '')
         ]);
       }
@@ -504,7 +504,7 @@ function _excluirAtividadesDaTarefa_(tarefaId) {
   const dados = aba.getDataRange().getValues();
   const linhas = [];
   for (let i = 1; i < dados.length; i++) {
-    if (String(dados[i][CA('Tarefa ID')]).trim() === alvo) linhas.push(i + 1);
+    if (String(dados[i][CA('ID_Tarefas')]).trim() === alvo) linhas.push(i + 1);
   }
   _deleteRowsBatch_(aba, linhas);
   // O cartão (e seus comentários) saíram — a contagem em cache ficou obsoleta.
@@ -525,7 +525,7 @@ function _contarComentariosPorTarefa_() {
   const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
   if (aba && aba.getLastRow() > 1) {
     const CA = colIdx_(CABECALHOS_ATIVIDADES);
-    const dados = aba.getRange(2, CA('Tarefa ID') + 1, aba.getLastRow() - 1, 2).getValues();
+    const dados = aba.getRange(2, CA('ID_Tarefas') + 1, aba.getLastRow() - 1, 2).getValues();
     dados.forEach(r => {
       if (String(r[1]).trim() !== 'comment') return;
       const id = String(r[0]).trim();
@@ -554,7 +554,7 @@ function getAtividadesTarefa(tarefaId) {
   const alvo = String(tarefaId || '').trim();
   if (!alvo) return [];
   return aba.getDataRange().getValues().slice(1)
-    .filter(r => String(r[CA('Tarefa ID')]).trim() === alvo)
+    .filter(r => String(r[CA('ID_Tarefas')]).trim() === alvo)
     .map(r => ({
       type: String(r[CA('Tipo')] || 'log'),
       text: String(r[CA('Texto')] || ''),
@@ -632,8 +632,8 @@ function setupDatabaseKanban() {
   const abaMembros = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
   try {
     const atualParaMig = abaMembros.getRange(1, 1, 1, abaMembros.getLastColumn()).getValues()[0];
-    const idxP = atualParaMig.indexOf('E-mail Pessoal');
-    const idxF = atualParaMig.indexOf('Email Funcional');
+    const idxP = atualParaMig.indexOf('Email_Pessoal');
+    const idxF = atualParaMig.indexOf('Email_Funcional');
     if (idxP > -1 && idxF > -1 && idxP > idxF + 1) {
       abaMembros.moveColumns(abaMembros.getRange(1, idxP + 1), idxF + 2);
     }
@@ -696,7 +696,7 @@ function _tarefaArquivada_(r, C, hoje) {
   if (arquivadoRaw === 'Sim') return true;
   if (arquivadoRaw !== '') return false;
   if (String(r[C('Status')]) !== 'Concluído') return false;
-  const completionDate = formatarDataParaUI(r[C('Data Conclusão')]);
+  const completionDate = formatarDataParaUI(r[C('Data_Conclusao')]);
   if (!completionDate) return false;
   const p = completionDate.split('-');
   if (p.length !== 3) return false;
@@ -706,12 +706,12 @@ function _tarefaArquivada_(r, C, hoje) {
 
 function _mapearTarefa_(r, C) {
   return {
-    id: String(r[C('ID')]), status: String(r[C('Status')]), title: String(r[C('Título')]), description: String(r[C('Descrição')]),
-    assigneeId: String(r[C('Responsável_ID')]), priority: String(r[C('Prioridade')]), creationDate: formatarDataParaUI(r[C('Data Criação')]),
-    startDate: formatarDataParaUI(r[C('Data Início')]), deadline: formatarDataParaUI(r[C('Prazo')]),
-    completionDate: formatarDataParaUI(r[C('Data Conclusão')]),
+    id: String(r[C('ID_Tarefas')]), status: String(r[C('Status')]), title: String(r[C('Titulo')]), description: String(r[C('Descricao')]),
+    assigneeId: String(r[C('ID_Membro')]), priority: String(r[C('Prioridade')]), creationDate: formatarDataParaUI(r[C('Data_Criacao')]),
+    startDate: formatarDataParaUI(r[C('Data_Inicio')]), deadline: formatarDataParaUI(r[C('Prazo')]),
+    completionDate: formatarDataParaUI(r[C('Data_Conclusao')]),
     labels: String(r[C('Etiquetas')] || '[]'),
-    updatedAt: String(r[C('Última Atualização')] || '')
+    updatedAt: String(r[C('Ultima_Atualizacao')] || '')
   };
 }
 
@@ -776,7 +776,7 @@ function getKanbanData_members_() {
   const mData = conectarAba(SHEET_MEMBERS).getDataRange().getValues();
 
   return mData.length > 1 ? mData.slice(1).map(r => {
-    let rawDias = String(r[C('Dias Semana')] || '').trim();
+    let rawDias = String(r[C('Dias_Semana')] || '').trim();
     let diasSemana = [];
     let horarios = {};
 
@@ -796,8 +796,8 @@ function getKanbanData_members_() {
     // filtrar quem aparece nas telas/seletores.
     const at = String(r[C('Ativo')] || '').trim().toLowerCase();
     return {
-      id: String(r[C('ID')]), name: String(r[C('Nome')]), role: String(r[C('Cargo')]), email: String(r[C('Email Funcional')]||''), emailPessoal: String(r[C('E-mail Pessoal')]||''),
-      diasSemana: diasSemana, diaPresencial: String(r[C('Dia Presencial')]||''),
+      id: String(r[C('ID_Membro')]), name: String(r[C('Nome')]), role: String(r[C('Cargo')]), email: String(r[C('Email_Funcional')]||''), emailPessoal: String(r[C('Email_Pessoal')]||''),
+      diasSemana: diasSemana, diaPresencial: String(r[C('Dia_Presencial')]||''),
       horarios: horarios, ativo: !(at === 'não' || at === 'nao')
     };
   }) : [];
@@ -811,7 +811,7 @@ function _lerUnidades_(ss) {
   return uData.length > 1 ? uData.slice(1).map((r, i) => {
     const at = String(r[CU('Ativo')] || '').trim().toLowerCase();
     return {
-      idRow: i + 2, id: String(r[CU('ID Unidade')] || ''), unidade: String(r[CU('Nome da Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('E-mail Funcional')] || ''), linkDrive: String(r[CU('Link do Drive')] || ''), ativo: !(at === 'não' || at === 'nao')
+      idRow: i + 2, id: String(r[CU('ID_Unidade')] || ''), unidade: String(r[CU('Nome_Da_Unidade')] || ''), sigla: String(r[CU('Sigla')] || ''), email: String(r[CU('Email_Funcional')] || ''), linkDrive: String(r[CU('Link_Do_Drive')] || ''), ativo: !(at === 'não' || at === 'nao')
     };
   }) : [];
 }
@@ -827,8 +827,8 @@ function _lerDocumentos_(ss) {
   return dData.length > 1 ? dData.slice(1).map((r, i) => {
     const statusOrig = String(r[CD('Status')] || 'Vigente').trim();
     const isObsoleto = statusOrig.toUpperCase() === 'OBSOLETO';
-    let proxRevStr   = formatarDataParaUI(r[CD('Próxima Revisão')]);
-    const dataAprovacaoStr = formatarDataParaUI(r[CD('Data Aprovação')]);
+    let proxRevStr   = formatarDataParaUI(r[CD('Proxima_Revisao')]);
+    const dataAprovacaoStr = formatarDataParaUI(r[CD('Data_Aprovacao')]);
     let statusCalc   = statusOrig;
     if (!isObsoleto && !dataAprovacaoStr) {
       // Documento cadastrado sem data de aprovação ainda — está em
@@ -843,17 +843,17 @@ function _lerDocumentos_(ss) {
       }
     }
     let versao = 1.0;
-    const versaoRaw = r[CD('Versão')];
+    const versaoRaw = r[CD('Versao')];
     if (versaoRaw !== undefined && versaoRaw !== '') {
       const v = typeof versaoRaw === 'number' ? versaoRaw : parseFloat(String(versaoRaw).replace(',','.'));
       if (!isNaN(v) && v > 0) versao = v;
     }
     return {
-      idRow: i + 2, codigo: String(r[CD('Código')] || ''), versao: versao.toFixed(1), tipo: String(r[CD('Tipo')] || ''),
-      titulo: String(r[CD('Título')] || ''), dataAprovacao: dataAprovacaoStr, proximaRevisao: proxRevStr,
-      status: statusCalc, responsavel: String(r[CD('Responsável')] || ''),
-      linkDoc: String(r[CD('Link Principal')] || ''), docAuxiliar: String(r[CD('Doc Auxiliar 1')] || ''), docAuxiliar2: String(r[CD('Doc Auxiliar 2')] || ''),
-      obsoleto: isObsoleto, motivo: String(r[CD('Revisão')] || '')
+      idRow: i + 2, codigo: String(r[CD('Codigo')] || ''), versao: versao.toFixed(1), tipo: String(r[CD('Tipo')] || ''),
+      titulo: String(r[CD('Titulo')] || ''), dataAprovacao: dataAprovacaoStr, proximaRevisao: proxRevStr,
+      status: statusCalc, responsavel: String(r[CD('Responsavel')] || ''),
+      linkDoc: String(r[CD('Link_Principal')] || ''), docAuxiliar: String(r[CD('Doc_Auxiliar_1')] || ''), docAuxiliar2: String(r[CD('Doc_Auxiliar_2')] || ''),
+      obsoleto: isObsoleto, motivo: String(r[CD('Revisao')] || '')
     };
   }) : [];
 }
@@ -899,19 +899,19 @@ function _lerRiscosPlanosEntregas_(ss) {
   // `break` original garantia.
   const planoPorRef = new Map();
   for (const p of planosRows) {
-    const base = String(p[CP('ID Risco')]||'').split(' -')[0].trim();
-    if (base && !planoPorRef.has(base)) planoPorRef.set(base, String(p[CP('O Que')]||'-'));
+    const base = String(p[CP('ID_Risco')]||'').split(' -')[0].trim();
+    if (base && !planoPorRef.has(base)) planoPorRef.set(base, String(p[CP('O_Que')]||'-'));
   }
 
   const historico = [];
 
   const risks = rData.length > 1 ? rData.slice(1)
     .map((r, i) => {
-      const idRisco = parseInt(String(r[CR('ID Risco')]||'').replace('R',''), 10) || (i+1);
+      const idRisco = parseInt(String(r[CR('ID_Risco')]||'').replace('R',''), 10) || (i+1);
       const ref = 'R' + idRisco;
       const planoAcao = planoPorRef.get(ref) || '-';
 
-      const jsonHist = String(r[CR('Histórico')]||'').trim();
+      const jsonHist = String(r[CR('Historico')]||'').trim();
       if (jsonHist.startsWith('[')) {
         try {
           const parsed = JSON.parse(jsonHist);
@@ -927,10 +927,10 @@ function _lerRiscosPlanosEntregas_(ss) {
 
       return {
         id: idRisco, macroetapa: String(r[CR('Macroetapa')]||''), nome: String(r[CR('Risco')]||''), causa: String(r[CR('Causa')]||''),
-        consequencia: String(r[CR('Consequência')]||''), categoria: String(r[CR('Categoria')]||''),
+        consequencia: String(r[CR('Consequencia')]||''), categoria: String(r[CR('Categoria')]||''),
         probabilidade: parseInt(r[CR('Probabilidade')],10)||1, impacto: parseInt(r[CR('Impacto')],10)||1,
-        nivel: String(r[CR('Nível')]||''), tipoTratamento: String(r[CR('Tipo Tratamento')]||''),
-        responsavel: String(r[CR('Responsável')]||'Não atribuído'), planoAcao: planoAcao,
+        nivel: String(r[CR('Nivel')]||''), tipoTratamento: String(r[CR('Tipo_Tratamento')]||''),
+        responsavel: String(r[CR('Responsavel')]||'Não atribuído'), planoAcao: planoAcao,
         status: String(r[CR('Status')]||'Ativo')
       };
     }) : [];
@@ -938,10 +938,10 @@ function _lerRiscosPlanosEntregas_(ss) {
   const deliveries = [];
 
   const plans = planosRows.map((r, pIdx) => {
-    const ref = String(r[CP('ID Risco')]||'');
+    const ref = String(r[CP('ID_Risco')]||'');
     
     // Processar Histórico
-    const jsonHist = String(r[CP('Histórico')]||'').trim();
+    const jsonHist = String(r[CP('Historico')]||'').trim();
     if (jsonHist.startsWith('[')) {
       try {
         const parsed = JSON.parse(jsonHist);
@@ -970,11 +970,11 @@ function _lerRiscosPlanosEntregas_(ss) {
     }
 
     return {
-      riscoVinculado: ref, what: String(r[CP('O Que')]||''), why: String(r[CP('Por Que')]||''),
+      riscoVinculado: ref, what: String(r[CP('O_Que')]||''), why: String(r[CP('Por_Que')]||''),
       who: String(r[CP('Quem')]||''), where: String(r[CP('Onde')]||''),
-      whenPrevisto: formatarDataParaUI(r[CP('Data Prevista')]), whenFinalizado: formatarDataParaUI(r[CP('Data Finalização')]),
-      how: String(r[CP('Como')]||''), howMuch: String(r[CP('Quanto Custa')]||''),
-      status: String(r[CP('Status')]||'Em Andamento'), revisaoPendente: String(r[CP('Revisão Pendente')]||'Não')
+      whenPrevisto: formatarDataParaUI(r[CP('Data_Prevista')]), whenFinalizado: formatarDataParaUI(r[CP('Data_Finalizacao')]),
+      how: String(r[CP('Como')]||''), howMuch: String(r[CP('Quanto_Custa')]||''),
+      status: String(r[CP('Status')]||'Em Andamento'), revisaoPendente: String(r[CP('Revisao_Pendente')]||'Não')
     };
   });
 
@@ -1017,17 +1017,17 @@ function getRestoData() {
   const trainings = capData.length > 1 ? capData.slice(1)
     .map((r, i) => ({
       idRow: i + 2,
-      id: String(r[CCAP('ID')]||''),
-      titulo: String(r[CCAP('Título da Capacitação')]||''),
+      id: String(r[CCAP('ID_Capacitacoes')]||''),
+      titulo: String(r[CCAP('Titulo_Da_Capacitacao')]||''),
       tema: String(r[CCAP('Tema')]||''),
-      publico: String(r[CCAP('Público-alvo')]||''),
+      publico: String(r[CCAP('Publico_Alvo')]||''),
       modalidade: String(r[CCAP('Modalidade')]||''),
-      dataPrevista: formatarDataParaUI(r[CCAP('Data Prevista')]),
-      dataPrevistaRaw: r[CCAP('Data Prevista')] instanceof Date ? r[CCAP('Data Prevista')].getTime() : null,
-      dataRealizada: formatarDataParaUI(r[CCAP('Data Realizada')]),
+      dataPrevista: formatarDataParaUI(r[CCAP('Data_Prevista')]),
+      dataPrevistaRaw: r[CCAP('Data_Prevista')] instanceof Date ? r[CCAP('Data_Prevista')].getTime() : null,
+      dataRealizada: formatarDataParaUI(r[CCAP('Data_Realizada')]),
       status: String(r[CCAP('Status')]||'Planejada'),
-      materiais: String(r[CCAP('Lista de Presença')]||''),
-      participantes: String(r[CCAP('Responsáveis')]||'')
+      materiais: String(r[CCAP('Lista_De_Presenca')]||''),
+      participantes: String(r[CCAP('Responsaveis')]||'')
     })) : [];
 
   return { 
@@ -1048,20 +1048,20 @@ function getCapacitacoesData() {
   const capData = safeGetSheetData(ss, SHEET_CAPACITACOES);
   return capData.length > 1 ? capData.slice(1).map((r, i) => ({
     idRow: i + 2,
-    id: String(r[CCAP('ID')]||''),
-    titulo: String(r[CCAP('Título da Capacitação')]||''),
+    id: String(r[CCAP('ID_Capacitacoes')]||''),
+    titulo: String(r[CCAP('Titulo_Da_Capacitacao')]||''),
     tema: String(r[CCAP('Tema')]||''),
-    publico: String(r[CCAP('Público-alvo')]||''),
+    publico: String(r[CCAP('Publico_Alvo')]||''),
     modalidade: String(r[CCAP('Modalidade')]||''),
-    dataPrevista: formatarDataParaUI(r[CCAP('Data Prevista')]),
-    dataPrevistaRaw: r[CCAP('Data Prevista')] instanceof Date ? r[CCAP('Data Prevista')].getTime() : null,
-    dataRealizada: formatarDataParaUI(r[CCAP('Data Realizada')]),
+    dataPrevista: formatarDataParaUI(r[CCAP('Data_Prevista')]),
+    dataPrevistaRaw: r[CCAP('Data_Prevista')] instanceof Date ? r[CCAP('Data_Prevista')].getTime() : null,
+    dataRealizada: formatarDataParaUI(r[CCAP('Data_Realizada')]),
     status: String(r[CCAP('Status')]||'Planejada'),
-    materiais: String(r[CCAP('Lista de Presença')]||''),
+    materiais: String(r[CCAP('Lista_De_Presenca')]||''),
     // Incluído para casar com o shape de getRestoData(): sem este campo,
     // recarregarCapacitacoes() (após salvar/editar/excluir) zerava a coluna
     // Responsáveis na UI até um reload completo.
-    participantes: String(r[CCAP('Responsáveis')]||'')
+    participantes: String(r[CCAP('Responsaveis')]||'')
   })) : [];
 }
 
@@ -1090,14 +1090,14 @@ function buscarLogs(filtros) {
   const linhasLidas = aba.getRange(startRow, 1, numRows, colCount).getValues();
 
   let linhas = linhasLidas.map(r => ({
-    dataHora: r[CL('Data/Hora')] instanceof Date
-      ? Utilities.formatDate(r[CL('Data/Hora')], Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
-      : String(r[CL('Data/Hora')] || ''),
-    usuario: String(r[CL('Usuário')] || ''),
-    acao: String(r[CL('Ação')] || ''),
-    referencia: String(r[CL('Referência')] || ''),
+    dataHora: r[CL('Data_Hora')] instanceof Date
+      ? Utilities.formatDate(r[CL('Data_Hora')], Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
+      : String(r[CL('Data_Hora')] || ''),
+    usuario: String(r[CL('Usuario')] || ''),
+    acao: String(r[CL('Acao')] || ''),
+    referencia: String(r[CL('Referencia')] || ''),
     detalhes: String(r[CL('Detalhes')] || ''),
-    _ordenacao: r[CL('Data/Hora')] instanceof Date ? r[CL('Data/Hora')].getTime() : 0
+    _ordenacao: r[CL('Data_Hora')] instanceof Date ? r[CL('Data_Hora')].getTime() : 0
   }));
 
   // Extrai as ações únicas ANTES de filtrar (para popular o dropdown no frontend na primeira carga)
@@ -1216,7 +1216,7 @@ function arquivarLogsAntigos_(mesesRetencao) {
     for (let k = 1; k < dados.length; k++) {
       const sheetRow = k + 1;
       if (sheetRow > limiteRowParaArquivar) break;
-      const dh = dados[k][CL('Data/Hora')];
+      const dh = dados[k][CL('Data_Hora')];
       if (Object.prototype.toString.call(dh) === '[object Date]' && dh.getTime() < cutoffMs) {
         registrosParaArquivo.push(dados[k].slice(0, CABECALHOS_LOGS.length));
         linhasParaArquivar.push(sheetRow);
@@ -1289,7 +1289,7 @@ function runTests_() {
 
   // colIdx_
   const C = colIdx_(CABECALHOS_TAREFAS);
-  check('colIdx ID', 0, C('ID'));
+  check('colIdx ID', 0, C('ID_Tarefas'));
   check('colIdx Status', 1, C('Status'));
   checkThrows('colIdx coluna inexistente lança', function () { C('Inexistente'); });
 
@@ -1323,10 +1323,10 @@ function runTests_() {
     return r;
   }
   check('arquivada Sim', true, _tarefaArquivada_(linha({ 'Arquivado': 'Sim' }), C, hoje));
-  check('arquivada Não (restaurada)', false, _tarefaArquivada_(linha({ 'Arquivado': 'Não', 'Status': 'Concluído', 'Data Conclusão': '2000-01-01' }), C, hoje));
+  check('arquivada Não (restaurada)', false, _tarefaArquivada_(linha({ 'Arquivado': 'Não', 'Status': 'Concluído', 'Data_Conclusao':'2000-01-01' }), C, hoje));
   check('arquivada não-concluída', false, _tarefaArquivada_(linha({ 'Status': 'Em Andamento' }), C, hoje));
-  check('arquivada concluída antiga', true, _tarefaArquivada_(linha({ 'Status': 'Concluído', 'Data Conclusão': '2000-01-01' }), C, hoje));
-  check('arquivada concluída hoje', false, _tarefaArquivada_(linha({ 'Status': 'Concluído', 'Data Conclusão': _dataLocalISO_(hoje) }), C, hoje));
+  check('arquivada concluída antiga', true, _tarefaArquivada_(linha({ 'Status': 'Concluído', 'Data_Conclusao':'2000-01-01' }), C, hoje));
+  check('arquivada concluída hoje', false, _tarefaArquivada_(linha({ 'Status': 'Concluído', 'Data_Conclusao':_dataLocalISO_(hoje) }), C, hoje));
 
   const resumo = { total: ok + fail, ok: ok, falhas: fail };
   console.log('=== runTests_ === ' + resumo.ok + '/' + resumo.total + ' OK, ' + resumo.falhas + ' falha(s)');
