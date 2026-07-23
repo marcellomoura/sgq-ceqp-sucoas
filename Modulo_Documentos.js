@@ -73,7 +73,7 @@ function atualizarDocumento(dados) {
       const proxRev = calcularProximaRevisao(dados.dataAprovacao);
       // Bloco Tipo→Próxima Revisão (4 colunas) e Responsável→Doc Auxiliar 2 (4 colunas)
       aba.getRange(linha, C('Tipo')+1, 1, 4).setValues([[dados.tipo, dados.titulo, dados.dataAprovacao, proxRev].map(neutralizarFormula_)]);
-      aba.getRange(linha, C('Responsavel')+1, 1, 4).setValues([[dados.responsavel, dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||''].map(neutralizarFormula_)]);
+      aba.getRange(linha, C('Responsavel(ID_Unidade)')+1, 1, 4).setValues([[dados.responsavel, dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||''].map(neutralizarFormula_)]);
       registrarLog('Edição de Documento', dados.codigo, 'Metadados atualizados.');
       return { sucesso: true, mensagem: 'Documento atualizado com sucesso!' };
     });
@@ -116,7 +116,7 @@ function salvarRevisaoDocumento(dados) {
       const novaVersaoNum = Math.floor(versao) + 1;
       const proxRev = calcularProximaRevisao(dados.dataAprovacao);
       aba.appendRow([antiga[C('Codigo')], novaVersaoNum, antiga[C('Tipo')], antiga[C('Titulo')], dados.dataAprovacao, proxRev,
-        'Vigente', antiga[C('Responsavel')], dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||'', dados.motivo].map(neutralizarFormula_));
+        'Vigente', antiga[C('Responsavel(ID_Unidade)')], dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||'', dados.motivo].map(neutralizarFormula_));
       registrarLog('Revisão de Documento', antiga[C('Codigo')], 'Nova versão v' + novaVersaoNum.toFixed(1));
       return { sucesso: true, mensagem: 'Revisão publicada com sucesso!' };
     });

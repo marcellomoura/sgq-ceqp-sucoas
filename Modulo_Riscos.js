@@ -252,7 +252,7 @@ function revisarPlano(dados) {
         novaRow[CP('ID_Risco')] = ref;
         novaRow[CP('O_Que')] = dados.what;
         novaRow[CP('Por_Que')] = dados.why;
-        novaRow[CP('Quem')] = dados.who;
+        novaRow[CP('Quem(ID_Unidade)')] = dados.who;
         novaRow[CP('Onde')] = dados.where;
         novaRow[CP('Data_Prevista')] = dados.whenPrevisto;
         novaRow[CP('Data_Finalizacao')] = dados.whenFinalizado || '';
@@ -349,7 +349,7 @@ function _ehSubcomissao_(nomeUnidade) { const n = String(nomeUnidade||'').toLowe
 // A reavaliação da baixa automática do plano
 function _reavaliarBaixa(abaP, indexPlano, rowData, entregasArr) {
   const CP = colIdx_(CABECALHOS_PLANOS);
-  const who = String(rowData[CP('Quem')]||'');
+  const who = String(rowData[CP('Quem(ID_Unidade)')]||'');
   const planoGlobal = _planoEhGlobal_(who);
   const statusAtualPlano = String(rowData[CP('Status')]||'');
   

@@ -54,12 +54,12 @@ const CABECALHOS_TAREFAS  = ['ID_Tarefas','Status','Titulo','Descricao','ID_Memb
 // é migrado para cá e a coluna excluída por _migrarEremoverColunaAtividades_.
 const CABECALHOS_ATIVIDADES = ['ID_Tarefas','Tipo','Texto','Data','Autor'];
 const CABECALHOS_UNIDADES = ['ID_Unidade', 'Nome_Da_Unidade','Sigla','Email_Funcional','Link_Do_Drive', 'Ativo'];
-const CABECALHOS_DOCS     = ['Codigo','Versao','Tipo','Titulo','Data_Aprovacao','Proxima_Revisao','Status','Responsavel','Link_Principal','Doc_Auxiliar_1','Doc_Auxiliar_2','Revisao'];
-const CABECALHOS_RISCOS   = ['ID_Risco','Macroetapa','Risco','Causa','Consequencia','Categoria','Probabilidade','Impacto','Nivel','Tipo_Tratamento','Responsavel','Status','Historico'];
-const CABECALHOS_PLANOS   = ['ID_Risco','O_Que','Por_Que','Quem','Onde','Data_Prevista','Data_Finalizacao','Como','Quanto_Custa','Status','Revisao_Pendente','Historico','Entregas'];
+const CABECALHOS_DOCS     = ['Codigo','Versao','Tipo','Titulo','Data_Aprovacao','Proxima_Revisao','Status','Responsavel(ID_Unidade)','Link_Principal','Doc_Auxiliar_1','Doc_Auxiliar_2','Revisao'];
+const CABECALHOS_RISCOS   = ['ID_Risco','Macroetapa','Risco','Causa','Consequencia','Categoria','Probabilidade','Impacto','Nivel','Tipo_Tratamento','Responsavel(ID_Unidade)','Status','Historico'];
+const CABECALHOS_PLANOS   = ['ID_Risco','O_Que','Por_Que','Quem(ID_Unidade)','Onde','Data_Prevista','Data_Finalizacao','Como','Quanto_Custa','Status','Revisao_Pendente','Historico','Entregas'];
 const CABECALHOS_LOGS     = ['Data_Hora','Usuario','Acao','Referencia','Detalhes'];
-const CABECALHOS_CAPACITACOES = ['ID_Capacitacoes', 'Titulo_Da_Capacitacao', 'Tema', 'Publico_Alvo', 'Modalidade', 'Data_Prevista', 'Data_Realizada', 'Status', 'Lista_De_Presenca', 'Responsaveis'];
-const CABECALHOS_VISITAS = ['ID_Visitas_Tecnicas', 'Objetivo_Da_Visita', 'Local_Visitado', 'Data_Da_Visita', 'Status', 'Responsaveis', 'Relatorio_Anexo'];
+const CABECALHOS_CAPACITACOES = ['ID_Capacitacoes', 'Titulo_Da_Capacitacao', 'Tema', 'Publico_Alvo', 'Modalidade', 'Data_Prevista', 'Data_Realizada', 'Status', 'Lista_De_Presenca', 'Responsaveis(ID_Membro)'];
+const CABECALHOS_VISITAS = ['ID_Visitas_Tecnicas', 'Objetivo_Da_Visita', 'Local_Visitado', 'Data_Da_Visita', 'Status', 'Responsaveis(ID_Membro)', 'Relatorio_Anexo'];
 
 // Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
 // (a mesma fonte única usada no setup da planilha). Elimina os índices
@@ -859,7 +859,7 @@ function _lerDocumentos_(ss) {
     return {
       idRow: i + 2, codigo: String(r[CD('Codigo')] || ''), versao: versao.toFixed(1), tipo: String(r[CD('Tipo')] || ''),
       titulo: String(r[CD('Titulo')] || ''), dataAprovacao: dataAprovacaoStr, proximaRevisao: proxRevStr,
-      status: statusCalc, responsavel: String(r[CD('Responsavel')] || ''),
+      status: statusCalc, responsavel: String(r[CD('Responsavel(ID_Unidade)')] || ''),
       linkDoc: String(r[CD('Link_Principal')] || ''), docAuxiliar: String(r[CD('Doc_Auxiliar_1')] || ''), docAuxiliar2: String(r[CD('Doc_Auxiliar_2')] || ''),
       obsoleto: isObsoleto, motivo: String(r[CD('Revisao')] || '')
     };
@@ -938,7 +938,7 @@ function _lerRiscosPlanosEntregas_(ss) {
         consequencia: String(r[CR('Consequencia')]||''), categoria: String(r[CR('Categoria')]||''),
         probabilidade: parseInt(r[CR('Probabilidade')],10)||1, impacto: parseInt(r[CR('Impacto')],10)||1,
         nivel: String(r[CR('Nivel')]||''), tipoTratamento: String(r[CR('Tipo_Tratamento')]||''),
-        responsavel: String(r[CR('Responsavel')]||'Não atribuído'), planoAcao: planoAcao,
+        responsavel: String(r[CR('Responsavel(ID_Unidade)')]||'Não atribuído'), planoAcao: planoAcao,
         status: String(r[CR('Status')]||'Ativo')
       };
     }) : [];
@@ -979,7 +979,7 @@ function _lerRiscosPlanosEntregas_(ss) {
 
     return {
       riscoVinculado: ref, what: String(r[CP('O_Que')]||''), why: String(r[CP('Por_Que')]||''),
-      who: String(r[CP('Quem')]||''), where: String(r[CP('Onde')]||''),
+      who: String(r[CP('Quem(ID_Unidade)')]||''), where: String(r[CP('Onde')]||''),
       whenPrevisto: formatarDataParaUI(r[CP('Data_Prevista')]), whenFinalizado: formatarDataParaUI(r[CP('Data_Finalizacao')]),
       how: String(r[CP('Como')]||''), howMuch: String(r[CP('Quanto_Custa')]||''),
       status: String(r[CP('Status')]||'Em Andamento'), revisaoPendente: String(r[CP('Revisao_Pendente')]||'Não')
@@ -1056,7 +1056,7 @@ function getCapacitacoesData() {
     // Incluído para casar com o shape de getRestoData(): sem este campo,
     // recarregarCapacitacoes() (após salvar/editar/excluir) zerava a coluna
     // Responsáveis na UI até um reload completo.
-    participantes: String(r[CCAP('Responsaveis')]||'')
+    participantes: String(r[CCAP('Responsaveis(ID_Membro)')]||'')
   })) : [];
 }
 
@@ -1078,7 +1078,7 @@ function getVisitasTecnicasData() {
     local: String(r[CV('Local_Visitado')]||''),
     data: formatarDataParaUI(r[CV('Data_Da_Visita')]),
     status: String(r[CV('Status')]||'Planejada'),
-    participantes: String(r[CV('Responsaveis')]||''),
+    participantes: String(r[CV('Responsaveis(ID_Membro)')]||''),
     relatorio: String(r[CV('Relatorio_Anexo')]||'')
   })) : [];
 }
