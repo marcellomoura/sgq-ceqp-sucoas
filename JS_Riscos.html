@@ -31,21 +31,25 @@
       const ref = 'R' + r.id;
       const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
       let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
-      let originalScore = r.probabilidade * r.impacto;
       let trendIcon = '';
 
       if (hist.length > 0) {
         // hist está ordenado cronologicamente pois foi lido da aba do topo ao fim.
+        // hist[0] é sempre o cadastro inicial do risco (salvarRisco já grava a
+        // 1ª entrada), então "hist.length===1" significa "nunca foi reavaliado
+        // de verdade" — não tem o que comparar, não mostra seta de tendência.
         const ultimo = hist[hist.length - 1];
         curProb = ultimo.prob;
         curImp = ultimo.impacto;
         curNivel = ultimo.nivel;
 
-        const prevScore = hist.length > 1 ? (hist[hist.length - 2].prob * hist[hist.length - 2].impacto) : originalScore;
-        const curScore = curProb * curImp;
-        if (curScore < prevScore) trendIcon = '<span style="color:#2CA98F; font-weight:bold; margin-left:4px;" title="Risco reduziu">⬇️</span>';
-        else if (curScore > prevScore) trendIcon = '<span style="color:#D8483A; font-weight:bold; margin-left:4px;" title="Risco aumentou">⬆️</span>';
-        else trendIcon = '<span style="color:#6b7280; font-weight:bold; margin-left:4px;" title="Risco manteve">➖</span>';
+        if (hist.length > 1) {
+          const prevScore = hist[hist.length - 2].prob * hist[hist.length - 2].impacto;
+          const curScore = curProb * curImp;
+          if (curScore < prevScore) trendIcon = '<span style="color:#2CA98F; font-weight:bold; margin-left:4px;" title="Risco reduziu">⬇️</span>';
+          else if (curScore > prevScore) trendIcon = '<span style="color:#D8483A; font-weight:bold; margin-left:4px;" title="Risco aumentou">⬆️</span>';
+          else trendIcon = '<span style="color:#6b7280; font-weight:bold; margin-left:4px;" title="Risco manteve">➖</span>';
+        }
       }
 
       // Anexa dados dinâmicos ao objeto para uso na tabela
@@ -67,7 +71,23 @@
     const idxPorIdRisco = new Map(state.risks.map((x, i) => [x.id, i]));
     $id('lista-riscos').innerHTML = ativos.map((r, i) => {
       const origIdx = idxPorIdRisco.has(r.id) ? idxPorIdRisco.get(r.id) : -1;
-      const temPlanos = state.plans.some(p => p.riscoVinculado === 'R' + r.id);
+      // "Editar Risco" fica oculto quando o risco já tem um plano de ação
+      // RESOLVIDO (Revisao_Pendente='Não') vinculado — a partir daí, mudar
+      // Prob./Impacto só pela via formal "Reavaliar" (mantém o histórico
+      // auditável). Mas enquanto a reavaliação estiver pendente de decisão
+      // (recém-reavaliado, ainda sem "Manter/Cancelar/Alterar" no plano), o
+      // botão reaparece — permite corrigir um erro de digitação na própria
+      // reavaliação recém-feita sem precisar empilhar outra reavaliação só
+      // para consertar o texto/números.
+      // Ignora só Cancelado/Substituído (planos MORTOS/substituídos — nunca
+      // mais recebem Revisao_Pendente='Sim', então contá-los aqui fazia
+      // "temPlanoResolvido" ficar sempre true assim que o risco tivesse
+      // qualquer plano antigo no histórico). "Concluído" continua contando
+      // como plano resolvido de verdade (tratamento formalmente encerrado) —
+      // Editar Risco deve continuar oculto nesse caso, não reaparecer.
+      const planosAtivosDoRisco = state.plans.filter(p => p.riscoVinculado === 'R' + r.id &&
+        p.status !== 'Cancelado' && p.status !== 'Substituído');
+      const temPlanoResolvido = planosAtivosDoRisco.some(p => p.revisaoPendente !== 'Sim');
       return `<div class="grid-row-hover risco-row">
     <div style="text-align:center;font-weight:700;color:#4b5563;">${i + 1}</div>
     <div style="text-align:center;font-weight:700;color:#2b7fff;white-space:nowrap;">R-${r.id}</div>
@@ -82,7 +102,7 @@
     <div>${esc(formatUnidadeUI(r.responsavel))}</div>
     <div style="line-height: 1.4; color: #4b5563;">${esc(r.planoAcao)}</div>
     <div class="no-print" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-      ${temPlanos ? '' : iconBtn('edit', 'edit-risco', 'Editar Risco', `data-idx="${origIdx}"`)}
+      ${temPlanoResolvido ? '' : iconBtn('edit', 'edit-risco', 'Editar Risco', `data-idx="${origIdx}"`)}
       ${iconBtn('rev', 'reav-risco', 'Reavaliar', `data-idx="${origIdx}"`)}
     </div>
   </div>`
@@ -191,6 +211,30 @@
     atualizarLegendaRisco('rev');
 
     abrirModal('modal-reavaliar-risco');
+  }
+
+  // Somente leitura — usado na aba Arquivados, onde o risco já está
+  // Superado/Arquivado e não faz sentido abrir o modal de Reavaliar (que
+  // permite editar/reavaliar). Recebe o ID do risco (não o índice), mesmo
+  // padrão de confirmarRestaurarRisco.
+  function abrirHistoricoRisco(id) {
+    const r = state.risks.find(x => String(x.id) === String(id)); if (!r) return;
+    $id('hist-risco-info').innerText = `Risco: R${r.id} — ${r.nome}`;
+
+    const hTable = $id('hist-risco-lista');
+    const hist = state.history ? state.history.filter(h => h.id === 'R' + r.id && h.tipo === 'Risco') : [];
+    if (hist.length) {
+      hTable.innerHTML = hist.map(h => `<tr>
+      <td>${(h.data||'').split('-').reverse().join('/')}</td>
+      <td>${h.prob}</td><td>${h.impacto}</td><td>${badge(h.nivel)}</td>
+      <td>${esc(h.tratamento || '-')}</td><td>${esc(formatUnidadeUI(h.responsavel) || '-')}</td>
+      <td>${esc(h.justificativa)}</td>
+    </tr>`).join('');
+    } else {
+      hTable.innerHTML = '<tr><td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td></tr>';
+    }
+
+    abrirModal('modal-historico-risco');
   }
 
   function toggleCamposReavaliacao() {
@@ -353,16 +397,23 @@
       <div style="display: flex; flex-direction: column; gap: 8px;">
         ${planos.map(p => {
         const oi = idxPlano.get(p);
-        const acaoRev = p.revisaoPendente === 'Sim' ? iconBtn('alert', 'rev-plano', 'Revisar Plano', `data-idx="${oi}"`) : '';
+        // Defesa extra: um plano Cancelado/Substituído é estado terminal e
+        // nunca deveria pedir revisão, mesmo que a flag no servidor tenha
+        // ficado 'Sim' por algum dado antigo (ver reavaliarRisco). "Concluído"
+        // NÃO é terminal aqui — pode voltar a pedir revisão se o risco mudar.
+        const ehTerminal = p.status === 'Cancelado' || p.status === 'Substituído';
+        const acaoRev = (p.revisaoPendente === 'Sim' && !ehTerminal) ? iconBtn('alert', 'rev-plano', 'Revisar Plano', `data-idx="${oi}"`) : '';
 
         let rowStyle = 'display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 20px; border-bottom: 1px solid #f3f4f6; transition: background 0.2s; text-align: left; word-break: break-word;';
-        if (p.status === 'Cancelado' || p.status === 'Substituído') {
+        if (p.status === 'Cancelado') {
           rowStyle += ' text-decoration: line-through; opacity: 0.6;';
-        } else if (p.revisaoPendente === 'Sim') {
+        } else if (p.status === 'Substituído') {
+          rowStyle += ' opacity: 0.6;';
+        } else if (acaoRev) {
           rowStyle += ' background-color: #fffbeb;';
         }
 
-        return `<div style="${rowStyle}" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='${p.revisaoPendente === 'Sim' && p.status !== 'Cancelado' && p.status !== 'Substituído' ? '#fffbeb' : 'transparent'}'">
+        return `<div style="${rowStyle}" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='${acaoRev ? '#fffbeb' : 'transparent'}'">
             <div style="font-weight: 500;">${esc(p.what)}</div>
             <div>${esc(p.why)}</div>
             <div>${esc(formatUnidadeUI(p.who))}</div>
@@ -427,7 +478,7 @@
   function abrirEditarPlano(idx) {
     const p = state.plans[idx]; if (!p) return;
     $id('ep-risco').value = p.riscoVinculado; $id('label-plano-editar').innerText = `Risco: ${p.riscoVinculado}`;
-    $id('ep-risco').dataset.whatAntigo = p.what;
+    $id('ep-risco').dataset.idPlano = p.id;
     $id('ep-what').value = p.what === '-' ? '' : p.what; $id('ep-why').value = p.why === '-' ? '' : p.why;
     $id('ep-who').innerHTML = gerarOptsUnidades(true); $id('ep-who').value = p.who;
     $id('ep-where').value = p.where === '-' ? '' : p.where;
@@ -438,7 +489,7 @@
   function confirmarEdicaoPlano() {
     const btn = $id('btn-confirmar-plano');
     const dados = {
-      riscoVinculado: $id('ep-risco').value, whatAntigo: $id('ep-risco').dataset.whatAntigo,
+      riscoVinculado: $id('ep-risco').value, idPlano: $id('ep-risco').dataset.idPlano,
       what: $id('ep-what').value.trim(),
       why: $id('ep-why').value.trim(), who: $id('ep-who').value,
       where: $id('ep-where').value.trim(), whenPrevisto: $id('ep-when').value,
@@ -457,8 +508,8 @@
     const p = state.plans[idx]; if (!p) return;
     $id('revp-risco').value = p.riscoVinculado;
 
-    // Guardar o "O que" original para o backend localizar o plano exato
-    $id('revp-risco').dataset.whatAntigo = p.what;
+    // Guardar o ID_Plano para o backend localizar o plano exato
+    $id('revp-risco').dataset.idPlano = p.id;
 
     $id('revp-justif').value = '';
     document.querySelector('input[name="revp-acao"][value="manter"]').click(); // reset to manter
@@ -466,7 +517,7 @@
     $id('revp-what').value = ''; $id('revp-why').value = '';
     $id('revp-who').innerHTML = gerarOptsUnidades(true); $id('revp-who').value = '';
     $id('revp-where').value = '';
-    $id('revp-when').value = ''; $id('revp-fin').value = '';
+    $id('revp-when').value = '';
     $id('revp-how').value = ''; $id('revp-cost').value = '';
     abrirModal('modal-revisar-plano');
   }
@@ -478,7 +529,7 @@
       const acao = document.querySelector('input[name="revp-acao"]:checked').value;
       const dados = {
         riscoVinculado: $id('revp-risco').value,
-        whatAntigo: $id('revp-risco').dataset.whatAntigo,
+        idPlano: $id('revp-risco').dataset.idPlano,
         acao: acao,
         justificativa: $id('revp-justif').value.trim()
       };
@@ -486,7 +537,7 @@
       if (acao === 'alterar') {
         dados.what = $id('revp-what').value.trim(); dados.why = $id('revp-why').value.trim();
         dados.who = $id('revp-who').value; dados.where = $id('revp-where').value.trim();
-        dados.whenPrevisto = $id('revp-when').value; dados.whenFinalizado = $id('revp-fin').value;
+        dados.whenPrevisto = $id('revp-when').value; dados.whenFinalizado = '';
         dados.how = $id('revp-how').value.trim(); dados.howMuch = $id('revp-cost').value.trim() || 'Sem custos';
         if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios do novo plano.');
       }
@@ -651,7 +702,7 @@
     }).withFailureHandler(e => {
       btn.textContent = 'Salvar Registros'; btn.disabled = false;
       showAlerta(String(e));
-    }).salvarEntregasEmLote(p.riscoVinculado, p.what, entregas);
+    }).salvarEntregasEmLote(p.id, entregas);
   }
 
   // ---------- PDF ----------
@@ -831,8 +882,10 @@
           ${planos.map(p => {
           const oi = idxPlano.get(p);
           let rowStyle = 'display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 20px; border-bottom: 1px solid #f3f4f6; transition: background 0.2s; text-align: left; word-break: break-word;';
-          if (p.status === 'Cancelado' || p.status === 'Substituído') {
+          if (p.status === 'Cancelado') {
             rowStyle += ' text-decoration: line-through; opacity: 0.6;';
+          } else if (p.status === 'Substituído') {
+            rowStyle += ' opacity: 0.6;';
           } else if (p.revisaoPendente === 'Sim') {
             rowStyle += ' background-color: #fffbeb;';
           }
@@ -883,6 +936,7 @@
         <div>${esc(formatUnidadeUI(curResp))}</div>
         <div style="line-height: 1.4; color: #4b5563;">${esc(r.planoAcao)}</div>
         <div class="no-print" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+          ${iconBtn('clock', 'hist-risco', 'Ver Histórico de Reavaliações', `data-id="${r.id}"`)}
           ${iconBtn('restore', 'restore-risco', 'Restaurar Risco para Ativo', `data-id="${r.id}"`)}
         </div>
       </div>

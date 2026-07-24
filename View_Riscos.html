@@ -470,7 +470,7 @@
     <div class="modal-box">
       <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-plano-editar"
           aria-label="Fechar">&times;</button></div>
-      <h3 class="modal-title">Atualizar Plano de Ação (5W2H)</h3>
+      <h3 class="modal-title">Editar Plano de Ação (5W2H)</h3>
       <p id="label-plano-editar" style="font-weight:700; color:var(--primary); margin:8px 0 16px; font-size:14px;"></p>
       <input type="hidden" id="ep-risco">
       <div class="form-row">
@@ -604,6 +604,39 @@
     </div>
   </div>
 
+  <!-- Modal: Histórico de Reavaliações (somente leitura, riscos arquivados) -->
+  <div id="modal-historico-risco" class="modal-overlay">
+    <div class="modal-box wide">
+      <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-historico-risco"
+          aria-label="Fechar">&times;</button></div>
+      <h3 class="modal-title">Histórico de Reavaliações</h3>
+      <div class="modal-info" id="hist-risco-info"
+        style="margin-bottom:14px; background:var(--bg-app); padding:10px; border-radius:4px; font-size:14px;"></div>
+      <div class="table-wrap" style="max-height: 320px; overflow-y:auto;">
+        <table class="data-table" style="font-size:12px;">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Prob.</th>
+              <th>Imp.</th>
+              <th>Nível</th>
+              <th>Tratamento</th>
+              <th>Resp.</th>
+              <th>Justificativa</th>
+            </tr>
+          </thead>
+          <tbody id="hist-risco-lista">
+            <tr>
+              <td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer"><button class="btn secondary" data-close="modal-historico-risco">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Revisar Plano de Ação -->
   <div id="modal-revisar-plano" class="modal-overlay">
     <div class="modal-box">
@@ -656,10 +689,6 @@
         <div class="form-row">
           <div style="flex:1;"><label class="field-label">Data Prevista</label><input type="date" id="revp-when"
               class="field-input"></div>
-          <div style="flex:1;"><label class="field-label">Data Finalização</label><input type="date" id="revp-fin"
-              class="field-input"></div>
-        </div>
-        <div class="form-row">
           <div style="flex:1;"><label class="field-label">Como? (How)</label><input type="text" id="revp-how"
               class="field-input"></div>
           <div style="flex:1;"><label class="field-label">Custo</label><input type="text" id="revp-cost"

@@ -27,9 +27,17 @@ function salvarRisco(dados) {
       });
       const id = 'R' + (max + 1);
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
+      // Histórico nasce com 1 entrada (o próprio cadastro), não vazio —
+      // sem isso, a 1ª avaliação do risco nunca aparecia na tabela de
+      // histórico (só reavaliações posteriores eram registradas ali).
+      const historicoInicial = [{
+        data: _dataLocalISO_(new Date()), prob: Number(dados.probabilidade), impacto: Number(dados.impacto),
+        nivel: nivel, tratamento: dados.tipoTratamento, responsavel: dados.responsavel,
+        justificativa: 'Cadastro inicial do risco.'
+      }];
       aba.appendRow([id, dados.macroetapa, nomeR, dados.causa, dados.consequencia,
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel,
-        dados.tipoTratamento, dados.responsavel, 'Ativo', '[]'].map(neutralizarFormula_));
+        dados.tipoTratamento, dados.responsavel, 'Ativo', JSON.stringify(historicoInicial)].map(neutralizarFormula_));
       registrarLog('Cadastro de Risco', id, 'Risco criado: ' + nomeR);
       return { sucesso: true, mensagem: 'Risco mapeado com sucesso!' };
     });
@@ -73,9 +81,18 @@ function atualizarRisco(dados) {
         lastHist.nivel = nivel;
         lastHist.tratamento = dados.tipoTratamento;
         lastHist.responsavel = dados.responsavel;
-        
-        // Em SHEET_RISKS, preserva Prob, Imp, Trat, Resp originais
+
+        // Em SHEET_RISKS, Probabilidade/Impacto/Nível da coluna base ficam
+        // congelados no valor do cadastro original de propósito — a tela
+        // sempre lê a versão "atual" do histórico (última entrada), nunca a
+        // coluna base, para esses 3 campos. Tipo_Tratamento/Responsável são
+        // diferentes: a Matriz (renderMatriz) exibe ESSAS DUAS direto da
+        // coluna base, sem passar pelo histórico — por isso precisam ser
+        // atualizadas aqui também (mesmo padrão que reavaliarRisco já usa),
+        // senão a tela ficava mostrando o tratamento/responsável antigo
+        // depois de editar um risco que já tinha histórico.
         aba.getRange(linha, CR('Macroetapa')+1, 1, 5).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia, dados.categoria].map(neutralizarFormula_)]);
+        aba.getRange(linha, CR('Tipo_Tratamento')+1, 1, 2).setValues([[dados.tipoTratamento, dados.responsavel].map(neutralizarFormula_)]);
         aba.getRange(linha, CR('Historico')+1).setValue(JSON.stringify(histArr));
       } else {
         // Risco não possui histórico. Atualiza o cadastro base.
@@ -171,13 +188,20 @@ function reavaliarRisco(dados) {
       });
       abaR.getRange(linhaR, CR('Historico')+1).setValue(JSON.stringify(histArr));
 
+      // Só marca planos que NÃO foram Cancelados/Substituídos como pendentes
+      // de revisão — esses dois são decisão formal já tomada (abandonar/
+      // trocar o plano) e não devem voltar a pedir revisão. "Concluído" NÃO
+      // entra aqui: significa que as entregas foram feitas, mas se o risco
+      // for reavaliado depois, o tratamento já concluído ainda pode precisar
+      // ser revisto (continua válido? precisa de um novo plano?).
       const abaP = conectarAba(SHEET_PLANS);
       const rowsP = abaP.getDataRange().getValues();
-      const colIdRiscoP = colIdx_(CABECALHOS_PLANOS)('ID_Risco');
-      const colRevisao = colIdx_(CABECALHOS_PLANOS)('Revisao_Pendente');
+      const CP = colIdx_(CABECALHOS_PLANOS);
+      const STATUS_TERMINAIS = ['Cancelado', 'Substituído'];
       for (let i = 1; i < rowsP.length; i++) {
-        if (rowsP[i][colIdRiscoP].toString().trim() === ref) {
-          abaP.getRange(i+1, colRevisao + 1).setValue('Sim');
+        if (rowsP[i][CP('ID_Risco')].toString().trim() === ref &&
+            !STATUS_TERMINAIS.includes(String(rowsP[i][CP('Status')]||'').trim())) {
+          abaP.getRange(i+1, CP('Revisao_Pendente') + 1).setValue('Sim');
         }
       }
       
@@ -199,9 +223,12 @@ function revisarPlano(dados) {
       
       let linhaP = -1;
       let planAntigo = null;
+      // Localiza pelo ID_Plano (chave estável) — casar por "O Que" corria o
+      // risco de bater com um plano Substituído anterior que tivesse o mesmo
+      // texto (mesmo bug relatado em atualizarPlano).
       for (let i = 1; i < rowsP.length; i++) {
-        if (String(rowsP[i][CP('ID_Risco')]||'').trim() === ref && 
-            String(rowsP[i][CP('O_Que')]||'').trim() === dados.whatAntigo) {
+        if (String(rowsP[i][CP('ID_Plano')]||'').trim() === String(dados.idPlano).trim()) {
+          if (String(rowsP[i][CP('ID_Risco')]||'').trim() !== ref) return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
           linhaP = i + 1;
           planAntigo = rowsP[i];
           break;
@@ -249,6 +276,7 @@ function revisarPlano(dados) {
         // 2. Criar o novo plano (appendRow)
         const novoStatus = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
         const novaRow = new Array(CABECALHOS_PLANOS.length).fill('');
+        novaRow[CP('ID_Plano')] = getNextId_(abaP, 'PLA-');
         novaRow[CP('ID_Risco')] = ref;
         novaRow[CP('O_Que')] = dados.what;
         novaRow[CP('Por_Que')] = dados.why;
@@ -305,8 +333,9 @@ function salvarPlano(dados) {
           return { sucesso: false, mensagem: 'Já existe um plano ativo para este risco.' };
       }
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
-      aba.appendRow([dados.riscoVinculado, dados.what, dados.why, dados.who,
-        dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, 'Não', '[]'].map(neutralizarFormula_));
+      const idPlano = getNextId_(aba, 'PLA-');
+      aba.appendRow([idPlano, dados.riscoVinculado, dados.what, dados.why, dados.who,
+        dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, 'Não', '[]', '[]'].map(neutralizarFormula_));
       registrarLog('Cadastro de Plano', dados.riscoVinculado, 'Plano 5W2H criado: ' + dados.what);
       return { sucesso: true, mensagem: 'Plano registrado!' };
     });
@@ -316,7 +345,7 @@ function salvarPlano(dados) {
 function atualizarPlano(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    if (!dados || !dados.riscoVinculado || !String(dados.what||'').trim() || !String(dados.why||'').trim() ||
+    if (!dados || !dados.idPlano || !dados.riscoVinculado || !String(dados.what||'').trim() || !String(dados.why||'').trim() ||
         !dados.who || !String(dados.where||'').trim() || !dados.whenPrevisto || !String(dados.how||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos do plano.' };
     return comBloqueio(() => {
@@ -325,8 +354,12 @@ function atualizarPlano(dados) {
       const rows = aba.getDataRange().getValues();
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][CP('ID_Risco')]||'').trim() === dados.riscoVinculado && 
-            String(rows[i][CP('O_Que')]||'').trim() === dados.whatAntigo) {
+        // Localiza pelo ID_Plano (chave estável) — o "O Que" pode se repetir
+        // entre um plano Substituído e o novo que o sucedeu (ver revisarPlano,
+        // ação "alterar"), e casar por texto localizava a linha ERRADA.
+        if (String(rows[i][CP('ID_Plano')]||'').trim() === String(dados.idPlano).trim()) {
+          if (String(rows[i][CP('ID_Risco')]||'').trim() !== dados.riscoVinculado)
+            return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
           // Bloco contíguo O Que → Status (9 colunas)
           aba.getRange(i+1, CP('O_Que')+1, 1, 9).setValues([[dados.what, dados.why, dados.who, dados.where,
             dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status].map(neutralizarFormula_)]);
@@ -382,21 +415,24 @@ function _reavaliarBaixa(abaP, indexPlano, rowData, entregasArr) {
 }
 
 // Salva/atualiza múltiplas entregas de uma vez (acompanhamento em lote).
-function salvarEntregasEmLote(riscoVinculado, whatPlano, entregas) {
+function salvarEntregasEmLote(idPlano, entregas) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_PLANS);
       const rows = aba.getDataRange().getValues();
       const CP = colIdx_(CABECALHOS_PLANOS);
-      
+
       let indexPlano = -1;
+      let riscoVinculado = '';
       let jsonAntigo = [];
-      
+
+      // Localiza pelo ID_Plano (chave estável) — ver mesmo comentário em
+      // atualizarPlano/revisarPlano sobre por que "O Que" não é confiável.
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][CP('ID_Risco')]||'').trim() === riscoVinculado && 
-            String(rows[i][CP('O_Que')]||'').trim() === whatPlano) {
+        if (String(rows[i][CP('ID_Plano')]||'').trim() === String(idPlano).trim()) {
           indexPlano = i + 1;
+          riscoVinculado = String(rows[i][CP('ID_Risco')]||'');
           const txt = String(rows[i][CP('Entregas')]||'').trim();
           if (txt.startsWith('[')) {
             try { jsonAntigo = JSON.parse(txt); } catch(e) {}
@@ -404,7 +440,7 @@ function salvarEntregasEmLote(riscoVinculado, whatPlano, entregas) {
           break;
         }
       }
-      
+
       if (indexPlano === -1) return { sucesso: false, mensagem: 'Plano não encontrado na planilha.' };
       
       const mapEntregas = new Map();

@@ -56,7 +56,7 @@ const CABECALHOS_ATIVIDADES = ['ID_Tarefas','Tipo','Texto','Data','Autor'];
 const CABECALHOS_UNIDADES = ['ID_Unidade', 'Nome_Da_Unidade','Sigla','Email_Funcional','Link_Do_Drive', 'Ativo'];
 const CABECALHOS_DOCS     = ['Codigo','Versao','Tipo','Titulo','Data_Aprovacao','Proxima_Revisao','Status','Responsavel(ID_Unidade)','Link_Principal','Doc_Auxiliar_1','Doc_Auxiliar_2','Revisao'];
 const CABECALHOS_RISCOS   = ['ID_Risco','Macroetapa','Risco','Causa','Consequencia','Categoria','Probabilidade','Impacto','Nivel','Tipo_Tratamento','Responsavel(ID_Unidade)','Status','Historico'];
-const CABECALHOS_PLANOS   = ['ID_Risco','O_Que','Por_Que','Quem(ID_Unidade)','Onde','Data_Prevista','Data_Finalizacao','Como','Quanto_Custa','Status','Revisao_Pendente','Historico','Entregas'];
+const CABECALHOS_PLANOS   = ['ID_Plano','ID_Risco','O_Que','Por_Que','Quem(ID_Unidade)','Onde','Data_Prevista','Data_Finalizacao','Como','Quanto_Custa','Status','Revisao_Pendente','Historico','Entregas'];
 const CABECALHOS_LOGS     = ['Data_Hora','Usuario','Acao','Referencia','Detalhes'];
 const CABECALHOS_CAPACITACOES = ['ID_Capacitacoes', 'Titulo_Da_Capacitacao', 'Tema', 'Publico_Alvo', 'Modalidade', 'Data_Prevista', 'Data_Realizada', 'Status', 'Lista_De_Presenca', 'Responsaveis(ID_Membro)'];
 const CABECALHOS_VISITAS = ['ID_Visitas_Tecnicas', 'Objetivo_Da_Visita', 'Local_Visitado', 'Data_Da_Visita', 'Status', 'Responsaveis(ID_Membro)', 'Relatorio_Anexo'];
@@ -947,7 +947,8 @@ function _lerRiscosPlanosEntregas_(ss) {
 
   const plans = planosRows.map((r, pIdx) => {
     const ref = String(r[CP('ID_Risco')]||'');
-    
+    const idPlano = String(r[CP('ID_Plano')]||'');
+
     // Processar Histórico
     const jsonHist = String(r[CP('Historico')]||'').trim();
     if (jsonHist.startsWith('[')) {
@@ -978,7 +979,7 @@ function _lerRiscosPlanosEntregas_(ss) {
     }
 
     return {
-      riscoVinculado: ref, what: String(r[CP('O_Que')]||''), why: String(r[CP('Por_Que')]||''),
+      id: idPlano, riscoVinculado: ref, what: String(r[CP('O_Que')]||''), why: String(r[CP('Por_Que')]||''),
       who: String(r[CP('Quem(ID_Unidade)')]||''), where: String(r[CP('Onde')]||''),
       whenPrevisto: formatarDataParaUI(r[CP('Data_Prevista')]), whenFinalizado: formatarDataParaUI(r[CP('Data_Finalizacao')]),
       how: String(r[CP('Como')]||''), howMuch: String(r[CP('Quanto_Custa')]||''),
