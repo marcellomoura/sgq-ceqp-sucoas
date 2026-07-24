@@ -392,7 +392,13 @@ function mudarTab(tab, botao) {
     // duas vem mais no getRestoData()/SGQ_TABS (ambas sob demanda desde
     // 2026-07-23, ver §8.9 da documentação) — para o Painel não renderizar
     // os gráficos vazios na primeira abertura direta desta aba.
-    'indicadores': ()=>garantirArquivados(()=>garantirCapacitacoesData(()=>garantirVisitasData(()=>setTimeout(renderIndicadores, 50)))),
+    'indicadores': ()=>{
+      Promise.all([
+        new Promise(r => garantirArquivados(r)),
+        new Promise(r => garantirCapacitacoesData(r)),
+        new Promise(r => garantirVisitasData(r))
+      ]).then(() => setTimeout(renderIndicadores, 50));
+    },
     'escala': ()=>renderEscala(),
     'unidades': ()=>renderUnidades(),
     'doc-lista': ()=>renderDocumentos('mestra'),
@@ -499,26 +505,39 @@ function _removerAvisoGraficos() {
   if (box) box.remove();
 }
 
-// Corpo do relatório do Painel de Indicadores — os 7 gráficos viram
-// imagem estática (Chart.js não existe fora do navegador); cada módulo
-// monta apenas a parte que lhe pertence.
-function montarHtmlIndicadoresPdf() {
-  const getTxt = id => { const e = document.getElementById(id); return e ? e.innerText : '0'; };
-  const kpis = `<table style="margin-bottom:20px;"><tr>
-    ${_pdfKpiCell('Tarefas em Andamento', getTxt('kpi-dash-tarefas'), '#7A6CDD')}
-    ${_pdfKpiCell('Tarefas Concluídas', getTxt('kpi-dash-tarefas-conc'), '#2CA98F')}
-    ${_pdfKpiCell('Capacitações Ativas', getTxt('kpi-dash-cap'), '#8b5cf6')}
-    ${_pdfKpiCell('Capacitações Realizadas', getTxt('kpi-dash-cap-conc'), '#2CA98F')}
-  </tr></table>`;
-  const kpisVt = `<table style="margin-bottom:20px;"><tr>
-    ${_pdfKpiCell('Visitas Planejadas', getTxt('kpi-dash-vt'), '#8b5cf6', '50%')}
-    ${_pdfKpiCell('Visitas Realizadas', getTxt('kpi-dash-vt-conc'), '#2CA98F', '50%')}
-  </tr></table>`;
-
-  const tKanban = _pdfSecaoTitulo('Tarefas');
-  const tCap    = `<div style="page-break-before: always;">${_pdfSecaoTitulo('Capacitações')}</div>`;
-  const tVt     = `<div style="page-break-before: always;">${_pdfSecaoTitulo('Visitas Técnicas')}</div>`;
-  return kpis + tKanban + graficosKanbanPdfHtml() + tCap + graficosCapacitacoesPdfHtml() + tVt + kpisVt + graficosVisitasPdfHtml();
+// Corpo do relatório do Painel de Indicadores — tira "fotos" exatas da tela
+// usando html2canvas, preservando 100% da fidelidade de layout, cores e grids.
+async function montarHtmlIndicadoresPdf() {
+  const kpiGeral = $id('dash-kpis-geral');
+  const grids = Array.from(document.querySelectorAll('#view-indicadores .tl-chart-grid'));
+  
+  const promises = [];
+  if (kpiGeral) promises.push(_capturarElementoComoImg(kpiGeral));
+  grids.forEach(g => promises.push(_capturarElementoComoImg(g)));
+  
+  const imgs = await Promise.all(promises);
+  
+  let html = '';
+  if (imgs[0] && kpiGeral) html += `<img src="${imgs[0]}" style="display:block;width:100%;margin-bottom:24px;">`;
+  
+  // imgs[1] em diante são os gráficos
+  const titulos = ['Tarefas', 'Capacitações', 'Visitas Técnicas'];
+  let titleIndex = 0;
+  
+  for (let i = 1; i < imgs.length; i++) {
+    if (imgs[i]) {
+      // Adiciona o título da seção antes da primeira grid daquela seção (Tarefas tem 1 grid, Capacitações tem 2, Visitas tem 1)
+      // Como na tela tem 4 grids (1 Tarefas, 2 Capacitações, 1 Visitas), mapeamos:
+      let titulo = '';
+      if (i === 1) titulo = _pdfSecaoTitulo('Tarefas');
+      else if (i === 2) titulo = `<div style="page-break-before: always;">${_pdfSecaoTitulo('Capacitações')}</div>`;
+      else if (i === 4) titulo = `<div style="page-break-before: always;">${_pdfSecaoTitulo('Visitas Técnicas')}</div>`;
+      
+      html += `${titulo}<div style="page-break-inside: avoid;"><img src="${imgs[i]}" style="display:block;width:100%;margin-bottom:24px;"></div>`;
+    }
+  }
+  
+  return html;
 }
 
 // ==========================================
@@ -580,7 +599,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const rotinasPosCargaInicial = {
         'members': renderMembers, 'escala': renderEscala,
         'ferias': carregarFerias,
-        'indicadores': ()=>garantirArquivados(()=>garantirCapacitacoesData(()=>garantirVisitasData(renderIndicadores))),
+        'indicadores': ()=>{
+          Promise.all([
+            new Promise(r => garantirArquivados(r)),
+            new Promise(r => garantirCapacitacoesData(r)),
+            new Promise(r => garantirVisitasData(r))
+          ]).then(() => renderIndicadores());
+        },
         'archived': renderArquivados, 'risco-arquivado': renderRiscosArquivados
       };
       if (rotinasPosCargaInicial[currentTab]) rotinasPosCargaInicial[currentTab]();
@@ -1078,8 +1103,34 @@ function _pdfGraficoCel(titulo, canvasId, largura) {
     <div style="border:1px solid #e5e7eb; border-radius:6px; padding:8px; background-color:#ffffff;">
       <span style="font-size:11px;font-weight:700;color:#4b5563;display:block;margin-bottom:8px;text-align:center;">${esc(titulo)}</span>
       <div style="text-align:center;">
-        <img src="${_imgDeCanvas(canvasId)}" style="max-height:165px; width:auto; max-width:100%;">
+        <img src="${_imgDeCanvas(canvasId)}" style="width:100%; height:auto;">
       </div>
+    </div>
+  </td>`;
+}
+
+function _pdfDoughnutComLegendaCel(titulo, canvasId, chartInst, largura) {
+  if (!chartInst) return _pdfGraficoCel(titulo, canvasId, largura);
+  const labels = chartInst.data.labels || [];
+  const data = chartInst.data.datasets[0].data || [];
+  const bgColors = chartInst.data.datasets[0].backgroundColor || [];
+  let total = data.reduce((a, b) => a + b, 0);
+
+  let listHtml = '<div style="font-size:10.5px; margin-top:10px; text-align:left; color:#4b5563; line-height:1.5;">';
+  for (let i = 0; i < labels.length; i++) {
+    if (data[i] > 0) {
+      listHtml += `<div><span style="color:${bgColors[i] || '#ccc'}; font-size:12px;">&#9679;</span> <strong>${data[i]}</strong> - ${esc(labels[i])}</div>`;
+    }
+  }
+  listHtml += `<div style="margin-top:6px; padding-top:4px; border-top:1px solid #e5e7eb; color:#030712; font-weight:700;">Total: ${total}</div></div>`;
+
+  return `<td style="width:${largura||'50%'};padding:0 4px;vertical-align:top;border:none;">
+    <div style="border:1px solid #e5e7eb; border-radius:6px; padding:8px; background-color:#ffffff;">
+      <span style="font-size:11px;font-weight:700;color:#4b5563;display:block;margin-bottom:8px;text-align:center;">${esc(titulo)}</span>
+      <div style="text-align:center;">
+        <img src="${_imgDeCanvas(canvasId)}" style="max-height:155px; width:auto; max-width:100%;">
+      </div>
+      ${listHtml}
     </div>
   </td>`;
 }

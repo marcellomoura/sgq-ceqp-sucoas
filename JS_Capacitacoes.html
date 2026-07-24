@@ -292,48 +292,10 @@ function renderGraficosCapacitacoes(fid) {
   // Gráfico: Capacitações por Modalidade
   const cMod = $id('capModalidadeChart');
   if (cMod) capModalidadeChartInst = new Chart(cMod.getContext('2d'), {
-    type: 'doughnut',
-    data: {
-      labels: Object.keys(pModalidade),
-      datasets: [{ data: Object.values(pModalidade), backgroundColor: ['#3D8FC4','#2CA98F','#D2596F','#7A6CDD','#E0904A'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '66%',
-      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} capacitação(ões)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: '#030712' } }
-    }
-  });
-
-  // Gráfico: Capacitações por Tema
-  const cTema = $id('capTemaChart');
-  if (cTema) capTemaChartInst = new Chart(cTema.getContext('2d'), {
-    type: 'doughnut',
-    data: {
-      labels: Object.keys(pTema),
-      datasets: [{ data: Object.values(pTema), backgroundColor: ['#C99A2E','#D8483A','#6B9B37','#1E9AA3','#A94FA0','#55647A'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '66%',
-      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} capacitação(ões)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: '#030712' } }
-    }
-  });
-
-  // Gráfico: Capacitações por Membro
-  // Mapeamos de volta para os Nomes usando membrosGrafico
-  const nomesMembros = membrosGrafico.map(m => m.name);
-  const dadosMembros = membrosGrafico.map(m => pMembro[m.id]);
-
-  const cMembro = $id('capMembroChart');
-  const maxMembro = Math.max(0, ...dadosMembros);
-  if (cMembro) capMembroChartInst = new Chart(cMembro.getContext('2d'), {
     type: 'bar',
     data: {
-      labels: nomesMembros,
-      datasets: [{
-        label: 'Capacitações',
-        data: dadosMembros,
-        backgroundColor: '#A94FA0',
-        borderWidth: 0, borderRadius: 20, borderSkipped: false, maxBarThickness: 26
-      }]
+      labels: Object.keys(pModalidade),
+      datasets: [{ data: Object.values(pModalidade), backgroundColor: ['#3D8FC4','#2CA98F','#D2596F','#7A6CDD','#E0904A'], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -341,13 +303,86 @@ function renderGraficosCapacitacoes(fid) {
       scales: CHART_SCALES_BASE
     }
   });
+
+  // Gráfico: Capacitações por Tema
+  const cTema = $id('capTemaChart');
+  if (cTema) capTemaChartInst = new Chart(cTema.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(pTema),
+      datasets: [{ data: Object.values(pTema), backgroundColor: ['#C99A2E','#D8483A','#6B9B37','#1E9AA3','#A94FA0','#55647A'], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { display: false } },
+      scales: CHART_SCALES_BASE
+    }
+  });
+
+  // Gráfico: Capacitações por Membro
+  const nomesMembros = membrosGrafico.map(m => m.name);
+  const dadosMembros = membrosGrafico.map(m => pMembro[m.id]);
+
+  const chartColorsCap = PALETA_PASTEL_HEX;
+  const getInitialsCap = (name) => {
+    const p = name.split(' ');
+    return p.length > 1 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : p[0].substring(0, 2).toUpperCase();
+  };
+
+  const cMembro = $id('capMembroChart');
+  
+  let dataMCap_ = nomesMembros.map((nome, i) => ({ nome, count: dadosMembros[i] }));
+  dataMCap_.sort((a, b) => a.nome.localeCompare(b.nome));
+  const sNamesCap = dataMCap_.map(d => d.nome);
+  const sCountsCap = dataMCap_.map(d => d.count);
+
+  const totalCap = sCountsCap.reduce((a, b) => a + b, 0);
+  const elTotalCap = $id('capMembroChartTotal');
+  if (elTotalCap) elTotalCap.textContent = totalCap;
+
+  const bgColorsCap = sCountsCap.map((_, i) => chartColorsCap[i % chartColorsCap.length]);
+  const elListCap = $id('capMembroChartList');
+  if (elListCap) {
+    elListCap.innerHTML = '';
+    sNamesCap.forEach((nome, i) => {
+      elListCap.insertAdjacentHTML('beforeend', `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: var(--radius-sm);">
+          <div style="display: flex; align-items: center; min-width: 0; margin-right: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background-color: ${bgColorsCap[i]}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #ffffff; margin-right: 12px; flex-shrink: 0;">${getInitialsCap(nome)}</div>
+            <span style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--text-secondary);">${nome}</span>
+          </div>
+          <div style="display: flex; align-items: center; flex-shrink: 0;">
+            <span style="font-size: 13px; text-align: right; min-width: 20px; font-weight: 500; color: var(--text-muted);">${sCountsCap[i]}</span>
+          </div>
+        </div>
+      `);
+    });
+  }
+
+  if (cMembro) capMembroChartInst = new Chart(cMembro.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: sNamesCap,
+      datasets: [{
+        data: sCountsCap,
+        backgroundColor: bgColorsCap,
+        borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4, borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: '#ffffff', font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
+    }
+  });
 }
 
 // Fragmento do relatório do Painel de Indicadores com os 4 gráficos de
 // Capacitações (viram imagem estática, já que Chart.js não roda no servidor).
 function graficosCapacitacoesPdfHtml() {
-  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Evolução Mensal das Capacitações','capMesChart')}${_pdfGraficoCel('Capacitações por Tema','capTemaChart')}</tr></table>` +
-    `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Capacitações por Modalidade','capModalidadeChart')}${_pdfGraficoCel('Capacitações por Membro','capMembroChart')}</tr></table>`;
+  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Evolução Mensal das Capacitações','capMesChart', '100%')}</tr></table>` +
+    `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Capacitações por Tema','capTemaChart', '100%')}</tr></table>` +
+    `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Capacitações por Modalidade','capModalidadeChart', '100%')}</tr></table>` +
+    `<table style="margin-bottom:18px;"><tr>${_pdfDoughnutComLegendaCel('Capacitações por Membro','capMembroChart', capMembroChartInst, '50%')}<td style="width:50%;border:none;"></td></tr></table>`;
 }
 
 // ------------------------------------------

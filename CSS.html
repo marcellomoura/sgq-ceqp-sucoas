@@ -636,16 +636,26 @@
   .btn-action-icon.loading { opacity: 0.5; pointer-events: none; }
   .btn-action-icon svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 
-  /* Botão redondo de "Baixar PDF": pulsa enquanto gera o PDF e pisca um check
-     verde ao concluir. A classe .loading já é ligada/desligada por _gerarPdfReal
-     (JS_Utilitarios) — aqui só o efeito visual, puramente cosmético (roda no
-     compositor do navegador, só neste botão e só durante a espera). */
-  @keyframes pdfPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-  .btn-pdf-download.loading { pointer-events: none; animation: pdfPulse 0.9s ease-in-out infinite; }
+  /* Botão redondo de "Baixar PDF": esconde o ícone e mostra um spinner circular
+     enquanto gera o PDF (.loading), e pisca um check verde ao concluir (.success). */
+  .btn-pdf-download { position: relative; }
+  .btn-pdf-download.loading { pointer-events: none; }
+  .btn-pdf-download.loading svg { opacity: 0; }
+  @keyframes spinnerRing { to { transform: rotate(360deg); } }
+  .btn-pdf-download.loading::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--text-secondary);
+    border-radius: 50%;
+    animation: spinnerRing 0.7s linear infinite;
+  }
   .btn-pdf-download.success { color: var(--success); }
-  /* Respeita quem prefere menos animação: mantém só o esmaecido, sem pulsar. */
+  /* Respeita quem prefere menos animação: gira bem devagar. */
   @media (prefers-reduced-motion: reduce) {
-    .btn-pdf-download.loading { animation: none; opacity: 0.6; }
+    .btn-pdf-download.loading::after { animation-duration: 2.5s; }
   }
   .btn-outline { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-color); cursor: pointer; font-weight: 600; padding: 8px 16px; border-radius: var(--radius-sm); font-size: var(--fs-sm); display: inline-flex; align-items: center; gap: 7px; transition: background var(--transition-fast), border-color var(--transition-fast); font-family: inherit; }
   .btn-outline:hover { background: var(--bg-hover); border-color: var(--border-strong); }

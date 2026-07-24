@@ -635,76 +635,130 @@ function renderGraficosKanban(fid) {
   // Gráfico: Distribuição por Status
   const cS = $id('statusChart');
   if (cS) statusChartInst = new Chart(cS.getContext('2d'), {
-    type: 'doughnut',
+    type: 'bar',
     data: {
       labels: Object.keys(sc),
-      // Ordem de sc: Backlog, A Fazer, Em Andamento, Em Revisão, Concluído.
-      // Em Andamento=Lavanda e Concluído=Menta seguem CORES_STATUS; A Fazer
-      // (Céu) e Em Revisão (Dourado) são específicos deste gráfico.
-      datasets: [{ data: Object.values(sc), backgroundColor: ['#55647A','#3D8FC4','#7A6CDD','#C99A2E','#2CA98F'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+      datasets: [{ data: Object.values(sc), backgroundColor: ['#55647A','#3D8FC4','#7A6CDD','#C99A2E','#2CA98F'], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
     },
     options: {
-      responsive: true, maintainAspectRatio: false, cutout: '66%',
-      // Texto escuro: Céu/Dourado/Menta são claros demais para número branco.
-      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: '#030712' } }
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} cartão(s)` } }, datalabels: { display: false } },
+      scales: CHART_SCALES_BASE
     }
   });
 
   // Gráfico: Distribuição por Prioridade
   const cP = $id('priorityChart');
   if (cP) priorityChartInst = new Chart(cP.getContext('2d'), {
-    type: 'doughnut',
-    data: {
-      labels: ['Alta', 'Média', 'Baixa'],
-      datasets: [{ data: [pc['Alta'], pc['Media'], pc['Baixa']], backgroundColor: ['#D8483A','#E0904A','#2CA98F'], borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '66%',
-      // Texto escuro (em vez do branco padrão de CHART_DATALABELS_BASE): o
-      // amarelo e o verde deste gráfico são claros demais para número branco.
-      plugins: { legend: CHART_LEGEND_BASE, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed} cartão(s)` } }, datalabels: { ...CHART_DATALABELS_BASE, color: '#030712' } }
-    }
-  });
-
-  // Gráfico: Em Andamento por Membro
-  const cM = $id('memberChart');
-  const maxMc = Math.max(0, ...dadosMc);
-  if (cM) memberChartInst = new Chart(cM.getContext('2d'), {
     type: 'bar',
     data: {
-      labels: nomesMembros_,
-      datasets: [{
-        label: 'Em Andamento',
-        data: dadosMc,
-        backgroundColor: '#7A6CDD',
-        borderWidth: 0, borderRadius: 20, borderSkipped: false, maxBarThickness: 26
-      }]
+      labels: ['Alta', 'Média', 'Baixa'],
+      datasets: [{ data: [pc['Alta'], pc['Media'], pc['Baixa']], backgroundColor: ['#D8483A','#E0904A','#2CA98F'], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} em andamento` } }, datalabels: { display: false } },
+      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} cartão(s)` } }, datalabels: { display: false } },
       scales: CHART_SCALES_BASE
+    }
+  });
+
+  const chartColors = PALETA_PASTEL_HEX;
+  const getInitials = (name) => {
+    const p = name.split(' ');
+    return p.length > 1 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : p[0].substring(0, 2).toUpperCase();
+  };
+
+  // Gráfico: Em Andamento por Membro
+  const cM = $id('memberChart');
+  
+  let dataM_ = nomesMembros_.map((nome, i) => ({ nome, count: dadosMc[i] }));
+  dataM_.sort((a, b) => a.nome.localeCompare(b.nome));
+  const sNamesM = dataM_.map(d => d.nome);
+  const sCountsM = dataM_.map(d => d.count);
+
+  const totalAndamento = sCountsM.reduce((a, b) => a + b, 0);
+  const elTotalM = $id('memberChartTotal');
+  if (elTotalM) elTotalM.textContent = totalAndamento;
+
+  const bgColorsM = sCountsM.map((_, i) => chartColors[i % chartColors.length]);
+  const elListM = $id('memberChartList');
+  if (elListM) {
+    elListM.innerHTML = '';
+    sNamesM.forEach((nome, i) => {
+      elListM.insertAdjacentHTML('beforeend', `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: var(--radius-sm);">
+          <div style="display: flex; align-items: center; min-width: 0; margin-right: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background-color: ${bgColorsM[i]}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #ffffff; margin-right: 12px; flex-shrink: 0;">${getInitials(nome)}</div>
+            <span style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--text-secondary);">${nome}</span>
+          </div>
+          <div style="display: flex; align-items: center; flex-shrink: 0;">
+            <span style="font-size: 13px; text-align: right; min-width: 20px; font-weight: 500; color: var(--text-muted);">${sCountsM[i]}</span>
+          </div>
+        </div>
+      `);
+    });
+  }
+
+  if (cM) memberChartInst = new Chart(cM.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: sNamesM,
+      datasets: [{
+        data: sCountsM,
+        backgroundColor: bgColorsM,
+        borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4, borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: '#ffffff', font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
     }
   });
 
   // Gráfico: Concluídas por Membro
   const cMC = $id('memberConcluidoChart');
-  const maxMcC = Math.max(0, ...dadosMcConcluido);
+  
+  let dataMC_ = nomesMembros_.map((nome, i) => ({ nome, count: dadosMcConcluido[i] }));
+  dataMC_.sort((a, b) => a.nome.localeCompare(b.nome));
+  const sNamesMC = dataMC_.map(d => d.nome);
+  const sCountsMC = dataMC_.map(d => d.count);
+
+  const totalConcluidas = sCountsMC.reduce((a, b) => a + b, 0);
+  const elTotalMC = $id('memberConcluidoChartTotal');
+  if (elTotalMC) elTotalMC.textContent = totalConcluidas;
+
+  const bgColorsMC = sCountsMC.map((_, i) => chartColors[i % chartColors.length]);
+  const elListMC = $id('memberConcluidoChartList');
+  if (elListMC) {
+    elListMC.innerHTML = '';
+    sNamesMC.forEach((nome, i) => {
+      elListMC.insertAdjacentHTML('beforeend', `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: var(--radius-sm);">
+          <div style="display: flex; align-items: center; min-width: 0; margin-right: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background-color: ${bgColorsMC[i]}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #ffffff; margin-right: 12px; flex-shrink: 0;">${getInitials(nome)}</div>
+            <span style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--text-secondary);">${nome}</span>
+          </div>
+          <div style="display: flex; align-items: center; flex-shrink: 0;">
+            <span style="font-size: 13px; text-align: right; min-width: 20px; font-weight: 500; color: var(--text-muted);">${sCountsMC[i]}</span>
+          </div>
+        </div>
+      `);
+    });
+  }
+
   if (cMC) memberConcluidoChartInst = new Chart(cMC.getContext('2d'), {
-    type: 'bar',
+    type: 'doughnut',
     data: {
-      labels: nomesMembros_,
+      labels: sNamesMC,
       datasets: [{
-        label: 'Concluídas',
-        data: dadosMcConcluido,
-        backgroundColor: '#2CA98F',
-        borderWidth: 0, borderRadius: 20, borderSkipped: false, maxBarThickness: 26
+        data: sCountsMC,
+        backgroundColor: bgColorsMC,
+        borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4, borderRadius: 4
       }]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} concluída(s)` } }, datalabels: { display: false } },
-      scales: CHART_SCALES_BASE
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: '#ffffff', font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
     }
   });
 }
@@ -713,8 +767,9 @@ function renderGraficosKanban(fid) {
 // Fragmento do relatório do Painel de Indicadores com os 4 gráficos do
 // Kanban (viram imagem estática, já que Chart.js não roda no servidor).
 function graficosKanbanPdfHtml() {
-  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Tarefas por Status','statusChart')}${_pdfGraficoCel('Tarefas por Nível de Prioridade','priorityChart')}</tr></table>` +
-    `<table style="margin-bottom:18px;"><tr>${_pdfGraficoCel('Tarefas em Andamento por Membro','memberChart')}${_pdfGraficoCel('Tarefas Concluídas por Membro','memberConcluidoChart')}</tr></table>`;
+  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Tarefas por Status','statusChart', '100%')}</tr></table>` +
+    `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Tarefas por Nível de Prioridade','priorityChart', '100%')}</tr></table>` +
+    `<table style="margin-bottom:18px;"><tr>${_pdfDoughnutComLegendaCel('Tarefas em Andamento por Membro','memberChart', memberChartInst, '50%')}${_pdfDoughnutComLegendaCel('Tarefas Concluídas por Membro','memberConcluidoChart', memberConcluidoChartInst, '50%')}</tr></table>`;
 }
 
 // Corpo do relatório de Arquivados — reaproveita a tabela já renderizada,
