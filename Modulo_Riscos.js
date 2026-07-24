@@ -27,17 +27,13 @@ function salvarRisco(dados) {
       });
       const id = 'R' + (max + 1);
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
-      // Histórico nasce com 1 entrada (o próprio cadastro), não vazio —
-      // sem isso, a 1ª avaliação do risco nunca aparecia na tabela de
-      // histórico (só reavaliações posteriores eram registradas ali).
-      const historicoInicial = [{
-        data: _dataLocalISO_(new Date()), prob: Number(dados.probabilidade), impacto: Number(dados.impacto),
-        nivel: nivel, tratamento: dados.tipoTratamento, responsavel: dados.responsavel,
-        justificativa: 'Cadastro inicial do risco.'
-      }];
-      aba.appendRow([id, dados.macroetapa, nomeR, dados.causa, dados.consequencia,
+      // Cadastro inicial = Versao 1 do risco. Reavaliações futuras entram
+      // como novas linhas com o mesmo ID_Risco (ver reavaliarRisco), não mais
+      // como entradas num JSON dentro desta linha.
+      aba.appendRow([id, 1, dados.macroetapa, nomeR, dados.causa, dados.consequencia,
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel,
-        dados.tipoTratamento, dados.responsavel, 'Ativo', JSON.stringify(historicoInicial)].map(neutralizarFormula_));
+        dados.tipoTratamento, dados.responsavel, 'Ativo', 'Cadastro inicial do risco.',
+        _dataLocalISO_(new Date())].map(neutralizarFormula_));
       registrarLog('Cadastro de Risco', id, 'Risco criado: ' + nomeR);
       return { sucesso: true, mensagem: 'Risco mapeado com sucesso!' };
     });
@@ -59,47 +55,22 @@ function atualizarRisco(dados) {
       const aba = conectarAba(SHEET_RISKS);
       const CR = colIdx_(CABECALHOS_RISCOS);
       const ref = 'R' + dados.id;
-      const rows = aba.getDataRange().getValues();
-      let linha = -1;
-      for (let i = 1; i < rows.length; i++) {
-        if (rows[i][CR('ID_Risco')].toString().trim() === ref) { linha = i+1; break; }
-      }
-      if (linha === -1) return { sucesso: false, mensagem: 'Risco não localizado.' };
+      // Localiza pela linha (idRow) que o cliente tinha carregada, não mais
+      // pela primeira linha que bater com ID_Risco — com 1 linha por VERSÃO do
+      // risco, várias linhas podem compartilhar o mesmo ID_Risco, e o "para no
+      // primeiro match" acertaria a linha mais antiga por engano (mesmo bug já
+      // corrigido em Planos, ver ID_Plano). Trava otimista: confere que a
+      // linha ainda é a do risco esperado antes de escrever.
+      const linha = parseInt(dados.idRow, 10);
+      if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
+        return { sucesso: false, mensagem: 'Risco não localizado.' };
+      if (aba.getRange(linha, CR('ID_Risco')+1).getValue().toString().trim() !== ref)
+        return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
       const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
-      
-      let histArr = [];
-      const jsonStr = String(rows[linha-1][CR('Historico')]||'').trim();
-      if (jsonStr.startsWith('[')) {
-        try { histArr = JSON.parse(jsonStr); } catch(e) {}
-      }
-      
-      if (histArr.length > 0) {
-        // Atualiza a última reavaliação no array JSON
-        const lastHist = histArr[histArr.length - 1];
-        lastHist.prob = Number(dados.probabilidade);
-        lastHist.impacto = Number(dados.impacto);
-        lastHist.nivel = nivel;
-        lastHist.tratamento = dados.tipoTratamento;
-        lastHist.responsavel = dados.responsavel;
-
-        // Em SHEET_RISKS, Probabilidade/Impacto/Nível da coluna base ficam
-        // congelados no valor do cadastro original de propósito — a tela
-        // sempre lê a versão "atual" do histórico (última entrada), nunca a
-        // coluna base, para esses 3 campos. Tipo_Tratamento/Responsável são
-        // diferentes: a Matriz (renderMatriz) exibe ESSAS DUAS direto da
-        // coluna base, sem passar pelo histórico — por isso precisam ser
-        // atualizadas aqui também (mesmo padrão que reavaliarRisco já usa),
-        // senão a tela ficava mostrando o tratamento/responsável antigo
-        // depois de editar um risco que já tinha histórico.
-        aba.getRange(linha, CR('Macroetapa')+1, 1, 5).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia, dados.categoria].map(neutralizarFormula_)]);
-        aba.getRange(linha, CR('Tipo_Tratamento')+1, 1, 2).setValues([[dados.tipoTratamento, dados.responsavel].map(neutralizarFormula_)]);
-        aba.getRange(linha, CR('Historico')+1).setValue(JSON.stringify(histArr));
-      } else {
-        // Risco não possui histórico. Atualiza o cadastro base.
-        aba.getRange(linha, CR('Macroetapa')+1, 1, 11).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia,
-          dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel, dados.tipoTratamento, dados.responsavel, 'Ativo'].map(neutralizarFormula_)]);
-      }
-      
+      // Corrige a versão atual do risco (esta linha) — não é uma reavaliação,
+      // não mexe em Versao/Status/Justificativa/Data_Avaliacao.
+      aba.getRange(linha, CR('Macroetapa')+1, 1, 10).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia,
+        dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel, dados.tipoTratamento, dados.responsavel].map(neutralizarFormula_)]);
       registrarLog('Edição de Risco', ref, 'Metadados atualizados.');
       return { sucesso: true, mensagem: 'Risco atualizado!' };
     });
@@ -147,9 +118,9 @@ function reavaliarRisco(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
     // Validação no servidor (espelha a do cliente e a de salvarRisco). Sem ela,
-    // uma chamada direta gravava um Nível sem sentido no histórico — e como
-    // atualizarRisco trata a ÚLTIMA linha de histórico como o estado atual do
-    // risco, esse lixo virava a verdade do risco na matriz.
+    // uma chamada direta gravava uma linha de versão com Nível sem sentido —
+    // e como a leitura sempre trata a linha de maior Versao como o estado
+    // atual do risco, esse lixo virava a verdade do risco na matriz.
     if (!dados || !dados.tipoTratamento || !dados.responsavel)
       return { sucesso: false, mensagem: 'Preencha o tipo de tratamento e o responsável.' };
     const prob = Number(dados.probabilidade), imp = Number(dados.impacto);
@@ -158,35 +129,33 @@ function reavaliarRisco(dados) {
     return comBloqueio(() => {
       const ref = 'R' + dados.idRisco;
 
-      // O risco precisa existir ANTES de qualquer escrita: gravar o histórico
-      // primeiro deixava uma linha órfã (e um `sucesso: true` enganoso) quando
-      // o ID não existia.
       const abaR = conectarAba(SHEET_RISKS);
-      const rowsR = abaR.getDataRange().getValues();
       const CR = colIdx_(CABECALHOS_RISCOS);
-      let linhaR = -1;
-      for (let i = 1; i < rowsR.length; i++) {
-        if (rowsR[i][CR('ID_Risco')].toString().trim() === ref) { linhaR = i+1; break; }
-      }
-      if (linhaR === -1) return { sucesso: false, mensagem: 'Risco ' + ref + ' não encontrado.' };
+      // Localiza pela linha (idRow) que o cliente tinha carregada — é dela que
+      // vêm os campos que não mudam numa reavaliação (Macroetapa/Categoria/
+      // Descrição/Causa/Consequência). Mesma trava otimista de atualizarRisco:
+      // com 1 linha por versão, várias linhas podem ter o mesmo ID_Risco, então
+      // não dá mais pra simplesmente buscar "a primeira que bater".
+      const linhaR = parseInt(dados.idRow, 10);
+      if (isNaN(linhaR) || linhaR < 2 || linhaR > abaR.getLastRow())
+        return { sucesso: false, mensagem: 'Risco ' + ref + ' não encontrado.' };
+      const linhaAtual = abaR.getRange(linhaR, 1, 1, abaR.getLastColumn()).getValues()[0];
+      if (String(linhaAtual[CR('ID_Risco')]||'').trim() !== ref)
+        return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
 
       const nivel = calcularNivelRisco(prob, imp);
-      
-      let histArr = [];
-      const jsonStr = String(rowsR[linhaR-1][CR('Historico')]||'').trim();
-      if (jsonStr.startsWith('[')) {
-        try { histArr = JSON.parse(jsonStr); } catch(e) {}
-      }
-      histArr.push({
-        data: _dataLocalISO_(new Date()),
-        prob: prob,
-        impacto: imp,
-        nivel: nivel,
-        tratamento: dados.tipoTratamento,
-        responsavel: dados.responsavel,
-        justificativa: dados.justificativa
-      });
-      abaR.getRange(linhaR, CR('Historico')+1).setValue(JSON.stringify(histArr));
+      const novaVersao = (parseInt(linhaAtual[CR('Versao')], 10) || 1) + 1;
+
+      // Reavaliação = linha NOVA (nova versão do risco), nunca reescreve a
+      // linha anterior — ela fica intacta como registro histórico. Copia os
+      // campos que não mudam (Macroetapa/Categoria/Descrição/Causa/
+      // Consequência/Status) da linha atual.
+      abaR.appendRow([
+        ref, novaVersao, linhaAtual[CR('Macroetapa')], linhaAtual[CR('Risco')], linhaAtual[CR('Causa')],
+        linhaAtual[CR('Consequencia')], linhaAtual[CR('Categoria')], prob, imp, nivel,
+        dados.tipoTratamento, dados.responsavel, linhaAtual[CR('Status')], dados.justificativa || '',
+        _dataLocalISO_(new Date())
+      ].map(neutralizarFormula_));
 
       // Só marca planos que NÃO foram Cancelados/Substituídos como pendentes
       // de revisão — esses dois são decisão formal já tomada (abandonar/
@@ -204,8 +173,7 @@ function reavaliarRisco(dados) {
           abaP.getRange(i+1, CP('Revisao_Pendente') + 1).setValue('Sim');
         }
       }
-      
-      abaR.getRange(linhaR, CR('Tipo_Tratamento')+1, 1, 2).setValues([[dados.tipoTratamento, dados.responsavel].map(neutralizarFormula_)]);
+
       registrarLog('Reavaliação de Risco', ref, 'Risco reavaliado.');
       return { sucesso: true, mensagem: 'Reavaliação salva!' };
     });
@@ -222,7 +190,6 @@ function revisarPlano(dados) {
       const CP = colIdx_(CABECALHOS_PLANOS);
       
       let linhaP = -1;
-      let planAntigo = null;
       // Localiza pelo ID_Plano (chave estável) — casar por "O Que" corria o
       // risco de bater com um plano Substituído anterior que tivesse o mesmo
       // texto (mesmo bug relatado em atualizarPlano).
@@ -230,73 +197,59 @@ function revisarPlano(dados) {
         if (String(rowsP[i][CP('ID_Plano')]||'').trim() === String(dados.idPlano).trim()) {
           if (String(rowsP[i][CP('ID_Risco')]||'').trim() !== ref) return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
           linhaP = i + 1;
-          planAntigo = rowsP[i];
           break;
         }
       }
       
       if (linhaP === -1) return { sucesso: false, mensagem: 'Plano não encontrado para revisão.' };
+      if (dados.acao !== 'manter' && dados.acao !== 'alterar')
+        return { sucesso: false, mensagem: 'Ação de revisão inválida.' };
 
-      // Processar histórico comum a todas as ações
-      let histArr = [];
-      const jsonStr = String(planAntigo[CP('Historico')]||'').trim();
-      if (jsonStr.startsWith('[')) { try { histArr = JSON.parse(jsonStr); } catch(e) {} }
-      
-      let justifTexto = dados.justificativa;
+      const hoje = _dataLocalISO_(new Date());
+      const justifTexto = dados.justificativa;
 
-      // Ação: MANTER
       if (dados.acao === 'manter') {
+        // 'manter': nada do 5W2H muda, então não cria linha nova — só
+        // zera a pendência e registra a revisão na própria linha
+        // (Justificativa/Data_Avaliacao). Sem linha nova: Status não precisa
+        // ser recalculado (continua o que já era, certo) e as entregas já
+        // registradas continuam vinculadas ao mesmo ID_Plano sem precisar
+        // copiar nada.
         abaP.getRange(linhaP, CP('Revisao_Pendente') + 1).setValue('Não');
-        histArr.push({ data: _dataLocalISO_(new Date()), justificativa: justifTexto || 'Mantido após reavaliação.' });
-        abaP.getRange(linhaP, CP('Historico') + 1).setValue(JSON.stringify(histArr));
+        abaP.getRange(linhaP, CP('Justificativa') + 1, 1, 2).setValues([[
+          justifTexto || 'Mantido após reavaliação.', hoje
+        ].map(neutralizarFormula_)]);
         registrarLog('Revisão de Plano', ref, 'Plano mantido em andamento.');
         return { sucesso: true, mensagem: 'Plano mantido com sucesso!' };
       }
-      
-      // Ação: CANCELAR
-      if (dados.acao === 'cancelar') {
-        abaP.getRange(linhaP, CP('Revisao_Pendente') + 1).setValue('Não');
-        abaP.getRange(linhaP, CP('Status') + 1).setValue('Cancelado');
-        abaP.getRange(linhaP, CP('Data_Finalizacao') + 1).setValue(_dataLocalISO_(new Date()));
-        histArr.push({ data: _dataLocalISO_(new Date()), justificativa: justifTexto || 'Plano cancelado após reavaliação.' });
-        abaP.getRange(linhaP, CP('Historico') + 1).setValue(JSON.stringify(histArr));
-        registrarLog('Revisão de Plano', ref, 'Plano cancelado.');
-        return { sucesso: true, mensagem: 'Plano cancelado!' };
-      }
 
-      // Ação: ALTERAR (Substituir plano: fecha o antigo e cria um novo)
-      if (dados.acao === 'alterar') {
-        // 1. Fechar o plano antigo
-        abaP.getRange(linhaP, CP('Revisao_Pendente') + 1).setValue('Não');
-        abaP.getRange(linhaP, CP('Status') + 1).setValue('Substituído');
-        abaP.getRange(linhaP, CP('Data_Finalizacao') + 1).setValue(_dataLocalISO_(new Date()));
-        histArr.push({ data: _dataLocalISO_(new Date()), justificativa: justifTexto || 'Estratégia substituída por um novo plano.' });
-        abaP.getRange(linhaP, CP('Historico') + 1).setValue(JSON.stringify(histArr));
-        
-        // 2. Criar o novo plano (appendRow)
-        const novoStatus = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
-        const novaRow = new Array(CABECALHOS_PLANOS.length).fill('');
-        novaRow[CP('ID_Plano')] = getNextId_(abaP, 'PLA-');
-        novaRow[CP('ID_Risco')] = ref;
-        novaRow[CP('O_Que')] = dados.what;
-        novaRow[CP('Por_Que')] = dados.why;
-        novaRow[CP('Quem(ID_Unidade)')] = dados.who;
-        novaRow[CP('Onde')] = dados.where;
-        novaRow[CP('Data_Prevista')] = dados.whenPrevisto;
-        novaRow[CP('Data_Finalizacao')] = dados.whenFinalizado || '';
-        novaRow[CP('Como')] = dados.how;
-        novaRow[CP('Quanto_Custa')] = dados.howMuch;
-        novaRow[CP('Status')] = novoStatus;
-        novaRow[CP('Revisao_Pendente')] = 'Não';
-        novaRow[CP('Historico')] = '[]';
-        novaRow[CP('Entregas')] = '[]';
-        
-        abaP.appendRow(novaRow);
-        
-        registrarLog('Revisão de Plano', ref, 'Plano substituído por nova estratégia.');
-        return { sucesso: true, mensagem: 'Plano antigo substituído e novo plano criado com sucesso!' };
-      }
+      // 'alterar': estratégia nova de verdade — fecha a linha atual (vira
+      // histórico) e cria uma linha nova com ID_Plano novo, igual
+      // reavaliarRisco faz em Riscos. Nunca reescreve a linha antiga.
+      abaP.getRange(linhaP, CP('Revisao_Pendente') + 1).setValue('Não');
+      abaP.getRange(linhaP, CP('Status') + 1).setValue('Substituído');
+      abaP.getRange(linhaP, CP('Data_Finalizacao') + 1).setValue(hoje);
 
+      const novaRow = new Array(CABECALHOS_PLANOS.length).fill('');
+      novaRow[CP('ID_Plano')] = getNextId_(abaP, 'PLA-');
+      novaRow[CP('ID_Risco')] = ref;
+      novaRow[CP('Revisao_Pendente')] = 'Não';
+      novaRow[CP('O_Que')] = dados.what;
+      novaRow[CP('Por_Que')] = dados.why;
+      novaRow[CP('Quem(ID_Unidade)')] = dados.who;
+      novaRow[CP('Onde')] = dados.where;
+      novaRow[CP('Data_Prevista')] = dados.whenPrevisto;
+      novaRow[CP('Data_Finalizacao')] = dados.whenFinalizado || '';
+      novaRow[CP('Como')] = dados.how;
+      novaRow[CP('Quanto_Custa')] = dados.howMuch;
+      novaRow[CP('Status')] = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
+      novaRow[CP('Justificativa')] = justifTexto || 'Estratégia substituída por um novo plano.';
+      novaRow[CP('Data_Avaliacao')] = hoje;
+      abaP.appendRow(novaRow.map(neutralizarFormula_));
+      // Estratégia nova — começa sem nenhuma entrega vinculada (de propósito).
+
+      registrarLog('Revisão de Plano', ref, 'Plano substituído por nova estratégia.');
+      return { sucesso: true, mensagem: 'Plano antigo substituído e novo plano criado com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
 }
@@ -335,7 +288,8 @@ function salvarPlano(dados) {
       const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
       const idPlano = getNextId_(aba, 'PLA-');
       aba.appendRow([idPlano, dados.riscoVinculado, dados.what, dados.why, dados.who,
-        dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, 'Não', '[]', '[]'].map(neutralizarFormula_));
+        dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, 'Não',
+        'Cadastro inicial do plano.', _dataLocalISO_(new Date())].map(neutralizarFormula_));
       registrarLog('Cadastro de Plano', dados.riscoVinculado, 'Plano 5W2H criado: ' + dados.what);
       return { sucesso: true, mensagem: 'Plano registrado!' };
     });
@@ -360,6 +314,19 @@ function atualizarPlano(dados) {
         if (String(rows[i][CP('ID_Plano')]||'').trim() === String(dados.idPlano).trim()) {
           if (String(rows[i][CP('ID_Risco')]||'').trim() !== dados.riscoVinculado)
             return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
+          // Trava: assim que alguma unidade já entregou de verdade (Status
+          // 'Sim' em Entregas_Planos), o 5W2H fica travado — mudar O_Que/
+          // Como/Quem depois disso desalinharia o que foi pedido do que já
+          // foi entregue. Igual a checagem no cliente (renderAcompanhamento),
+          // mas aqui é a que realmente impede a gravação.
+          const ssE = SpreadsheetApp.getActiveSpreadsheet();
+          const rowsE = safeGetSheetData(ssE, SHEET_ENTREGAS_PLANOS);
+          if (rowsE.length > 1) {
+            const CE = colIdx_(CABECALHOS_ENTREGAS_PLANOS);
+            const temEntregaFeita = rowsE.slice(1).some(rE =>
+              String(rE[CE('ID_Plano')]||'').trim() === String(dados.idPlano).trim() && String(rE[CE('Status')]||'').trim() === 'Sim');
+            if (temEntregaFeita) return { sucesso: false, mensagem: 'Este plano já tem entregas registradas e não pode mais ser editado.' };
+          }
           // Bloco contíguo O Que → Status (9 colunas)
           aba.getRange(i+1, CP('O_Que')+1, 1, 9).setValues([[dados.what, dados.why, dados.who, dados.where,
             dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status].map(neutralizarFormula_)]);
@@ -425,7 +392,6 @@ function salvarEntregasEmLote(idPlano, entregas) {
 
       let indexPlano = -1;
       let riscoVinculado = '';
-      let jsonAntigo = [];
 
       // Localiza pelo ID_Plano (chave estável) — ver mesmo comentário em
       // atualizarPlano/revisarPlano sobre por que "O Que" não é confiável.
@@ -433,33 +399,45 @@ function salvarEntregasEmLote(idPlano, entregas) {
         if (String(rows[i][CP('ID_Plano')]||'').trim() === String(idPlano).trim()) {
           indexPlano = i + 1;
           riscoVinculado = String(rows[i][CP('ID_Risco')]||'');
-          const txt = String(rows[i][CP('Entregas')]||'').trim();
-          if (txt.startsWith('[')) {
-            try { jsonAntigo = JSON.parse(txt); } catch(e) {}
-          }
           break;
         }
       }
 
       if (indexPlano === -1) return { sucesso: false, mensagem: 'Plano não encontrado na planilha.' };
-      
-      const mapEntregas = new Map();
-      jsonAntigo.forEach(e => mapEntregas.set(e.unidade, e));
-      
+
+      const abaE = conectarAba(SHEET_ENTREGAS_PLANOS, CABECALHOS_ENTREGAS_PLANOS);
+      const CE = colIdx_(CABECALHOS_ENTREGAS_PLANOS);
+      const rowsE = abaE.getDataRange().getValues();
+
+      // Upsert por (ID_Plano, Unidade) — atualiza a linha se já existe,
+      // senão cria. O par é único por construção (nunca duas linhas com o
+      // mesmo ID_Plano+Unidade), então não precisa da trava por idRow que
+      // Riscos usa (lá, várias linhas legitimamente compartilham ID_Risco).
       entregas.forEach(ent => {
-        mapEntregas.set(ent.unidade, {
-          unidade: ent.unidade,
-          status: ent.entregue,
-          data: ent.dataEntrega || '',
-          sei: ent.processoSei || ''
-        });
+        let linhaE = -1;
+        for (let i = 1; i < rowsE.length; i++) {
+          if (String(rowsE[i][CE('ID_Plano')]||'').trim() === String(idPlano).trim() &&
+              String(rowsE[i][CE('Unidade')]||'').trim() === String(ent.unidade).trim()) {
+            linhaE = i + 1;
+            break;
+          }
+        }
+        const valores = [ent.unidade, ent.entregue, ent.dataEntrega || '', ent.processoSei || ''].map(neutralizarFormula_);
+        if (linhaE === -1) {
+          abaE.appendRow([idPlano].concat(valores));
+        } else {
+          abaE.getRange(linhaE, CE('Unidade') + 1, 1, 4).setValues([valores]);
+        }
       });
-      
-      const novoJsonArr = Array.from(mapEntregas.values());
-      aba.getRange(indexPlano, CP('Entregas') + 1).setValue(JSON.stringify(novoJsonArr));
-      
-      _reavaliarBaixa(aba, indexPlano, rows[indexPlano-1], novoJsonArr);
-      
+
+      // Relê as entregas atuais do plano (pós-escrita) pra decidir a baixa automática.
+      const rowsE2 = abaE.getDataRange().getValues();
+      const entregasArr = rowsE2.slice(1)
+        .filter(rE => String(rE[CE('ID_Plano')]||'').trim() === String(idPlano).trim())
+        .map(rE => ({ unidade: String(rE[CE('Unidade')]||''), status: String(rE[CE('Status')]||'') }));
+
+      _reavaliarBaixa(aba, indexPlano, rows[indexPlano-1], entregasArr);
+
       registrarLog('Acompanhamento de Entregas', riscoVinculado, 'Entregas do plano atualizadas. Registros: ' + entregas.length);
       return { sucesso: true, mensagem: 'Registros salvos com sucesso!' };
     });

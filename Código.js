@@ -7,6 +7,10 @@ const SHEET_UNITS    = 'Unidades';
 const SHEET_DOCS     = 'Documentos';
 const SHEET_RISKS    = 'Riscos';
 const SHEET_PLANS    = 'Planos_Acao';
+// Entregas_Planos: NÃO entra no setup de abas (setupDatabaseResto) de propósito
+// — mesmo padrão de Visitas Técnicas/Capacitações — é criada sob demanda por
+// conectarAba na primeira vez que alguém acompanha entregas de um plano.
+const SHEET_ENTREGAS_PLANOS = 'Entregas_Planos';
 const SHEET_LOGS     = 'Logs';
 // Destino do arquivamento manual de Logs antigos (arquivarLogsAntigos_). Criada
 // sob demanda por conectarAba na primeira execução — NÃO entra no setup.
@@ -55,8 +59,9 @@ const CABECALHOS_TAREFAS  = ['ID_Tarefas','Status','Titulo','Descricao','ID_Memb
 const CABECALHOS_ATIVIDADES = ['ID_Tarefas','Tipo','Texto','Data','Autor'];
 const CABECALHOS_UNIDADES = ['ID_Unidade', 'Nome_Da_Unidade','Sigla','Email_Funcional','Link_Do_Drive', 'Ativo'];
 const CABECALHOS_DOCS     = ['Codigo','Versao','Tipo','Titulo','Data_Aprovacao','Proxima_Revisao','Status','Responsavel(ID_Unidade)','Link_Principal','Doc_Auxiliar_1','Doc_Auxiliar_2','Revisao'];
-const CABECALHOS_RISCOS   = ['ID_Risco','Macroetapa','Risco','Causa','Consequencia','Categoria','Probabilidade','Impacto','Nivel','Tipo_Tratamento','Responsavel(ID_Unidade)','Status','Historico'];
-const CABECALHOS_PLANOS   = ['ID_Plano','ID_Risco','O_Que','Por_Que','Quem(ID_Unidade)','Onde','Data_Prevista','Data_Finalizacao','Como','Quanto_Custa','Status','Revisao_Pendente','Historico','Entregas'];
+const CABECALHOS_RISCOS   = ['ID_Risco','Versao','Macroetapa','Risco','Causa','Consequencia','Categoria','Probabilidade','Impacto','Nivel','Tipo_Tratamento','Responsavel(ID_Unidade)','Status','Justificativa','Data_Avaliacao'];
+const CABECALHOS_PLANOS   = ['ID_Plano','ID_Risco','O_Que','Por_Que','Quem(ID_Unidade)','Onde','Data_Prevista','Data_Finalizacao','Como','Quanto_Custa','Status','Revisao_Pendente','Justificativa','Data_Avaliacao'];
+const CABECALHOS_ENTREGAS_PLANOS = ['ID_Plano','Unidade','Status','Data','Processo_SEI'];
 const CABECALHOS_LOGS     = ['Data_Hora','Usuario','Acao','Referencia','Detalhes'];
 const CABECALHOS_CAPACITACOES = ['ID_Capacitacoes', 'Titulo_Da_Capacitacao', 'Tema', 'Publico_Alvo', 'Modalidade', 'Data_Prevista', 'Data_Realizada', 'Status', 'Lista_De_Presenca', 'Responsaveis(ID_Membro)'];
 const CABECALHOS_VISITAS = ['ID_Visitas_Tecnicas', 'Objetivo_Da_Visita', 'Local_Visitado', 'Data_Da_Visita', 'Status', 'Responsaveis(ID_Membro)', 'Relatorio_Anexo'];
@@ -899,85 +904,90 @@ function _lerRiscosPlanosEntregas_(ss) {
   const pData = safeGetSheetData(ss, SHEET_PLANS);
   const planosRows = pData.length > 1 ? pData.slice(1) : [];
 
-  // Índice ref do risco → 'O Que' do primeiro plano vinculado, montado UMA vez.
-  // Antes era um for sobre todos os planos DENTRO do map dos riscos (O(n²)):
-  // 200 riscos × 200 planos = 40 mil comparações a cada carga do sistema.
-  // A chave normaliza os dois formatos aceitos de 'ID Risco' ('R5' e
-  // 'R5 - descrição') para 'R5'; o primeiro plano encontrado vence, como o
-  // `break` original garantia.
+  // Índice ref do risco → 'O Que' do plano VIGENTE, montado UMA vez (evita
+  // O(n²) de um for por risco dentro do map). A chave normaliza os dois
+  // formatos aceitos de 'ID Risco' ('R5' e 'R5 - descrição') para 'R5'.
+  // Ignora linhas terminais (Substituído por revisão, Cancelado por
+  // segurança com dado antigo) — cada revisão de plano ("Manter" ou
+  // "Substituir") fecha a linha atual e cria uma linha nova com ID_Plano
+  // novo, então pegar "a primeira linha encontrada" pegaria sempre a mais
+  // ANTIGA, não a vigente.
   const planoPorRef = new Map();
+  const STATUS_TERMINAIS_PLANO = ['Substituído', 'Cancelado'];
   for (const p of planosRows) {
     const base = String(p[CP('ID_Risco')]||'').split(' -')[0].trim();
-    if (base && !planoPorRef.has(base)) planoPorRef.set(base, String(p[CP('O_Que')]||'-'));
+    const status = String(p[CP('Status')]||'').trim();
+    if (base && !STATUS_TERMINAIS_PLANO.includes(status)) planoPorRef.set(base, String(p[CP('O_Que')]||'-'));
   }
 
   const historico = [];
 
-  const risks = rData.length > 1 ? rData.slice(1)
-    .map((r, i) => {
-      const idRisco = parseInt(String(r[CR('ID_Risco')]||'').replace('R',''), 10) || (i+1);
-      const ref = 'R' + idRisco;
-      const planoAcao = planoPorRef.get(ref) || '-';
+  // Riscos: 1 linha por VERSÃO (reavaliação), agrupadas por ID_Risco — não mais
+  // 1 linha por risco com um JSON de Historico numa célula. Agrupa primeiro,
+  // depois usa a linha de MAIOR Versao de cada grupo como o estado "atual" do
+  // risco (nunca filtra por Status antes de achar a maior Versao: um risco
+  // arquivado tem TODAS as suas linhas com Status='Arquivado', via o sweep de
+  // _definirStatusRisco_, então filtrar por Status cedo demais perderia o
+  // grupo inteiro). Todas as linhas do grupo (não só as antigas) alimentam o
+  // array `historico` — é o mesmo consumidor que antes lia o JSON.
+  const gruposRiscos = new Map();
+  rData.slice(1).forEach((r, i) => {
+    const idRisco = parseInt(String(r[CR('ID_Risco')]||'').replace('R',''), 10) || (i+1);
+    const versao = parseInt(r[CR('Versao')], 10) || 1;
+    if (!gruposRiscos.has(idRisco)) gruposRiscos.set(idRisco, []);
+    gruposRiscos.get(idRisco).push({ r: r, idRow: i + 2, versao: versao });
+  });
 
-      const jsonHist = String(r[CR('Historico')]||'').trim();
-      if (jsonHist.startsWith('[')) {
-        try {
-          const parsed = JSON.parse(jsonHist);
-          parsed.forEach(h => {
-             historico.push({
-               id: ref, tipo: 'Risco', data: h.data||'',
-               prob: h.prob||null, impacto: h.impacto||null, nivel: h.nivel||'',
-               tratamento: h.tratamento||'', responsavel: h.responsavel||'', justificativa: h.justificativa||''
-             });
-          });
-        } catch(e) {}
-      }
+  const risks = [];
+  gruposRiscos.forEach((linhas, idRisco) => {
+    linhas.sort((a, b) => a.versao - b.versao);
+    const ref = 'R' + idRisco;
+    const planoAcao = planoPorRef.get(ref) || '-';
 
-      return {
-        id: idRisco, macroetapa: String(r[CR('Macroetapa')]||''), nome: String(r[CR('Risco')]||''), causa: String(r[CR('Causa')]||''),
-        consequencia: String(r[CR('Consequencia')]||''), categoria: String(r[CR('Categoria')]||''),
-        probabilidade: parseInt(r[CR('Probabilidade')],10)||1, impacto: parseInt(r[CR('Impacto')],10)||1,
-        nivel: String(r[CR('Nivel')]||''), tipoTratamento: String(r[CR('Tipo_Tratamento')]||''),
-        responsavel: String(r[CR('Responsavel(ID_Unidade)')]||'Não atribuído'), planoAcao: planoAcao,
-        status: String(r[CR('Status')]||'Ativo')
-      };
-    }) : [];
+    linhas.forEach(l => {
+      historico.push({
+        id: ref, tipo: 'Risco', data: formatarDataParaUI(l.r[CR('Data_Avaliacao')]),
+        prob: parseInt(l.r[CR('Probabilidade')], 10) || null, impacto: parseInt(l.r[CR('Impacto')], 10) || null,
+        nivel: String(l.r[CR('Nivel')] || ''), tratamento: String(l.r[CR('Tipo_Tratamento')] || ''),
+        responsavel: String(l.r[CR('Responsavel(ID_Unidade)')] || ''), justificativa: String(l.r[CR('Justificativa')] || '')
+      });
+    });
 
-  const deliveries = [];
+    const atual = linhas[linhas.length - 1];
+    const r = atual.r;
+    risks.push({
+      id: idRisco, idRow: atual.idRow,
+      macroetapa: String(r[CR('Macroetapa')]||''), nome: String(r[CR('Risco')]||''), causa: String(r[CR('Causa')]||''),
+      consequencia: String(r[CR('Consequencia')]||''), categoria: String(r[CR('Categoria')]||''),
+      probabilidade: parseInt(r[CR('Probabilidade')],10)||1, impacto: parseInt(r[CR('Impacto')],10)||1,
+      nivel: String(r[CR('Nivel')]||''), tipoTratamento: String(r[CR('Tipo_Tratamento')]||''),
+      responsavel: String(r[CR('Responsavel(ID_Unidade)')]||'Não atribuído'), planoAcao: planoAcao,
+      status: String(r[CR('Status')]||'Ativo')
+    });
+  });
 
-  const plans = planosRows.map((r, pIdx) => {
+  // Entregas_Planos: lida uma vez, já normalizada — substitui o JSON que
+  // morava na coluna Entregas. 1 linha por (ID_Plano, Unidade); casada no
+  // cliente por idPlano (chave estável), não mais por planoIdx (índice de
+  // array, frágil).
+  const CE = colIdx_(CABECALHOS_ENTREGAS_PLANOS);
+  const eData = safeGetSheetData(ss, SHEET_ENTREGAS_PLANOS);
+  const deliveries = eData.length > 1 ? eData.slice(1).map(e => ({
+    idPlano: String(e[CE('ID_Plano')]||''), unidade: String(e[CE('Unidade')]||''),
+    entregue: String(e[CE('Status')]||''), dataEntrega: formatarDataParaUI(e[CE('Data')]),
+    processoSei: String(e[CE('Processo_SEI')]||'')
+  })) : [];
+
+  // Histórico de revisão do plano não vira mais um item à parte em
+  // `historico`: "Substituir" já é, ele mesmo, uma linha nova em Planos_Acao
+  // (mesmo ID_Risco, ID_Plano novo), então "o histórico de estratégias do
+  // plano" é simplesmente todas as linhas com aquele ID_Risco, já presentes
+  // em `plans`. "Manter" não muda o 5W2H nem cria linha — só atualiza
+  // Justificativa/Data_Avaliacao/Revisao_Pendente na própria linha
+  // (ver revisarPlano, Modulo_Riscos.js).
+  const plans = planosRows.map(r => {
     const ref = String(r[CP('ID_Risco')]||'');
     const idPlano = String(r[CP('ID_Plano')]||'');
-
-    // Processar Histórico
-    const jsonHist = String(r[CP('Historico')]||'').trim();
-    if (jsonHist.startsWith('[')) {
-      try {
-        const parsed = JSON.parse(jsonHist);
-        parsed.forEach(h => {
-           historico.push({
-             id: ref, tipo: 'Plano', data: h.data||'',
-             justificativa: h.justificativa||''
-           });
-        });
-      } catch(e) {}
-    }
-
-    // Processar Entregas
-    const jsonEntregas = String(r[CP('Entregas')]||'').trim();
-    if (jsonEntregas.startsWith('[')) {
-      try {
-        const parsedE = JSON.parse(jsonEntregas);
-        parsedE.forEach(e => {
-           deliveries.push({
-             planoIdx: pIdx, riscoVinculado: ref, unidade: e.unidade||'',
-             entregue: e.status||'', dataEntrega: formatarDataParaUI(e.data||''),
-             processoSei: e.sei||''
-           });
-        });
-      } catch(e) {}
-    }
-
     return {
       id: idPlano, riscoVinculado: ref, what: String(r[CP('O_Que')]||''), why: String(r[CP('Por_Que')]||''),
       who: String(r[CP('Quem(ID_Unidade)')]||''), where: String(r[CP('Onde')]||''),

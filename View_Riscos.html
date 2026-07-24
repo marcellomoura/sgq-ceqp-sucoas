@@ -112,7 +112,7 @@
           
           <div style="overflow-x: auto; padding-bottom: 28px;">
             <div style="min-width: 1400px;">
-              <div style="display: grid; grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 70px; gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); margin-bottom: 8px; text-align: left;">
+              <div style="display: grid; grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 110px; gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); margin-bottom: 8px; text-align: left;">
                 <div style="text-align:center;">#</div>
                 <div style="text-align:center;">ID</div>
                 <div>Macroetapa</div>
@@ -363,6 +363,7 @@
       <h3 class="modal-title">Editar Risco Mapeado</h3>
       <p id="label-risco-editar" style="font-weight:700; color:var(--primary); margin:8px 0 16px; font-size:14px;"></p>
       <input type="hidden" id="er-id">
+      <input type="hidden" id="er-id-row">
       <input type="hidden" id="er-prob-original">
       <input type="hidden" id="er-imp-original">
       <div class="form-row">
@@ -430,6 +431,42 @@
   </div>
 
   <!-- Modal: Editar Plano -->
+  <!-- Modal: Histórico de Reavaliações do Risco -->
+  <div id="modal-historico-risco" class="modal-overlay">
+    <div class="modal-box wide">
+      <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-historico-risco"
+          aria-label="Fechar">&times;</button></div>
+      <h3 class="modal-title">Histórico de Reavaliações</h3>
+      <div class="modal-info" id="hist-risco-info"
+        style="margin-bottom:14px; background:var(--bg-app); padding:10px; border-radius:4px; font-size:14px;"></div>
+      
+      <div class="table-wrap" style="max-height: 350px; overflow-y:auto;">
+        <table class="data-table" style="font-size:12px;">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Prob.</th>
+              <th>Imp.</th>
+              <th>Nível</th>
+              <th>Tratamento</th>
+              <th>Resp.</th>
+              <th>Justificativa</th>
+            </tr>
+          </thead>
+          <tbody id="rev-historico-lista">
+            <tr>
+              <td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn secondary" data-close="modal-historico-risco">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Novo Plano de Ação -->
   <div id="modal-plano-novo" class="modal-overlay">
     <div class="modal-box">
@@ -509,6 +546,7 @@
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title">Reavaliar Risco</h3>
       <input type="hidden" id="rev-id-risco">
+      <input type="hidden" id="rev-id-row">
       <div class="modal-info" id="rev-info"
         style="margin-bottom:14px; background:var(--bg-app); padding:10px; border-radius:4px; font-size:14px;"></div>
 
@@ -572,30 +610,6 @@
           <label class="field-label" for="rev-justif">Justificativa da Mudança</label>
           <input type="text" id="rev-justif" class="field-input"
             placeholder="Descreva os motivos da alteração, manutenção do nível ou superação">
-        </div>
-      </div>
-
-      <div style="margin-top:16px;">
-        <h4 style="font-size:13px; margin-bottom:8px; color:var(--text-secondary);">Histórico de Reavaliações deste Risco</h4>
-        <div class="table-wrap" style="max-height: 180px; overflow-y:auto;">
-          <table class="data-table" style="font-size:12px;">
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Prob.</th>
-                <th>Imp.</th>
-                <th>Nível</th>
-                <th>Tratamento</th>
-                <th>Resp.</th>
-                <th>Justificativa</th>
-              </tr>
-            </thead>
-            <tbody id="rev-historico-lista">
-              <tr>
-                <td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
 

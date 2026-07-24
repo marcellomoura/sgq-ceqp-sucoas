@@ -27,35 +27,29 @@
     const ativos = state.risks.filter(r => r.status !== 'Arquivado');
 
     ativos.forEach((r, idx) => {
-      // Busca a reavaliação mais recente no histórico, se houver
+      // r.probabilidade/.impacto/.nivel já vêm do servidor como a versão mais
+      // recente do risco (linha de maior Versao) — não precisa mais reler o
+      // histórico pra achar o valor "atual". O histórico só entra aqui pra
+      // decidir a seta de tendência (comparação com a versão anterior).
       const ref = 'R' + r.id;
       const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
-      let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
       let trendIcon = '';
 
-      if (hist.length > 0) {
-        // hist está ordenado cronologicamente pois foi lido da aba do topo ao fim.
-        // hist[0] é sempre o cadastro inicial do risco (salvarRisco já grava a
-        // 1ª entrada), então "hist.length===1" significa "nunca foi reavaliado
-        // de verdade" — não tem o que comparar, não mostra seta de tendência.
-        const ultimo = hist[hist.length - 1];
-        curProb = ultimo.prob;
-        curImp = ultimo.impacto;
-        curNivel = ultimo.nivel;
-
-        if (hist.length > 1) {
-          const prevScore = hist[hist.length - 2].prob * hist[hist.length - 2].impacto;
-          const curScore = curProb * curImp;
-          if (curScore < prevScore) trendIcon = '<span style="color:#2CA98F; font-weight:bold; margin-left:4px;" title="Risco reduziu">⬇️</span>';
-          else if (curScore > prevScore) trendIcon = '<span style="color:#D8483A; font-weight:bold; margin-left:4px;" title="Risco aumentou">⬆️</span>';
-          else trendIcon = '<span style="color:#6b7280; font-weight:bold; margin-left:4px;" title="Risco manteve">➖</span>';
-        }
+      // hist.length <= 1 significa "nunca foi reavaliado de verdade" (só o
+      // cadastro inicial) — não tem o que comparar, não mostra seta.
+      if (hist.length > 1) {
+        const prevScore = hist[hist.length - 2].prob * hist[hist.length - 2].impacto;
+        const curScore = r.probabilidade * r.impacto;
+        if (curScore < prevScore) trendIcon = '<span style="color:#2CA98F; font-weight:bold; margin-left:4px;" title="Risco reduziu">⬇️</span>';
+        else if (curScore > prevScore) trendIcon = '<span style="color:#D8483A; font-weight:bold; margin-left:4px;" title="Risco aumentou">⬆️</span>';
+        else trendIcon = '<span style="color:#6b7280; font-weight:bold; margin-left:4px;" title="Risco manteve">➖</span>';
       }
 
-      // Anexa dados dinâmicos ao objeto para uso na tabela
-      r._curProb = curProb; r._curImp = curImp; r._curNivel = curNivel; r._trend = trendIcon;
+      // Mantém os campos _cur* (usados por outras telas) espelhando os
+      // valores atuais, agora sem precisar derivar do histórico.
+      r._curProb = r.probabilidade; r._curImp = r.impacto; r._curNivel = r.nivel; r._trend = trendIcon;
 
-      const cel = $id(`cell-${curProb}-${curImp}`);
+      const cel = $id(`cell-${r.probabilidade}-${r.impacto}`);
       if (cel) {
         if (!cel.querySelector('.badge-cluster')) cel.innerHTML = '<div class="badge-cluster"></div>';
         const b = document.createElement('span');
@@ -104,6 +98,7 @@
     <div class="no-print" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
       ${temPlanoResolvido ? '' : iconBtn('edit', 'edit-risco', 'Editar Risco', `data-idx="${origIdx}"`)}
       ${iconBtn('rev', 'reav-risco', 'Reavaliar', `data-idx="${origIdx}"`)}
+      ${iconBtn('history', 'hist-risco', 'Histórico de Reavaliações', `data-id="${r.id}"`)}
     </div>
   </div>`
     }).join('');
@@ -144,6 +139,7 @@
   function abrirEditarRisco(idx) {
     const r = state.risks[idx]; if (!r) return;
     $id('er-id').value = r.id;
+    $id('er-id-row').value = r.idRow;
     $id('er-prob-original').value = r.probabilidade;
     $id('er-imp-original').value = r.impacto;
 
@@ -174,7 +170,7 @@
     const pVal = $id('er-prob').value;
     const iVal = $id('er-imp').value;
     const dados = {
-      id: $id('er-id').value, macroetapa: $id('er-macro').value, categoria: $id('er-cat').value,
+      id: $id('er-id').value, idRow: $id('er-id-row').value, macroetapa: $id('er-macro').value, categoria: $id('er-cat').value,
       nome: $id('er-nome').value.trim(), causa: $id('er-causa').value.trim(), consequencia: $id('er-conseq').value.trim(),
       probabilidade: Number(pVal), impacto: Number(iVal),
       tipoTratamento: $id('er-trat').value, responsavel: $id('er-resp').value
@@ -190,6 +186,7 @@
   function abrirModalReavaliar(idx) {
     const r = state.risks[idx]; if (!r) return;
     $id('rev-id-risco').value = r.id;
+    $id('rev-id-row').value = r.idRow;
     $id('rev-info').innerText = `Risco: R${r.id} — ${r.nome} \nNível Atual: ${r._curNivel} (${r._curProb * r._curImp})`;
     $id('rev-prob').value = r._curProb || r.probabilidade;
     $id('rev-imp').value = r._curImp || r.impacto;
@@ -277,8 +274,21 @@
         return;
       }
 
+      const riscoAtual = state.risks.find(x => String(x.id) === String(idRisco));
+      if (acao === 'reavaliar' && riscoAtual) {
+        if (
+          Number($id('rev-prob').value) === riscoAtual._curProb &&
+          Number($id('rev-imp').value) === riscoAtual._curImp &&
+          $id('rev-trat').value === riscoAtual.tipoTratamento &&
+          $id('rev-resp').value === riscoAtual.responsavel
+        ) {
+          return showAlerta('Você não alterou nenhuma nota ou responsabilidade. Se o objetivo é apenas confirmar que o risco continua igual, por favor, altere a Ação no topo para "Manter Avaliação Atual".');
+        }
+      }
+
       const dados = {
         idRisco: idRisco,
+        idRow: $id('rev-id-row').value,
         probabilidade: Number($id('rev-prob').value),
         impacto: Number($id('rev-imp').value),
         tipoTratamento: $id('rev-trat').value,
@@ -409,6 +419,11 @@
         // NÃO é terminal aqui — pode voltar a pedir revisão se o risco mudar.
         const ehTerminal = p.status === 'Cancelado' || p.status === 'Substituído';
         const acaoRev = (p.revisaoPendente === 'Sim' && !ehTerminal) ? iconBtn('alert', 'rev-plano', 'Revisar Plano', `data-idx="${oi}"`) : '';
+        // "Editar" (5W2H) trava assim que alguma unidade já entregou de
+        // verdade (status='Sim') — mudar O_Que/Como/Quem depois disso
+        // desalinharia o que foi pedido do que já foi entregue. Marcar "Não"
+        // não conta: é só acompanhamento/pendência, não compromete nada.
+        const temEntregaFeita = state.deliveries.some(d => d.idPlano === p.id && d.entregue === 'Sim');
 
         let rowStyle = 'display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 20px; border-bottom: 1px solid #f3f4f6; transition: background 0.2s; text-align: left; word-break: break-word;';
         if (p.status === 'Cancelado') {
@@ -431,7 +446,7 @@
             <div style="text-align:center;">${badge(p.status)}</div>
             <div class="no-print" style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
               ${acaoRev}
-              ${(p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído') ? '' : iconBtn('edit', 'edit-plano', 'Editar', `data-idx="${oi}"`)}
+              ${(p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído' || temEntregaFeita) ? '' : iconBtn('edit', 'edit-plano', 'Editar', `data-idx="${oi}"`)}
               ${iconBtn('check', 'acomp-entregas', 'Acompanhamento / Entregas', `data-idx="${oi}"`)}
             </div>
           </div>`;
@@ -439,15 +454,10 @@
       </div>
     </div>`;
 
-      let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
-      let curTratamento = r.tipoTratamento, curResp = r.responsavel;
-
-      const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
-      if (hist.length > 0) {
-        const ultimo = hist[hist.length - 1];
-        curProb = ultimo.prob; curImp = ultimo.impacto; curNivel = ultimo.nivel;
-        curTratamento = ultimo.tratamento; curResp = ultimo.responsavel;
-      }
+      // r.probabilidade/.impacto/.nivel/.tipoTratamento/.responsavel já vêm do
+      // servidor como a versão mais recente do risco — não precisa mais
+      // derivar do histórico.
+      const curNivel = r.nivel, curTratamento = r.tipoTratamento, curResp = r.responsavel;
 
       return `<div class="card" style="border-left: 4px solid #3b82f6; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
@@ -608,7 +618,7 @@
     $id('acomp-ent-lista').innerHTML = unidadesCobradas.map(function (u, i) {
       const chave = u.id || (u.sigla ? (u.sigla + ' - ' + u.unidade) : u.unidade);
       const ent = state.deliveries.find(function (e) {
-        return e.planoIdx === parseInt(idx) && e.unidade === chave;
+        return e.idPlano === p.id && e.unidade === chave;
       });
       const entregue = ent ? ent.entregue : '';
       const sei = ent && ent.processoSei && ent.processoSei !== '-' ? ent.processoSei : '';
@@ -914,18 +924,11 @@
       </div>`;
       }
 
-      let curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
-      let curTratamento = r.tipoTratamento, curResp = r.responsavel;
-
-      const hist = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
-      if (hist.length > 0) {
-        const ultimo = hist[hist.length - 1];
-        curProb = ultimo.prob;
-        curImp = ultimo.impacto;
-        curNivel = ultimo.nivel;
-        curTratamento = ultimo.tratamento;
-        curResp = ultimo.responsavel;
-      }
+      // r.probabilidade/.impacto/.nivel/.tipoTratamento/.responsavel já vêm do
+      // servidor como a versão mais recente do risco — não precisa mais
+      // derivar do histórico.
+      const curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
+      const curTratamento = r.tipoTratamento, curResp = r.responsavel;
 
       return `<div class="grid-row-hover" style="background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom: 8px;">
       <div style="display: grid; grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 70px; gap: 8px; align-items: center; padding: 12px 20px; font-size: 13px; color: #111827; text-align: left; word-break: break-word;">
