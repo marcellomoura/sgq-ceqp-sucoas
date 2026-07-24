@@ -148,12 +148,16 @@
     $id('er-imp-original').value = r.impacto;
 
     const hist = state.history ? state.history.filter(h => h.id === 'R' + r.id && h.tipo === 'Risco') : [];
-    const temReavaliacao = hist.length > 0;
+    // hist[0] é sempre o cadastro inicial (ver comentário em renderMatriz); só
+    // length > 1 significa que houve reavaliação de verdade.
+    const temReavaliacao = hist.length > 1;
 
     $id('label-risco-editar').innerText = `Risco: R${r.id} — ${r.nome}`;
 
     $id('er-macro').value = r.macroetapa; $id('er-cat').value = r.categoria;
     $id('er-nome').value = r.nome; $id('er-causa').value = r.causa; $id('er-conseq').value = r.consequencia;
+
+    ['er-macro', 'er-cat', 'er-nome', 'er-causa', 'er-conseq'].forEach(id => { $id(id).disabled = temReavaliacao; });
 
     $id('er-prob').value = temReavaliacao ? (r._curProb || r.probabilidade) : r.probabilidade;
     $id('er-imp').value = temReavaliacao ? (r._curImp || r.impacto) : r.impacto;
@@ -206,7 +210,7 @@
       hTable.innerHTML = '<tr><td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td></tr>';
     }
 
-    $id('rev-acao').value = 'reavaliar';
+    $id('rev-acao').value = '';
     toggleCamposReavaliacao();
     atualizarLegendaRisco('rev');
 
@@ -241,7 +245,7 @@
     const acao = $id('rev-acao').value;
     const notasDiv = $id('rev-campos-notas');
 
-    if (acao === 'superado') {
+    if (acao === 'superado' || acao === '') {
       notasDiv.style.display = 'none';
     } else {
       notasDiv.style.display = 'block';
@@ -259,6 +263,8 @@
       const btn = btnRevRisco;
       const acao = $id('rev-acao').value;
       const idRisco = $id('rev-id-risco').value;
+
+      if (!acao) return showAlerta('Selecione uma ação.');
 
       if (acao === 'superado') {
         const justificativa = $id('rev-justif').value.trim();
