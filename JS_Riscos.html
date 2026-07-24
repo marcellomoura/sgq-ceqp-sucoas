@@ -194,18 +194,7 @@
     $id('rev-resp').innerHTML = gerarOptsProprietariosRisco(); $id('rev-resp').value = r.responsavel;
     $id('rev-justif').value = '';
 
-    const hTable = $id('rev-historico-lista');
-    const hist = state.history ? state.history.filter(h => h.id === 'R' + r.id && h.tipo === 'Risco') : [];
-    if (hist.length) {
-      hTable.innerHTML = hist.map(h => `<tr>
-      <td>${(h.data||'').split('-').reverse().join('/')}</td>
-      <td>${h.prob}</td><td>${h.impacto}</td><td>${badge(h.nivel)}</td>
-      <td>${esc(h.tratamento || '-')}</td><td>${esc(formatUnidadeUI(h.responsavel) || '-')}</td>
-      <td>${esc(h.justificativa)}</td>
-    </tr>`).join('');
-    } else {
-      hTable.innerHTML = '<tr><td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td></tr>';
-    }
+
 
     $id('rev-acao').value = '';
     toggleCamposReavaliacao();
@@ -225,14 +214,22 @@
     const hTable = $id('hist-risco-lista');
     const hist = state.history ? state.history.filter(h => h.id === 'R' + r.id && h.tipo === 'Risco') : [];
     if (hist.length) {
-      hTable.innerHTML = hist.map(h => `<tr>
+      hTable.innerHTML = hist.map(h => {
+        let planoTexto = '-';
+        if (h.idPlano) {
+          const p = state.plans.find(x => x.id === h.idPlano);
+          planoTexto = p ? p.what : h.idPlano;
+        }
+        return `<tr>
       <td>${(h.data||'').split('-').reverse().join('/')}</td>
       <td>${h.prob}</td><td>${h.impacto}</td><td>${badge(h.nivel)}</td>
       <td>${esc(h.tratamento || '-')}</td><td>${esc(formatUnidadeUI(h.responsavel) || '-')}</td>
+      <td>${esc(planoTexto)}</td>
       <td>${esc(h.justificativa)}</td>
-    </tr>`).join('');
+    </tr>`;
+      }).join('');
     } else {
-      hTable.innerHTML = '<tr><td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td></tr>';
+      hTable.innerHTML = '<tr><td colspan="8" class="msg-empty">Nenhum histórico encontrado.</td></tr>';
     }
 
     abrirModal('modal-historico-risco');
@@ -520,15 +517,19 @@
     }).withFailureHandler(falha(btn, 'Salvar Plano de Ação', null)).atualizarPlano(dados);
   }
 
+  function toggleCamposRevisaoPlano() {
+    const acao = $id('revp-acao').value;
+    $id('revp-alterar-campos').style.display = (acao === 'alterar') ? 'block' : 'none';
+  }
+
   function abrirModalRevisarPlano(idx) {
     const p = state.plans[idx]; if (!p) return;
     $id('revp-risco').value = p.riscoVinculado;
-
-    // Guardar o ID_Plano para o backend localizar o plano exato
     $id('revp-risco').dataset.idPlano = p.id;
-
     $id('revp-justif').value = '';
-    document.querySelector('input[name="revp-acao"][value="manter"]').click(); // reset to manter
+    
+    $id('revp-acao').value = '';
+    toggleCamposRevisaoPlano();
 
     $id('revp-what').value = ''; $id('revp-why').value = '';
     $id('revp-who').innerHTML = gerarOptsUnidades(true); $id('revp-who').value = '';
@@ -542,7 +543,8 @@
     const btnRevPlano = $id('btn-salvar-revisar-plano');
     if (btnRevPlano) btnRevPlano.addEventListener('click', () => {
       const btn = btnRevPlano;
-      const acao = document.querySelector('input[name="revp-acao"]:checked').value;
+      const acao = $id('revp-acao').value;
+      if (!acao) return showAlerta('Selecione uma ação.');
       const dados = {
         riscoVinculado: $id('revp-risco').value,
         idPlano: $id('revp-risco').dataset.idPlano,

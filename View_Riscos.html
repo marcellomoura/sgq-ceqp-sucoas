@@ -431,42 +431,6 @@
   </div>
 
   <!-- Modal: Editar Plano -->
-  <!-- Modal: Histórico de Reavaliações do Risco -->
-  <div id="modal-historico-risco" class="modal-overlay">
-    <div class="modal-box wide">
-      <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-historico-risco"
-          aria-label="Fechar">&times;</button></div>
-      <h3 class="modal-title">Histórico de Reavaliações</h3>
-      <div class="modal-info" id="hist-risco-info"
-        style="margin-bottom:14px; background:var(--bg-app); padding:10px; border-radius:4px; font-size:14px;"></div>
-      
-      <div class="table-wrap" style="max-height: 350px; overflow-y:auto;">
-        <table class="data-table" style="font-size:12px;">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Prob.</th>
-              <th>Imp.</th>
-              <th>Nível</th>
-              <th>Tratamento</th>
-              <th>Resp.</th>
-              <th>Justificativa</th>
-            </tr>
-          </thead>
-          <tbody id="rev-historico-lista">
-            <tr>
-              <td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      
-      <div class="modal-footer">
-        <button class="btn secondary" data-close="modal-historico-risco">Fechar</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Modal: Novo Plano de Ação -->
   <div id="modal-plano-novo" class="modal-overlay">
     <div class="modal-box">
@@ -637,12 +601,13 @@
               <th>Nível</th>
               <th>Tratamento</th>
               <th>Resp.</th>
+              <th>Plano Ativo</th>
               <th>Justificativa</th>
             </tr>
           </thead>
           <tbody id="hist-risco-lista">
             <tr>
-              <td colspan="7" class="msg-empty">Nenhum histórico encontrado.</td>
+              <td colspan="8" class="msg-empty">Nenhum histórico encontrado.</td>
             </tr>
           </tbody>
         </table>
@@ -662,20 +627,13 @@
       <p style="font-size:13px; margin-bottom:12px;">O risco vinculado a este plano foi reavaliado. Como você deseja
         prosseguir com as ações preventivas?</p>
 
-      <div class="form-row" style="margin-bottom:16px;">
-        <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
-          <input type="radio" name="revp-acao" value="manter" checked
-            onchange="$id('revp-alterar-campos').style.display='none'">
-          <strong>Manter em Andamento:</strong> A estratégia atual continua válida. O alerta de revisão será removido.
-        </label>
-      </div>
-      <div class="form-row" style="margin-bottom:16px;">
-        <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
-          <input type="radio" name="revp-acao" value="alterar"
-            onchange="$id('revp-alterar-campos').style.display='block'">
-          <strong>Substituir Plano:</strong> O plano atual será marcado como "Substituído" e mantido no histórico. Você
-          definirá um novo 5W2H abaixo.
-        </label>
+      <div style="margin-bottom: 12px;">
+        <label class="field-label" for="revp-acao">Ação</label>
+        <select id="revp-acao" class="field-select" onchange="toggleCamposRevisaoPlano()">
+          <option value="" disabled selected>Selecione uma ação</option>
+          <option value="manter">Manter em Andamento (a estratégia atual continua válida)</option>
+          <option value="alterar">Substituir Plano (marcar como substituído e definir novo 5W2H)</option>
+        </select>
       </div>
 
       <div class="form-row">

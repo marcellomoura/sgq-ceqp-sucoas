@@ -59,7 +59,7 @@ const CABECALHOS_TAREFAS  = ['ID_Tarefas','Status','Titulo','Descricao','ID_Memb
 const CABECALHOS_ATIVIDADES = ['ID_Tarefas','Tipo','Texto','Data','Autor'];
 const CABECALHOS_UNIDADES = ['ID_Unidade', 'Nome_Da_Unidade','Sigla','Email_Funcional','Link_Do_Drive', 'Ativo'];
 const CABECALHOS_DOCS     = ['Codigo','Versao','Tipo','Titulo','Data_Aprovacao','Proxima_Revisao','Status','Responsavel(ID_Unidade)','Link_Principal','Doc_Auxiliar_1','Doc_Auxiliar_2','Revisao'];
-const CABECALHOS_RISCOS   = ['ID_Risco','Versao','Macroetapa','Risco','Causa','Consequencia','Categoria','Probabilidade','Impacto','Nivel','Tipo_Tratamento','Responsavel(ID_Unidade)','Status','Justificativa','Data_Avaliacao'];
+const CABECALHOS_RISCOS   = ['ID_Risco','Versao','Macroetapa','Risco','Causa','Consequencia','Categoria','Probabilidade','Impacto','Nivel','Tipo_Tratamento','Responsavel(ID_Unidade)','ID_Plano','Status','Justificativa','Data_Avaliacao'];
 const CABECALHOS_PLANOS   = ['ID_Plano','ID_Risco','O_Que','Por_Que','Quem(ID_Unidade)','Onde','Data_Prevista','Data_Finalizacao','Como','Quanto_Custa','Status','Revisao_Pendente','Justificativa','Data_Avaliacao'];
 const CABECALHOS_ENTREGAS_PLANOS = ['ID_Plano','Unidade','Status','Data','Processo_SEI'];
 const CABECALHOS_LOGS     = ['Data_Hora','Usuario','Acao','Referencia','Detalhes'];
@@ -904,20 +904,11 @@ function _lerRiscosPlanosEntregas_(ss) {
   const pData = safeGetSheetData(ss, SHEET_PLANS);
   const planosRows = pData.length > 1 ? pData.slice(1) : [];
 
-  // Índice ref do risco → 'O Que' do plano VIGENTE, montado UMA vez (evita
-  // O(n²) de um for por risco dentro do map). A chave normaliza os dois
-  // formatos aceitos de 'ID Risco' ('R5' e 'R5 - descrição') para 'R5'.
-  // Ignora linhas terminais (Substituído por revisão, Cancelado por
-  // segurança com dado antigo) — cada revisão de plano ("Manter" ou
-  // "Substituir") fecha a linha atual e cria uma linha nova com ID_Plano
-  // novo, então pegar "a primeira linha encontrada" pegaria sempre a mais
-  // ANTIGA, não a vigente.
-  const planoPorRef = new Map();
-  const STATUS_TERMINAIS_PLANO = ['Substituído', 'Cancelado'];
+  // Mapa rápido de ID_Plano -> 'O Que', sem precisar adivinhar por status.
+  const planoOQuePorId = new Map();
   for (const p of planosRows) {
-    const base = String(p[CP('ID_Risco')]||'').split(' -')[0].trim();
-    const status = String(p[CP('Status')]||'').trim();
-    if (base && !STATUS_TERMINAIS_PLANO.includes(status)) planoPorRef.set(base, String(p[CP('O_Que')]||'-'));
+    const id = String(p[CP('ID_Plano')]||'').trim();
+    if (id) planoOQuePorId.set(id, String(p[CP('O_Que')]||'-'));
   }
 
   const historico = [];
@@ -942,19 +933,22 @@ function _lerRiscosPlanosEntregas_(ss) {
   gruposRiscos.forEach((linhas, idRisco) => {
     linhas.sort((a, b) => a.versao - b.versao);
     const ref = 'R' + idRisco;
-    const planoAcao = planoPorRef.get(ref) || '-';
 
     linhas.forEach(l => {
       historico.push({
         id: ref, tipo: 'Risco', data: formatarDataParaUI(l.r[CR('Data_Avaliacao')]),
         prob: parseInt(l.r[CR('Probabilidade')], 10) || null, impacto: parseInt(l.r[CR('Impacto')], 10) || null,
         nivel: String(l.r[CR('Nivel')] || ''), tratamento: String(l.r[CR('Tipo_Tratamento')] || ''),
-        responsavel: String(l.r[CR('Responsavel(ID_Unidade)')] || ''), justificativa: String(l.r[CR('Justificativa')] || '')
+        responsavel: String(l.r[CR('Responsavel(ID_Unidade)')] || ''), justificativa: String(l.r[CR('Justificativa')] || ''),
+        idPlano: String(l.r[CR('ID_Plano')]||'').trim()
       });
     });
 
     const atual = linhas[linhas.length - 1];
     const r = atual.r;
+    const idPlanoVigente = String(r[CR('ID_Plano')]||'').trim();
+    const planoAcao = idPlanoVigente ? (planoOQuePorId.get(idPlanoVigente) || '-') : '-';
+
     risks.push({
       id: idRisco, idRow: atual.idRow,
       macroetapa: String(r[CR('Macroetapa')]||''), nome: String(r[CR('Risco')]||''), causa: String(r[CR('Causa')]||''),

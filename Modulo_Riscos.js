@@ -32,7 +32,7 @@ function salvarRisco(dados) {
       // como entradas num JSON dentro desta linha.
       aba.appendRow([id, 1, dados.macroetapa, nomeR, dados.causa, dados.consequencia,
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel,
-        dados.tipoTratamento, dados.responsavel, 'Ativo', 'Cadastro inicial do risco.',
+        dados.tipoTratamento, dados.responsavel, '', 'Ativo', 'Cadastro inicial do risco.',
         _dataLocalISO_(new Date())].map(neutralizarFormula_));
       registrarLog('Cadastro de Risco', id, 'Risco criado: ' + nomeR);
       return { sucesso: true, mensagem: 'Risco mapeado com sucesso!' };
@@ -153,7 +153,7 @@ function reavaliarRisco(dados) {
       abaR.appendRow([
         ref, novaVersao, linhaAtual[CR('Macroetapa')], linhaAtual[CR('Risco')], linhaAtual[CR('Causa')],
         linhaAtual[CR('Consequencia')], linhaAtual[CR('Categoria')], prob, imp, nivel,
-        dados.tipoTratamento, dados.responsavel, linhaAtual[CR('Status')], dados.justificativa || '',
+        dados.tipoTratamento, dados.responsavel, linhaAtual[CR('ID_Plano')] || '', linhaAtual[CR('Status')], dados.justificativa || '',
         _dataLocalISO_(new Date())
       ].map(neutralizarFormula_));
 
@@ -247,6 +247,21 @@ function revisarPlano(dados) {
       novaRow[CP('Data_Avaliacao')] = hoje;
       abaP.appendRow(novaRow.map(neutralizarFormula_));
       // Estratégia nova — começa sem nenhuma entrega vinculada (de propósito).
+      
+      // Atualiza o plano vigente na última versão do risco correspondente
+      const abaRiscos = conectarAba(SHEET_RISKS);
+      const rowsR = abaRiscos.getDataRange().getValues();
+      const CR = colIdx_(CABECALHOS_RISCOS);
+      let lastRiskRow = -1;
+      for (let i = rowsR.length - 1; i >= 1; i--) {
+        if (String(rowsR[i][CR('ID_Risco')]||'').trim() === ref) {
+          lastRiskRow = i + 1;
+          break;
+        }
+      }
+      if (lastRiskRow !== -1) {
+        abaRiscos.getRange(lastRiskRow, CR('ID_Plano') + 1).setValue(novaRow[CP('ID_Plano')]);
+      }
 
       registrarLog('Revisão de Plano', ref, 'Plano substituído por nova estratégia.');
       return { sucesso: true, mensagem: 'Plano antigo substituído e novo plano criado com sucesso!' };
@@ -290,6 +305,22 @@ function salvarPlano(dados) {
       aba.appendRow([idPlano, dados.riscoVinculado, dados.what, dados.why, dados.who,
         dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, 'Não',
         'Cadastro inicial do plano.', _dataLocalISO_(new Date())].map(neutralizarFormula_));
+        
+      // Atualiza o ID_Plano na última versão do Risco
+      const abaRiscos = conectarAba(SHEET_RISKS);
+      const rowsR = abaRiscos.getDataRange().getValues();
+      const CR = colIdx_(CABECALHOS_RISCOS);
+      let lastRiskRow = -1;
+      for (let j = rowsR.length - 1; j >= 1; j--) {
+        if (String(rowsR[j][CR('ID_Risco')]||'').trim() === dados.riscoVinculado) {
+          lastRiskRow = j + 1;
+          break;
+        }
+      }
+      if (lastRiskRow !== -1) {
+        abaRiscos.getRange(lastRiskRow, CR('ID_Plano') + 1).setValue(idPlano);
+      }
+      
       registrarLog('Cadastro de Plano', dados.riscoVinculado, 'Plano 5W2H criado: ' + dados.what);
       return { sucesso: true, mensagem: 'Plano registrado!' };
     });
