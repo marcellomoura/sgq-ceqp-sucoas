@@ -91,7 +91,7 @@
         </header>
 
         <p style="font-size:13px; color:var(--text-secondary); margin: 8px 28px 24px; flex-shrink: 0;" class="no-print">
-          Cartões concluídos há 15 dias ou mais saem do quadro automaticamente e ficam guardados aqui. Você também pode arquivar um cartão concluído manualmente a qualquer momento.
+          Cartões arquivados manualmente saem do quadro e ficam guardados aqui permanentemente para consulta.
         </p>
 
         <!-- Lista de Cartões (Grid Header + Conteúdo) -->
@@ -211,6 +211,20 @@
               Cartão</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Histórico Atividades Arquivadas -->
+  <div id="modal-atividades-arquivadas" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-atividades-arquivadas" aria-label="Fechar">&times;</button></div>
+      <h3 class="modal-title">Atividades do Cartão (Arquivo)</h3>
+      <div id="feed-atividades-arquivadas" class="activity-feed" style="max-height: 50vh; overflow-y: auto;">
+        <!-- Preenchido via JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" data-close="modal-atividades-arquivadas">Fechar</button>
       </div>
     </div>
   </div>

@@ -203,46 +203,57 @@ function deleteTask(id) {
   });
 }
 
-// Arquiva manualmente um cartão concluído, sem esperar os 15 dias
+// Arquiva manualmente um cartão concluído e migra suas atividades para a aba arquivada
 function arquivarTarefaManual(id) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar.' };
   return comBloqueio(() => {
     const sheet = conectarAba(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
+    let encontrou = false;
+    let rowIndex = -1;
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][C('ID_Tarefas')]) === String(id)) {
         if (String(data[i][C('Status')]) !== 'Concluído') {
           return { sucesso: false, mensagem: 'Só é possível arquivar cartões já concluídos.' };
         }
-        sheet.getRange(i+1, C('Arquivado')+1).setValue('Sim');
-        SpreadsheetApp.flush();
-        registrarLog('Arquivamento Manual', id, 'Cartão arquivado manualmente.');
-        return { sucesso: true };
+        encontrou = true;
+        rowIndex = i + 1;
+        break;
       }
     }
-    return { sucesso: false, mensagem: 'Tarefa não encontrada.' };
-  });
-}
-
-// Restaura um cartão arquivado de volta ao quadro (fica em "Concluído").
-// Grava 'Não' (não apenas vazio) para o sistema respeitar essa decisão e
-// não voltar a arquivar automaticamente, mesmo com a data de conclusão antiga.
-function restaurarTarefaArquivada(id) {
-  if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar.' };
-  return comBloqueio(() => {
-    const sheet = conectarAba(SHEET_TASKS);
-    const C = colIdx_(CABECALHOS_TAREFAS);
-    const data  = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][C('ID_Tarefas')]) === String(id)) {
-        sheet.getRange(i+1, C('Arquivado')+1).setValue('Não');
-        SpreadsheetApp.flush();
-        registrarLog('Restauração de Arquivo', id, 'Cartão restaurado ao quadro.');
-        return { sucesso: true };
+    
+    if (!encontrou) return { sucesso: false, mensagem: 'Tarefa não encontrada.' };
+    
+    // Migração de Atividades (Copiar -> Flush -> Apagar)
+    const abaAtividades = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
+    if (abaAtividades && abaAtividades.getLastRow() > 1) {
+      const CA = colIdx_(CABECALHOS_ATIVIDADES);
+      const dadosAtividades = abaAtividades.getDataRange().getValues();
+      const linhasAtividades = [];
+      const rowsToMove = [];
+      for (let i = 1; i < dadosAtividades.length; i++) {
+        if (String(dadosAtividades[i][CA('ID_Tarefas')]).trim() === String(id).trim()) {
+          linhasAtividades.push(i + 1);
+          rowsToMove.push(dadosAtividades[i]);
+        }
+      }
+      
+      if (rowsToMove.length > 0) {
+        // Criar/conectar aba de destino sob demanda (não entra no setup eager)
+        const abaArquivadas = conectarAba(SHEET_ATIVIDADES_ARQUIVADAS, CABECALHOS_ATIVIDADES);
+        abaArquivadas.getRange(abaArquivadas.getLastRow() + 1, 1, rowsToMove.length, rowsToMove[0].length).setValues(rowsToMove);
+        SpreadsheetApp.flush(); // Garante a cópia antes de apagar a origem
+        _deleteRowsBatch_(abaAtividades, linhasAtividades);
       }
     }
-    return { sucesso: false, mensagem: 'Tarefa não encontrada.' };
+    
+    // Atualiza o status do cartão para arquivado
+    sheet.getRange(rowIndex, C('Arquivado') + 1).setValue('Sim');
+    SpreadsheetApp.flush();
+    
+    registrarLog('Arquivamento Manual', id, 'Cartão arquivado manualmente e histórico migrado.');
+    return { sucesso: true };
   });
 }
 

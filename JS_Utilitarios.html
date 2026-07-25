@@ -786,7 +786,7 @@ document.addEventListener('click', function(e) {
   const acoes = {
     // Kanban
     'edit-card'       : () => abrirEditarTarefa(state.tasks[idx]),
-    'restore-task'    : () => restaurarTarefa(alvo.dataset.id),
+    'hist-task-arq'   : () => abrirAtividadesArquivadas(alvo.dataset.id),
     // Membros
     'edit-membro'     : () => abrirEditarMembro(state.members[idx]),
     'inativar-membro' : () => {

@@ -18,6 +18,8 @@ const SHEET_LOGS_ARQUIVO = 'Logs_Arquivo';
 const SHEET_AFASTAMENTOS = 'Afastamentos';
 const SHEET_CAPACITACOES = 'Capacitacoes';
 const SHEET_ATIVIDADES   = 'Atividades';
+// Criada sob demanda em arquivarTarefaManual, recebe as atividades de cartões arquivados.
+const SHEET_ATIVIDADES_ARQUIVADAS = 'Atividades_Arquivadas';
 // Visitas Técnicas: NÃO entra no setup de abas (setupDatabaseResto) de propósito
 // — carregamento é sob demanda (ver getVisitasTecnicasData), então a aba só é
 // criada por conectarAba na primeira vez que alguém abre a tela ou salva um
@@ -579,6 +581,25 @@ function getAtividadesTarefa(tarefaId) {
     }));
 }
 
+// Lida apenas da aba de Atividades_Arquivadas, chamada sob demanda ao clicar
+// em "Ver Atividades" num cartão arquivado.
+function getAtividadesTarefaArquivada(tarefaId) {
+  if (!isMembro_()) throw new Error('Acesso Negado.');
+  const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES_ARQUIVADAS);
+  if (!aba || aba.getLastRow() <= 1) return [];
+  const CA = colIdx_(CABECALHOS_ATIVIDADES); // Mesma estrutura
+  const alvo = String(tarefaId || '').trim();
+  if (!alvo) return [];
+  return aba.getDataRange().getValues().slice(1)
+    .filter(r => String(r[CA('ID_Tarefas')]).trim() === alvo)
+    .map(r => ({
+      type: String(r[CA('Tipo')] || 'log'),
+      text: String(r[CA('Texto')] || ''),
+      date: _dataHoraParaUI_(r[CA('Data')]),
+      author: String(r[CA('Autor')] || '')
+    }));
+}
+
 // Alinha a ORDEM FÍSICA das colunas de Tarefas ao CABECALHOS_TAREFAS. Roda no
 // setup, antes de qualquer leitura — enquanto planilha e constante discordarem,
 // todo acesso por colIdx_ cai na coluna errada, sem erro.
@@ -698,23 +719,11 @@ const DIAS_PARA_ARQUIVAR = 15;
 // era o caminho mais curto para elas divergirem.
 // Arquivamento automático: só entra em jogo quando a coluna está EM BRANCO
 // (nunca decidido). Se o valor for 'Não', o usuário restaurou o cartão
-// manualmente — respeita a decisão dele e não volta a arquivar sozinho, mesmo
-// com data de conclusão antiga. Calculado apenas EM MEMÓRIA: não grava 'Sim'
-// durante a leitura, para o carregamento nunca disputar a trava (comBloqueio)
-// com uma escrita de outra ação. É idempotente e determinístico, então o
-// resultado é consistente a cada carga; a persistência só ocorre quando o
-// usuário arquiva/restaura.
+// (nunca decidido). O arquivamento agora é estritamente manual e unidirecional.
+// Cartões arquivados migram suas atividades para Atividades_Arquivadas.
 function _tarefaArquivada_(r, C, hoje) {
   const arquivadoRaw = String(r[C('Arquivado')] || '').trim();
-  if (arquivadoRaw === 'Sim') return true;
-  if (arquivadoRaw !== '') return false;
-  if (String(r[C('Status')]) !== 'Concluído') return false;
-  const completionDate = formatarDataParaUI(r[C('Data_Conclusao')]);
-  if (!completionDate) return false;
-  const p = completionDate.split('-');
-  if (p.length !== 3) return false;
-  const dtConclusao = new Date(+p[0], +p[1]-1, +p[2]);
-  return Math.floor((hoje - dtConclusao) / 86400000) >= DIAS_PARA_ARQUIVAR;
+  return arquivadoRaw === 'Sim';
 }
 
 function _mapearTarefa_(r, C) {
@@ -982,12 +991,22 @@ function _lerRiscosPlanosEntregas_(ss) {
   const plans = planosRows.map(r => {
     const ref = String(r[CP('ID_Risco')]||'');
     const idPlano = String(r[CP('ID_Plano')]||'');
+    const whenPrevisto = formatarDataParaUI(r[CP('Data_Prevista')]);
+    const whenFinalizado = formatarDataParaUI(r[CP('Data_Finalizacao')]);
+    // Status gravado só é recalculado quando o plano é salvo/editado/alterado
+    // (ver _statusPlano) — um plano 'Em Andamento' que vence sem ninguém
+    // tocar nele ficaria preso nesse status para sempre. Recalcula aqui, na
+    // leitura (sem gravar nada, mesmo padrão de _tarefaArquivada_ no Kanban),
+    // só para o caso 'Em Andamento': estados terminais (Concluído/Cancelado/
+    // Substituído) são decisões definitivas e não devem reabrir sozinhas.
+    let status = String(r[CP('Status')]||'Em Andamento');
+    if (status === 'Em Andamento') status = _statusPlano(whenPrevisto, whenFinalizado);
     return {
       id: idPlano, riscoVinculado: ref, what: String(r[CP('O_Que')]||''), why: String(r[CP('Por_Que')]||''),
       who: String(r[CP('Quem(ID_Unidade)')]||''), where: String(r[CP('Onde')]||''),
-      whenPrevisto: formatarDataParaUI(r[CP('Data_Prevista')]), whenFinalizado: formatarDataParaUI(r[CP('Data_Finalizacao')]),
+      whenPrevisto: whenPrevisto, whenFinalizado: whenFinalizado,
       how: String(r[CP('Como')]||''), howMuch: String(r[CP('Quanto_Custa')]||''),
-      status: String(r[CP('Status')]||'Em Andamento'), revisaoPendente: String(r[CP('Revisao_Pendente')]||'Não')
+      status: status, revisaoPendente: String(r[CP('Revisao_Pendente')]||'Não')
     };
   });
 

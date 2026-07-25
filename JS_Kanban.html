@@ -270,7 +270,7 @@ function renderArquivados(resetPage = false) {
       <div style="text-align:center;font-size:13px;">${fmtBr(task.startDate)}</div>
       <div style="text-align:center;font-size:13px;">${fmtBr(task.completionDate)}</div>
       <div style="text-align:center;font-weight:600;color:#4b5563;font-size:13px;">${duracao}</div>
-      <div class="no-print" style="display:flex; justify-content:center;"><button class="btn-icon rev" title="Restaurar ao quadro" data-acao="restore-task" data-id="${esc(task.id)}">${ICON.rev}</button></div>
+      <div class="no-print" style="display:flex; justify-content:center;"><button class="btn-icon" title="Ver Atividades" data-acao="hist-task-arq" data-id="${esc(task.id)}">${ICON.history}</button></div>
     </div>`;
   }).join('');
 }
@@ -298,28 +298,26 @@ function confirmarArquivarTarefa() {
   }, { tone: 'warning' });
 }
 
-function restaurarTarefa(id) {
-  showConfirm('Restaurar este cartão de volta ao quadro Kanban?', function(fechar) {
-    google.script.run.withSuccessHandler(function(r) {
-      if (r.sucesso) {
-        // Sai da lista de arquivados na hora (sem nova ida ao servidor); o
-        // quadro precisa reler porque o cartão restaurado não está em
-        // state.tasks — getKanbanData só devolve os ativos.
-        const idx = (state.archivedTasks || []).findIndex(t => String(t.id) === String(id));
-        if (idx >= 0) state.archivedTasks.splice(idx, 1);
-        renderArquivados();
-        recarregarKanban(renderTasks);
-        fechar('Restaurado!');
-      } else {
-        showAlerta(r.mensagem);
-        fechar();
+function abrirAtividadesArquivadas(id) {
+  const feed = $id('feed-atividades-arquivadas');
+  if (!feed) return;
+  feed.innerHTML = '<div style="font-size:12px;color:#6b7280;padding-left:10px;">A carregar atividades...</div>';
+  abrirModal('modal-atividades-arquivadas');
+  
+  google.script.run
+    .withSuccessHandler(function(acts) {
+      if (!acts || acts.length === 0) {
+        feed.innerHTML = '<div style="font-size:12px;color:#6b7280;padding-left:10px;">Nenhuma atividade registrada.</div>';
+        return;
       }
-    }).withFailureHandler(e => {
-      showAlerta(String(e));
-      fechar();
-    }).restaurarTarefaArquivada(id);
-  }, { tone: 'restore', loadingText: 'A restaurar...' });
+      feed.innerHTML = [...acts].reverse().map(a => `<div class="hist-item"><div class="hist-date">${a.author?`<span class="hist-author">${esc(a.author)}</span> · `:''}${esc(a.date)}</div><div class="hist-action">${a.type==='comment'?'<strong>Comentou:</strong> ':''}${esc(a.text)}</div></div>`).join('');
+    })
+    .withFailureHandler(function(e) {
+      feed.innerHTML = '<div style="font-size:12px;color:#ef4444;padding-left:10px;">Falha ao carregar o histórico: ' + esc(String(e)) + '</div>';
+    })
+    .getAtividadesTarefaArquivada(id);
 }
+
 
 // ---------- Modal Tarefa ----------
 // Etiquetas pré-definidas (orientadas à gestão da qualidade). cor/bg curados à

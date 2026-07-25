@@ -533,6 +533,74 @@ Cobre os 6 módulos afetados de uma vez, sem alterar nenhum `Modulo_*.js` indivi
 
 **Impacto de performance:** afeta somente a ação de salvar/editar/excluir (não leitura/abertura de páginas), acrescentando tipicamente dezenas a poucas centenas de milissegundos por escrita — imperceptível na prática, como já evidenciado pelo Kanban rodando com esse padrão sem relato de lentidão.
 
+### 8.17 Status "Atrasado" de Plano de Ação recalculado na leitura (2026-07-25)
+
+**Bug identificado:** `_statusPlano` (que decide `Em Andamento`/`Atrasado`/`Concluído` comparando `Data_Prevista` com hoje) só era chamado nos momentos de escrita — `salvarPlano`, `atualizarPlano`, `revisarPlano` (ação "Alterar"). A leitura (`_lerRiscosPlanosEntregas_`) só reproduzia o valor já gravado na célula `Status`, sem recalcular. Consequência: um plano `Em Andamento` cujo prazo vencesse **sem que ninguém editasse aquele plano especificamente** ficava mostrando `Em Andamento` indefinidamente — inclusive no KPI "Planos Atrasados" — até alguém tocar nele de novo (editar 5W2H, "Revisar Plano"). Nem a ação "Manter" corrige isso, pois só atualiza `Justificativa`/`Data_Avaliacao`/`Revisao_Pendente` (§8.13), não `Status`.
+
+**Correção aplicada** (`Código.js:982-999`, dentro de `_lerRiscosPlanosEntregas_`): quando o status gravado é `Em Andamento`, a leitura recalcula na hora com `_statusPlano(whenPrevisto, whenFinalizado)` — mesmo padrão de cálculo em memória, sem gravar nada, já usado por `_tarefaArquivada_` no Kanban ([§ítem 6 desta seção, ver comentário em Código.js:702-704]). Estados terminais (`Concluído`, `Cancelado`, `Substituído`) não são recalculados — são decisões definitivas e não devem reabrir sozinhas.
+
+**Trade-off consciente, decidido em conversa com o usuário:** a célula `Status` na planilha **continua** mostrando o valor antigo (`Em Andamento`) até que o plano seja editado de verdade — só a tela do app mostra `Atrasado` corretamente. Quem abrir a planilha `Planos_Acao` diretamente no Google Sheets verá um valor desatualizado. Optou-se por isso porque: (1) gravar exigiria entrar no lock (`comBloqueio`) fora de uma ação de usuário, o mesmo problema discutido para o auto-arquivamento do Kanban; (2) calcular em memória tem custo desprezível (a aba já é lida por completo de qualquer forma; o recálculo é só comparação de data sobre dado já carregado), enquanto gravar teria custo real (lock + escrita + flush). Caso surja necessidade de consultar o status correto fora do app (relatório externo direto da planilha), revisitar essa decisão.
+
+**Auditoria complementar (mesma sessão):** verificado se o mesmo tipo de bug (status gravado só na edição, nunca recalculado no tempo) existe em outros módulos. Resultado: **não existe em nenhum outro módulo**. Documentos já fazia esse recálculo desde sempre (`_lerDocumentos_`, `Código.js:836-857` — `Vigente`/`Vencido`/`Próximo da Revisão`/`Em Elaboração` são todos calculados na leitura; só `Vigente` e `Obsoleto` são de fato gravados, via `salvarDocumento`/`salvarRevisaoDocumento`). Capacitações e Visitas Técnicas não têm conceito de "atrasado" (status só depende de a data já ter ocorrido ou não, nunca compara com hoje). Pessoas/Afastamentos não persiste nenhum status calculado. Unidades não tem campo de prazo/validade. Kanban nunca teve esse bug — o "Atrasado" do cartão é 100% calculado no cliente a cada render (`JS_Kanban.html:131-132`), nunca gravado em nenhuma coluna.
+
+### 8.18 Kanban — implementação: `Atividades_Arquivadas` (IMPLEMENTADO — 2026-07-25)
+
+**Status: IMPLEMENTADO.** O arquivamento agora é estritamente manual (unidirecional) e migra as atividades para `Atividades_Arquivadas`. A pedido do usuário, a funcionalidade "Desarquivar" foi removida (Opção A), mas a alternativa segura de restaurá-la (Opção B) está registrada abaixo para o futuro.
+
+#### Problema original
+
+`getAtividadesTarefa(tarefaId)` (`Código.js:560-580`) lê a aba `Atividades` **inteira** (`getDataRange`, sem cache, sem range restrito) toda vez que um cartão do Kanban é aberto, e filtra em memória as linhas daquele cartão. O custo cresce com o total de linhas da aba — incluindo atividades de cartões já arquivados há anos, que ninguém vai mais consultar mas que continuam pesando em toda abertura de qualquer cartão ativo. Não afeta o carregamento do quadro inteiro (`getKanbanData` só lê `Tarefas`) — é especificamente "abrir 1 cartão" que paga esse custo.
+
+#### Caminhos considerados e descartados (com o porquê)
+
+1. **Cache do conteúdo (CacheService), sem separar aba.** Mesmo padrão já usado para contagem de comentários (`CACHE_KEY_COMENTARIOS`, `Código.js:287-299`). Resolve a lentidão de abrir cartão de forma mais simples e sem risco de mover dado entre abas. **Não foi descartado por ser ruim — é uma alternativa mais barata e pode ser feita independentemente desta mudança, inclusive antes dela como ganho rápido.** Segue válida como opção B ou como complemento.
+2. **Separar aba mantendo arquivamento automático (virtual, 15 dias) E o botão "Desarquivar".** Descartado: o arquivamento automático de hoje (`_tarefaArquivada_`, `Código.js:707-718`) nunca grava nada na planilha (calculado só na leitura, de propósito — ver comentário em `Código.js:702-704`) — então cartões "arquivados só na tela" nunca disparariam a migração de atividades, deixando a maioria dos casos reais sem cobertura. E mantendo "Desarquivar", seria necessário migrar atividades de volta (`Atividades_Arquivadas → Atividades`) a cada restauração — mesmo full-scan que se está tentando evitar, agora dentro do lock de restaurar, com risco real de o histórico "sumir" da tela se essa migração reversa falhar no meio (não é atômica: copiar + apagar).
+3. **Cron diário gravando `Arquivado='Sim'` fisicamente para cartões virtualmente arquivados.** Tecnicamente viável e de baixo impacto de performance (rodaria de madrugada, sem afetar usuários) — mas seria a **primeira automação por tempo do projeto** (hoje: zero triggers, tudo é sob demanda por ação de usuário), com necessidade de monitoramento próprio e geração de entradas de Log que hoje não existem para arquivamento automático. Superado pela alternativa 4 abaixo, que dispensa o cron por completo.
+
+#### Desenho final escolhido
+
+**Remover o arquivamento automático (virtual) por completo — só arquivamento manual.** Isso fecha a lacuna da alternativa 2: como só existe um caminho para um cartão virar arquivado (`arquivarTarefaManual`), 100% dos cartões arquivados passam por ali, e a migração de atividades pode ficar presa a esse único ponto, sem exceção e sem cron.
+
+**Trade-off aceito conscientemente pelo usuário:** hoje, um cartão concluído some sozinho do quadro após 15 dias, mesmo sem ação de ninguém. Sem o arquivamento automático, cartões concluídos ficam parados na coluna "Concluído" até alguém clicar em "Arquivar" manualmente — depende de disciplina da equipe. Racional aceito: o Kanban já pressupõe uso diário ativo (mover cartão, atualizar status); arquivar cartões concluídos é uma extensão natural dessa mesma rotina, não uma tarefa extra. Ressalva registrada: esse hábito pode falhar em períodos de exceção (férias, troca de equipe) — hoje o automático cobre esse buraco silenciosamente; sem ele, o quadro pode acumular cartões antigos visíveis até a rotina ser retomada.
+
+**Estrutura de dados:**
+- Nova aba `Atividades_Arquivadas`, mesmos cabeçalhos de `Atividades` (`ID_Tarefas`, `Tipo`, `Texto`, `Data`, `Autor`).
+- `Tarefas` **não muda** — continua uma aba só, tanto para cartões ativos quanto arquivados (a separação de ativo/arquivado já acontece hoje via filtro em duas funções diferentes: `getKanbanData` retorna só ativos, `getTarefasArquivadas` retorna só arquivados — nenhuma das duas precisa de aba própria).
+
+**Migração de atividades (dentro de `arquivarTarefaManual`, mesmo `comBloqueio`):**
+1. Ler `Atividades` inteira, filtrar linhas daquele `ID_Tarefas` (mesmo full-scan que `_excluirAtividadesDaTarefa_` já faz hoje, `Código.js:515` — nada novo em termos de leitura).
+2. Gravar (append) essas linhas em `Atividades_Arquivadas` — **operação pura de escrita, não precisa ler a aba de destino antes**. Por isso, o custo de arquivar um cartão **nunca** cresce com o tamanho de `Atividades_Arquivadas`, só com o tamanho de `Atividades` (que tende a diminuir com o tempo conforme mais cartões são arquivados — arquivar tende a ficar mais rápido, não mais lento, com o uso continuado).
+3. `SpreadsheetApp.flush()` — confirma a cópia antes do próximo passo.
+4. Só então apagar as linhas originais de `Atividades`, em lote, reaproveitando `_deleteRowsBatch_` (`Código.js:395-407`).
+
+Ordem copiar → flush → apagar é obrigatória e deliberada (mesmo padrão de `arquivarLogsAntigos_`, `Código.js:1217-1266`): garante que, no pior caso (script interrompido no meio — timeout, erro transitório), o resultado é uma atividade **duplicada** (existe nos dois lugares, recuperável, detectável) e nunca uma atividade **perdida**.
+
+**Leitura de atividades de cartão arquivado — sob demanda, não automática:**
+- Nova função `getAtividadesTarefaArquivada(id)`, lê só `Atividades_Arquivadas`, filtra por `ID_Tarefas` — mesmo formato de retorno de `getAtividadesTarefa`.
+- Novo botão "Ver Atividades"/histórico na tela de Arquivados (`View_Kanban.html`/`JS_Kanban.html`), ao lado dos já existentes ("Restaurar", etc.) — só dispara essa leitura quando clicado, nunca ao simplesmente listar os cartões arquivados.
+- Sem ambiguidade sobre qual aba consultar: cartões ativos vêm de `state.tasks` (de `getKanbanData`) e sempre chamam `getAtividadesTarefa`; cartões arquivados vêm de `state.archivedTasks` (de `getTarefasArquivadas`) e o botão novo sempre chamaria `getAtividadesTarefaArquivada` — a distinção já está decidida pela lista/tela de origem, não precisa ser inferida em tempo de execução.
+- Esse é o único ponto do desenho cujo custo cresce com o tamanho de `Atividades_Arquivadas` ao longo dos anos — mas só quando alguém pede explicitamente, não em uso corriqueiro.
+
+#### Decisão tomada: remover "Desarquivar" (Opção A)
+
+O usuário optou pela **Opção A**. O arquivamento é de mão única, igual aos Logs. A Opção B fica registrada caso haja interesse no futuro:
+- **Sugestão futura (Opção B):** Para manter "Desarquivar", seria necessário implementar a migração reversa (`Atividades_Arquivadas → Atividades`) dentro de `restaurarTarefaArquivada`, com a mesma ordem segura e idempotente (copiar → flush → apagar).
+
+#### Passos de implementação (assumindo Opção A escolhida)
+
+1. Remover a lógica de arquivamento virtual por data em `_tarefaArquivada_` (deixa de calcular por `Data_Conclusao` + 15 dias; passa a considerar arquivado só quando `Arquivado==='Sim'` literal). Ajustar `getKanbanData`/`getTarefasArquivadas` de acordo.
+2. Criar a aba `Atividades_Arquivadas` (mesmo padrão de criação sob demanda de `Capacitacoes`/`Visitas_Tecnicas`, fora do setup eager — ver §8.2).
+3. Implementar a migração dentro de `arquivarTarefaManual` (ler+filtrar `Atividades`, append em `Atividades_Arquivadas`, flush, apagar de `Atividades` via `_deleteRowsBatch_`).
+4. Implementar `getAtividadesTarefaArquivada(id)` e o botão novo na tela de Arquivados.
+5. Remover `restaurarTarefaArquivada` e o botão "Restaurar" correspondente.
+6. **Migração retroativa dispensada:** Como não havia cartões arquivados, o script de migração do legado foi dispensado a pedido do usuário.
+7. Testar: arquivar cartão com atividades → conferir migração completa (nenhuma atividade órfã em nenhuma das duas abas), abrir cartão ativo (deve continuar rápido, sem tocar `Atividades_Arquivadas`), clicar "Ver Atividades" em cartão arquivado (deve trazer o histórico certo), e (se Opção B) restaurar cartão e conferir volta das atividades.
+8. `clasp push`/deploy.
+
+#### Alternativa mais simples, ainda disponível
+
+Se o objetivo imediato for só resolver a lentidão de abrir cartão (sem mexer em arquivar/restaurar nem preparar o sistema pro longo prazo), o cache do conteúdo de atividades (opção 1 acima) resolve isso com uma fração do esforço e do risco — mas não reduz o tamanho de `Atividades` no longo prazo. As duas abordagens não são mutuamente exclusivas.
+
 ---
 
 ## 9. Próximas Melhorias
