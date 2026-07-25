@@ -394,95 +394,116 @@
       const planos = planosPorRisco[ref];
       if (!r) return '';
 
-      let planosHtml = `<div style="margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 12px;">
-      <div style="display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; margin-bottom: 8px; text-align: left;">
-        <div>Ação (What)</div>
-        <div>Por que (Why)</div>
-        <div>Quem (Who)</div>
-        <div>Onde</div>
-        <div>Prazo</div>
-        <div>Finalização</div>
-        <div>Como (How)</div>
-        <div>Custo</div>
-        <div style="text-align:center;">Status</div>
-        <div class="no-print" style="text-align:center;">Ações</div>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        ${planos.map(p => {
-        const oi = idxPlano.get(p);
-        // Defesa extra: um plano Cancelado/Substituído é estado terminal e
-        // nunca deveria pedir revisão, mesmo que a flag no servidor tenha
-        // ficado 'Sim' por algum dado antigo (ver reavaliarRisco). "Concluído"
-        // NÃO é terminal aqui — pode voltar a pedir revisão se o risco mudar.
-        const ehTerminal = p.status === 'Cancelado' || p.status === 'Substituído';
-        const acaoRev = (p.revisaoPendente === 'Sim' && !ehTerminal) ? iconBtn('alert', 'rev-plano', 'Revisar Plano', `data-idx="${oi}"`) : '';
-        // "Editar" (5W2H) trava assim que alguma unidade já entregou de
-        // verdade (status='Sim') — mudar O_Que/Como/Quem depois disso
-        // desalinharia o que foi pedido do que já foi entregue. Marcar "Não"
-        // não conta: é só acompanhamento/pendência, não compromete nada.
-        const temEntregaFeita = state.deliveries.some(d => d.idPlano === p.id && d.entregue === 'Sim');
+      // histRisco contém todas as versões do risco (da mais antiga para a mais nova)
+      const histRisco = state.history ? state.history.filter(h => h.id === 'R' + r.id && h.tipo === 'Risco') : [];
+      
+      let versoesHtml = histRisco.map((v, idxHist) => {
+        const p = v.idPlano ? state.plans.find(x => x.id === v.idPlano) : null;
+        
+        const isLatest = (idxHist === histRisco.length - 1);
+        const vNum = idxHist + 1;
+        const dataA = v.data && v.data !== '-' ? v.data : '';
 
-        let rowStyle = 'display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 20px; border-bottom: 1px solid #f3f4f6; transition: background 0.2s; text-align: left; word-break: break-word;';
-        if (p.status === 'Cancelado') {
-          rowStyle += ' text-decoration: line-through; opacity: 0.6;';
-        } else if (p.status === 'Substituído') {
-          rowStyle += ' opacity: 0.6;';
-        } else if (acaoRev) {
-          rowStyle += ' background-color: #fffbeb;';
-        }
+        let planCardHtml = '';
+        if (p) {
+          const oi = idxPlano.get(p);
+          const ehTerminal = p.status === 'Cancelado' || p.status === 'Substituído';
+          const entregasDoPlano = state.deliveries.filter(d => d.idPlano === p.id);
+          const totalEntregas = entregasDoPlano.length;
+          const concluidas = entregasDoPlano.filter(d => d.entregue === 'Sim').length;
+          const temEntregaFeita = concluidas > 0;
+          const todasEntregues = (totalEntregas > 0 && totalEntregas === concluidas);
+          const acaoRev = (p.revisaoPendente === 'Sim' && !ehTerminal && isLatest) ? iconBtn('alert', 'rev-plano', 'Revisar Plano', `data-idx="${oi}"`) : '';
 
-        return `<div style="${rowStyle}" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='${acaoRev ? '#fffbeb' : 'transparent'}'">
-            <div style="font-weight: 500;">${esc(p.what)}</div>
-            <div>${esc(p.why)}</div>
-            <div>${esc(formatUnidadeUI(p.who))}</div>
-            <div>${esc(p.where)}</div>
-            <div>${fmtBr(p.whenPrevisto)}</div>
-            <div>${fmtBr(p.whenFinalizado)}</div>
-            <div>${esc(p.how)}</div>
-            <div>${esc(p.howMuch)}</div>
-            <div style="text-align:center;">${badge(p.status)}</div>
-            <div class="no-print" style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
+          const iconCheck = todasEntregues ? 'check' : 'check-pendente';
+
+          planCardHtml = `
+          <div class="plan-card ${ehTerminal ? 'inactive' : ''} ${p.revisaoPendente === 'Sim' && !ehTerminal && isLatest ? 'needs-review' : ''}" style="margin-top: 12px; margin-bottom: 0;">
+            <div class="plan-actions no-print">
               ${acaoRev}
-              ${(p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído' || temEntregaFeita) ? '' : iconBtn('edit', 'edit-plano', 'Editar', `data-idx="${oi}"`)}
-              ${iconBtn('check', 'acomp-entregas', 'Acompanhamento / Entregas', `data-idx="${oi}"`)}
+              ${(ehTerminal || p.status === 'Concluído' || temEntregaFeita) ? '' : iconBtn('edit', 'edit-plano', 'Editar', `data-idx="${oi}"`)}
+              ${iconBtn(iconCheck, 'acomp-entregas', 'Entregas', `data-idx="${oi}"`)}
+            </div>
+            
+            <div class="plan-single-line">
+              <div>
+                <div class="plan-field-label">Ação (O Que)</div>
+                <div class="plan-field-value">${esc(p.what)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Justificativa (Por Que)</div>
+                <div class="plan-field-value">${esc(p.why)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Quem (Unid.)</div>
+                <div class="plan-field-value">${esc(formatUnidadeUI(p.who))}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Onde</div>
+                <div class="plan-field-value">${esc(p.where)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Prazo Previsto</div>
+                <div class="plan-field-value">${fmtBr(p.whenPrevisto)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Finalização</div>
+                <div class="plan-field-value">${fmtBr(p.whenFinalizado) || '-'}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Como</div>
+                <div class="plan-field-value">${esc(p.how)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Custo</div>
+                <div class="plan-field-value">${esc(p.howMuch)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Status</div>
+                <div class="plan-field-value">${badge(p.status)}</div>
+              </div>
             </div>
           </div>`;
-      }).join('')}
-      </div>
-    </div>`;
+        } else {
+          planCardHtml = `<div style="margin-top: 12px; font-size: 13px; color: var(--text-muted); font-style: italic;">Nenhum plano vinculado a esta versão.</div>`;
+        }
 
-      // r.probabilidade/.impacto/.nivel/.tipoTratamento/.responsavel já vêm do
-      // servidor como a versão mais recente do risco — não precisa mais
-      // derivar do histórico.
-      const curNivel = r.nivel, curTratamento = r.tipoTratamento, curResp = r.responsavel;
+        return `
+        <div class="version-card ${isLatest ? 'is-active' : 'is-old'}">
+           <div class="version-header">
+              <span class="version-title">Risco ${r.id} - Versão ${vNum} ${isLatest ? '(Atual)' : ''}</span>
+              <span style="color:var(--text-muted); font-size:11px;">${fmtBr(dataA)}</span>
+              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
+              <span>Probabilidade: <strong>${v.prob || '-'}</strong></span>
+              <span>Impacto: <strong>${v.impacto || '-'}</strong></span>
+              <span>Nível: <strong>${badge(v.nivel)}</strong></span>
+              <span>Tratamento: <strong>${esc(v.tratamento) || '-'}</strong></span>
+              <span>Responsável: <strong>${esc(formatUnidadeUI(v.responsavel))}</strong></span>
+           </div>
+           ${planCardHtml}
+        </div>`;
+      }).join(''); // Mantém a ordem original: mais antigas em cima, mais recentes em baixo
 
-      return `<div class="card" style="border-left: 4px solid #3b82f6; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 16px;">
-        <div style="flex: 1;">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-            <div style="font-size:12px; color:#4b5563; font-weight:700; text-transform:uppercase;">R-${r.id}</div>
-            <div style="width:4px; height:4px; border-radius:50%; background:#d1d5db;"></div>
-            <div style="font-size:12px; color:#4b5563; font-weight:600;">${esc(r.macroetapa)}</div>
-          </div>
-          <h4 style="margin:0 0 6px 0; color:#0f172a; font-size:15px;">${esc(r.nome)}</h4>
-          <div style="display: flex; flex-wrap: wrap; gap: 6px 16px; font-size:13px; color:#4b5563;">
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Causa:</strong> ${esc(r.causa)}</div>
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Consequência:</strong> ${esc(r.consequencia)}</div>
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Categoria:</strong> ${esc(r.categoria)}</div>
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Nível de Risco:</strong> ${badge(curNivel)}</div>
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Tratamento:</strong> ${esc(curTratamento)}</div>
-            <div style="display:flex; align-items:center; gap:4px;"><strong style="color:#030712;">Proprietário:</strong> ${esc(formatUnidadeUI(curResp))}</div>
+      return `<div class="risk-block">
+        <div class="risk-header" style="padding-bottom: 12px;">
+          <div style="flex: 1;">
+            <h2 class="risk-title">Risco ${r.id} — ${esc(r.nome)}</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-size:12.5px; color:#4b5563; margin-top: 4px; line-height: 1.4;">
+              <div><strong style="color:#030712;">Macroetapa:</strong> ${esc(r.macroetapa)}</div>
+              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
+              <div><strong style="color:#030712;">Categoria:</strong> ${esc(r.categoria)}</div>
+              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
+              <div><strong style="color:#030712;">Causa:</strong> ${esc(r.causa)}</div>
+              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
+              <div><strong style="color:#030712;">Consequência:</strong> ${esc(r.consequencia)}</div>
+            </div>
           </div>
         </div>
-      </div>
-      <div style="margin-top: 16px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
-        <h5 style="margin: 0 0 12px 0; font-size:14px; color:#030712; font-weight:600; display:flex; align-items:center; gap:6px;">
-          <svg style="width:16px; height:16px; stroke:#3b82f6; fill:none; stroke-width:2;" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          Histórico de Tratamentos (Planos de Ação)
-        </h5>
-        ${planosHtml}
-      </div>
-    </div>`;
+        <div class="plans-container">
+          <div class="plans-title" style="margin-bottom: 8px;">Planos de Ação</div>
+          ${versoesHtml}
+        </div>
+      </div>`;
     }).join('');
 
     container.innerHTML = html;
@@ -495,7 +516,7 @@
     $id('ep-what').value = p.what === '-' ? '' : p.what; $id('ep-why').value = p.why === '-' ? '' : p.why;
     $id('ep-who').innerHTML = gerarOptsUnidades(true); $id('ep-who').value = p.who;
     $id('ep-where').value = p.where === '-' ? '' : p.where;
-    $id('ep-when').value = p.whenPrevisto; $id('ep-fin').value = p.whenFinalizado;
+    $id('ep-when').value = p.whenPrevisto;
     $id('ep-how').value = p.how === '-' ? '' : p.how; $id('ep-cost').value = p.howMuch === '-' ? '' : p.howMuch;
     abrirModal('modal-plano-editar');
   }
@@ -506,7 +527,7 @@
       what: $id('ep-what').value.trim(),
       why: $id('ep-why').value.trim(), who: $id('ep-who').value,
       where: $id('ep-where').value.trim(), whenPrevisto: $id('ep-when').value,
-      whenFinalizado: $id('ep-fin').value, how: $id('ep-how').value.trim(),
+      how: $id('ep-how').value.trim(),
       howMuch: $id('ep-cost').value.trim() || 'Sem custos'
     };
     if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios.');
@@ -789,31 +810,35 @@
     clone.querySelectorAll('.no-print').forEach(el => el.remove());
     _converterBadgesParaPdf(clone);
 
-    // O bloco de planos de cada risco (cabeçalho + linhas, ver
-    // renderAcompanhamento) é montado com display:grid — o conversor de PDF
-    // do Apps Script não é confiável com grid/flex (mesmo motivo documentado
-    // em montarHtmlMatrizPdf) e sobrepunha as colunas ("Finalização"/"Como
-    // (How)" desalinhados). Substitui cada bloco por uma <table> real,
-    // célula a célula; o resto do card (título do risco, causa/consequência
-    // etc. — que usa flex e renderiza bem) permanece como está.
-    clone.querySelectorAll('.card').forEach(function (card) {
-      const historico = card.querySelector('div[style*="margin-top: 16px"]');
-      const planosWrap = historico ? historico.lastElementChild : null;
-      const header = planosWrap ? planosWrap.firstElementChild : null;
-      const linhasWrap = planosWrap ? planosWrap.lastElementChild : null;
-      if (!header || !linhasWrap || header === linhasWrap) return;
-
-      const theadCels = Array.from(header.children).map(function (c) {
-        return '<th style="' + (c.getAttribute('style') || '') + '">' + c.innerHTML + '</th>';
-      }).join('');
-      const corpo = Array.from(linhasWrap.children).map(function (row) {
-        const celulas = Array.from(row.children).map(function (c) {
-          return '<td style="' + (c.getAttribute('style') || '') + '">' + c.innerHTML + '</td>';
-        }).join('');
-        return '<tr>' + celulas + '</tr>';
-      }).join('');
-
-      planosWrap.innerHTML = '<table><thead><tr>' + theadCels + '</tr></thead><tbody>' + corpo + '</tbody></table>';
+    // O layout usa .plan-single-line que é display: grid. 
+    // O conversor de PDF não lida bem com grid, então transformamos em <table>.
+    clone.querySelectorAll('.plan-single-line').forEach(function (grid) {
+      // O grid possui 9 divs filhas.
+      const divs = Array.from(grid.children);
+      
+      // Proporções do grid CSS para as larguras da tabela:
+      // minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr)
+      // Percentuais aproximados: 16%, 16%, 11%, 11%, 9%, 9%, 11%, 9%, 8%
+      const widths = ['16%', '16%', '11%', '11%', '9%', '9%', '11%', '9%', '8%'];
+      
+      let theadCells = '';
+      let tbodyCells = '';
+      
+      divs.forEach((div, i) => {
+         const w = widths[i] || 'auto';
+         const labelDiv = div.querySelector('.plan-field-label');
+         const valueDiv = div.querySelector('.plan-field-value');
+         const label = labelDiv ? labelDiv.innerHTML : '';
+         const value = valueDiv ? valueDiv.innerHTML : div.innerHTML; // Fallback se a estrutura for diferente
+         
+         theadCells += `<th style="width:${w}; font-size:9.5px; color:#6b7280; border-bottom:1px solid #e5e7eb; padding:6px 4px; text-align:left; text-transform:uppercase; font-weight:bold;">${label}</th>`;
+         tbodyCells += `<td style="width:${w}; font-size:11px; color:#111827; padding:8px 4px; vertical-align:top;">${value}</td>`;
+      });
+      
+      grid.outerHTML = `<table style="width:100%; border-collapse:collapse; margin-top:8px;">
+          <thead><tr>${theadCells}</tr></thead>
+          <tbody><tr>${tbodyCells}</tr></tbody>
+        </table>`;
     });
 
     return clone.innerHTML;

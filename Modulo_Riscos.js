@@ -228,7 +228,11 @@ function revisarPlano(dados) {
       // reavaliarRisco faz em Riscos. Nunca reescreve a linha antiga.
       abaP.getRange(linhaP, CP('Revisao_Pendente') + 1).setValue('Não');
       abaP.getRange(linhaP, CP('Status') + 1).setValue('Substituído');
-      abaP.getRange(linhaP, CP('Data_Finalizacao') + 1).setValue(hoje);
+      
+      const oldFin = String(rowsP[linhaP - 1][CP('Data_Finalizacao')] || '').trim();
+      if (!oldFin) {
+        abaP.getRange(linhaP, CP('Data_Finalizacao') + 1).setValue(hoje);
+      }
 
       const novaRow = new Array(CABECALHOS_PLANOS.length).fill('');
       novaRow[CP('ID_Plano')] = getNextId_(abaP, 'PLA-');

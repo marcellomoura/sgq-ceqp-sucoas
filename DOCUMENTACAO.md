@@ -479,6 +479,26 @@ O modal "Reavaliar Risco" (`View_Riscos.html`) abria com o campo "Ação" já pr
 
 **Sem backfill em nenhum dos dois casos** — decisão explícita do usuário: o histórico anterior (JSON antigo) não foi expandido em linhas retroativas; cada risco/plano existente começou do zero na migração (`Versao=1` em Riscos), preservado apenas na cópia de segurança da planilha feita antes da migração. Os dados de `Entregas` (operacionais, não histórico) foram transcritos manualmente pro `Entregas_Planos` antes do deploy, por serem estado atual relevante (não teria sentido perder "quem já entregou").
 
+### 8.15 Riscos/Planos — Refinamentos visuais e lógicos do ciclo de revisão (2026-07-24)
+
+Sessão focada em aprimoramento de UI, geração de relatórios e pequenas correções lógicas no ciclo de vida dos planos de ação.
+
+**1) Melhorias na UI da Lista de Planos de Ação.** 
+- Alterado o título da seção de "Histórico de Estratégias (Planos de Ação)" para apenas "Planos de Ação".
+- Adicionada a coluna "Finalização" logo após "Prazo Previsto" para exibir a data de conclusão diretamente na lista de planos sem precisar abrir modais.
+- Ajustado o prefixo da versão do risco na exibição do plano de "Versão X" para "Risco Y - Versão X", facilitando o rastreamento visual de qual risco o plano pertence.
+- Removido o campo "Data de Finalização" do formulário do modal "Editar Plano" (já havia sido removido do "Novo Plano" na sessão anterior), garantindo que a data seja sempre calculada via fluxo de entregas.
+
+**2) Limpeza e Reestruturação CSS dos Planos de Ação.** A tabela (grid) de planos estava com fontes muito pesadas (negrito desnecessário), as caixas de plano muito altas (espaço desperdiçado), e os planos `Substituídos` estavam demasiadamente opacos dificultando a leitura. Reduzida a altura do `plan-card`, padronizado o `font-weight` e ajustada a opacidade para planos inativos para leitura confortável. Corrigida a perda acidental de classes CSS genéricas de listas (`.list-head`, `.list-body`) que havia quebrado o layout de outras páginas (Capacitações, Escala Semanal) durante as limpezas de estilos.
+
+**3) PDF de Acompanhamento (Quebras de linha e Margens).** A barra separadora (`|`) no cabeçalho do risco (Macroetapa | Categoria...) estava encapsulada em um `<div>`, o que forçava quebras de linha na renderização do conversor de PDF do Google Apps Script (que tem suporte limitado a flexbox). Convertido para `<span style="margin: 0 4px;">|</span>` (inline). Adicionadas margens *inline* mais estritas para garantir os espaçamentos na impressão. Adicionada a classe `no-print` ao container de botões de ação para evitar retângulos cinzas na renderização final do PDF.
+
+**4) Espaçamentos da UI (Paddings duplos).** As margens *inline* inseridas para forçar o layout do PDF acabaram somando-se aos `paddings` CSS que já existiam (`.risk-block` e `.plans-container`), gerando um "buraco branco" gigante entre o cabeçalho do risco e os planos de ação na visualização web. Corrigido reduzindo o padding CSS e removendo as margens forçadas excessivas do HTML, equilibrando o layout web com o PDF.
+
+**5) Histórico de reavaliação exibindo "Falso Positivo" de pendência em versões antigas.** O usuário notou que planos atrelados a versões antigas do risco mostravam o ícone amarelo de "Revisão Pendente". Causa: ao reavaliar um risco (criando a Versão 2), a Versão 1 (histórica) continua apontando para o mesmo `ID_Plano` (ex: `PLA-123`). Como o `PLA-123` recebia o status `Revisao_Pendente='Sim'`, a UI renderizava o ícone de alerta em *todas* as versões do risco, confundindo o usuário (dava a impressão de que um plano histórico estava exigindo revisão). Corrigido: em `JS_Riscos.html`, a classe `.needs-review` e o botão `acaoRev` ("Revisar Plano") passaram a exigir `&& isLatest`. Agora, versões históricas de risco renderizam o plano silenciosamente, sem prompt de ação.
+
+**6) Preservação da `Data_Finalizacao` de planos concluídos.** Bug de lógica na ação "Alterar" do modal "Revisar Plano": `revisarPlano` incondicionalmente sobrescrevia a `Data_Finalizacao` da linha antiga do plano (que passava a ser `Substituído`) com a `data de hoje` (para marcar a data do abandono). Porém, se o plano antigo já estivesse `Concluído` (entregas finalizadas no mês passado, por exemplo), a data original de conclusão era perdida/sobrescrita pela data de substituição. Corrigido em `Modulo_Riscos.js`: a `Data_Finalizacao` antiga é lida da planilha; se estiver preenchida, é preservada intacta; se estiver vazia (plano estava 'Em Andamento'), recebe a data de hoje.
+
 **Como funciona hoje (resumo pós-correções) — ciclo de vida de um plano de ação:**
 > **Atualizado em 2026-07-24 (§8.13):** o ciclo de revisão mudou de "Manter/Cancelar/Alterar" pra "Manter/Alterar" (Cancelar removido — já era inalcançável pela UI). "Alterar" continua fechando a linha atual e criando uma linha nova com `ID_Plano` novo; "Manter" NÃO cria linha — só atualiza `Justificativa`/`Data_Avaliacao`/`Revisao_Pendente` na própria linha. Ver §8.13 pro comportamento atual; os pontos abaixo descrevem o estado ANTES dessa mudança, mantidos por registro histórico.
 - **Status possíveis:** `Em Andamento`, `Atrasado` (calculados por `_statusPlano`, nunca digitados), `Concluído` (via entregas completas, `_reavaliarBaixa`), `Cancelado` e `Substituído` (só via "Revisar Plano").

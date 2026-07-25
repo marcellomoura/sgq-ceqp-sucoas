@@ -389,6 +389,20 @@
   .cap-c-center { text-align: center; }
   .cap-c-mat { text-align: center; font-size: 13px; }
   .cap-c-acoes { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
+  .msg-error { display: flex; justify-content: center; align-items: center; width: 100%; color: var(--danger); padding: 60px 20px 36px; font-weight: 600; font-size: var(--fs-base); text-align: center; position: sticky; left: 0; }
+
+  /* ===== LISTAS GENÉRICAS E HEADERS ===== */
+  .list-scroll.x { overflow-x: auto; padding-bottom: 16px; }
+  .list-head {
+    display: grid; align-items: center; padding: 0 20px 8px;
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-color); margin-bottom: 8px;
+  }
+  .list-body { display: flex; flex-direction: column; gap: 8px; }
+  .grid-row-hover { transition: background-color var(--transition-fast); }
+  .grid-row-hover:hover { background-color: var(--bg-hover) !important; }
+
   /* Lista de Unidades — migrado de inline (Tarefa 3, parte 3). #111827/#374151 literais.
      A opacidade de "inativa" vira classe modificadora: escurece só as 4 células de
      dados (não os botões de ação), idêntico ao inline anterior. */
@@ -621,6 +635,7 @@
   .btn-icon.archive { color: var(--warning-text); } .btn-icon.archive:hover { background: var(--warning-bg); border-color: var(--warning-border); }
   .btn-icon.ban { color: var(--warning-text); } .btn-icon.ban:hover { background: var(--warning-bg); border-color: var(--warning-border); }
   .btn-icon.check { color: var(--success); } .btn-icon.check:hover { background: var(--success-bg); border-color: var(--success-border); }
+  .btn-icon.check-pendente { color: var(--text-secondary); } .btn-icon.check-pendente:hover { background: var(--bg-subtle); border-color: var(--border-strong); }
   .btn-icon.history { color: var(--text-secondary); } .btn-icon.history:hover { background: var(--bg-subtle); border-color: var(--border-strong); }
   .btn-pdf { display: flex; align-items: center; gap: 8px; padding: 0 18px; height: 36px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; background: var(--text-main); color: white; cursor: pointer; transition: background var(--transition-fast), transform var(--transition-fast); white-space: nowrap; font-family: inherit; }
   .btn-pdf:hover { background: #303140; }
@@ -947,12 +962,155 @@
                  display:flex; flex-direction:column; }
   .list-scroll.x { overflow:auto; }
 
-  /* Cabeçalho fixo, alinhado às linhas por construção */
-  .list-head { position:sticky; top:0; z-index:2; background:var(--bg-app);
-               display:grid; gap:8px; padding:8px 20px; border:1px solid transparent;
-               font-size:11px; font-weight:600; color:var(--text-muted);
-               text-transform:uppercase; letter-spacing:.5px; }
 
-  .list-body { display:flex; flex-direction:column; gap:8px; padding-bottom:28px; }
 
+
+
+
+
+
+
+  /* =========================================================================
+     NOVOS ESTILOS: Painel de Planos de Ação (Vínculo Visual Risco x Plano)
+     ========================================================================= */
+  .risk-block {
+    background: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    border: 1px solid var(--border-color);
+    margin-bottom: 16px;
+    overflow: hidden;
+    border-left: 4px solid var(--primary);
+  }
+  .risk-header {
+    padding: 16px 24px 12px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex; justify-content: space-between; align-items: flex-start;
+    background-color: #fafafa;
+  }
+  .risk-title {
+    font-size: 16px; font-weight: 600;
+    margin: 0 0 4px 0;
+    display: flex; align-items: center; gap: 8px;
+    color: var(--text-main);
+  }
+  .risk-meta {
+    font-size: 13px; color: var(--text-secondary);
+    display: flex; gap: 16px; align-items: center;
+  }
+  .plans-container {
+    padding: 12px 24px 16px;
+    background: #ffffff;
+  }
+  .plans-title {
+    font-size: 12px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .plan-card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    background: #fff;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+  }
+  .plan-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    border-color: #cbd5e1;
+  }
+  .plan-card:last-child { margin-bottom: 0; }
+  .plan-card.inactive {
+    background: #f8fafc;
+    border-style: dashed;
+    opacity: 0.8;
+  }
+  .plan-version-context {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .plan-version-context.inactive {
+    background: #e2e8f0; color: var(--text-secondary);
+  }
+  .plan-grid {
+    display: grid;
+    grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr);
+    gap: 16px; font-size: 13px;
+  }
+  .plan-field-label {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .plan-field-value {
+    color: var(--text-main); font-weight: normal; font-size: 12.5px;
+  }
+  .plan-actions {
+    position: absolute; top: 10px; right: 16px;
+    display: flex; gap: 8px; align-items: center;
+  }
+
+  .version-card {
+    border-left: 2px solid var(--border-color);
+    padding-left: 20px;
+    position: relative;
+    margin-bottom: 24px;
+    transition: opacity 0.3s;
+  }
+  .version-card.is-old {
+    opacity: 0.85;
+  }
+  .version-card::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border-color);
+    border: 2px solid #fff;
+  }
+  .version-card.is-active {
+    border-left-color: var(--primary);
+    opacity: 1 !important;
+  }
+  .version-card.is-active::before {
+    background: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
+  .version-header {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 6px;
+  }
+  .version-title {
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .plan-single-line {
+    display: grid;
+    grid-template-columns: minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr);
+    gap: 16px;
+    align-items: start;
+    padding-right: 120px;
+  }
+  .plan-card.needs-review {
+    background-color: #fffbeb !important;
+    border-color: #fde68a !important;
+  }
+  .plan-single-line .plan-field-label {
+    font-size: 10px;
+  }
 </style>
