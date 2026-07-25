@@ -101,9 +101,8 @@ function renderVisitasTecnicas(resetPage = false) {
     const status = v.data ? 'Realizada' : 'Planejada';
     const [statusBg, statusColor] = CORES_STATUS[status];
 
-    const relatorioLink = v.relatorio
-      ? `<a href="${v.relatorio.startsWith('http') ? esc(v.relatorio) : 'https://' + esc(v.relatorio)}" target="_blank" rel="noopener noreferrer" style="color:#2b7fff; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
-      : '<span style="color:#d1d5db;">-</span>';
+    const relF = prefixHttp(v.relatorio);
+    const relatorioLink = relF ? linkA(relF, 'Acessar', null, true) : '<span style="color:#d1d5db;">-</span>';
 
     const nomes = v.participantes ? nomesMembros(parseIdsResponsaveis(v.participantes)) : '';
 

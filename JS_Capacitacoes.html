@@ -108,9 +108,8 @@ function renderCapacitacoes(resetPage = false) {
 
     const [statusBg, statusColor] = CORES_STATUS[status];
 
-    const materiaisLink = c.materiais
-      ? `<a href="${c.materiais.startsWith('http') ? esc(c.materiais) : 'https://' + esc(c.materiais)}" target="_blank" rel="noopener noreferrer" style="color:#2b7fff; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
-      : '<span style="color:#d1d5db;">-</span>';
+    const matF = prefixHttp(c.materiais);
+    const materiaisLink = matF ? linkA(matF, 'Acessar', null, true) : '<span style="color:#d1d5db;">-</span>';
 
     const nomes = c.participantes ? nomesMembros(parseIdsResponsaveis(c.participantes)) : '';
 

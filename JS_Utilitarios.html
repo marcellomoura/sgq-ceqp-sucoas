@@ -14,6 +14,12 @@ var currentActivities = [];
 // cartão que não é mais o aberto (ver abrirModalTarefa).
 var atividadesTaskId = null;
 
+// Helper: formata links que não iniciam com http
+function prefixHttp(l) {
+  if (!l || /\s/.test(l) || !l.includes('.')) return l;
+  return /^https?:\/\//i.test(l) ? l : 'https://' + l;
+}
+
 // ==========================================
 // Paginação compartilhada — Logs, Capacitações e Arquivados
 // Renderiza o controle "Anterior / Página X de Y (N registros) / Próxima"

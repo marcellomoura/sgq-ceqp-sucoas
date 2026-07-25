@@ -2,6 +2,7 @@
 // ==========================================
 // MÓDULO 3 — DOCUMENTOS
 // ==========================================
+
 function renderDocumentos(modo) {
   const tbodyId = modo === 'mestra' ? 'lista-mestra' : 'lista-revisoes';
   $id(tbodyId).innerHTML = `<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">A carregar...</div>`;
@@ -94,9 +95,9 @@ function salvarDocumento() {
   const dados = {
     tipo: $id('d-tipo').value, titulo: ($id('d-titulo').value||'').trim(),
     dataAprovacao: $id('d-data-aprov').value, responsavel: respSel,
-    linkDoc: ($id('d-link').value||'').trim(),
-    docAuxiliar: ($id('d-link-aux1').value||'').trim(),
-    docAuxiliar2: ($id('d-link-aux2').value||'').trim()
+    linkDoc: prefixHttp(($id('d-link').value||'').trim()),
+    docAuxiliar: prefixHttp(($id('d-link-aux1').value||'').trim()),
+    docAuxiliar2: prefixHttp(($id('d-link-aux2').value||'').trim())
   };
   if (!dados.tipo || !dados.titulo || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha todos os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A guardar...';
@@ -121,11 +122,11 @@ function confirmarEdicaoDoc() {
   const respSel = $id('ed-resp').value;
   const dados = {
     idRow: $id('ed-idrow').value, codigo: $id('ed-codigo').value,
-    tipo: $id('ed-tipo').value, titulo: $id('ed-titulo').value.trim(),
+    tipo: $id('ed-tipo').value, titulo: ($id('ed-titulo').value||'').trim(),
     dataAprovacao: $id('ed-data').value, responsavel: respSel,
-    linkDoc: $id('ed-link').value.trim(),
-    docAuxiliar: $id('ed-aux1').value.trim(),
-    docAuxiliar2: $id('ed-aux2').value.trim()
+    linkDoc: prefixHttp(($id('ed-link').value||'').trim()),
+    docAuxiliar: prefixHttp(($id('ed-aux1').value||'').trim()),
+    docAuxiliar2: prefixHttp(($id('ed-aux2').value||'').trim())
   };
   if (!dados.titulo || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
@@ -148,10 +149,10 @@ function publicarRevisaoDoc() {
   const dados = {
     idRow: $id('rev-doc-idrow').value, versaoAtual: $id('rev-doc-versao-hidden').value,
     codigo: ($id('rev-doc-cod').innerText || '').trim(),
-    dataAprovacao: $id('rev-doc-data').value, motivo: $id('rev-doc-motivo').value.trim(),
-    linkDoc: $id('rev-doc-link').value.trim(),
-    docAuxiliar: $id('rev-doc-aux1').value.trim(),
-    docAuxiliar2: $id('rev-doc-aux2').value.trim()
+    dataAprovacao: $id('rev-doc-data').value, motivo: ($id('rev-doc-motivo').value||'').trim(),
+    linkDoc: prefixHttp(($id('rev-doc-link').value||'').trim()),
+    docAuxiliar: prefixHttp(($id('rev-doc-aux1').value||'').trim()),
+    docAuxiliar2: prefixHttp(($id('rev-doc-aux2').value||'').trim())
   };
   if (!dados.dataAprovacao || !dados.motivo || !dados.linkDoc) return showAlerta('Informe a nova data de aprovação, a descrição e o link.');
   btn.disabled = true; btn.innerText = 'A publicar...';

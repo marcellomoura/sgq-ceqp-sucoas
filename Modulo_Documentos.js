@@ -6,8 +6,6 @@ function salvarDocumento(dados) {
   try {
     if (!dados || !dados.tipo || !String(dados.titulo||'').trim() || !dados.responsavel || !String(dados.linkDoc||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos obrigatórios.' };
-    if (!linkPermitido_(dados.linkDoc) || !linkPermitido_(dados.docAuxiliar) || !linkPermitido_(dados.docAuxiliar2))
-      return { sucesso: false, mensagem: 'Os links devem começar com http:// ou https://' };
     // Sigla do tipo e da unidade são derivadas de dados de ENTRADA e da aba
     // Unidades (que esta operação não altera) — calculadas FORA do lock para
     // não segurar o ScriptLock durante a leitura da aba Unidades, o que
@@ -60,8 +58,6 @@ function atualizarDocumento(dados) {
     // gravava título/link em branco por cima de um documento vigente.
     if (!dados || !dados.tipo || !String(dados.titulo||'').trim() || !dados.responsavel || !String(dados.linkDoc||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos obrigatórios.' };
-    if (!linkPermitido_(dados.linkDoc) || !linkPermitido_(dados.docAuxiliar) || !linkPermitido_(dados.docAuxiliar2))
-      return { sucesso: false, mensagem: 'Os links devem começar com http:// ou https://' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_DOCS);
       const C = colIdx_(CABECALHOS_DOCS);
@@ -89,8 +85,6 @@ function salvarRevisaoDocumento(dados) {
     // vigente e criaria uma nova sem data, link nem justificativa.
     if (!dados || !dados.dataAprovacao || !String(dados.motivo||'').trim() || !String(dados.linkDoc||'').trim())
       return { sucesso: false, mensagem: 'Informe a nova data de aprovação, a descrição e o link.' };
-    if (!linkPermitido_(dados.linkDoc) || !linkPermitido_(dados.docAuxiliar) || !linkPermitido_(dados.docAuxiliar2))
-      return { sucesso: false, mensagem: 'Os links devem começar com http:// ou https://' };
     return comBloqueio(() => {
       const aba = conectarAba(SHEET_DOCS);
       const C = colIdx_(CABECALHOS_DOCS);
