@@ -111,7 +111,7 @@ function comBloqueio(operacao) {
   try { lock.waitLock(30000); obteve = true; } catch (e) { obteve = false; }
   if (!obteve)
     throw new Error('O sistema está ocupado processando outra operação. Aguarde alguns segundos e tente novamente.');
-  try { return operacao(); } finally { lock.releaseLock(); }
+  try { return operacao(); } finally { SpreadsheetApp.flush(); lock.releaseLock(); }
 }
 
 function safeGetSheet(ss, sheetName) {

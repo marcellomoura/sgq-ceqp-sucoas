@@ -446,10 +446,10 @@ Sessão longa de bugs reais reportados pelo usuário no fluxo Risco → Reavalia
 
 **Não corrigido** (fora do escopo desta sessão, registrado também em §8.10): módulo Riscos continua sem trava otimista em `salvarRisco`/`atualizarRisco`/`reavaliarRisco`; um risco cujo único plano foi `Cancelado` (não `Substituído`) ainda fica sem caminho na UI para receber um plano novo.
 
-**10) EM ABERTO — gravação intermitente: "às vezes salva, às vezes não".** Reportado pelo usuário reavaliando um risco: `Salvo!` aparecia, a mudança aparecia no painel na hora, mas ao atualizar a página (F5) a informação sumia e também não estava na planilha — de forma intermitente, sem padrão fixo, sem nenhum erro visível na tela. Ainda sem causa confirmada. Hipóteses levantadas e status:
-- Deploy desatualizado (código editado aqui não chega ao app publicado sem `clasp push`/`clasp deploy`) — perguntado ao usuário, sem resposta ainda.
-- Linha `ID_Risco` duplicada na planilha (duas linhas "R4", escrita e leitura pegando linhas diferentes) — perguntado ao usuário, sem resposta ainda. **Nota 2026-07-24 (§8.13):** essa hipótese ficou obsoleta — múltiplas linhas por `ID_Risco` agora são esperadas e corretas (row-per-versão), não indício de corrupção.
-- `comBloqueio` (Código.js, único `LockService` do sistema) soltando o lock sem `SpreadsheetApp.flush()` antes — **tentado e REVERTIDO a pedido do usuário** (2026-07-24), sem confirmação de que era (ou não era) a causa real. Não descartar essa hipótese só por ter sido revertida — pode ter sido revertida por outro motivo (ex.: investigar as duas hipóteses acima primeiro).
+**10) RESOLVIDO (ver §8.16) — gravação intermitente: "às vezes salva, às vezes não".** Reportado pelo usuário reavaliando um risco: `Salvo!` aparecia, a mudança aparecia no painel na hora, mas ao atualizar a página (F5) a informação sumia e também não estava na planilha — de forma intermitente, sem padrão fixo, sem nenhum erro visível na tela. Hipóteses levantadas e status:
+- Deploy desatualizado (código editado aqui não chega ao app publicado sem `clasp push`/`clasp deploy`) — descartada como causa única; ver §8.16.
+- Linha `ID_Risco` duplicada na planilha (duas linhas "R4", escrita e leitura pegando linhas diferentes) — descartada. **Nota 2026-07-24 (§8.13):** múltiplas linhas por `ID_Risco` agora são esperadas e corretas (row-per-versão), não indício de corrupção.
+- `comBloqueio` (Código.js, único `LockService` do sistema) soltando o lock sem `SpreadsheetApp.flush()` antes — **confirmada como causa raiz estrutural** após auditoria completa de todos os módulos (§8.16) e corrigida.
 
 ### 8.13 Riscos e Planos_Acao — migração de Historico/Entregas (JSON em célula) para linha-por-versão (2026-07-24)
 
@@ -497,7 +497,7 @@ Sessão focada em aprimoramento de UI, geração de relatórios e pequenas corre
 
 **5) Histórico de reavaliação exibindo "Falso Positivo" de pendência em versões antigas.** O usuário notou que planos atrelados a versões antigas do risco mostravam o ícone amarelo de "Revisão Pendente". Causa: ao reavaliar um risco (criando a Versão 2), a Versão 1 (histórica) continua apontando para o mesmo `ID_Plano` (ex: `PLA-123`). Como o `PLA-123` recebia o status `Revisao_Pendente='Sim'`, a UI renderizava o ícone de alerta em *todas* as versões do risco, confundindo o usuário (dava a impressão de que um plano histórico estava exigindo revisão). Corrigido: em `JS_Riscos.html`, a classe `.needs-review` e o botão `acaoRev` ("Revisar Plano") passaram a exigir `&& isLatest`. Agora, versões históricas de risco renderizam o plano silenciosamente, sem prompt de ação.
 
-**6) Preservação da `Data_Finalizacao` de planos concluídos.** Bug de lógica na ação "Alterar" do modal "Revisar Plano": `revisarPlano` incondicionalmente sobrescrevia a `Data_Finalizacao` da linha antiga do plano (que passava a ser `Substituído`) com a `data de hoje` (para marcar a data do abandono). Porém, se o plano antigo já estivesse `Concluído` (entregas finalizadas no mês passado, por exemplo), a data original de conclusão era perdida/sobrescrita pela data de substituição. Corrigido em `Modulo_Riscos.js`: a `Data_Finalizacao` antiga é lida da planilha; se estiver preenchida, é preservada intacta; se estiver vazia (plano estava 'Em Andamento'), recebe a data de hoje.
+**6) Preservação da `Data_Finalizacao` de planos concluídos e correção do bug de sobrescrita ao registrar entrega.** Na sessão anterior, corrigiu-se um bug na ação "Alterar" do modal "Revisar Plano": `revisarPlano` incondicionalmente sobrescrevia a `Data_Finalizacao` com a data da revisão. Corrigido em `Modulo_Riscos.js`: a data antiga passou a ser preservada se já existisse. Contudo, um **novo bug correlato foi identificado (2026-07-24):** ao registrar uma entrega (baixa automática do plano), o sistema (`_reavaliarBaixa`) ignorava a "Data da Entrega" que o usuário digitou no formulário e gravava a data atual (`hoje`) como a `Data_Finalizacao` do plano. Assim, se o usuário fizesse a entrega e em seguida "substituísse" o plano, ele via a data da substituição na tela e achava (erroneamente) que o `revisarPlano` estava sobrescrevendo a data da entrega. **Correção:** `_reavaliarBaixa` foi alterado para buscar a maior (mais recente) data informada nas entregas (`e.data`) que deram causa à conclusão do plano; usando `hoje` apenas como fallback caso nenhuma data tenha sido informada.
 
 **Como funciona hoje (resumo pós-correções) — ciclo de vida de um plano de ação:**
 > **Atualizado em 2026-07-24 (§8.13):** o ciclo de revisão mudou de "Manter/Cancelar/Alterar" pra "Manter/Alterar" (Cancelar removido — já era inalcançável pela UI). "Alterar" continua fechando a linha atual e criando uma linha nova com `ID_Plano` novo; "Manter" NÃO cria linha — só atualiza `Justificativa`/`Data_Avaliacao`/`Revisao_Pendente` na própria linha. Ver §8.13 pro comportamento atual; os pontos abaixo descrevem o estado ANTES dessa mudança, mantidos por registro histórico.
@@ -507,6 +507,31 @@ Sessão focada em aprimoramento de UI, geração de relatórios e pequenas corre
 - Enquanto o plano ativo do risco está com revisão pendente (ou o risco ainda não tem nenhum plano ativo), o botão "Editar Risco" fica disponível na Matriz — depois que a pendência é resolvida, some, e mudanças de Prob./Impacto só pela via formal "Reavaliar".
 - Visualmente: `Cancelado` = riscado + esmaecido; `Substituído` = só esmaecido (fica lendo normal, mostra que foi uma decisão consciente, não um abandono); ambos perdem o botão "Editar" (5W2H), mas mantêm "Acompanhamento/Entregas" disponível para consulta.
 - Riscos arquivados (`Status='Arquivado'`) têm botão próprio para consultar o histórico completo de reavaliações, já que o botão "Reavaliar" (que também mostra esse histórico) só aparece para riscos Ativos.
+
+### 8.16 Causa raiz confirmada e corrigida — gravação intermitente em `comBloqueio` (2026-07-24)
+
+Retomando o item 10 de §8.12 (EM ABERTO): a pedido do usuário, foi feita uma auditoria completa (somente leitura) de todos os módulos de escrita do sistema — os 7 `Modulo_*.js` e os 8 `JS_*.html` correspondentes — para verificar se o bug "às vezes salva, às vezes não" era exclusivo de Riscos ou um padrão sistêmico.
+
+**Causa raiz confirmada:** `comBloqueio` (`Código.js:108-115`), o único wrapper de `LockService` usado por todo o sistema, liberava o lock (`lock.releaseLock()`) sem chamar `SpreadsheetApp.flush()` antes. Sem o flush, não há garantia de que a escrita feita dentro do lock foi de fato persistida na planilha no momento em que o lock é liberado — uma segunda execução concorrente (por exemplo, a releitura da tela logo após "Salvo!", ou outro usuário salvando ao mesmo tempo) pode ler um estado desatualizado, e a tela reflete esse estado sem nenhum erro.
+
+**Alcance:** dos 7 módulos de escrita, **6 (Riscos, Unidades, Documentos, Pessoas, Capacitações, Visitas Técnicas) compartilhavam exatamente esse padrão vulnerável.** Apenas o **Kanban** escapava, porque cada função de escrita (`Modulo_Kanban.js`) já chamava `SpreadsheetApp.flush()` manualmente antes de retornar — não por proteção do `comBloqueio`, mas por decisão pontual de quem escreveu aquele módulo.
+
+No frontend, a exposição ao bug variava por módulo conforme o padrão de releitura pós-salvamento (sempre uma nova chamada `google.script.run`, ou seja, uma execução separada da que gravou):
+- **Documentos e Unidades:** releem o servidor imediatamente após o sucesso — janela de corrida mais estreita.
+- **Capacitações e Visitas Técnicas:** combinavam atualização otimista local **com** releitura imediata, que podia sobrescrever silenciosamente o valor otimista com um dado ainda não persistido — reproduzindo exatamente o sintoma relatado.
+- **Pessoas:** não relia o servidor após salvar — uma escrita perdida só seria percebida no F5 seguinte.
+- **Riscos** e cadastro de Membro (Kanban): esperavam ~1400ms (delay do `feedbackBtn`) antes de reler, o que atenuava mas não eliminava o risco.
+- **Kanban (tarefas):** sem exposição — o próprio retorno da escrita já traz o registro atualizado, sem depender de releitura.
+
+Hipótese de múltiplas planilhas (`openById` vs `getActiveSpreadsheet`) foi descartada — nenhuma ocorrência de `openById` no projeto; todos os módulos usam a mesma planilha ativa.
+
+**Correção aplicada:** uma linha em `Código.js:114`, centralizada no wrapper:
+```js
+try { return operacao(); } finally { SpreadsheetApp.flush(); lock.releaseLock(); }
+```
+Cobre os 6 módulos afetados de uma vez, sem alterar nenhum `Modulo_*.js` individualmente — mesmo padrão que o Kanban já usava, generalizado para o ponto único de serialização do sistema.
+
+**Impacto de performance:** afeta somente a ação de salvar/editar/excluir (não leitura/abertura de páginas), acrescentando tipicamente dezenas a poucas centenas de milissegundos por escrita — imperceptível na prática, como já evidenciado pelo Kanban rodando com esse padrão sem relato de lentidão.
 
 ---
 
