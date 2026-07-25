@@ -890,97 +890,117 @@
       return;
     }
 
-    // idx de cada plano em state.plans, pré-computado (evita indexOf O(n²)).
+    // idx de cada plano em state.plans, pré-computado
     const idxPlano = new Map(state.plans.map((pl, i) => [pl, i]));
-    const idsArquivados = new Set(arquivadosRiscos.map(r => 'R' + r.id));
-    const planosArquivados = state.plans.filter(p => idsArquivados.has(p.riscoVinculado));
-    const planosPorRisco = {};
-    planosArquivados.forEach(p => {
-      if (!planosPorRisco[p.riscoVinculado]) planosPorRisco[p.riscoVinculado] = [];
-      planosPorRisco[p.riscoVinculado].push(p);
-    });
 
-    const html = arquivadosRiscos.map((r, idx) => {
+    const html = arquivadosRiscos.map(r => {
       const ref = 'R' + r.id;
-      const planos = planosPorRisco[ref] || [];
 
-      let planosHtml = '';
-      if (planos.length === 0) {
-        planosHtml = '<div style="font-size:13px; color:#6b7280; font-style:italic;">Nenhum plano de ação associado a este risco.</div>';
-      } else {
-        planosHtml = `<div style="margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 12px;">
-        <div style="display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; padding: 0 20px 8px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; margin-bottom: 8px; text-align: left;">
-          <div>Ação (What)</div>
-          <div>Por que (Why)</div>
-          <div>Quem (Who)</div>
-          <div>Onde</div>
-          <div>Prazo</div>
-          <div>Finalização</div>
-          <div>Como (How)</div>
-          <div>Custo</div>
-          <div style="text-align:center;">Status</div>
-          <div class="no-print" style="text-align:center;">Ações</div>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          ${planos.map(p => {
+      // histRisco contém todas as versões do risco (da mais antiga para a mais nova)
+      const histRisco = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
+      
+      let versoesHtml = histRisco.map((v, idxHist) => {
+        const p = v.idPlano ? state.plans.find(x => x.id === v.idPlano) : null;
+        
+        const isLatest = (idxHist === histRisco.length - 1);
+        const vNum = idxHist + 1;
+        const dataA = v.data && v.data !== '-' ? v.data : '';
+
+        let planCardHtml = '';
+        if (p) {
           const oi = idxPlano.get(p);
-          let rowStyle = 'display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,1.5fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.9fr); gap: 8px; align-items: center; font-size: 13px; color: #111827; padding: 8px 20px; border-bottom: 1px solid #f3f4f6; transition: background 0.2s; text-align: left; word-break: break-word;';
-          if (p.status === 'Cancelado') {
-            rowStyle += ' text-decoration: line-through; opacity: 0.6;';
-          } else if (p.status === 'Substituído') {
-            rowStyle += ' opacity: 0.6;';
-          } else if (p.revisaoPendente === 'Sim') {
-            rowStyle += ' background-color: #fffbeb;';
-          }
-          return `<div style="${rowStyle}" onmouseover="this.style.backgroundColor='#f9fafb'" onmouseout="this.style.backgroundColor='${p.revisaoPendente === 'Sim' && p.status !== 'Cancelado' && p.status !== 'Substituído' ? '#fffbeb' : 'transparent'}'">
-              <div style="font-weight: 500;">${esc(p.what)}</div>
-              <div>${esc(p.why)}</div>
-              <div>${esc(formatUnidadeUI(p.who))}</div>
-              <div>${esc(p.where)}</div>
-              <div>${fmtBr(p.whenPrevisto)}</div>
-              <div>${fmtBr(p.whenFinalizado)}</div>
-              <div>${esc(p.how)}</div>
-              <div>${esc(p.howMuch)}</div>
-              <div style="text-align:center;">${badge(p.status)}</div>
-              <div class="no-print" style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
-                ${iconBtn('history', 'acomp-entregas', 'Acompanhamento / Entregas', `data-idx="${oi}"`)}
+          
+          planCardHtml = `
+          <div class="plan-card inactive" style="margin-top: 12px; margin-bottom: 0;">
+            <div class="plan-actions no-print">
+              ${iconBtn('history', 'acomp-entregas', 'Acompanhamento / Entregas', `data-idx="${oi}"`)}
+            </div>
+            
+            <div class="plan-single-line">
+              <div>
+                <div class="plan-field-label">Ação (O Que)</div>
+                <div class="plan-field-value">${esc(p.what)}</div>
               </div>
-            </div>`;
-        }).join('')}
+              <div>
+                <div class="plan-field-label">Justificativa (Por Que)</div>
+                <div class="plan-field-value">${esc(p.why)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Quem (Unid.)</div>
+                <div class="plan-field-value">${esc(formatUnidadeUI(p.who))}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Onde</div>
+                <div class="plan-field-value">${esc(p.where)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Prazo Previsto</div>
+                <div class="plan-field-value">${fmtBr(p.whenPrevisto)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Finalização</div>
+                <div class="plan-field-value">${fmtBr(p.whenFinalizado) || '-'}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Como</div>
+                <div class="plan-field-value">${esc(p.how)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Custo</div>
+                <div class="plan-field-value">${esc(p.howMuch)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Status</div>
+                <div class="plan-field-value">${badge(p.status)}</div>
+              </div>
+            </div>
+          </div>`;
+        } else {
+          planCardHtml = `<div style="margin-top: 12px; font-size: 13px; color: var(--text-muted); font-style: italic;">Nenhum plano vinculado a esta versão.</div>`;
+        }
+
+        return `
+        <div class="version-card ${isLatest ? 'is-active' : 'is-old'}">
+           <div class="version-header">
+              <span class="version-title">Risco ${r.id} - Versão ${vNum} ${isLatest ? '(Atual)' : ''}</span>
+              <span style="color:var(--text-muted); font-size:11px;">${fmtBr(dataA)}</span>
+              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
+              <span>Probabilidade: <strong>${v.prob || '-'}</strong></span>
+              <span>Impacto: <strong>${v.impacto || '-'}</strong></span>
+              <span>Nível: <strong>${badge(v.nivel)}</strong></span>
+              <span>Tratamento: <strong>${esc(v.tratamento) || '-'}</strong></span>
+              <span>Responsável: <strong>${esc(formatUnidadeUI(v.responsavel))}</strong></span>
+           </div>
+           ${planCardHtml}
+        </div>`;
+      }).join(''); 
+
+      return `<div class="risk-block" style="background-color: #f8fafc; border: 1px dashed #cbd5e1;">
+        <div class="risk-header" style="padding-bottom: 12px;">
+          <div style="flex: 1;">
+            <div style="display:flex; align-items:center; gap:8px;">
+               <h2 class="risk-title" style="color: #4b5563;">Risco ${r.id} — ${esc(r.nome)}</h2>
+               <span style="font-size:11px; font-weight:700; background:#e2e8f0; color:#475569; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">ARQUIVADO</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-size:12.5px; color:#4b5563; margin-top: 4px; line-height: 1.4;">
+              <div><strong style="color:#030712;">Macroetapa:</strong> ${esc(r.macroetapa)}</div>
+              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
+              <div><strong style="color:#030712;">Categoria:</strong> ${esc(r.categoria)}</div>
+              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
+              <div><strong style="color:#030712;">Causa:</strong> ${esc(r.causa)}</div>
+              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
+              <div><strong style="color:#030712;">Consequência:</strong> ${esc(r.consequencia)}</div>
+            </div>
+          </div>
+          <div class="risk-actions no-print">
+            ${iconBtn('restore', 'restore-risco', 'Restaurar Risco para Ativo', `data-id="${r.id}"`)}
+          </div>
+        </div>
+        <div class="plans-container">
+          <div class="plans-title" style="margin-bottom: 8px; color: #4b5563;">Planos de Ação</div>
+          ${versoesHtml}
         </div>
       </div>`;
-      }
-
-      // r.probabilidade/.impacto/.nivel/.tipoTratamento/.responsavel já vêm do
-      // servidor como a versão mais recente do risco — não precisa mais
-      // derivar do histórico.
-      const curProb = r.probabilidade, curImp = r.impacto, curNivel = r.nivel;
-      const curTratamento = r.tipoTratamento, curResp = r.responsavel;
-
-      return `<div class="grid-row-hover" style="background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom: 8px;">
-      <div style="display: grid; grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 70px; gap: 8px; align-items: center; padding: 12px 20px; font-size: 13px; color: #111827; text-align: left; word-break: break-word;">
-        <div style="text-align:center;font-weight:700;color:#4b5563;">${idx + 1}</div>
-        <div style="text-align:center;font-weight:700;color:#6b7280;white-space:nowrap;">R-${r.id}</div>
-        <div style="font-weight: 500;">${esc(r.macroetapa)}</div>
-        <div><span style="display:inline-block; font-weight:600; color:#030712; border:1px solid #d1d5db; border-radius:6px; padding:4px 10px; background:#f9fafb;">${esc(r.nome)}</span></div>
-        <div style="line-height: 1.4; color: #4b5563;">${esc(r.causa)}</div>
-        <div style="line-height: 1.4; color: #4b5563;">${esc(r.consequencia)}</div>
-        <div>${esc(r.categoria)}</div>
-        <div style="text-align:center;font-weight:700;">${curProb * curImp}</div>
-        <div style="text-align:center;white-space:nowrap;">${badge(curNivel)}</div>
-        <div>${esc(curTratamento)}</div>
-        <div>${esc(formatUnidadeUI(curResp))}</div>
-        <div style="line-height: 1.4; color: #4b5563;">${esc(r.planoAcao)}</div>
-        <div class="no-print" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-          ${iconBtn('clock', 'hist-risco', 'Ver Histórico de Reavaliações', `data-id="${r.id}"`)}
-          ${iconBtn('restore', 'restore-risco', 'Restaurar Risco para Ativo', `data-id="${r.id}"`)}
-        </div>
-      </div>
-      <div style="padding: 0 16px 12px; border-top: 1px solid #f3f4f6; margin-top: 4px;">
-        <div style="font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 8px;">Planos de Ação (5W2H) Vinculados:</div>
-        ${planosHtml}
-      </div>
-    </div>`;
     }).join('');
 
     container.innerHTML = html;
@@ -1002,45 +1022,34 @@
     // Limpa elementos marcados com no-print antes de jogar pro PDF
     const clone = container.cloneNode(true);
     clone.querySelectorAll('.no-print').forEach(e => e.remove());
+    _converterBadgesParaPdf(clone);
 
-    // Mesmo problema documentado em montarHtmlAcompanhamentoPdf: os blocos em
-    // display:grid (linha de dados do risco e o bloco de planos vinculados,
-    // cabeçalho + linhas — ver renderRiscosArquivados) não são confiáveis no
-    // conversor de PDF do Apps Script: ficavam sem cabeçalho e com colunas
-    // desalinhadas/sobrepostas. Substitui os dois por <table> real.
-    clone.querySelectorAll('.grid-row-hover').forEach(function (card) {
-      // Linha de dados do risco (primeiro filho do card) — mesmo cabeçalho de
-      // colunas usado no relatório da Matriz de Risco (montarHtmlMatrizPdf),
-      // já que as duas telas mostram exatamente os mesmos 12 campos.
-      const riscoGrid = card.firstElementChild;
-      if (riscoGrid && riscoGrid.children.length) {
-        const celulasRisco = Array.from(riscoGrid.children).map(function (c) {
-          return '<td style="' + (c.getAttribute('style') || '') + '">' + c.innerHTML + '</td>';
-        }).join('');
-        riscoGrid.outerHTML = '<table><thead><tr>' +
-          '<th style="text-align:center;">#</th><th style="text-align:center;">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>' +
-          '<th>Categoria</th><th style="text-align:center;">P×I</th><th style="text-align:center;">Nível</th>' +
-          '<th>Tratamento</th><th>Proprietário</th><th>Plano de Ação</th>' +
-          '</tr></thead><tbody><tr>' + celulasRisco + '</tr></tbody></table>';
-      }
-
-      const secaoPlanos = card.querySelector('div[style*="padding: 0 16px 12px"]');
-      const planosWrap = secaoPlanos ? secaoPlanos.lastElementChild : null;
-      const header = planosWrap ? planosWrap.firstElementChild : null;
-      const linhasWrap = planosWrap ? planosWrap.lastElementChild : null;
-      if (!header || !linhasWrap || header === linhasWrap) return;
-
-      const theadCels = Array.from(header.children).map(function (c) {
-        return '<th style="' + (c.getAttribute('style') || '') + '">' + c.innerHTML + '</th>';
-      }).join('');
-      const corpo = Array.from(linhasWrap.children).map(function (row) {
-        const celulas = Array.from(row.children).map(function (c) {
-          return '<td style="' + (c.getAttribute('style') || '') + '">' + c.innerHTML + '</td>';
-        }).join('');
-        return '<tr>' + celulas + '</tr>';
-      }).join('');
-
-      planosWrap.innerHTML = '<table><thead><tr>' + theadCels + '</tr></thead><tbody>' + corpo + '</tbody></table>';
+    // O layout usa .plan-single-line que é display: grid. 
+    // O conversor de PDF não lida bem com grid, então transformamos em <table>.
+    clone.querySelectorAll('.plan-single-line').forEach(function (grid) {
+      // O grid possui 9 divs filhas.
+      const divs = Array.from(grid.children);
+      
+      const widths = ['16%', '16%', '11%', '11%', '9%', '9%', '11%', '9%', '8%'];
+      
+      let theadCells = '';
+      let tbodyCells = '';
+      
+      divs.forEach((div, i) => {
+         const w = widths[i] || 'auto';
+         const labelDiv = div.querySelector('.plan-field-label');
+         const valueDiv = div.querySelector('.plan-field-value');
+         const label = labelDiv ? labelDiv.innerHTML : '';
+         const value = valueDiv ? valueDiv.innerHTML : div.innerHTML; // Fallback se a estrutura for diferente
+         
+         theadCells += `<th style="width:${w}; font-size:9.5px; color:#6b7280; border-bottom:1px solid #e5e7eb; padding:6px 4px; text-align:left; text-transform:uppercase; font-weight:bold;">${label}</th>`;
+         tbodyCells += `<td style="width:${w}; font-size:11px; color:#111827; padding:8px 4px; vertical-align:top;">${value}</td>`;
+      });
+      
+      grid.outerHTML = `<table style="width:100%; border-collapse:collapse; margin-top:8px;">
+          <thead><tr>${theadCells}</tr></thead>
+          <tbody><tr>${tbodyCells}</tr></tbody>
+        </table>`;
     });
 
     return _pdfSecaoTitulo('Riscos Superados / Arquivados') + clone.innerHTML;

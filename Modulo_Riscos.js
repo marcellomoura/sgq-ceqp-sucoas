@@ -407,7 +407,19 @@ function _reavaliarBaixa(abaP, indexPlano, rowData, entregasArr) {
 
   const hoje = _dataLocalISO_(new Date());
   if (darBaixa) {
-    abaP.getRange(indexPlano, CP('Data_Finalizacao')+1).setValue(hoje);
+    // Procura a data de entrega informada mais recente (ou a única) entre as entregas positivas
+    let dataFinal = '';
+    entregasArr.forEach(e => {
+      if (e.status === 'Sim' && String(e.data||'').trim() !== '') {
+        if (!dataFinal || e.data > dataFinal) {
+          dataFinal = e.data;
+        }
+      }
+    });
+    // Se por algum motivo o usuário não preencheu a data no modal (campo Data da Entrega), usa 'hoje'
+    const dataGravacao = dataFinal ? dataFinal : hoje;
+    
+    abaP.getRange(indexPlano, CP('Data_Finalizacao')+1).setValue(dataGravacao);
     abaP.getRange(indexPlano, CP('Status')+1).setValue('Concluído');
   } else {
     if (statusAtualPlano === 'Concluído') return; // Congelamento de status aprovado (não reabrir se cadastrar nova unidade)
@@ -469,7 +481,11 @@ function salvarEntregasEmLote(idPlano, entregas) {
       const rowsE2 = abaE.getDataRange().getValues();
       const entregasArr = rowsE2.slice(1)
         .filter(rE => String(rE[CE('ID_Plano')]||'').trim() === String(idPlano).trim())
-        .map(rE => ({ unidade: String(rE[CE('Unidade')]||''), status: String(rE[CE('Status')]||'') }));
+        .map(rE => ({
+           unidade: String(rE[CE('Unidade')]||''),
+           status: String(rE[CE('Status')]||''),
+           data: formatarDataParaUI(rE[CE('Data')])
+        }));
 
       _reavaliarBaixa(aba, indexPlano, rows[indexPlano-1], entregasArr);
 
