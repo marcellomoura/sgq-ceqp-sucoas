@@ -615,3 +615,30 @@ Se o objetivo imediato for só resolver a lentidão de abrir cartão (sem mexer 
 ---
 
 *Documento gerado por auditoria de código read-only. Nenhum arquivo de código-fonte foi alterado na produção deste relatório.*
+
+---
+
+## 10. Modificações Recentes (Histórico de Alterações)
+
+### Avatar do Usuário Logado no Menu Lateral (25/07/2026)
+Foi adicionado um widget fixo no rodapé do menu lateral exibindo o nome e avatar do usuário atual. A cor do avatar segue a mesma lógica determinística da tela de Membros. Se no futuro for necessário remover essa funcionalidade, reverta os seguintes passos:
+
+1. **`Código.js` (Função `getKanbanData`)**: Remover `currentUserEmail: usuarioAtual_()` do objeto de retorno.
+2. **`JS_Utilitarios.html`**:
+   - Remover a chamada à função `renderUserAvatar()` dentro do bloco `.withSuccessHandler(function(data) { ... })` de inicialização (logo após atribuir `state.currentUserEmail = data.currentUserEmail;`).
+   - Apagar a declaração da função `renderUserAvatar()`.
+3. **`Index.html`**:
+   - Remover a div `<div id="sidebar-user-container" ...></div>` localizada imediatamente antes da tag de fechamento `</aside>` do menu lateral.
+4. **`CSS.html`**:
+   - As propriedades CSS `.sidebar { overflow: hidden; }`, `.sidebar-nav { flex: 1; overflow-y: auto; min-height: 0; }` e `.sidebar-nav > * { flex-shrink: 0; }` foram ajustadas para permitir o scroll interno dos links enquanto o avatar fica fixo. Caso o avatar seja removido, essa estrutura não causará problemas (o menu continuará rolando), mas pode ser revertida para o layout anterior se desejado.
+5. **Paleta de Cores**: As cores "Céu" (Azul claro) e "Lavanda" (Roxo claro) tiveram suas posições invertidas na paleta para agradar uma preferência de sorteio do usuário. Para reverter, basta destrocar os códigos HEX em `JS_Utilitarios.html` (`PALETA_PASTEL_HEX` - índices 0 e 3) e `CSS.html` (classes `.avatar-pastel-1` e `.avatar-pastel-4`).
+
+### Implementação do Modo Noturno (Tentativa em 25/07/2026)
+Houve uma tentativa de implementar o Modo Noturno na aplicação. O código foi posteriormente revertido a pedido do usuário, mas os detalhes técnicos estão documentados abaixo para referência futura:
+1. **Estrutura Base**: Uso de `color-scheme: dark;` e `[data-theme="dark"]` no `CSS.html` para substituir as variáveis de cor globais (ex: `--bg-app`, `--bg-card`, `--text-main`, `--text-secondary`). A aplicação ativava automaticamente com `window.matchMedia('(prefers-color-scheme: dark)').matches` no `Index.html`.
+2. **Botões e Ícones**: Criação da classe `.btn-create` para evitar estilos inline nos botões do topo, permitindo a transição automática de cores (`color: var(--bg-app); background-color: var(--primary)`). Foi necessário aplicar o filtro `invert(0.8)` no `::-webkit-calendar-picker-indicator` para ícones nativos de calendário aparecerem corretamente no fundo escuro.
+3. **Listas e Grids**: Conversão de centenas de `style=""` inline nas listagens (`.unid-row`, `.doc-row`, `.member-row`, etc.) para classes do `CSS.html`, padronizando bordas para usar a variável dinâmica `var(--border-subtle)`.
+4. **Motivos do Rollback**: 
+   - Componentes JS (ex: `JS_Pessoas.html`) usavam concatenação de strings em Javascript injetando cores HEX absolutas (`#E2EBF8` e `#25497F`) em tags, o que destruía o contraste no modo escuro sem uma refatoração severa de lógica JS para classes CSS.
+   - Falta de padronização estrutural prévia: muitos rótulos, pesos de fonte (`font-weight: 600;`) e cores secundárias estavam fixados de forma inline nas views HTML ao invés de usar classes genéricas (como `.page-title` ou `.section-label`), tornando a adaptação inconsistente entre as telas.
+   - O rollback foi feito para priorizar primeiro uma refatoração limpa da arquitetura de estilos (removendo todos os inlines para classes semânticas) antes de introduzir uma variável de tema.
