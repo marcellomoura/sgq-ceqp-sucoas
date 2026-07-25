@@ -154,7 +154,7 @@ function iniciaisMembro(nome) {
 }
 // Hex das 12 cores pastel, na mesma ordem de .avatar-pastel-1..12 (CSS.html) —
 // usado quando é preciso o valor bruto (ex.: stroke de SVG), não uma classe.
-const PALETA_PASTEL_HEX = ['#3D8FC4','#2CA98F','#D2596F','#7A6CDD','#E0904A','#C99A2E','#D8483A','#6B9B37','#1E9AA3','#A94FA0','#55647A','#8B5E3C'];
+const PALETA_PASTEL_HEX = ['#7A6CDD','#2CA98F','#D2596F','#3D8FC4','#E0904A','#C99A2E','#D8483A','#6B9B37','#1E9AA3','#A94FA0','#55647A','#8B5E3C'];
 function _hashPastel(nome) {
   const s = String(nome || '');
   let hash = 0;
@@ -167,6 +167,28 @@ function _hashPastel(nome) {
 function corPastelPorNome(nome) { return 'avatar-pastel-' + (_hashPastel(nome) + 1); }
 // Mesma escolha de corPastelPorNome(), mas devolve o hex puro.
 function corPastelHex(nome) { return PALETA_PASTEL_HEX[_hashPastel(nome)]; }
+
+// Renderiza o perfil do usuário logado no rodapé da barra lateral.
+function renderUserAvatar() {
+  const container = $id('sidebar-user-container');
+  if (!container || !state.currentUserEmail) return;
+  const emailLower = String(state.currentUserEmail).trim().toLowerCase();
+  
+  // Tenta achar na lista de membros pelo email funcional ou pessoal
+  let m = state.members.find(x => 
+    String(x.email||'').trim().toLowerCase() === emailLower || 
+    String(x.emailPessoal||'').trim().toLowerCase() === emailLower
+  );
+  
+  let nomeExibicao = m ? m.name : (emailLower === 'sistema' ? 'Sistema' : 'Usuário Externo');
+  
+  container.innerHTML = 
+    `<div class="member-avatar ${corPastelPorNome(nomeExibicao)}" style="width: 34px; height: 34px; font-size: 12px; flex-shrink: 0;">${esc(iniciaisMembro(nomeExibicao))}</div>` +
+    `<div style="display:flex; flex-direction:column; overflow:hidden; line-height:1.2;">` +
+      `<span style="color:var(--text-main); font-size:13px; font-weight:600; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${esc(nomeExibicao)}</span>` +
+    `</div>`;
+}
+
 // Só renderiza como link URLs http(s) — qualquer outro valor (ex.:
 // "javascript:...") aparece como texto simples, sem virar clicável.
 // comIcone reaproveita o estilo do link "🔗 Acessar" de Capacitações
@@ -592,6 +614,8 @@ document.addEventListener('DOMContentLoaded', function() {
     .withSuccessHandler(function(data) {
       state.tasks = data.tasks;
       state.members = data.members;
+      state.currentUserEmail = data.currentUserEmail;
+      renderUserAvatar();
       renderTasks();
       sincronizarDropdownMembros();
       // Se o usuário já clicou numa aba que também depende destes dados

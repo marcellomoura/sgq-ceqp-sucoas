@@ -753,7 +753,7 @@ function getKanbanData() {
   const tData = sheet.getDataRange().getValues();
   const C = colIdx_(CABECALHOS_TAREFAS);
 
-  if (tData.length <= 1) return { tasks: [], members: getKanbanData_members_() };
+  if (tData.length <= 1) return { tasks: [], members: getKanbanData_members_(), currentUserEmail: usuarioAtual_() };
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const contagem = _contarComentariosPorTarefa_();
@@ -766,7 +766,7 @@ function getKanbanData() {
     tasks.push(t);
   });
 
-  return { tasks: tasks, members: getKanbanData_members_() };
+  return { tasks: tasks, members: getKanbanData_members_(), currentUserEmail: usuarioAtual_() };
 }
 
 // Aba Arquivados — busca própria e sob demanda (só na primeira visita à aba),
