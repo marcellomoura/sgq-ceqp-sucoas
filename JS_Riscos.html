@@ -240,9 +240,9 @@
     const notasDiv = $id('rev-campos-notas');
 
     if (acao === 'superado' || acao === '') {
-      notasDiv.style.display = 'none';
+      notasDiv.classList.add('hidden');
     } else {
-      notasDiv.style.display = 'block';
+      notasDiv.classList.remove('hidden');
       const disable = (acao === 'manter');
       $id('rev-prob').disabled = disable;
       $id('rev-imp').disabled = disable;
@@ -540,7 +540,7 @@
 
   function toggleCamposRevisaoPlano() {
     const acao = $id('revp-acao').value;
-    $id('revp-alterar-campos').style.display = (acao === 'alterar') ? 'block' : 'none';
+    $id('revp-alterar-campos').classList.toggle('hidden', acao !== 'alterar');
   }
 
   function abrirModalRevisarPlano(idx) {
@@ -689,7 +689,7 @@
     });
 
     const btnSalvar = $id('btn-salvar-acomp-entregas');
-    if (btnSalvar) btnSalvar.style.display = isArquivado ? 'none' : 'inline-block';
+    if (btnSalvar) btnSalvar.classList.toggle('hidden', isArquivado);
 
     abrirModal('modal-acomp-entregas');
   }

@@ -803,6 +803,7 @@ document.addEventListener('click', function(e) {
       const dd = $id('taskAssigneesContainer'); if(dd) dd.classList.remove('show');
       const dl = $id('taskLabelsContainer'); if(dl) dl.classList.remove('show');
       const dp = $id('cap-participantes-options'); if(dp) dp.classList.remove('show');
+      const vt = $id('vt-participantes-options'); if(vt) vt.classList.remove('show');
     }
     return;
   }
@@ -1193,7 +1194,6 @@ function _envelopeHtml(cfg, corpoHtml) {
     .msg-empty { text-align: center; color: #6b7280; padding: 16px; font-size: 11px; }
     .status-badge { padding: 3px 8px; border-radius: 5px; font-weight: 700; font-size: 9.5px; display: inline-block; white-space: nowrap; }
     .tag-badge { border-radius: 4px; padding: 2px 6px; font-size: 9px; font-weight: 700; color: white; display: inline-block; }
-    .urgent-date { color: #D8483A; font-weight: 700; }
     .matrix-table { border-collapse: separate; border-spacing: 3px; margin-bottom: 6px; }
     .matrix-table th, .matrix-table td { height: 70px; text-align: center; font-weight: 700; border-radius: 5px; font-size: 10.5px; width: 16%; vertical-align: middle; padding: 3px; }
     .badge-cluster { display: block; text-align: center; }

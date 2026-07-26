@@ -215,7 +215,9 @@ function renderAnoTabs() {
   }).join('');
 }
 
-// Fecha e limpa a caixa de "Novo ano"
+// Fecha e limpa a caixa de "Novo ano". style.display (não classList) de propósito:
+// o estado visível é inline-flex, diferente do display:flex que .flex-row (classe
+// já aplicada no elemento) geraria sozinho — precisa do valor exato, não do padrão.
 function fecharNovoAno() {
   var box = $id('ano-novo-inline');
   if (box) box.style.display = 'none';
@@ -397,19 +399,19 @@ function abrirModalFerias(m) {
 // ── Helpers dos botões "Adicionar" (revelam campos sob demanda) ──────────────
 function atualizarBotaoFerias() {
   var vis = 0;
-  for (var n = 1; n <= 3; n++) { if ($id('ef-ferias-block' + n).style.display !== 'none') vis++; }
-  $id('btn-add-ferias').style.display = (vis >= 3) ? 'none' : '';
+  for (var n = 1; n <= 3; n++) { if (!$id('ef-ferias-block' + n).classList.contains('hidden')) vis++; }
+  $id('btn-add-ferias').classList.toggle('hidden', vis >= 3);
 }
 function adicionarFeriasBlock() {
   for (var n = 1; n <= 3; n++) {
-    if ($id('ef-ferias-block' + n).style.display === 'none') { $id('ef-ferias-block' + n).style.display = ''; break; }
+    if ($id('ef-ferias-block' + n).classList.contains('hidden')) { $id('ef-ferias-block' + n).classList.remove('hidden'); break; }
   }
   atualizarBotaoFerias();
 }
 function removerFeriasBlock(n) {
   $id('ef-ferias-ini' + n).value = '';
   $id('ef-ferias-fim' + n).value = '';
-  $id('ef-ferias-block' + n).style.display = 'none';
+  $id('ef-ferias-block' + n).classList.add('hidden');
   atualizarBotaoFerias();
 }
 // Linha de "Licença Servidor/Prêmio": período início/fim (várias por membro)
@@ -449,7 +451,7 @@ function clearModalAfastamentos() {
   for (var n = 1; n <= 3; n++) {
     $id('ef-ferias-ini' + n).value = '';
     $id('ef-ferias-fim' + n).value = '';
-    $id('ef-ferias-block' + n).style.display = 'none';
+    $id('ef-ferias-block' + n).classList.add('hidden');
   }
   atualizarBotaoFerias();
 
@@ -475,7 +477,7 @@ function fillModalWithData(afs) {
       if (afs.ferias[k] && (afs.ferias[k].inicio || afs.ferias[k].fim)) {
         $id('ef-ferias-ini' + (k+1)).value = afs.ferias[k].inicio || '';
         $id('ef-ferias-fim' + (k+1)).value = afs.ferias[k].fim || '';
-        $id('ef-ferias-block' + (k+1)).style.display = '';
+        $id('ef-ferias-block' + (k+1)).classList.remove('hidden');
       }
     }
     atualizarBotaoFerias();

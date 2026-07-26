@@ -73,6 +73,12 @@
     /* Cores decorativas dos indicadores de seção do modal de Afastamentos. */
     --afast-abono: #b45309;
     --afast-aniversario: #0f766e;
+    /* Selo azul de "presencial" (Escala Semanal) — repetido em pill/badge/check. */
+    --color-presencial-bg: #35598D;
+    --color-presencial-text: #fff;
+    /* Destaque azul-claro de período "em andamento" (Férias/Escala). */
+    --color-agora-bg: #E2EBF8;
+    --color-agora-text: #25497F;
 
     /* Prioridade dos cartões do Kanban — mesma escada de status (Alta=Tijolo,
        Média=Dourado, Baixa=Menta), unificada com --success/--warning/--danger. */
@@ -178,32 +184,24 @@
   .flex-row { display: flex; flex-direction: row; }
   .flex-col { display: flex; flex-direction: column; }
   .items-center { align-items: center; }
-  .justify-between { justify-content: space-between; }
   .justify-center { justify-content: center; }
   .gap-8 { gap: 8px; }
   .gap-16 { gap: 16px; }
 
   /* Novos Utilitários (Clean-up Phase 1) */
-  .d-flex { display: flex; }
   .flex-1 { flex: 1; }
   .flex-2 { flex: 2; }
   .gap-4 { gap: 4px; }
-  .gap-6 { gap: 6px; }
   .flex-wrap { flex-wrap: wrap; }
   .gap-10 { gap: 10px; }
   .gap-12 { gap: 12px; }
-  .gap-20 { gap: 20px; }
   .items-end { align-items: flex-end; }
-  
-  .text-center { text-align: center; }
-  .text-left { text-align: left; }
-  .text-right { text-align: right; }
-  
-  .m-0 { margin: 0 !important; }
+
   .mb-0 { margin-bottom: 0 !important; }
   .mb-4 { margin-bottom: 4px; }
   .mb-8 { margin-bottom: 8px; }
   .mb-12 { margin-bottom: 12px; }
+  .mb-14 { margin-bottom: 14px; }
   .mt-4 { margin-top: 4px; }
   .mt-6 { margin-top: 6px; }
   .mt-8 { margin-top: 8px; }
@@ -217,11 +215,16 @@
   .mt-24 { margin-top: 24px; }
   .px-28 { padding: 0 28px !important; }
   .pb-28 { padding-bottom: 28px !important; }
-  
+  .w-100 { width: 100%; }
+  .w-100px { width: 100px !important; }
+
+  /* Usada com classList.toggle('hidden') no JS para blocos condicionais cujo
+     estado "visível" é o display padrão do elemento (div/h4 = block) — não usar
+     em elementos que precisem de um display específico (inline-flex etc.). */
+  .hidden { display: none; }
   .pointer-none { pointer-events: none; }
   .overflow-x-auto { overflow-x: auto; }
   .overflow-hidden { overflow: hidden; }
-  .relative { position: relative; }
   .min-w-1500 { min-width: 1500px; }
   .min-w-1400 { min-width: 1400px; }
   .min-w-1150 { min-width: 1150px; }
@@ -245,7 +248,6 @@
   .btn-top-action svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
   .font-12 { font-size: 12px; }
   .font-13 { font-size: 13px; }
-  .font-14 { font-size: 14px; }
   .font-medium { font-weight: 500; }
   .font-semibold { font-weight: 600; }
   .font-bold { font-weight: 700; }
@@ -255,7 +257,6 @@
   .text-inverse { color: var(--text-inverse); }
   .text-center { text-align: center; }
   .text-left { text-align: left; }
-  .text-right { text-align: right; }
 
   /* ===== UTILITÁRIOS OFICIAIS (SGQ Design System) ===== */
   .page-title {
@@ -270,11 +271,6 @@
     font-size: 13px; font-weight: 500; color: var(--text-secondary);
     display: block; margin-bottom: 6px; margin-top: 16px;
   }
-  .grid-header {
-    font-size: 11.5px; font-weight: 600; color: var(--text-muted);
-    text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center;
-  }
-  
   /* Filtros e Inputs */
   .filter-select, .filter-input {
     padding: 10px 20px; border: none; border-radius: var(--radius-pill);
@@ -302,8 +298,7 @@
   }
   .btn-create-icon { font-size: 16px; margin-right: 6px; font-weight: 500; }
   .btn-create:hover { background-color: var(--primary-hover); }
-  .btn-rounded { width: 40px; height: 40px; border-radius: 50%; }
-  
+
   /* Calendário Customizado */
   .chk-email-row { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 8px; font-size: 13px; border-radius: var(--radius-sm); margin-bottom: 2px; }
   
@@ -321,7 +316,6 @@
   .badge-success { background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border); }
   .badge-warning { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); }
   .badge-danger  { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); }
-  .badge-info    { background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-border); }
   .badge-neutral { background: var(--primary-light); color: var(--text-secondary); border: 1px solid var(--border-color); }
 
   /* Extended Colors Tags */
@@ -337,10 +331,6 @@
   .tag-orchid   { background: var(--tag-orchid); color: var(--tag-orchid-text); }
   .tag-slate    { background: var(--tag-slate); color: var(--tag-slate-text); }
   .tag-cinnamon { background: var(--tag-cinnamon); color: var(--tag-cinnamon-text); }
-  
-  /* Utilitários Visuais (Pessoas Férias) */
-  .period-active { background: var(--tag-sky); color: var(--tag-sky-text); border: 2px solid #a3cdeb; border-radius: var(--radius-sm); font-weight: 600; padding: 4px; text-align: center; }
-  .period-inactive { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 4px; text-align: center; }
 
   /* ===== LAYOUT PRINCIPAL ===== */
   .app-layout { display: flex; width: 100vw; height: 100vh; overflow: hidden; }
@@ -444,7 +434,12 @@
   /* font-size:0 esconde o texto solto do botão (não está em span próprio)
      sem precisar tocar no HTML; o ícone tem largura fixa em px, não é afetado. */
   .sidebar.collapsed .menu-item { justify-content: center; padding: 9px 0; gap: 0; font-size: 0; }
-  .sidebar.collapsed .nav-group-items { display: none !important; }
+  /* Sem !important: 3 classes no seletor (0,3,0) já perde por especificidade para
+     .flyout-visible logo abaixo (0,4,0) e para o `.nav-group-items.open` do media
+     query mobile (0,4,0) — não precisa forçar. Achado da auditoria: o !important
+     anterior aqui na verdade *quebrava* silenciosamente esse último caso, porque
+     `!important` sempre vence especificidade, e a regra mobile não tinha o seu. */
+  .sidebar.collapsed .nav-group-items { display: none; }
 
   /* Flyout: grupo aberto em hover quando a sidebar está recolhida. O JS
      (JS_Utilitarios.html) posiciona o painel via position:fixed e alterna
@@ -563,28 +558,20 @@
   .data-table tbody tr:last-child td { border-bottom: none; }
   .data-table tbody tr:hover td { background: var(--bg-hover); }
   /* Elevação no hover das linhas de listagem em grid (cards de <div>). CSS puro:
-     transform/box-shadow são compostos na GPU e não causam reflow — mais leve que
-     os handlers onmouseover/onmouseout inline usados antes (que repetiam JS por
-     linha). O box-shadow do hover leva !important porque as linhas carregam um
-     box-shadow inline de repouso no atributo style="" (inline vence a folha; só o
-     estado hover precisa sobrepor — o transform não conflita). */
-  .grid-row-hover { transition: transform var(--transition-fast), box-shadow var(--transition-fast); }
-  .grid-row-hover:hover { transform: translateY(-1px); box-shadow: var(--shadow-md) !important; }
+     transform/box-shadow/background-color são compostos na GPU e não causam
+     reflow — mais leve que os handlers onmouseover/onmouseout inline usados antes
+     (que repetiam JS por linha). Sem !important: `.grid-row-hover:hover` (classe +
+     pseudo-classe) já tem especificidade maior que a classe única da linha
+     (.doc-row etc.), então o box-shadow/background-color de hover sempre vencem o
+     de repouso por especificidade, não por ordem no arquivo. */
+  .grid-row-hover { transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast); }
+  .grid-row-hover:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); background-color: var(--bg-hover); }
   /* Lista de Logs / Auditoria — migrado de estilos inline (Tarefa 3, parte 1).
-     Cores com token exato usam var(); #111827 fica literal (sem token equivalente)
-     e será tratado no futuro trabalho de modo noturno. Visual idêntico ao inline. */
-  .log-row {
-    display: grid;
-    grid-template-columns: minmax(0,1fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,2fr);
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
-    font-size: 13px; color: #111827;
-    text-align: left; word-break: break-word;
-  }
+     Layout completo de .log-row (grid-template-columns) vive na seção "CLASSES DE
+     GRID RESTANTES"; word-break preservado ali. #111827 aplicado via .log-c-user
+     (única célula sem cor própria) para não depender só do row. */
   .log-c-data { font-size: 12px; color: var(--text-secondary); }
-  .log-c-user { font-size: 12px; }
+  .log-c-user { font-size: 12px; color: #111827; }
   .log-badge {
     display: inline-block; font-weight: 600; color: var(--text-secondary);
     border: 1px solid var(--border-color); border-radius: 12px;
@@ -593,23 +580,15 @@
   .log-c-ref { font-weight: 600; color: #111827; }
   .log-c-det { font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; }
   /* Lista de Capacitações — migrado de inline (Tarefa 3, parte 2). Badge de status
-     e link de materiais seguem inline (dinâmicos). #111827 literal. Visual idêntico. */
-  .cap-row {
-    display: grid;
-    grid-template-columns: minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1.15fr) minmax(0,1.2fr) minmax(0,0.8fr) minmax(0,0.8fr);
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
-    text-align: left; word-break: break-word;
-  }
+     e link de materiais seguem inline (dinâmicos). Layout completo de .cap-row
+     (grid-template-columns, com word-break: break-word preservado) vive na seção
+     "CLASSES DE GRID RESTANTES". */
   .cap-c { font-size: 13px; }
   .cap-c-titulo { font-weight: 600; color: #111827; font-size: 13px; }
   .cap-c-sec { color: var(--text-secondary); font-size: 13px; }
   .cap-c-center { text-align: center; }
   .cap-c-mat { text-align: center; font-size: 13px; }
   .cap-c-acoes { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
-  .msg-error { display: flex; justify-content: center; align-items: center; width: 100%; color: var(--danger); padding: 60px 20px 36px; font-weight: 600; font-size: var(--fs-base); text-align: center; position: sticky; left: 0; }
 
   /* ===== LISTAS GENÉRICAS E HEADERS ===== */
   .list-head {
@@ -636,36 +615,34 @@
 
   .list-body { display: flex; flex-direction: column; gap: 8px; }
   .list-body--spaced { gap: 20px; }
-  .grid-row-hover { transition: background-color var(--transition-fast); }
-  .grid-row-hover:hover { background-color: var(--bg-hover) !important; }
 
   /* Lista de Unidades — migrado de inline (Tarefa 3, parte 3). #111827/#374151 literais.
      A opacidade de "inativa" vira classe modificadora: escurece só as 4 células de
-     dados (não os botões de ação), idêntico ao inline anterior. */
-  .unid-row {
-    display: grid; grid-template-columns: 1fr 3fr 2.5fr 1fr 90px;
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
-  }
+     dados (não os botões de ação), idêntico ao inline anterior. Layout completo de
+     .unid-row (grid-template-columns) vive na seção "CLASSES DE GRID RESTANTES". */
   .unid-row--inativa > div:not(.unid-c-acoes) { opacity: 0.6; }
   .unid-c-sigla { font-weight: 700; color: #111827; font-size: 13px; }
   .unid-c-nome { font-size: 13px; color: #374151; }
   .unid-c-email { color: var(--text-secondary); font-size: 13px; }
   .unid-c-drive { text-align: center; font-size: 13px; }
   .unid-c-acoes { display: flex; justify-content: center; gap: 4px; }
-  /* Lista de Documentos (mestra + revisões) — migrado de inline (Tarefa 3, parte 4).
-     #111827 literal; badges/links via helpers. Visual idêntico. */
-  .doc-row {
+  /* Propriedades comuns às linhas de grid das listas (Documentos, Membros, Escala,
+     Férias, Kanban Arquivados, Riscos, Unidades, Logs, Capacitações). Cada classe
+     abaixo mantém só o que é próprio dela (grid-template-columns e, quando houver,
+     text-align/word-break). */
+  .doc-row, .membro-row, .escala-row, .vt-row, .ferias-row, .arq-row, .risco-row,
+  .unid-row, .log-row, .cap-row {
     display: grid; gap: 16px; align-items: center;
     background-color: var(--bg-card);
     padding: 16px 20px; border-radius: var(--radius-lg);
     border: none; box-shadow: var(--shadow-sm);
+  }
+  /* Lista de Documentos (mestra + revisões) — migrado de inline (Tarefa 3, parte 4).
+     #111827 literal; badges/links via helpers. Visual idêntico. */
+  .doc-row {
     text-align: left; word-break: break-word;
   }
-  .doc-row--mestra { grid-template-columns: minmax(0,0.95fr) minmax(0,0.45fr) minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,0.9fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr) minmax(0,0.8fr); }
-  .doc-row--rev { grid-template-columns: minmax(0,0.85fr) minmax(0,0.45fr) minmax(0,1.2fr) minmax(0,2.0fr) minmax(0,0.9fr) minmax(0,0.85fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr); }
+  /* .doc-row--mestra/--rev (grid-template-columns) vivem na seção "CLASSES DE GRID RESTANTES". */
   .doc-c-codigo { font-weight: 700; color: var(--text-main); font-size: 13px; }
   .doc-c-titulo { font-weight: 500; font-size: 13px; color: var(--text-main); }
   .doc-c-sec { font-size: 13px; color: var(--text-secondary); }
@@ -678,11 +655,7 @@
   /* Lista de Membros (Kanban) — migrado de inline (Tarefa 3, parte 5). #111827 e
      #f3f4f6 (borda) literais. Opacidade de inativo via classe modificadora (linha inteira). */
   .membro-row {
-    display: grid; grid-template-columns: 2fr 1.5fr 2fr 2fr 100px;
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
+    grid-template-columns: 2fr 1.5fr 2fr 2fr 100px;
   }
   .membro-row--inativa { opacity: 0.6; }
   .member-c-name { font-weight: 600; display: flex; align-items: center; gap: 12px; }
@@ -692,11 +665,7 @@
   /* Escala semanal (lista) — migrado de inline (Tarefa 3, parte 5b). Células de dia,
      badges de presencial e horários seguem inline (dinâmicos). #111827/#f3f4f6 literais. */
   .escala-row {
-    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 70px;
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 70px;
   }
   .escala-c-name { display: flex; align-items: center; gap: 12px; text-align: left; }
   .escala-c-nome { font-weight: 500; font-size: 13px; color: var(--text-main); }
@@ -725,18 +694,10 @@
      período (destaque "em andamento") seguem inline (condicionais/dinâmicas). #111827 literal.
      Reaproveita .membro-row e .escala-row (mesmo layout de grid da lista de Membros/Escala). */
   .vt-row {
-    display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.8fr);
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
+    grid-template-columns: minmax(0,2fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.8fr);
   }
   .ferias-row {
-    display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px;
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px;
   }
   .ferias-c-name { display: flex; align-items: center; gap: 10px; }
   .ferias-c-nome { font-weight: 600; font-size: 13px; color: #111827; }
@@ -746,11 +707,7 @@
      de propósito: _gridRowsParaPdf copia o style inline de cada célula para o <td>
      do PDF; convertê-las deixaria as células sem estilo no PDF. (Tarefa 3, parte 6.) */
   .arq-row {
-    display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 70px;
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
+    grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 70px;
   }
   /* Matriz de Riscos (lista #lista-riscos) — SÓ o container vira classe. As CÉLULAS
      ficam inline: _linhasMatrizParaPdf_ copia o style inline de cada célula para o
@@ -758,27 +715,16 @@
      foram migrados de propósito (usam clone.innerHTML → tudo vai verbatim ao PDF).
      (Tarefa 3, parte 7.) */
   .risco-row {
-    display: grid; grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 110px;
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
+    grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 110px;
   }
 
   /* ===== CLASSES DE GRID RESTANTES ===== */
   .unid-row {
-    display: grid; grid-template-columns: 80px minmax(0,2fr) minmax(0,1.5fr) minmax(0,1.5fr) 70px;
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
+    grid-template-columns: 80px minmax(0,2fr) minmax(0,1.5fr) minmax(0,1.5fr) 70px;
   }
   .log-row {
-    display: grid; grid-template-columns: 1.3fr 1fr 1.6fr 1.2fr 3fr;
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
+    grid-template-columns: 1.3fr 1fr 1.6fr 1.2fr 3fr;
+    word-break: break-word;
   }
   .doc-row--mestra {
     display: grid; grid-template-columns: 110px 40px 180px minmax(0,1fr) 100px 90px 90px 75px 85px 140px 110px 135px;
@@ -795,11 +741,8 @@
     border: none; box-shadow: var(--shadow-sm);
   }
   .cap-row {
-    display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 100px 90px 90px 80px minmax(0,1.2fr) 70px 70px;
-    gap: 16px; align-items: center;
-    background-color: var(--bg-card);
-    padding: 16px 20px; border-radius: var(--radius-lg);
-    border: none; box-shadow: var(--shadow-sm);
+    grid-template-columns: minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 100px 90px 90px 80px minmax(0,1.2fr) 70px 70px;
+    word-break: break-word;
   }
   .risco-c-nome {
     display: inline-block; font-weight: 600; color: var(--text-main);
@@ -810,9 +753,6 @@
   .risco-c-text { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
   .risco-c-nivel { white-space: nowrap; }
   .risco-c-acoes { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
-  .data-table tbody tr.row-warning td { background-color: var(--warning-bg) !important; }
-  .data-table tbody tr.row-cancelled td { background-color: var(--bg-panel) !important; opacity: 0.6; }
-  .group-row td { background: var(--bg-panel) !important; font-weight: 700; color: var(--text-secondary); font-size: var(--fs-sm); }
   /* Sticky Header para Listagens Grandes */
   #view-members, #view-escala, #view-ferias, #view-archived, #view-unidades, 
   #view-doc-lista, #view-doc-revisoes, #view-logs, #view-capacitacoes-lista { 
@@ -836,10 +776,6 @@
     border-bottom: 1px solid var(--border-color); z-index: 11;
   }
 
-  .archived-table { table-layout: fixed; }
-  .archived-table td:first-child {
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
   .cell-actions { display: flex; gap: 6px; align-items: center; justify-content: center; }
   .msg-empty { display: flex; justify-content: center; align-items: center; width: 100%; color: var(--text-muted); padding: 60px 20px 36px; font-size: var(--fs-base); text-align: center; position: sticky; left: 0; }
   /* Variante compacta (dropdown/checklist pequeno, ex.: lista de participantes sem membros). */
@@ -887,30 +823,19 @@
   .icon-blue, #view-indicadores .c-blue { background: var(--info-border); color: var(--info); }
   .icon-green, #view-indicadores .c-green { background: var(--success-border); color: var(--success); }
   .icon-red { background: var(--danger-border); color: var(--danger); }
-  .icon-purple, #view-indicadores .c-purple { background: var(--purple-border); color: var(--purple); }
-  .icon-yellow, #view-indicadores .c-orange { background: var(--warning-border); color: var(--warning); }
+  #view-indicadores .c-purple { background: var(--purple-border); color: var(--purple); }
+  .icon-yellow { background: var(--warning-border); color: var(--warning); }
   /* Céu — usada em KPIs de contagem "neutra" (Total), pra não repetir a cor de Info/Lavanda (Em Andamento). */
   .icon-sky { background: #CDE8FA; color: #3D8FC4; }
   .kpi-card > div:last-child { display: flex; flex-direction: column; min-width: 0; }
   .kpi-label { order: 2; font-size: var(--fs-2xs); font-weight: 500; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .kpi-value { order: 1; font-size: 17px; font-weight: 700; color: var(--text-main); letter-spacing: -0.3px; line-height: 1.15; }
 
-  /* ===== DASHBOARD ===== */
-  .dashboard-grid { display: flex; flex-direction: column; gap: 20px; }
-  .dash-row { display: grid; gap: 20px; break-inside: avoid; page-break-inside: avoid; }
-  .dash-row.two-cols { grid-template-columns: 1fr 1fr; }
-  .dash-row.two-cols-table { grid-template-columns: 1fr 1.3fr; }
-  .dash-row.one-col { grid-template-columns: 1fr; }
-  .chart-box { background: var(--bg-card); padding: 20px 22px 22px; border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-xs); page-break-inside: avoid; break-inside: avoid; }
-  .chart-box h3 { font-size: var(--fs-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; margin-bottom: 18px; }
-  .chart-wrap { position: relative; height: 260px; width: 100%; display: flex; justify-content: center; align-items: center; }
+  /* Painel de indicadores legado (Dashboard) foi substituído pelo painel
+     #view-indicadores .tl-*; .dashboard-grid/.dash-row/.chart-box/.chart-wrap/
+     .upcoming-wrap/.upcoming-table/.urgent-date removidos por não terem
+     nenhum uso remanescente (confirmado em auditoria). */
   .kpi-icon svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .upcoming-wrap { overflow-y: auto; max-height: 210px; }
-  .upcoming-table { width: 100%; border-collapse: collapse; text-align: left; }
-  .upcoming-table th { padding: 9px 8px; font-size: var(--fs-xs); color: var(--text-secondary); border-bottom: 1px solid var(--border-color); font-weight: 600; }
-  .upcoming-table td { padding: 10px 8px; font-size: var(--fs-sm); border-bottom: 1px solid var(--border-subtle); color: var(--text-main); vertical-align: middle; }
-  .upcoming-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
-  .urgent-date { color: var(--danger); font-weight: 700; }
   .tag-badge { border-radius: var(--radius-xs); padding: 3px 8px; font-size: var(--fs-2xs); font-weight: 700; display: inline-block; }
 
   /* ===== FORMULÁRIOS ===== */
@@ -997,20 +922,8 @@
   @media (prefers-reduced-motion: reduce) {
     .btn-pdf-download.loading::after { animation-duration: 2.5s; }
   }
-  .btn-outline { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-color); cursor: pointer; font-weight: 600; padding: 8px 16px; border-radius: var(--radius-sm); font-size: var(--fs-sm); display: inline-flex; align-items: center; gap: 7px; transition: background var(--transition-fast), border-color var(--transition-fast); font-family: inherit; }
-  .btn-outline:hover { background: var(--bg-hover); border-color: var(--border-strong); }
-  .action-btn-main { width: 100%; padding: 13px; background: #2E323C; color: white; border: none; border-radius: var(--radius-md); font-size: var(--fs-md); font-weight: 700; cursor: pointer; transition: background var(--transition-fast); margin-top: 24px; font-family: inherit; box-shadow: none; }
-  .action-btn-main:hover { background: var(--primary-hover); }
-  .action-btn-main:disabled { background: var(--text-muted); cursor: not-allowed; box-shadow: none; }
-
   /* ===== STATUS BADGES ===== */
   .status-badge { padding: 4px 11px; border-radius: var(--radius-pill); font-weight: 600; font-size: var(--fs-xs); display: inline-block; white-space: normal; text-align: center; }
-  .version-badge {
-    padding: 3px 10px; border-radius: var(--radius-pill); font-weight: 700; font-size: var(--fs-xs);
-    background: var(--bg-panel); color: var(--text-secondary); border: 1px solid var(--border-color);
-    cursor: pointer; font-family: inherit; transition: background var(--transition-fast), border-color var(--transition-fast);
-  }
-  .version-badge:hover { background: var(--bg-hover); border-color: var(--border-strong); }
 
   /* ===== MATRIZ DE RISCOS ===== */
   .matrix-table { width: 100%; border-collapse: separate; border-spacing: 4px; break-inside: avoid; page-break-inside: avoid; }
@@ -1090,9 +1003,6 @@
   
   .pdf-email-list { margin-bottom: 8px; height: 140px; overflow-y: auto; padding: 4px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-card); }
   .btn-fixed { width: 100px; justify-content: center; }
-  .w-100 { width: 100%; }
-  .w-100px { width: 100px !important; }
-  .mb-14 { margin-bottom: 14px; }
 
   /* Modal de tarefa (Kanban) */
   .card-detail-modal { background-color: var(--bg-panel); padding: 0; width: 780px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; position: relative; }
@@ -1172,12 +1082,8 @@
   .selected-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
   .assignee-tag { background: var(--border-color); color: var(--text-main); border-radius: var(--radius-xs); padding: 3px 8px; font-size: var(--fs-2xs); font-weight: 600; }
   .label-chip { color: #fff; border-radius: var(--radius-xs); padding: 3px 9px; font-size: var(--fs-2xs); font-weight: 600; line-height: 1.3; letter-spacing: .2px; }
-  .label-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
   .card-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
   .card-labels .label-chip { padding: 2px 7px; font-size: 9.5px; }
-
-  /* ===== STATUS MSG / STATUS BAR ===== */
-  .status-msg { margin-top: 14px; text-align: center; font-weight: 600; font-size: var(--fs-base); min-height: 20px; }
 
   /* ===== PDF ===== */
   .pdf-header { display: none; margin-bottom: 26px; padding: 14px 20px; background: var(--bg-panel); border-left: 4px solid var(--primary); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
@@ -1224,7 +1130,6 @@
     .sidebar.collapsed .nav-group-items.open { display: block; }
     .modal-split-layout { flex-direction: column; padding: 16px; }
     .modal-sidebar-actions { width: 100%; border-top: 1px solid var(--border-color); padding-top: 16px; }
-    .dash-row.two-cols, .dash-row.two-cols-table { grid-template-columns: 1fr; }
     .form-row { flex-direction: column; }
   }
 
@@ -1257,7 +1162,7 @@
     font-size: var(--fs-xs); color: var(--text-muted); margin-bottom: 8px;
   }
   .escala-member-pill {
-    display: inline-block; background: #35598D; color: #fff;
+    display: inline-block; background: var(--color-presencial-bg); color: var(--color-presencial-text);
     border-radius: var(--radius-pill); padding: 2px 10px; font-size: var(--fs-xs); font-weight: 600;
     margin: 2px auto;
   }
@@ -1269,8 +1174,8 @@
     margin: 2px 4px 2px 0; white-space: nowrap; line-height: 1.35;
   }
   .tag-periodo.agora {
-    background: #E2EBF8; border: 1px solid #B8CBE3; border-radius: 4px;
-    padding: 2px 6px; font-weight: 600; color: #25497F;
+    background: var(--color-agora-bg); border: 1px solid #B8CBE3; border-radius: 4px;
+    padding: 2px 6px; font-weight: 600; color: var(--color-agora-text);
   }
   .tag-periodo.abono-past {
     background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: 4px;
@@ -1286,7 +1191,7 @@
     background: var(--success-bg); color: var(--success-text); font-size: 12px; font-weight: 700;
   }
   .escala-check.presencial {
-    background: #E2EBF8; color: #25497F;
+    background: var(--color-agora-bg); color: var(--color-agora-text);
   }
   .escala-check svg { stroke: currentColor; }
   .escala-vazio { color: var(--border-strong); font-size: var(--fs-base); }
@@ -1297,7 +1202,7 @@
   /* Selo "Inativo" (membro/unidade desativado). */
   .tag-badge--inativo { font-size: 10px; margin-left: 4px; text-decoration: none; }
   /* Variante do .tag-badge para nomes de presencial (Escala Semanal, tabela). */
-  .tag-badge--presencial { background: #35598D; color: #fff; font-size: 11px; margin-right: 2px; display: inline-block; margin-bottom: 2px; }
+  .tag-badge--presencial { background: var(--color-presencial-bg); color: var(--color-presencial-text); font-size: 11px; margin-right: 2px; display: inline-block; margin-bottom: 2px; }
 
   /* Avatar de membro — a cor vem de uma das classes .avatar-pastel-N abaixo,
      escolhida por corPastelPorNome() (JS_Utilitarios.html) conforme o nome. */
@@ -1363,6 +1268,15 @@
 
   /* ==========================================================================
      PAINEL DE INDICADORES — herda os mesmos tokens globais do sistema
+
+     Convenção de nomes: os componentes deste painel usam o prefixo `tl-`
+     (.tl-kpi-card, .tl-kpi-grid, .tl-section-title etc.), sempre com o
+     seletor `#view-indicadores` na frente, propositalmente separados dos
+     componentes genéricos sem prefixo (.kpi-card, .section-title) usados no
+     resto do app. Isso é intencional, não duplicação: permite alterar o
+     visual de um painel específico (cores, espaçamento, cards) sem afetar o
+     design system compartilhado, e vice-versa. Ver .kpi-fill-* acima, que é
+     um caso deliberado de reuso entre as duas famílias.
      ========================================================================== */
   #view-indicadores {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -1373,11 +1287,8 @@
     min-height: calc(100vh - 100px);
   }
 
-  #view-indicadores .tl-header { margin-bottom: 32px; }
-  #view-indicadores .tl-header h1 { font-size: var(--fs-2xl); font-weight: 700; color: var(--text-main); margin: 0 0 4px 0; letter-spacing: -0.3px; }
-  #view-indicadores .tl-header h2 { font-size: var(--fs-xl); font-weight: 600; color: var(--primary); margin: 0 0 8px 0; }
-  #view-indicadores .tl-header .tl-sub { font-size: var(--fs-base); color: var(--text-muted); }
-
+  /* .tl-header (título antigo do painel) removido — o cabeçalho hoje usa
+     .view-header/.page-title compartilhados com o resto do app. */
   #view-indicadores .tl-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 8px; }
   #view-indicadores .tl-kpi-card {
     background: var(--bg-card); border-radius: var(--radius-md); padding: 10px 14px;
@@ -1498,22 +1409,6 @@
     background: #f8fafc;
     border-style: dashed;
     opacity: 0.8;
-  }
-  .plan-version-context {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: var(--primary-light);
-    color: var(--primary);
-    padding: 4px 10px; border-radius: 6px;
-    font-size: 12px; font-weight: 600;
-    margin-bottom: 12px;
-  }
-  .plan-version-context.inactive {
-    background: #e2e8f0; color: var(--text-secondary);
-  }
-  .plan-grid {
-    display: grid;
-    grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.85fr);
-    gap: 16px; font-size: 13px;
   }
   .plan-field-label {
     font-size: 11px; font-weight: 600; color: var(--text-muted);

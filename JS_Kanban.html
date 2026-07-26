@@ -404,9 +404,13 @@ function abrirModalTarefa(status) {
   if($id('taskStatusDisplay')) $id('taskStatusDisplay').innerText=status;
   if($id('taskPriority')) $id('taskPriority').value='';
   if($id('taskNewComment')) $id('taskNewComment').value='';
+  // btn-delete-task/btn-archive-task usam style.display (não classList) de propósito:
+  // .sidebar-action-btn é <button> (padrão nativo inline-block), mas o JS força
+  // 'block' explicitamente para evitar o espaço de whitespace inline entre botões
+  // empilhados — um .hidden genérico revelaria inline-block, não block.
   if($id('btn-delete-task')) $id('btn-delete-task').style.display='none';
   if($id('btn-archive-task')) { const b=$id('btn-archive-task'); b.style.display='none'; b.disabled=false; b.innerText='Arquivar'; }
-  if($id('sidebar-add-title')) $id('sidebar-add-title').style.display='block';
+  if($id('sidebar-add-title')) $id('sidebar-add-title').classList.remove('hidden');
   currentActivities=[]; renderActividades();
   populateAssignees([]);
   populateLabels([]);
@@ -428,7 +432,7 @@ function abrirEditarTarefa(task) {
     b.disabled=false; b.innerText='Arquivar';
     b.style.display = (task.status === 'Concluído') ? 'block' : 'none';
   }
-  if($id('sidebar-add-title')) $id('sidebar-add-title').style.display='none';
+  if($id('sidebar-add-title')) $id('sidebar-add-title').classList.add('hidden');
   let sel=[]; try{ sel=JSON.parse(task.assigneeId); if(!Array.isArray(sel)) sel=[task.assigneeId]; }catch(e){ sel=task.assigneeId?[String(task.assigneeId)]:[];}
   populateAssignees(sel);
   populateLabels(parseLabels(task.labels));
