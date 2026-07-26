@@ -4,36 +4,31 @@
      Incluido via <?!= include_('View_Pessoas'); ?>
      ============================================================ -->
       <!-- ======================== MÓDULO 1: MEMBROS ======================== -->
-      <section id="view-members" class="view-section">
-        <!-- Cabeçalho Personalizado -->
-        <header
-          style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 24px 28px 0; flex-shrink: 0;">
-          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Membros</div>
+      <section id="view-members" class="view-section">        <!-- Cabeçalho Personalizado -->
+        <header class="view-header">
+          <div class="page-title mb-0">Membros</div>
 
-          <div style="display: flex; align-items: center; gap: 20px;">
-            <select id="f-membros-status" onchange="renderMembers()"
-              style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
+          <div class="flex-row items-center gap-16">
+            <select id="f-membros-status" onchange="renderMembers()" class="filter-select">
               <option value="ativos">Ativos</option>
               <option value="inativos">Inativos</option>
               <option value="todos">Todos</option>
             </select>
-            <button class="btn-create" id="btn-novo-membro" type="button"
-              style="display: flex; align-items: center; justify-content: center; background-color: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: 9999px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <span style="font-size: 16px; margin-right: 6px; font-weight: 500;">+</span> Novo Membro
+            <button class="btn-create" id="btn-novo-membro" type="button">
+              <span class="btn-create-icon">+</span> Novo Membro
             </button>
           </div>
         </header>
 
         <!-- Lista de Membros (Grid Header + Conteúdo) -->
-        <div style="display: flex; flex-direction: column; flex: 1; overflow: auto; scrollbar-gutter: stable; padding: 0 28px 28px;">
+        <div class="view-content" style="padding-bottom: 28px; scrollbar-gutter: stable;">
           <div style="min-width: 900px; display: flex; flex-direction: column;">
-            <div
-              style="position: sticky; top: 0; z-index: 2; background: var(--bg-app); display: grid; grid-template-columns: 2fr 1.5fr 2fr 2fr 100px; gap: 16px; padding: 8px 20px; border: 1px solid transparent; font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+            <div class="list-head membro-row text-left">
               <div>Nome do Membro</div>
               <div>Função / Cargo</div>
               <div>E-mail Funcional</div>
               <div>E-mail Pessoal</div>
-              <div style="text-align:center;">Ações</div>
+              <div class="text-center">Ações</div>
             </div>
             <div id="members-list"
               style="display: flex; flex-direction: column; gap: 8px;">
@@ -45,8 +40,8 @@
 
       <section id="view-escala" class="view-section">
         <!-- Cabeçalho Personalizado -->
-        <header style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 24px 28px 0; flex-shrink: 0;">
-          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Escala Semanal</div>
+        <header class="view-header mb-24">
+          <div class="page-title mb-0">Escala Semanal</div>
         </header>
 
         <div class="escala-overview" id="escala-grid" style="padding: 0 28px; margin-bottom: 16px; flex-shrink: 0;"></div>
@@ -54,7 +49,7 @@
         <!-- Lista de Escala (Grid Header + Conteúdo) -->
         <div class="list-scroll x" style="padding: 0 28px;">
           <div style="min-width: 950px; display: flex; flex-direction: column;">
-            <div class="list-head" style="grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 70px; text-align: center;">
+            <div class="list-head escala-row text-center">
               <div style="text-align: left;">Membro</div>
               <div>Seg</div>
               <div>Ter</div>
@@ -63,7 +58,7 @@
               <div>Sex</div>
               <div>Sáb</div>
               <div>Presencial</div>
-              <div style="text-align:center;">Ações</div>
+              <div class="text-center">Ações</div>
             </div>
             <div id="lista-escala" class="list-body">
               <div class="msg-empty">A carregar...</div>
@@ -74,26 +69,24 @@
 
       <section id="view-ferias" class="view-section">
         <!-- Cabeçalho Personalizado -->
-        <header style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 24px 28px 0; flex-shrink: 0;">
-          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Afastamentos</div>
+        <header class="view-header mb-24">
+          <div class="page-title mb-0">Afastamentos</div>
           
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <select id="f-ferias-ano" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;"></select>
-              <select id="f-ferias-membro" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
+          <div class="flex-row items-center gap-16">
+            <div class="flex-row items-center gap-8">
+              <select id="f-ferias-ano" class="filter-select"></select>
+              <select id="f-ferias-membro" class="filter-select">
                 <option value="">Todos os Membros</option>
               </select>
             </div>
             
-            <button class="btn-create" id="btn-add-ano-afastamento" type="button"
-              style="display: flex; align-items: center; justify-content: center; background-color: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: 9999px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
-              title="Cadastrar um novo ano para lançar afastamentos com antecedência">
-              <span style="font-size: 16px; margin-right: 6px; font-weight: 500;">+</span> Novo Ano
+            <button class="btn-create" id="btn-add-ano-afastamento" type="button" title="Cadastrar um novo ano para lançar afastamentos com antecedência">
+              <span class="btn-create-icon">+</span> Novo Ano
             </button>
-            <span id="ano-novo-inline" style="display:none; align-items:center; gap:8px;">
-              <input type="text" id="input-novo-ano" style="padding: 10px 16px; border: none; border-radius: 9999px; background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0,0,0,0.05); font-size: 13px; color: var(--text-main); width: 100px; outline: none;" inputmode="numeric" maxlength="4" placeholder="Ano (Ex: 2027)">
-              <button id="btn-confirmar-novo-ano" type="button" style="background-color: var(--success); color: white; border: none; padding: 10px 16px; border-radius: 9999px; font-size: 13px; font-weight: 500; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Adicionar</button>
-              <button id="btn-cancelar-novo-ano" type="button" style="background-color: var(--danger); color: white; border: none; padding: 10px 16px; border-radius: 9999px; font-size: 13px; font-weight: 500; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Cancelar</button>
+            <span id="ano-novo-inline" class="flex-row items-center gap-8" style="display:none;">
+              <input type="text" id="input-novo-ano" class="field-input" style="width: 100px;" inputmode="numeric" maxlength="4" placeholder="Ex: 2027">
+              <button id="btn-confirmar-novo-ano" type="button" class="btn btn-primary">Adicionar</button>
+              <button id="btn-cancelar-novo-ano" type="button" class="btn btn-secondary">Cancelar</button>
             </span>
           </div>
         </header>
@@ -101,7 +94,7 @@
         <!-- Lista de Afastamentos (Grid Header + Conteúdo) -->
         <div class="list-scroll x" style="padding: 0 28px;">
           <div style="min-width: 1000px; display: flex; flex-direction: column;">
-            <div class="list-head" style="grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px; text-align: left;">
+            <div class="list-head ferias-row text-left">
               <div>Membro</div>
               <div>Férias 1</div>
               <div>Férias 2</div>
@@ -121,7 +114,7 @@
 
   <!-- Modal: Membro -->
   <div id="modal-member" class="modal-overlay">
-    <div class="modal-box" style="max-width:440px;">
+    <div class="modal-box sm">
       <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-member"
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title" id="modal-member-title">Ficha de Membro</h3>
@@ -131,9 +124,9 @@
       <label class="field-label" for="memberRole">Função / Cargo</label><input type="text" id="memberRole"
         class="field-input">
       <div class="form-row" style="margin-top:0;">
-        <div style="flex:1;"><label class="field-label" for="memberEmail">E-mail Funcional</label><input type="email"
+        <div class="flex-1"><label class="field-label" for="memberEmail">E-mail Funcional</label><input type="email"
             id="memberEmail" class="field-input"></div>
-        <div style="flex:1;"><label class="field-label" for="memberEmailPessoal">E-mail Pessoal</label><input
+        <div class="flex-1"><label class="field-label" for="memberEmailPessoal">E-mail Pessoal</label><input
             type="email" id="memberEmailPessoal" class="field-input"></div>
       </div>
       <div class="modal-footer">
@@ -145,7 +138,7 @@
 
   <!-- Modal: Editar Escala Semanal -->
   <div id="modal-escala" class="modal-overlay">
-    <div class="modal-box" style="max-width:540px;">
+    <div class="modal-box md">
       <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-escala"
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title">Escala Semanal</h3>
@@ -256,7 +249,7 @@
 
   <!-- Modal: Registrar / Editar Afastamento -->
   <div id="modal-ferias" class="modal-overlay">
-    <div class="modal-box" style="max-width: 600px;">
+    <div class="modal-box lg">
       <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-ferias"
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title" id="modal-ferias-title">Afastamentos</h3>
@@ -272,9 +265,9 @@
         </h4>
         <div id="ef-ferias-block1" class="afast-block" style="display:none;">
           <div class="form-row" style="gap: 10px; align-items: flex-end;">
-            <div style="flex: 1;"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 1 -
+            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 1 -
                 Início</label><input type="date" id="ef-ferias-ini1" class="field-input"></div>
-            <div style="flex: 1;"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 1 -
+            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 1 -
                 Fim</label><input type="date" id="ef-ferias-fim1" class="field-input"></div>
             <button type="button" class="btn-rem-afast" data-afast-acao="rem-ferias" data-n="1"
               title="Remover período">&times;</button>
@@ -282,9 +275,9 @@
         </div>
         <div id="ef-ferias-block2" class="afast-block" style="display:none;">
           <div class="form-row" style="gap: 10px; align-items: flex-end;">
-            <div style="flex: 1;"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 2 -
+            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 2 -
                 Início</label><input type="date" id="ef-ferias-ini2" class="field-input"></div>
-            <div style="flex: 1;"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 2 -
+            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 2 -
                 Fim</label><input type="date" id="ef-ferias-fim2" class="field-input"></div>
             <button type="button" class="btn-rem-afast" data-afast-acao="rem-ferias" data-n="2"
               title="Remover período">&times;</button>
@@ -292,9 +285,9 @@
         </div>
         <div id="ef-ferias-block3" class="afast-block" style="display:none;">
           <div class="form-row" style="gap: 10px; align-items: flex-end;">
-            <div style="flex: 1;"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 3 -
+            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 3 -
                 Início</label><input type="date" id="ef-ferias-ini3" class="field-input"></div>
-            <div style="flex: 1;"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 3 -
+            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 3 -
                 Fim</label><input type="date" id="ef-ferias-fim3" class="field-input"></div>
             <button type="button" class="btn-rem-afast" data-afast-acao="rem-ferias" data-n="3"
               title="Remover período">&times;</button>
@@ -313,7 +306,7 @@
             <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#b45309;"></span>
             Abonos (até 5 datas)
           </h4>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+          <div class="grid-2-cols">
             <div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Data 1</label><input type="date"
                 id="ef-abono1" class="field-input" style="font-size:11px;padding:4px;"></div>
             <div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Data 2</label><input type="date"

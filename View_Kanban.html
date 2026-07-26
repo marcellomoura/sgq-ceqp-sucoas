@@ -6,12 +6,12 @@
       <!-- ======================== MÓDULO 1: KANBAN ======================== -->
       <section id="view-kanban" class="view-section kanban-view">
         <!-- Cabeçalho Personalizado -->
-        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box;">
-          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Kanban</div>
+        <header class="view-header">
+          <div class="page-title mb-0">Kanban</div>
           
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <select id="memberFilterSelect" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
+          <div class="flex-row items-center gap-16">
+            <div class="flex-row items-center gap-8">
+              <select id="memberFilterSelect" class="filter-select">
                 <option value="">Todos os Membros</option>
               </select>
             </div>
@@ -50,32 +50,32 @@
       <!-- ======================== MÓDULO 1: ARQUIVADOS ======================== -->
       <section id="view-archived" class="view-section compact-view print-target">
         <!-- Cabeçalho Personalizado -->
-        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box;">
-          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Cartões Arquivados</div>
+        <header class="view-header">
+          <div class="page-title mb-0">Cartões Arquivados</div>
           
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <select id="f-archived-membro" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
+          <div class="flex-row items-center gap-16">
+            <div class="flex-row items-center gap-8">
+              <select id="f-archived-membro" class="filter-select">
                 <option value="">Todos os Membros</option>
               </select>
-              <select id="archivedYearFilter" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;"></select>
-              <div style="display: flex; align-items: center; padding: 0 4px; border-radius: 9999px; background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);">
-                <input type="date" id="f-archived-data-ini" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
-                <span style="color:var(--text-muted); font-size:12px; font-weight: 500;">até</span>
-                <input type="date" id="f-archived-data-fim" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
+              <select id="archivedYearFilter" class="filter-select"></select>
+              <div class="filter-date-group">
+                <input type="date" id="f-archived-data-ini" class="filter-date-input">
+                <span class="filter-date-sep">até</span>
+                <input type="date" id="f-archived-data-fim" class="filter-date-input">
               </div>
             </div>
             
             <div style="display: flex; align-items: center; gap: 8px;">
-              <button id="btn-pdf-archived" class="btn-pdf-download" type="button" title="Baixar PDF" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background-color: var(--bg-card); border-radius: 50%; border: none; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); color: var(--text-secondary);">
-                <svg style="pointer-events: none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <button id="btn-pdf-archived" class="btn-pdf-download btn-icon" type="button" title="Baixar PDF">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
               </button>
-              <button id="btn-email-archived" type="button" title="Enviar por E-mail" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background-color: var(--bg-card); border-radius: 50%; border: none; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); color: var(--text-secondary);">
-                <svg style="pointer-events: none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <button id="btn-email-archived" type="button" class="btn-icon" title="Enviar por E-mail" style="width: 40px; height: 40px; border-radius: 50%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                   <polyline points="22,6 12,13 2,6" />
                 </svg>
@@ -97,14 +97,14 @@
         <!-- Lista de Cartões (Grid Header + Conteúdo) -->
         <div class="list-scroll x" style="padding: 0 28px;">
           <div style="min-width: 850px; display: flex; flex-direction: column;">
-            <div class="list-head" style="grid-template-columns: 1.5fr 1.5fr 1.6fr 1fr 1fr 1.0fr 70px; text-align: left;">
+            <div class="list-head arq-row text-left">
               <div>Cartão</div>
               <div>Responsável(is)</div>
-              <div style="text-align:center;">Prioridade</div>
-              <div style="text-align:center;">Início</div>
-              <div style="text-align:center;">Conclusão</div>
-              <div style="text-align:center;">Tempo de Execução</div>
-              <div class="no-print" style="text-align:center;">Ações</div>
+              <div class="text-center">Prioridade</div>
+              <div class="text-center">Início</div>
+              <div class="text-center">Conclusão</div>
+              <div class="text-center">Tempo de Execução</div>
+              <div class="no-print text-center">Ações</div>
             </div>
             <div id="archived-list" class="list-body">
               <div class="msg-empty">Nenhum cartão arquivado.</div>
@@ -116,7 +116,7 @@
 
   <!-- Modal: Tarefa (Kanban) -->
   <div id="modal-task" class="modal-overlay">
-    <div class="modal-box wide card-detail-modal" style="padding:0;">
+    <div class="modal-box wide card-detail-modal no-padding">
       <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-task"
           aria-label="Fechar">&times;</button></div>
       <div class="modal-split-layout">

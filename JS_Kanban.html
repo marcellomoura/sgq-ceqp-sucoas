@@ -37,7 +37,7 @@ function renderMembers() {
       ? iconBtn('check', 'reativar-membro', 'Reativar membro', `data-idx="${i}"`)
       : `${iconBtn('edit','edit-membro','Editar',`data-idx="${i}"`)}${iconBtn('ban','inativar-membro','Inativar membro',`data-idx="${i}"`)}`;
       
-    return `<div class="grid-row-hover member-row${inativo ? ' member-row--inativa' : ''}">
+    return `<div class="grid-row-hover membro-row${inativo ? ' membro-row--inativa' : ''}">
       <div class="member-c-name">
         <div class="member-avatar ${corPastelPorNome(m.name)}" style="width: 38px; height: 38px; font-size: 13px;">${esc(iniciaisMembro(m.name))}</div>
         <span class="member-c-name-txt">${esc(m.name)}${inativo?' '+badgeInativo():''}</span>
@@ -223,7 +223,7 @@ function renderArquivados(resetPage = false) {
   }
 
   if (!arquivados.length) {
-    tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhum cartão arquivado encontrado.</div>';
+    tbody.innerHTML = '<div class="msg-empty">Nenhum cartão arquivado encontrado.</div>';
     renderPaginacao('paginacao-archived', { totalRegistros: 0 });
     return;
   }
@@ -264,13 +264,13 @@ function renderArquivados(resetPage = false) {
     const [prioBg, prioCor] = CORES_STATUS[task.priority];
 
     return `<div class="grid-row-hover arq-row">
-      <div style="font-weight:600;color:#111827;font-size:13px;" title="${esc(task.title)}">${esc(task.title)}</div>
-      <div style="font-size:13px;">${esc(nomes)}</div>
-      <div style="text-align:center;"><span class="tag-badge" style="background:${prioBg};color:${prioCor};">${esc(task.priority === 'Media' ? 'Média' : task.priority)}</span></div>
-      <div style="text-align:center;font-size:13px;">${fmtBr(task.startDate)}</div>
-      <div style="text-align:center;font-size:13px;">${fmtBr(task.completionDate)}</div>
-      <div style="text-align:center;font-weight:600;color:#4b5563;font-size:13px;">${duracao}</div>
-      <div class="no-print" style="display:flex; justify-content:center;"><button class="btn-icon" title="Ver Atividades" data-acao="hist-task-arq" data-id="${esc(task.id)}">${ICON.history}</button></div>
+      <div class="font-semibold text-main font-13" title="${esc(task.title)}">${esc(task.title)}</div>
+      <div class="font-13">${esc(nomes)}</div>
+      <div class="text-center"><span class="tag-badge" style="background:${prioBg};color:${prioCor};">${esc(task.priority === 'Media' ? 'Média' : task.priority)}</span></div>
+      <div class="text-center font-13">${fmtBr(task.startDate)}</div>
+      <div class="text-center font-13">${fmtBr(task.completionDate)}</div>
+      <div class="text-center font-semibold text-secondary font-13">${duracao}</div>
+      <div class="no-print flex-row justify-center"><button class="btn-icon" title="Ver Atividades" data-acao="hist-task-arq" data-id="${esc(task.id)}">${ICON.history}</button></div>
     </div>`;
   }).join('');
 }
@@ -774,8 +774,8 @@ function graficosKanbanPdfHtml() {
 // só removendo a coluna de Ações (classe .no-print, ver _tbodyParaPdf).
 function montarHtmlArquivadosPdf() {
   return `<table><thead><tr>
-    <th>Cartão</th><th>Responsável(is)</th><th style="text-align:center;">Prioridade</th>
-    <th>Início</th><th>Conclusão</th><th style="text-align:center;">Tempo de Execução</th>
+    <th>Cartão</th><th>Responsável(is)</th><th class="text-center">Prioridade</th>
+    <th>Início</th><th>Conclusão</th><th class="text-center">Tempo de Execução</th>
   </tr></thead><tbody>${_gridRowsParaPdf('archived-list')}</tbody></table>`;
 }
 

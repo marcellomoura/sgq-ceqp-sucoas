@@ -6,15 +6,15 @@
       <!-- ======================== MÓDULO 3: CADASTRO DOC ======================== -->
       <!-- ======================== MÓDULO 3: LISTA MESTRA ======================== -->
       <section id="view-doc-lista" class="view-section">
-        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box;">
-          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Lista Mestra de Documentos</div>
+        <header class="view-header">
+          <div class="page-title mb-0">Lista Mestra de Documentos</div>
           
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <select id="f-doc-unidade" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
+          <div class="flex-row items-center gap-16">
+            <div class="flex-row items-center gap-8">
+              <select id="f-doc-unidade" class="filter-select">
                 <option value="">Todas Unidades</option>
               </select>
-              <select id="f-doc-tipo" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
+              <select id="f-doc-tipo" class="filter-select">
                 <option value="">Todos Tipos</option>
                 <option>Instrução de Trabalho</option>
                 <option>Plano de Fiscalização</option>
@@ -25,7 +25,7 @@
                 <option>Guia</option>
                 <option>Formulário</option>
               </select>
-              <select id="f-doc-status" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
+              <select id="f-doc-status" class="filter-select">
                 <option value="">Todos Status</option>
                 <option>Em Elaboração</option>
                 <option>Vigente</option>
@@ -34,8 +34,8 @@
               </select>
             </div>
             
-            <button class="btn-create" id="btn-novo-doc" type="button" style="display: flex; align-items: center; justify-content: center; background-color: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: 9999px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <span style="font-size: 16px; margin-right: 6px; font-weight: 500;">+</span> Novo Documento
+            <button class="btn-create" id="btn-novo-doc" type="button">
+              <span class="btn-create-icon">+</span> Novo Documento
             </button>
           </div>
         </header>
@@ -99,19 +99,19 @@
         </div>
         <div class="list-scroll x" style="padding: 0 28px;">
           <div style="min-width: 1500px; display: flex; flex-direction: column;">
-            <div class="list-head" style="grid-template-columns: minmax(0,0.95fr) minmax(0,0.45fr) minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,0.9fr) minmax(0,0.85fr) minmax(0,0.85fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr) minmax(0,0.8fr); text-align: left;">
+            <div class="list-head doc-row doc-row--mestra text-left">
               <div>Código</div>
-              <div style="text-align:center;">Ver.</div>
+              <div class="text-center">Ver.</div>
               <div>Tipo</div>
               <div>Título</div>
-              <div style="text-align:center;">Responsável</div>
+              <div class="text-center">Responsável</div>
               <div>Aprovação</div>
               <div>Revisão</div>
-              <div style="text-align:center;">Link</div>
-              <div style="text-align:center;">Auxiliares</div>
+              <div class="text-center">Link</div>
+              <div class="text-center">Auxiliares</div>
               <div>Histórico</div>
-              <div style="text-align:center;">Status</div>
-              <div class="no-print" style="text-align:center;">Ações</div>
+              <div class="text-center">Status</div>
+              <div class="no-print text-center">Ações</div>
             </div>
             <div id="lista-mestra" class="list-body">
               <div class="msg-empty">A carregar...</div>
@@ -122,31 +122,39 @@
 
       <!-- ======================== MÓDULO 3: HISTÓRICO REVISÕES ======================== -->
       <section id="view-doc-revisoes" class="view-section">
-        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box; margin-bottom: 24px;">
-          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Histórico de Revisões</div>
+        <header class="view-header mb-24">
+          <div class="page-title mb-0">Histórico de Revisões</div>
           
           <div style="display: flex; align-items: center; gap: 16px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <select id="f-rev-unidade" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none; min-width: 150px;">
+              <select id="f-rev-unidade" class="filter-select">
                 <option value="">Todas Unidades</option>
               </select>
+              <select id="f-rev-doc" class="filter-select">
+                <option value="">Todos Documentos</option>
+              </select>
+              <div class="filter-date-group">
+                <input type="date" id="f-rev-data-ini" class="filter-date-input">
+                <span class="filter-date-sep">até</span>
+                <input type="date" id="f-rev-data-fim" class="filter-date-input">
+              </div>
             </div>
           </div>
         </header>
 
         <div class="list-scroll x" style="padding: 0 28px;">
           <div style="min-width: 1400px; display: flex; flex-direction: column;">
-            <div class="list-head" style="grid-template-columns: minmax(0,0.85fr) minmax(0,0.45fr) minmax(0,1.2fr) minmax(0,2.0fr) minmax(0,0.9fr) minmax(0,0.85fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr); text-align: left;">
+            <div class="list-head doc-row doc-row--rev text-left">
               <div>Código</div>
               <div>Ver.</div>
               <div>Tipo</div>
               <div>Título</div>
-              <div style="text-align:center;">Responsável</div>
+              <div class="text-center">Responsável</div>
               <div>Aprovação</div>
-              <div style="text-align:center;">Link</div>
-              <div style="text-align:center;">Auxiliares</div>
-              <div style="text-align:center;">Histórico</div>
-              <div style="text-align:center;">Status</div>
+              <div class="text-center">Link</div>
+              <div class="text-center">Auxiliares</div>
+              <div class="text-center">Histórico</div>
+              <div class="text-center">Status</div>
             </div>
             <div id="lista-revisoes" class="list-body">
               <div class="msg-empty">A carregar...</div>
@@ -162,7 +170,7 @@
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title">Novo Documento</h3>
       <div class="form-row">
-        <div style="flex:1;"><label class="field-label" for="d-tipo">Tipo de Documento</label>
+        <div class="flex-1"><label class="field-label" for="d-tipo">Tipo de Documento</label>
           <select id="d-tipo" class="field-select">
             <option value="" disabled selected>Selecione...</option>
             <option>Instrução de Trabalho</option>
@@ -183,15 +191,15 @@
             class="field-select">
             <option value="" disabled selected>A carregar...</option>
           </select></div>
-        <div style="flex:1;"><label class="field-label" for="d-data-aprov">Data de Aprovação</label><input type="date"
+        <div class="flex-1"><label class="field-label" for="d-data-aprov">Data de Aprovação</label><input type="date"
             id="d-data-aprov" class="field-input"></div>
       </div>
       <div class="form-row">
-        <div style="flex:1;"><label class="field-label" for="d-link">Link Principal (Drive)</label><input type="text"
+        <div class="flex-1"><label class="field-label" for="d-link">Link Principal (Drive)</label><input type="text"
             id="d-link" class="field-input" placeholder="Link do documento"></div>
-        <div style="flex:1;"><label class="field-label" for="d-link-aux1">Doc. Auxiliar 1 (Opcional)</label><input
+        <div class="flex-1"><label class="field-label" for="d-link-aux1">Doc. Auxiliar 1 (Opcional)</label><input
             type="text" id="d-link-aux1" class="field-input" placeholder="Link do anexo 1"></div>
-        <div style="flex:1;"><label class="field-label" for="d-link-aux2">Doc. Auxiliar 2 (Opcional)</label><input
+        <div class="flex-1"><label class="field-label" for="d-link-aux2">Doc. Auxiliar 2 (Opcional)</label><input
             type="text" id="d-link-aux2" class="field-input" placeholder="Link do anexo 2"></div>
       </div>
       <div class="modal-footer"><button class="btn secondary" data-close="modal-doc-novo">Cancelar</button><button
@@ -207,9 +215,9 @@
       <h3 class="modal-title">Editar Documento</h3>
       <input type="hidden" id="ed-idrow"><input type="hidden" id="ed-codigo">
       <div class="form-row" style="margin-top:10px;">
-        <div style="flex:1;"><label class="field-label">Código</label><input type="text" id="ed-cod-display" readonly
+        <div class="flex-1"><label class="field-label">Código</label><input type="text" id="ed-cod-display" readonly
             style="background:var(--border-color);"></div>
-        <div style="flex:1;"><label class="field-label">Versão</label><input type="text" id="ed-versao-display" readonly
+        <div class="flex-1"><label class="field-label">Versão</label><input type="text" id="ed-versao-display" readonly
             style="background:var(--border-color);"></div>
         <div style="flex:2;"><label class="field-label" for="ed-tipo">Tipo</label><select id="ed-tipo"
             class="field-select">
@@ -227,15 +235,15 @@
       <div class="form-row">
         <div style="flex:2;"><label class="field-label" for="ed-resp">Responsável</label><select id="ed-resp"
             class="field-select"></select></div>
-        <div style="flex:1;"><label class="field-label" for="ed-data">Data Aprovação</label><input type="date"
+        <div class="flex-1"><label class="field-label" for="ed-data">Data Aprovação</label><input type="date"
             id="ed-data" class="field-input"></div>
       </div>
       <div class="form-row">
-        <div style="flex:1;"><label class="field-label" for="ed-link">Link Principal</label><input type="text"
+        <div class="flex-1"><label class="field-label" for="ed-link">Link Principal</label><input type="text"
             id="ed-link" class="field-input"></div>
-        <div style="flex:1;"><label class="field-label" for="ed-aux1">Auxiliar 1</label><input type="text" id="ed-aux1"
+        <div class="flex-1"><label class="field-label" for="ed-aux1">Auxiliar 1</label><input type="text" id="ed-aux1"
             class="field-input"></div>
-        <div style="flex:1;"><label class="field-label" for="ed-aux2">Auxiliar 2</label><input type="text" id="ed-aux2"
+        <div class="flex-1"><label class="field-label" for="ed-aux2">Auxiliar 2</label><input type="text" id="ed-aux2"
             class="field-input"></div>
       </div>
       <div class="modal-footer"><button class="btn secondary" data-close="modal-doc-editar">Cancelar</button><button
@@ -254,17 +262,17 @@
             id="rev-doc-versao"></span></strong></div>
       <input type="hidden" id="rev-doc-idrow"><input type="hidden" id="rev-doc-versao-hidden">
       <div class="form-row">
-        <div style="flex:1;"><label class="field-label" for="rev-doc-data">Nova Data de Aprovação</label><input
+        <div class="flex-1"><label class="field-label" for="rev-doc-data">Nova Data de Aprovação</label><input
             type="date" id="rev-doc-data" class="field-input"></div>
       </div>
       <label class="field-label" for="rev-doc-motivo">Descrição da Revisão</label><textarea id="rev-doc-motivo"
         class="field-area" rows="2" placeholder="O que foi alterado nesta versão?"></textarea>
       <div class="form-row">
-        <div style="flex:1;"><label class="field-label" for="rev-doc-link">Novo Link Principal</label><input type="text"
+        <div class="flex-1"><label class="field-label" for="rev-doc-link">Novo Link Principal</label><input type="text"
             id="rev-doc-link" class="field-input"></div>
-        <div style="flex:1;"><label class="field-label" for="rev-doc-aux1">Auxiliar 1</label><input type="text"
+        <div class="flex-1"><label class="field-label" for="rev-doc-aux1">Auxiliar 1</label><input type="text"
             id="rev-doc-aux1" class="field-input"></div>
-        <div style="flex:1;"><label class="field-label" for="rev-doc-aux2">Auxiliar 2</label><input type="text"
+        <div class="flex-1"><label class="field-label" for="rev-doc-aux2">Auxiliar 2</label><input type="text"
             id="rev-doc-aux2" class="field-input"></div>
       </div>
       <div class="modal-footer"><button class="btn secondary" data-close="modal-doc-revisao">Cancelar</button><button

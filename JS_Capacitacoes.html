@@ -72,7 +72,7 @@ function renderCapacitacoes(resetPage = false) {
   }
 
   if (!caps.length) {
-    tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhuma capacitação encontrada.</div>';
+    tbody.innerHTML = '<div class="msg-empty">Nenhuma capacitação encontrada.</div>';
     renderPaginacao('paginacao-cap', { totalRegistros: 0 });
     return;
   }
@@ -120,7 +120,7 @@ function renderCapacitacoes(resetPage = false) {
       <div class="cap-c">${esc(c.modalidade || '-')}</div>
       <div class="cap-c-sec">${fmtData(c.dataPrevista)}</div>
       <div class="cap-c-sec">${fmtData(c.dataRealizada)}</div>
-      <div class="cap-c-center"><span style="display:inline-block; padding:4px 12px; border-radius:9999px; font-size:11.5px; font-weight:600; background:${statusBg}; color:${statusColor};">${status}</span></div>
+      <div class="cap-c-center">${badge(status)}</div>
       <div class="cap-c-sec">${esc(nomes || '-')}</div>
       <div class="cap-c-mat">${materiaisLink}</div>
       <div class="no-print cap-c-acoes">

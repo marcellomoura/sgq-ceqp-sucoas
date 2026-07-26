@@ -13,7 +13,7 @@ function renderUnidades() {
 
   if (!units.length) {
     const rotulo = statusUnidades === 'inativas' ? 'inativa ' : statusUnidades === 'todas' ? '' : 'ativa ';
-    tbody.innerHTML = `<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhuma unidade ${rotulo}cadastrada.</div>`;
+    tbody.innerHTML = `<div class="msg-empty">Nenhuma unidade ${rotulo}cadastrada.</div>`;
     return;
   }
   const ordenadas = units

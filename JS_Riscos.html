@@ -58,7 +58,7 @@
       }
     });
 
-    if (!ativos.length) { $id('lista-riscos').innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhum risco ativo mapeado.</div>'; return; }
+    if (!ativos.length) { $id('lista-riscos').innerHTML = '<div class="msg-empty">Nenhum risco ativo mapeado.</div>'; return; }
     // Índice id → posição em state.risks, montado uma vez. Antes era um
     // findIndex por linha DENTRO do map (O(n²)) — mesma correção já aplicada em
     // renderDocumentos.
@@ -83,19 +83,19 @@
         p.status !== 'Cancelado' && p.status !== 'Substituído');
       const temPlanoResolvido = planosAtivosDoRisco.some(p => p.revisaoPendente !== 'Sim');
       return `<div class="grid-row-hover risco-row">
-    <div style="text-align:center;font-weight:700;color:#4b5563;">${i + 1}</div>
-    <div style="text-align:center;font-weight:700;color:#2b7fff;white-space:nowrap;">R-${r.id}</div>
-    <div style="font-weight: 500;">${esc(r.macroetapa)}</div>
-    <div><span style="display:inline-block; font-weight:600; color:#030712; border:1px solid #d1d5db; border-radius:6px; padding:4px 10px; background:#f9fafb;">${esc(r.nome)}</span></div>
-    <div style="line-height: 1.4; color: #4b5563;">${esc(r.causa)}</div>
-    <div style="line-height: 1.4; color: #4b5563;">${esc(r.consequencia)}</div>
-    <div>${esc(r.categoria)}</div>
-    <div style="text-align:center;font-weight:700;">${r._curProb * r._curImp}</div>
-    <div style="text-align:center;white-space:nowrap;">${badge(r._curNivel)}${r._trend}</div>
-    <div>${esc(r.tipoTratamento)}</div>
-    <div>${esc(formatUnidadeUI(r.responsavel))}</div>
-    <div style="line-height: 1.4; color: #4b5563;">${esc(r.planoAcao)}</div>
-    <div class="no-print" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+    <div class="text-center font-bold text-secondary font-13">${i + 1}</div>
+    <div class="risco-c-id">R-${r.id}</div>
+    <div class="font-medium font-13">${esc(r.macroetapa)}</div>
+    <div><span class="risco-c-nome">${esc(r.nome)}</span></div>
+    <div class="risco-c-text">${esc(r.causa)}</div>
+    <div class="risco-c-text">${esc(r.consequencia)}</div>
+    <div class="font-13">${esc(r.categoria)}</div>
+    <div class="text-center font-bold font-13">${r._curProb * r._curImp}</div>
+    <div class="text-center font-13" style="white-space:nowrap;">${badge(r._curNivel)}${r._trend}</div>
+    <div class="font-13">${esc(r.tipoTratamento)}</div>
+    <div class="font-13">${esc(formatUnidadeUI(r.responsavel))}</div>
+    <div class="risco-c-text">${esc(r.planoAcao)}</div>
+    <div class="no-print flex-row justify-center" style="gap: 4px; flex-wrap: wrap;">
       ${temPlanoResolvido ? '' : iconBtn('edit', 'edit-risco', 'Editar Risco', `data-idx="${origIdx}"`)}
       ${iconBtn('rev', 'reav-risco', 'Reavaliar', `data-idx="${origIdx}"`)}
       ${iconBtn('history', 'hist-risco', 'Histórico de Reavaliações', `data-id="${r.id}"`)}
@@ -378,7 +378,7 @@
     const idxPlano = new Map(state.plans.map((pl, i) => [pl, i]));
 
     if (!filtrados.length) {
-      container.innerHTML = '<div class="msg-empty" style="text-align:center; padding: 30px; background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 6px; color: #4b5563;">Nenhum plano ativo encontrado.</div>';
+      container.innerHTML = '<div class="msg-empty">Nenhum plano ativo encontrado.</div>';
       return;
     }
 
@@ -486,7 +486,7 @@
 
       return `<div class="risk-block">
         <div class="risk-header" style="padding-bottom: 12px;">
-          <div style="flex: 1;">
+          <div class="flex-1">
             <h2 class="risk-title">Risco ${r.id} — ${esc(r.nome)}</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-size:12.5px; color:#4b5563; margin-top: 4px; line-height: 1.4;">
               <div><strong style="color:#030712;">Macroetapa:</strong> ${esc(r.macroetapa)}</div>
@@ -654,7 +654,7 @@
         '<div class="acomp-unit-sigla">' + esc(u.sigla || '') + '</div>' +
         '<div class="acomp-unit-nome" style="white-space:normal; line-height:1.2; margin-top:2px;">' + esc(u.unidade) + '</div>' +
         '</div>' +
-        '<div class="acomp-field-group acomp-status-wrap" style="width:160px; flex-shrink:0;">' +
+        '<div class="acomp-field-group acomp-status-wrap">' +
         '<span class="acomp-field-label">Status</span>' +
         '<select class="acomp-status-select acomp-status' + selClass + '" data-row="' + i + '" style="width:100%;"' + (isArquivado ? ' disabled' : '') + '>' +
         '<option value=""' + (!entregue ? ' selected' : '') + '>— Selecione —</option>' +
@@ -793,8 +793,8 @@
 
     const riscosHtml = _pdfSecaoTitulo('Mapeamento de Riscos') +
       `<table><thead><tr>
-      <th style="text-align:center;">#</th><th style="text-align:center;">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>
-      <th>Categoria</th><th style="text-align:center;">P×I</th><th style="text-align:center;">Nível</th>
+      <th class="text-center">#</th><th class="text-center">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>
+      <th>Categoria</th><th class="text-center">P×I</th><th class="text-center">Nível</th>
       <th>Tratamento</th><th>Proprietário</th><th>Plano de Ação</th>
     </tr></thead><tbody>${_linhasMatrizParaPdf_()}</tbody></table>`;
 
@@ -886,7 +886,7 @@
     if (!container) return;
 
     if (!arquivadosRiscos.length) {
-      container.innerHTML = '<div class="msg-empty" style="text-align:center; padding: 30px; background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 6px; color: #4b5563;">Nenhum risco ou plano arquivado no momento.</div>';
+      container.innerHTML = '<div class="msg-empty">Nenhum risco ou plano arquivado no momento.</div>';
       return;
     }
 
@@ -977,7 +977,7 @@
 
       return `<div class="risk-block" style="background-color: #f8fafc; border: 1px dashed #cbd5e1;">
         <div class="risk-header" style="padding-bottom: 12px;">
-          <div style="flex: 1;">
+          <div class="flex-1">
             <div style="display:flex; align-items:center; gap:8px;">
                <h2 class="risk-title" style="color: #4b5563;">Risco ${r.id} — ${esc(r.nome)}</h2>
                <span style="font-size:11px; font-weight:700; background:#e2e8f0; color:#475569; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">ARQUIVADO</span>

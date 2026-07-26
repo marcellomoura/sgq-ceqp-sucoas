@@ -72,7 +72,7 @@ function renderVisitasTecnicas(resetPage = false) {
   }
 
   if (!visitas.length) {
-    tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhuma visita técnica encontrada.</div>';
+    tbody.innerHTML = '<div class="msg-empty">Nenhuma visita técnica encontrada.</div>';
     renderPaginacao('paginacao-vt', { totalRegistros: 0 });
     return;
   }
@@ -105,13 +105,14 @@ function renderVisitasTecnicas(resetPage = false) {
     const relatorioLink = relF ? linkA(relF, 'Acessar', null, true) : '<span style="color:#d1d5db;">-</span>';
 
     const nomes = v.participantes ? nomesMembros(parseIdsResponsaveis(v.participantes)) : '';
+    const nomesLimit = (nomes.length > 25) ? nomes.substring(0, 25) + '...' : nomes;
 
-    return `<div class="grid-row-hover cap-row" style="grid-template-columns: minmax(0,2fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.8fr);">
+    return `<div class="grid-row-hover vt-row">
       <div class="cap-c-titulo">${esc(v.objetivo)}</div>
       <div class="cap-c-sec">${esc(v.local || '-')}</div>
       <div class="cap-c-sec">${fmtData(v.data)}</div>
-      <div class="cap-c-center"><span style="display:inline-block; padding:4px 12px; border-radius:9999px; font-size:11.5px; font-weight:600; background:${statusBg}; color:${statusColor};">${status}</span></div>
-      <div class="cap-c-sec">${esc(nomes || '-')}</div>
+      <div class="cap-c-center">${badge(status)}</div>
+      <div class="cap-c-center" style="font-size:12px; color:var(--text-muted);">${nomesLimit}</div>
       <div class="cap-c-mat">${relatorioLink}</div>
       <div class="no-print cap-c-acoes">
         ${iconBtn('edit','edit-visita','Editar Visita Técnica',`data-idx="${i}"`)}${iconBtn('del','del-visita','Excluir Visita Técnica',`data-idx="${i}"`)}

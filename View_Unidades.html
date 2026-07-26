@@ -5,19 +5,18 @@
      ============================================================ -->
       <section id="view-unidades" class="view-section">
         <!-- Cabeçalho Personalizado -->
-        <header style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 24px 28px 0; flex-shrink: 0;">
-          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Unidades</div>
+        <header class="view-header mb-24">
+          <div class="page-title mb-0">Unidades</div>
           
-          <div style="display: flex; align-items: center; gap: 20px;">
-            <select id="f-unidades-status" onchange="renderUnidades()"
-              style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
+          <div class="flex-row items-center gap-16">
+            <select id="f-unidades-status" onchange="renderUnidades()" class="filter-select">
               <option value="ativas">Ativas</option>
               <option value="inativas">Inativas</option>
               <option value="todas">Todas</option>
             </select>
             
-            <button class="btn-create" id="btn-nova-unidade" type="button" style="display: flex; align-items: center; justify-content: center; background-color: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: 9999px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <span style="font-size: 16px; margin-right: 6px; font-weight: 500;">+</span> Nova Unidade
+            <button class="btn-create" id="btn-nova-unidade" type="button">
+              <span class="btn-create-icon">+</span> Nova Unidade
             </button>
           </div>
         </header>
@@ -25,12 +24,12 @@
         <!-- Lista de Unidades (Grid Header + Conteúdo) -->
         <div class="list-scroll x" style="padding: 0 28px;">
           <div style="min-width: 750px; display: flex; flex-direction: column;">
-            <div class="list-head" style="grid-template-columns: 1fr 3fr 2.5fr 1fr 90px; gap: 16px;">
+            <div class="list-head unid-row gap-16">
               <div>Sigla</div>
               <div>Nome</div>
               <div>E-mail</div>
-              <div style="text-align:center;">Link do Drive</div>
-              <div class="no-print" style="text-align:center;">Ações</div>
+              <div class="text-center">Link do Drive</div>
+              <div class="no-print text-center">Ações</div>
             </div>
             <div id="lista-unidades" class="list-body">
               <div class="msg-empty">A carregar...</div>
@@ -41,7 +40,7 @@
 
   <!-- Modal: Editar Unidade -->
   <div id="modal-unidade" class="modal-overlay">
-    <div class="modal-box" style="max-width:520px;">
+    <div class="modal-box md">
       <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-unidade"
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title" id="modal-unidade-title">Editar Unidade</h3>
@@ -49,13 +48,14 @@
       <div class="form-row" style="margin-top:10px;">
         <div style="flex:2;"><label class="field-label" for="eu-nome">Nome da Unidade</label><input type="text"
             id="eu-nome" class="field-input"></div>
-        <div style="flex:1;"><label class="field-label" for="eu-sigla">Sigla</label><input type="text" id="eu-sigla"
+        <div class="flex-1"><label class="field-label" for="eu-sigla">Sigla</label><input type="text" id="eu-sigla"
             class="field-input"></div>
       </div>
       <label class="field-label" for="eu-email">E-mail</label><input type="email" id="eu-email" class="field-input">
-      <label class="field-label" for="eu-link-drive">Link do Drive</label><input type="text" id="eu-link-drive"
-        class="field-input" placeholder="Link da pasta do Drive">
-      <div class="modal-footer"><button class="btn secondary" data-close="modal-unidade">Cancelar</button><button
-          class="btn primary" id="btn-confirmar-unidade">Salvar Unidade</button></div>
+      <label class="field-label" for="eu-link-drive">Link do Drive</label><input type="text" id="eu-link-drive" class="field-input" placeholder="Link da pasta do Drive">
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="modal-unidade">Cancelar</button>
+        <button class="btn btn-primary" id="btn-confirmar-unidade">Salvar Unidade</button>
+      </div>
     </div>
   </div>

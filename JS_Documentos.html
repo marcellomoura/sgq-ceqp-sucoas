@@ -5,7 +5,7 @@
 
 function renderDocumentos(modo) {
   const tbodyId = modo === 'mestra' ? 'lista-mestra' : 'lista-revisoes';
-  $id(tbodyId).innerHTML = `<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">A carregar...</div>`;
+  $id(tbodyId).innerHTML = `<div class="msg-empty">A carregar...</div>`;
 
   const fU = ($id('f-doc-unidade') || {value:''}).value;
   const fT = ($id('f-doc-tipo')    || {value:''}).value;
@@ -38,7 +38,7 @@ function renderDocumentos(modo) {
     ['kpi-d-total','kpi-d-vig','kpi-d-prox','kpi-d-ven','kpi-d-elab'].forEach((id,i)=>{ const el=$id(id); if(el) el.innerText=[tot,vig,prox,ven,elab][i]; });
   }
 
-  if (!filtrados.length) { $id(tbodyId).innerHTML = `<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhum documento encontrado.</div>`; return; }
+  if (!filtrados.length) { $id(tbodyId).innerHTML = `<div class="msg-empty">Nenhum documento encontrado.</div>`; return; }
 
   // Índice original de cada doc em state.docs, pré-computado uma vez
   // (idRow → posição). Antes era um findIndex por linha DENTRO do map,

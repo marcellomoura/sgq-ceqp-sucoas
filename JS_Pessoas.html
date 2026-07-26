@@ -48,12 +48,12 @@ function renderEscala() {
         '<div class="escala-c-role">' + esc(m.role) + '</div></div>' +
       '</div>' +
       dayTds +
-      '<div style="text-align:center;">' +
+      '<div class="text-center">' +
         (presList.length > 0
           ? presList.map(function(p){ return '<span class="tag-badge" style="background:#35598D;font-size:11px;margin-right:2px;display:inline-block;margin-bottom:2px;">' + esc(p.substring(0,3)) + '</span>'; }).join('')
           : '<span style="color:#6b7280;font-size:12px;">—</span>') +
       '</div>' +
-      '<div style="text-align:center;">' +
+      '<div class="text-center">' +
         '<div class="cell-actions" style="justify-content:center;">' +
           iconBtn('edit','edit-escala','Editar Escala','data-idx="' + origIdx + '"') +
         '</div>' +
@@ -281,12 +281,12 @@ function renderFerias() {
   var membrosFiltrados = membrosOrdenados().filter(function(m){ return !fM || String(m.id) === fM; });
 
   if (!membrosFiltrados.length) {
-    tbody.innerHTML = '<div class="msg-empty" style="text-align: center; padding: 24px; color: #6b7280; font-size: 13px;">Nenhum membro cadastrado.</div>';
+    tbody.innerHTML = '<div class="msg-empty">Nenhum membro cadastrado.</div>';
     return;
   }
 
   // Helpers de formatação — definidos uma vez por render, fora do loop de linhas
-  var TRACO = '<span style="color:#6b7280;font-size:12px;">—</span>';
+  var TRACO = '<span class="tag-dash">—</span>';
   var fmtDM = function(isoStr) {
     if (!isoStr) return '';
     var p = isoStr.split('-');
@@ -297,8 +297,8 @@ function renderFerias() {
     var ini = parseDataStr(p.inicio), fim = parseDataStr(p.fim);
     var dias = (ini && fim) ? Math.floor((fim - ini) / 86400000) + 1 : null;
     var agora = ini && fim && ini <= hoje && fim >= hoje;
-    return '<span style="display:inline-block; margin-right:4px; margin-bottom:4px; margin-top:4px; font-size:11.5px;' + (agora ? 'background:#E2EBF8; border: 1px solid #B8CBE3; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#25497F;' : 'color:#030712; padding: 2px 0px;') + '">' +
-      fmtDM(p.inicio) + ' a ' + fmtDM(p.fim) + ' <span style="color:#4b5563; font-weight:normal;">(' + dias + 'd)</span>' +
+    return '<span class="tag-periodo ' + (agora ? 'agora' : '') + '">' +
+      fmtDM(p.inicio) + ' a ' + fmtDM(p.fim) + ' <span class="text-secondary font-medium">(' + dias + 'd)</span>' +
       '</span>';
   };
 
@@ -322,16 +322,16 @@ function renderFerias() {
       var tagsData = afs.abonosFixos.map(function(d) {
         var dt = parseDataStr(d);
         var agora = dt && dt.getTime() === hoje.getTime();
-        return '<span style="display:inline-block; font-size:11px;' + (agora ? 'background:#E2EBF8; border: 1px solid #B8CBE3; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#25497F;' : 'background:#f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; padding: 2px 6px; color:#4b5563;') + '">' + fmtDM(d) + '</span>';
+        return '<span class="tag-periodo ' + (agora ? 'agora' : 'abono-past') + '">' + fmtDM(d) + '</span>';
       });
-      htmlAbono = '<div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center;">' + tagsData.join('') + '</div>';
+      htmlAbono = '<div class="flex-row items-center" style="flex-wrap:wrap; gap:4px;">' + tagsData.join('') + '</div>';
     }
 
     var htmlAbonoAniv = TRACO;
     if (afs.abonoAniv && afs.abonoAniv.inicio) {
       var dtA = parseDataStr(afs.abonoAniv.inicio);
       var agoraA = dtA && dtA.getTime() === hoje.getTime();
-      htmlAbonoAniv = '<span style="display:inline-block; font-size:11.5px; margin-top:4px; white-space:nowrap;' + (agoraA ? 'background:#E2EBF8; border: 1px solid #B8CBE3; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#25497F;' : 'color:#030712; padding: 2px 0px;') + '">' +
+      htmlAbonoAniv = '<span class="tag-periodo ' + (agoraA ? 'agora' : '') + '">' +
         fmtDM(afs.abonoAniv.inicio) + '</span>';
     }
 
@@ -342,8 +342,8 @@ function renderFerias() {
         var iniL = parseDataStr(lc.inicio), fimL = parseDataStr(lc.fim);
         var diasL = (iniL && fimL) ? Math.floor((fimL - iniL) / 86400000) + 1 : null;
         var agoraL = iniL && fimL && iniL <= hoje && fimL >= hoje;
-        return '<div style="font-size:11.5px; margin:2px 0; line-height:1.35;' + (agoraL ? 'background:#E2EBF8; border: 1px solid #B8CBE3; border-radius: 4px; padding: 2px 6px; font-weight:600; color:#25497F;' : 'color:#030712;') + '">' +
-          fmtDM(lc.inicio) + ' a ' + fmtDM(lc.fim) + ' <span style="color:#4b5563; font-weight:normal;">(' + diasL + 'd)</span></div>';
+        return '<div class="tag-periodo ' + (agoraL ? 'agora' : '') + '">' +
+          fmtDM(lc.inicio) + ' a ' + fmtDM(lc.fim) + ' <span class="text-secondary font-medium">(' + diasL + 'd)</span></div>';
       }).join('');
       if (!htmlLicenca) htmlLicenca = TRACO;
     }
@@ -355,8 +355,8 @@ function renderFerias() {
         var temPeriodo = d.inicio && d.fim;
         var iniD = temPeriodo ? parseDataStr(d.inicio) : null, fimD = temPeriodo ? parseDataStr(d.fim) : null;
         var agoraD = iniD && fimD && iniD <= hoje && fimD >= hoje;
-        var periodoTxt = temPeriodo ? ' <span style="color:#4b5563; font-weight:normal;">(' + fmtDM(d.inicio) + ' a ' + fmtDM(d.fim) + ')</span>' : '';
-        return '<div style="font-size:11px; margin:2px 0; line-height:1.35;' + (agoraD ? 'background:#E2EBF8; border:1px solid #B8CBE3; border-radius:4px; padding:2px 6px; font-weight:600; color:#25497F;' : 'color:#030712;') + '">' + esc(d.descricao) + periodoTxt + '</div>';
+        var periodoTxt = temPeriodo ? ' <span class="text-secondary font-medium">(' + fmtDM(d.inicio) + ' a ' + fmtDM(d.fim) + ')</span>' : '';
+        return '<div class="tag-periodo ' + (agoraD ? 'agora' : '') + '">' + esc(d.descricao) + periodoTxt + '</div>';
       }).join('');
       if (!htmlDemais) htmlDemais = TRACO;
     }
@@ -415,7 +415,7 @@ function removerFeriasBlock(n) {
 // Linha de "Licença Servidor/Prêmio": período início/fim (várias por membro)
 function licencaRowHtml(item) {
   item = item || {};
-  return '<div class="licenca-item" style="display:grid; grid-template-columns: 1fr 1fr 28px; gap:6px; align-items:end; margin-bottom:6px;">' +
+  return '<div class="licenca-item licenca-item-grid">' +
     '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Início</label><input type="date" class="ef-licenca-ini field-input" style="font-size:11px;padding:4px;" value="' + (item.inicio || '') + '"></div>' +
     '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Fim</label><input type="date" class="ef-licenca-fim field-input" style="font-size:11px;padding:4px;" value="' + (item.fim || '') + '"></div>' +
     '<button type="button" class="btn-rem-afast" data-afast-acao="rem-licenca" title="Remover licença" style="margin-bottom:4px;">&times;</button>' +
@@ -424,7 +424,7 @@ function licencaRowHtml(item) {
 // Linha de "Demais Afastamentos": descrição livre + período opcional
 function demaisRowHtml(item) {
   item = item || {};
-  return '<div class="demais-item" style="display:grid; grid-template-columns: 1fr 120px 120px 28px; gap:6px; align-items:end; margin-bottom:6px;">' +
+  return '<div class="demais-item demais-item-grid">' +
     '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Descrição</label><input type="text" class="ef-demais-desc field-input" style="font-size:11px;padding:4px;" placeholder="Descreva o afastamento..." value="' + esc(item.descricao || '') + '"></div>' +
     '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Início</label><input type="date" class="ef-demais-ini field-input" style="font-size:11px;padding:4px;" value="' + (item.inicio || '') + '"></div>' +
     '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Fim</label><input type="date" class="ef-demais-fim field-input" style="font-size:11px;padding:4px;" value="' + (item.fim || '') + '"></div>' +

@@ -6,22 +6,22 @@
       <!-- ======================== MÓDULO 7: VISITAS TÉCNICAS ======================== -->
       <section id="view-visitas-lista" class="view-section">
         <!-- Cabeçalho Personalizado -->
-        <header style="display: flex; align-items: center; justify-content: space-between; padding: 24px 28px 0; flex-shrink: 0; width: 100%; box-sizing: border-box;">
-          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-main);">Visitas Técnicas</div>
+        <header class="view-header">
+          <div class="page-title mb-0">Visitas Técnicas</div>
 
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <select id="f-vt-membro" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;">
+          <div class="flex-row items-center gap-16">
+            <select id="f-vt-membro" class="filter-select">
               <option value="">Todos os Membros</option>
             </select>
-            <select id="vtYearFilter" style="padding: 10px 20px; border: none; border-radius: 9999px; font-size: 13px; color: var(--text-main); background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer; outline: none;"></select>
-            <div style="display: flex; align-items: center; padding: 0 4px; border-radius: 9999px; background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);">
-              <input type="date" id="f-vt-data-ini" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
-              <span style="color:var(--text-muted); font-size:12px; font-weight: 500;">até</span>
-              <input type="date" id="f-vt-data-fim" style="padding: 10px 16px; border: none; font-size: 13px; color: var(--text-main); background: transparent; outline: none; cursor: pointer;">
+            <select id="vtYearFilter" class="filter-select"></select>
+            <div class="filter-date-group">
+              <input type="date" id="f-vt-data-ini" class="filter-date-input">
+              <span class="filter-date-sep">até</span>
+              <input type="date" id="f-vt-data-fim" class="filter-date-input">
             </div>
 
-            <button class="btn-create" id="btn-nova-visita" type="button" style="display: flex; align-items: center; justify-content: center; background-color: var(--primary); color: white; border: none; padding: 10px 24px; border-radius: 9999px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <span style="font-size: 16px; margin-right: 6px; font-weight: 500;">+</span> Nova Visita
+            <button class="btn-create" id="btn-nova-visita" type="button">
+              <span class="btn-create-icon">+</span> Nova Visita
             </button>
           </div>
         </header>
@@ -61,14 +61,14 @@
 
         <div class="list-scroll x" style="padding: 0 28px;">
           <div style="min-width: 1000px; display: flex; flex-direction: column;">
-            <div class="list-head" style="grid-template-columns: minmax(0,2fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.8fr); text-align: left;">
+            <div class="list-head vt-row text-left">
               <div>Objetivo/Motivo da Visita</div>
               <div>Local Visitado</div>
               <div>Data da Visita</div>
-              <div style="text-align:center;">Status</div>
+              <div class="text-center">Status</div>
               <div>Responsáveis</div>
-              <div style="text-align:center;">Relatório</div>
-              <div class="no-print" style="text-align:center;">Ações</div>
+              <div class="text-center">Relatório</div>
+              <div class="no-print text-center">Ações</div>
             </div>
             <div id="lista-visitas" class="list-body">
               <div class="msg-empty">A carregar...</div>
@@ -80,7 +80,7 @@
 
   <!-- Modal: Nova Visita Técnica -->
   <div id="modal-visita" class="modal-overlay">
-    <div class="modal-box" style="max-width:580px;">
+    <div class="modal-box lg">
       <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-visita"
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title" id="modal-visita-title">Nova Visita Técnica</h3>
@@ -90,11 +90,11 @@
       <input type="text" id="vt-objetivo" class="field-input" placeholder="Ex: Verificação de conformidade in loco">
 
       <div class="form-row">
-        <div style="flex:1;">
+        <div class="flex-1">
           <label class="field-label" for="vt-local">Local Visitado</label>
           <input type="text" id="vt-local" class="field-input" placeholder="Ex: Fornecedor, obra, instituição parceira...">
         </div>
-        <div style="flex:1;">
+        <div class="flex-1">
           <label class="field-label" for="vt-data">Data da Visita</label>
           <input type="date" id="vt-data" class="field-input">
         </div>
@@ -102,8 +102,7 @@
 
       <label class="field-label">Responsáveis</label>
       <div class="custom-select-wrapper" style="position:relative;">
-        <div id="vt-participantes-trigger"
-          style="width:100%; padding:9px 12px; border:1px solid var(--border-strong); border-radius:6px; font-size:13.5px; background:var(--bg-panel); font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:space-between; user-select:none; box-sizing:border-box; transition:border-color 0.15s;">
+        <div id="vt-participantes-trigger" class="multiselect-trigger">
           <span id="vt-participantes-label" style="color:var(--text-muted);">Selecionar responsáveis...</span>
           <span style="font-size:9px; color:var(--text-muted); pointer-events:none;">▼</span>
         </div>
@@ -112,12 +111,11 @@
       <div class="selected-tags" id="vt-participantes-tags" style="margin-top:6px;"></div>
 
       <label class="field-label" for="vt-relatorio" style="margin-top:8px;">Relatório/Anexo (Link)</label>
-      <input type="text" id="vt-relatorio" class="field-input"
-        placeholder="Link para o relatório da visita">
+      <input type="text" id="vt-relatorio" class="field-input" placeholder="Link para o relatório da visita">
 
       <div class="modal-footer">
-        <button class="btn secondary" data-close="modal-visita">Cancelar</button>
-        <button class="btn primary" id="btn-salvar-visita">Salvar</button>
+        <button class="btn btn-secondary" data-close="modal-visita">Cancelar</button>
+        <button class="btn btn-primary" id="btn-salvar-visita">Salvar</button>
       </div>
     </div>
   </div>
