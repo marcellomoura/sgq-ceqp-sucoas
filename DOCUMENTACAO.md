@@ -608,7 +608,7 @@ Se o objetivo imediato for só resolver a lentidão de abrir cartão (sem mexer 
 1. **Testes:** extrair lógica pura (`calcularNivelRisco`, `_statusPlano`, `_tarefaArquivada_`, `colIdx_`, `calcularProximaRevisao`) para funções testáveis + suíte com `clasp run`/GAS testing.
 2. **Observabilidade:** painel de saúde (contagem de linhas por aba, alertas de aproximação de cotas).
 3. **Migração de store:** se o volume crescer muito, considerar Sheets como cache e um backend real (Firestore/BigQuery) para Logs/Atividades.
-4. **Tematização:** consolidar estilos inline em classes; suporte a tema claro/escuro via tokens já existentes.
+4. **Tematização:** consolidar estilos inline em classes (**concluído em 26/07/2026**, ver §10 — de ~378 para 35 `style=""`, restando só casos dinâmicos/PDF-literais); falta suporte a tema claro/escuro via tokens já existentes.
 5. **Acessibilidade:** completar rótulos ARIA nas tabelas dinâmicas e feedback de status para leitores de tela.
 6. **CI/CD:** pipeline `clasp push` com lint (ESLint) e verificação de versões de dependência.
 
@@ -642,3 +642,68 @@ Houve uma tentativa de implementar o Modo Noturno na aplicação. O código foi 
    - Componentes JS (ex: `JS_Pessoas.html`) usavam concatenação de strings em Javascript injetando cores HEX absolutas (`#E2EBF8` e `#25497F`) em tags, o que destruía o contraste no modo escuro sem uma refatoração severa de lógica JS para classes CSS.
    - Falta de padronização estrutural prévia: muitos rótulos, pesos de fonte (`font-weight: 600;`) e cores secundárias estavam fixados de forma inline nas views HTML ao invés de usar classes genéricas (como `.page-title` ou `.section-label`), tornando a adaptação inconsistente entre as telas.
    - O rollback foi feito para priorizar primeiro uma refatoração limpa da arquitetura de estilos (removendo todos os inlines para classes semânticas) antes de introduzir uma variável de tema.
+
+### Ajustes de Proporção nas Tabelas (26/07/2026)
+Foram realizados refinamentos nas larguras (widths) das colunas das grids CSS para otimizar o espaço e a legibilidade dos dados sem quebrar layout.
+1. **Listas de Documentos (`CSS.html`, `.doc-row--mestra` e `.doc-row--rev`)**:
+   - Foi feita uma tentativa de usar larguras dinâmicas (`auto`/`max-content`) nas colunas. Porém, como cada linha do grid (`.doc-row`) é independente (aplicada em uma `div` em vez de um único elemento de grid-container ou `<table>`), o uso de `auto` fazia com que cada linha calculasse sua largura baseada no próprio conteúdo, destruindo o alinhamento vertical da tabela inteira.
+   - A solução final preservou **tamanhos fixos, porém mais largos** para evitar esmagamento de textos e manter a coluna "Título" fluida (`1fr`):
+     - **Código**: subiu de `90px` para `110px`.
+     - **Tipo**: subiu de `160px` para `180px`.
+     - **Histórico**: subiu de `110px` para `140px`.
+     - **Link** e **Auxiliares**: ganharam `10px` a mais cada.
+2. **Histórico de Revisões (`View_Documentos.html`)**:
+   - A `div` wrapper da lista teve seu `min-width` reduzido de `1400px` para `1100px`. Por possuir menos colunas fixas que a lista principal, o tamanho enorme forçava a coluna elástica de "Título" (`1fr`) a absorver um espaço vazio muito grande (mais de 500px), causando distanciamento exagerado e espremendo os dados da direita. A redução de 300px deixou a tabela muito mais harmônica.
+3. **Lista de Registros (`CSS.html`, `.log-row`)**:
+   - Essa tabela possui uma arquitetura estável de frações elásticas (`fr`), não sofrendo do problema de desalinhamento independente relatado nas views de Documentos. O balanceamento de espaço foi repensado:
+     - **Data/Hora**: expandiu de `140px` para `160px`.
+     - **Ação**: expandiu de `180px` para `220px`.
+     - **Usuário**: cedeu uma parte do seu espaço reduzindo sua proporção de `1.5fr` para `1.2fr`.
+
+### Correção de bugs do refactor "inline style → classe CSS" + migração completa (26/07/2026)
+
+O commit local que converteu estilos inline em classes (2 commits: `1492a12` design-system no `CSS.html`, `d9941e0` aplicação nos 18 arquivos JS/View) introduziu 3 bugs que passaram despercebidos por afetarem apenas a aparência, sem gerar erro. Auditoria (só leitura) encontrou os 3; depois, a pedido do usuário, todos foram corrigidos e o trabalho de migração foi retomado e levado até o fim.
+
+#### Bugs encontrados e corrigidos
+
+1. **`CORES_STATUS` virou `{chave: 'nome-da-classe'}` mas 2 call sites ainda desestruturavam como array `[bg, cor]`.** Como uma string é iterável por índice em JS, `const [a, b] = 'badge-danger'` não gera erro — só produz `a='b'`, `b='a'`, cores inválidas e silenciosamente ignoradas pelo navegador.
+   - `JS_Kanban.html` (badge de prioridade em "Cartões Arquivados", ~linha 264/269): corrigido para aplicar a classe diretamente (`class="tag-badge ${prioCls}"`).
+   - `JS_Riscos.html` (`atualizarLegendaRisco`, legenda de Probabilidade×Impacto nos modais de Risco): a função manipula `.style.backgroundColor/borderColor/color` diretamente via JS (uso legítimo de inline dinâmico), então a correção não foi trocar por classe — foi criar um mapa `CORES_NIVEL_RISCO` local usando as variáveis `--risk-low/med/high/crit-bg/border/text` (já existiam em `CSS.html`, adicionadas no commit `1492a12` mas nunca usadas em lugar nenhum) e desestruturar `[bg, borda, cor]` corretamente a partir dele.
+   - `JS_Capacitacoes.html`/`JS_VisitasTecnicas.html`: mesmo padrão de desestruturação quebrada existia mas o resultado nunca era usado (código morto) — apenas removido.
+2. **Classe `.multiselect-trigger` referenciada em `View_Capacitacoes.html`/`View_VisitasTecnicas.html` mas nunca definida no CSS** — o refactor trocou o `style=""` do seletor de participantes por essa classe inexistente, deixando o elemento sem borda/padding/layout. Adicionada a definição faltante em `CSS.html`.
+3. **Rename `member-row` → `membro-row` incompleto.** `JS_Kanban.html` passou a emitir `membro-row`/`membro-row--inativa`, mas `CSS.html` só tinha `.member-row`/`.member-row--inativa` (modificador de opacidade do membro inativo, no Kanban, ficou sem efeito) e, à parte, um bloco `.membro-row`/`.escala-row` inteiramente duplicado mais abaixo no arquivo (usado por Afastamentos/Escala em Pessoas). Consolidado em uma única definição de cada, renomeando corretamente.
+
+#### Migração adicional (a pedido do usuário, "deixar 100% perfeito")
+
+Com os bugs corrigidos, foi feita uma segunda passada, módulo por módulo (Pessoas → Riscos → Kanban → Documentos → Capacitações/Visitas Técnicas → Unidades/Monitoramento/Comum/Index):
+
+- **Cores hex hardcoded → `var(--...)`** em todo `style=""` que ainda usava valor literal com equivalente já existente na paleta (ex.: `#6b7280`→`var(--text-muted)`, `#4b5563`→`var(--text-secondary)`, `#030712`→`var(--text-main)`, `#cbd5e1`→`var(--border-strong)`). **Exceção deliberada:** as funções `_pdfKpiCel`/`_pdfGraficoCel`/`_pdfDoughnutComLegendaCel`/`_cabecalhoPdfHtml`/`_envelopeHtml` (`JS_Utilitarios.html`) e `montarHtmlAcompanhamentoPdf`/`montarHtmlRiscoArquivadoPdf` (`JS_Riscos.html`) constroem um documento HTML **standalone** para o conversor de PDF do Apps Script, com seu próprio `<style>` isolado — não tem acesso às variáveis `:root` do `CSS.html`, então ali cor literal continua sendo o correto.
+- **Estilos inline estáticos repetidos (3+ vezes no mesmo contexto) → classes novas.** Exemplos: `.escala-day-card`/`.escala-hora-input`/`.afast-section`/`.afast-dot` (modais de Escala/Afastamentos em Pessoas), `.risco-legenda-nivel`/`.risk-meta`/`.plan-card--nested` (Riscos), `.chart-legend-row`/`.chart-legend-avatar` (lista de legenda dos gráficos por membro — reaproveitada em Kanban, Capacitações e Visitas Técnicas, que tinham o mesmo bloco copiado 3x), `.tl-chart-simple`/`.tl-chart-donut-wrap`/`.tl-donut-*` (painel de Indicadores, 6 gráficos com o mesmo wrapper repetido). Estilos genuinamente dinâmicos (cor calculada em runtime, `display:none` de toggle) foram deixados inline propositalmente.
+- Total de atributos `style="` no projeto caiu de ~378 para ~201 (o restante é majoritariamente as funções de PDF, casos de uso único, ou estilos dinâmicos).
+
+#### Validação e achados extras
+
+Ao final, todas as classes novas foram conferidas contra `CSS.html` (existência da definição + uso real). Isso pegou um mismatch introduzido pela própria sessão (`risco-meta-sep` no `JS_Riscos.html` vs `risk-meta-sep` definido no CSS — corrigido para `risk-meta-sep` em ambos os lados antes de reportar) e um bloco duplicado **pré-existente** (não desta sessão) `.filter-date-group`/`.filter-date-input`/`.filter-date-sep`, dead code do refactor original, removido por estar na mesma área sendo trabalhada.
+
+**Estado do deploy:** `clasp push` foi feito (todos os arquivos atualizados no editor do Apps Script). O `clasp deploy` (publicação de nova versão na URL de produção usada pelos usuários) foi **deliberadamente adiado a pedido do usuário** — o projeto tem 2 deployments (`@HEAD`, que reflete o push na hora, e `@7`, versão fixa antiga); se o link do dia a dia aponta para `@7`, as mudanças desta sessão só valerão para quem testar via editor/`@HEAD` até que um deploy seja publicado.
+
+### Segunda rodada — plano faseado eliminando o restante dos estilos inline (26/07/2026)
+
+Ainda no mesmo dia, o usuário pediu uma nova auditoria dos ~201 `style=""` restantes (mapeados na rodada anterior) e um **plano faseado** para eliminar o que fosse viável, com um critério novo em relação à rodada anterior: **criar classe mesmo para valores usados uma única vez hoje** (visando reaproveitamento futuro), não só para os repetidos 3+ vezes. Plano de 9 fases aprovado pelo usuário e executado por completo, com validação ao final de cada fase (não só no final de tudo — lição direta da rodada anterior, onde um mismatch só foi pego na auditoria final).
+
+**Resultado:** `style="` no projeto caiu de ~201 para **35**. Os 35 remanescentes são: cores/dimensões calculadas por variável JS (ex.: `stroke:${cor}`, `background-color:${bgColorsM[i]}`), toggles `display:none`/`display:flex` acionados via `.style.display` no JS (modais, blocos condicionais), o único `'<td style="' + cel.getAttribute('style') + '">'` (pass-through literal de um nó clonado, não dá para virar classe), e um punhado de cores dentro das funções de PDF (`_pdfKpiCell`, `_pdfGraficoCel` etc.) sem token de design equivalente — todos documentados como exceção intencional, não pendência.
+
+#### Bugs de cascata/especificidade CSS pegos durante a execução (não estavam na auditoria original — só apareceram ao aplicar)
+
+A validação por fase (em vez de só no fim) pegou problemas que teriam passado despercebidos numa migração em lote única:
+
+- **`.list-body` + `.gap-20`, `.form-row` + `.gap-12`/`.gap-10`:** a classe utilitária (`.gap-20` etc.) estava definida **antes** da classe-base (`.list-body`) no `CSS.html`. Com a mesma especificidade (uma classe cada), quem vem depois no arquivo vence — então a classe-base sempre ganhava e o gap "customizado" nunca era aplicado, silenciosamente. Corrigido substituindo a combinação por modificadores dedicados (`.list-body--spaced`, `.form-row--gap-12`, `.form-row--gap-10`), que não dependem de ordem no arquivo.
+- **`.risk-title--archived`** definida **antes** de `.risk-title` — mesma causa, mesma correção (reposicionada para depois da base).
+- **`.data-table` + `.font-12`, `.field-label` + `.mt-8`:** aqui o problema não era ordem, era **especificidade**. `label.field-label` (seletor elemento+classe) e a regra de `.data-table` sempre vencem uma classe utilitária de classe única, não importa onde ela esteja no arquivo. Corrigido com seletor de especificidade equivalente ou maior (`.field-label.mt-8`) ou modificador dedicado (`.data-table--sm`).
+- **O mais sério:** `.w-100px`, `.field-input-compact`, `.acomp-data`, `.acomp-sei`, `.escala-hora-input` perdiam para uma regra genérica já existente no `CSS.html` (~linha 924): `input[type="text"]:not(.filter-input), input[type="email"], input[type="date"]:not(.filter-date-input), select.field-select, textarea.field-area { width:100%; padding:10px 13px; ... }`. Essa regra tem especificidade maior que qualquer classe única (o seletor de atributo `[type="text"]` e o `:not(.filter-input)` cada um conta como "classe" na especificidade). Resultado: campos que deveriam ser compactos (datas de Abono/Licença, campo de ano, inputs de horário da Escala) renderizavam com o tamanho/padding padrão, sem nenhum erro — só errado visualmente. **Corrigido com `!important` nessas 5 classes**, seguindo o mesmo padrão que `.mt-10`/`.px-28`/`.pb-28` já usavam no projeto antes desta sessão, exatamente pelo mesmo motivo.
+- **Achado à parte (bug real, não de cascata):** dentro do `<style>` isolado que `_envelopeHtml()` (`JS_Utilitarios.html`) gera para o PDF, a classe `.text-center` era usada em 2 pontos (imagem da matriz de risco e do gráfico) mas nunca tinha sido definida ali — só existe em `CSS.html`, que o documento de PDF não enxerga. A imagem nunca foi de fato centralizada no PDF. Corrigido adicionando `.text-center { text-align: center; }` ao `<style>` do envelope.
+- **Dead code pré-existente removido incidentalmente** (não introduzido nesta nem na rodada anterior, só notado por estar na área sendo trabalhada): `.list-scroll.x` duplicada (duas definições conflitantes), `.gap-20` duplicada, `.mt-2` (nome enganoso — aplicava 8px, não 2px — e nunca usada em lugar nenhum), `.acomp-status-wrap` duplicada, `.acomp-main-row`/`.acomp-fields-row` (classes nunca referenciadas em nenhum HTML do projeto).
+
+**Regra prática registrada para o futuro** (relevante para quem for criar novos utilitários CSS de classe única): antes de combinar uma classe utilitária nova com uma classe de componente já existente, verificar se o componente já define a mesma propriedade CSS — e com que tipo de seletor. Se o componente usa seletor de elemento (`label.field-label`), atributo (`input[type=...]`) ou `:not()`, a especificidade dele provavelmente supera uma classe única sozinha; nesse caso, só reordenar o CSS não resolve — é preciso `!important` no utilitário ou um seletor de especificidade equivalente.
+
+`clasp push` feito novamente ao final (28 arquivos). Deploy de produção novamente não foi solicitado nesta rodada.

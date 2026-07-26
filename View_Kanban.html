@@ -66,15 +66,15 @@
               </div>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <button id="btn-pdf-archived" class="btn-pdf-download btn-icon" type="button" title="Baixar PDF">
+            <div class="flex-row items-center gap-8">
+              <button id="btn-pdf-archived" class="btn-pdf-download btn-top-action" type="button" title="Baixar PDF">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
               </button>
-              <button id="btn-email-archived" type="button" class="btn-icon" title="Enviar por E-mail" style="width: 40px; height: 40px; border-radius: 50%;">
+              <button id="btn-email-archived" type="button" class="btn-top-action" title="Enviar por E-mail">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                   <polyline points="22,6 12,13 2,6" />
@@ -83,20 +83,20 @@
             </div>
           </div>
 
-          <div class="pdf-header" id="pdf-header-archived" style="display: none;">
+          <div class="pdf-header" id="pdf-header-archived">
             <h1>Sistema de Gestão da Qualidade</h1>
             <div class="pdf-sub">Comissão Especial de Qualidade e Padronização · CEQP | SUCOAS - SES/DF</div>
             <h2>Cartões Arquivados</h2>
           </div>
         </header>
 
-        <p style="font-size:13px; color:var(--text-secondary); margin: 8px 28px 24px; flex-shrink: 0;" class="no-print">
+        <p class="archived-desc no-print">
           Cartões arquivados manualmente saem do quadro e ficam guardados aqui permanentemente para consulta.
         </p>
 
         <!-- Lista de Cartões (Grid Header + Conteúdo) -->
-        <div class="list-scroll x" style="padding: 0 28px;">
-          <div style="min-width: 850px; display: flex; flex-direction: column;">
+        <div class="list-scroll x">
+          <div class="list-scroll-inner min-w-850">
             <div class="list-head arq-row text-left">
               <div>Cartão</div>
               <div>Responsável(is)</div>
@@ -125,7 +125,7 @@
             <textarea id="taskTitle" class="modal-title-field" placeholder="Título do Cartão" rows="1"
               oninput="this.style.height='';this.style.height=this.scrollHeight+'px'"></textarea>
             <div class="modal-subtitle-text">na lista <span id="taskStatusDisplay"
-                style="font-weight:600; text-decoration:underline;"></span></div>
+                class="task-status-highlight"></span></div>
             <input type="hidden" id="taskId"><input type="hidden" id="taskStatus"><input type="hidden"
               id="taskCreation"><input type="hidden" id="taskCompletion"><input type="hidden" id="taskStartDate"><input
               type="hidden" id="taskUpdatedAt">
@@ -146,17 +146,17 @@
               </svg>
               <h4>Atividades</h4>
             </div>
-            <div style="margin-bottom:8px;">
+            <div class="mb-8">
               <textarea id="taskNewComment" placeholder="Escrever um comentário..."
                 class="modal-comment-field"></textarea>
-              <div style="margin-top:6px;"><button type="button" class="btn primary btn-sm" id="btn-add-comment">Salvar
+              <div class="mt-6"><button type="button" class="btn primary btn-sm" id="btn-add-comment">Salvar
                   Comentário</button></div>
             </div>
             <div class="activity-feed" id="activity-feed"></div>
           </div>
         </div>
         <div class="modal-sidebar-actions">
-          <h4 id="sidebar-add-title" style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase;">
+          <h4 id="sidebar-add-title" class="sidebar-section-title">
             Adicionar ao cartão</h4>
           <div class="sidebar-field-group">
             <label><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -166,7 +166,7 @@
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
               </svg>Responsáveis</label>
             <div class="custom-select-wrapper">
-              <div class="custom-select-display" id="assignee-display">Selecionar...</div>
+              <div class="field-multiselect" id="assignee-display" tabindex="0">Selecionar...</div>
               <div class="custom-select-options" id="taskAssigneesContainer"></div>
             </div>
             <div class="selected-tags" id="selected-assignees-tags"></div>
@@ -189,7 +189,7 @@
                 <line x1="7" y1="7" x2="7.01" y2="7"></line>
               </svg>Etiquetas</label>
             <div class="custom-select-wrapper">
-              <div class="custom-select-display" id="labels-display">Selecionar...</div>
+              <div class="field-multiselect" id="labels-display" tabindex="0">Selecionar...</div>
               <div class="custom-select-options" id="taskLabelsContainer"></div>
             </div>
             <div class="selected-tags" id="selected-labels-tags"></div>
@@ -203,7 +203,7 @@
               </svg>Prazo de Entrega</label>
             <input type="date" id="taskDeadline" class="sidebar-date">
           </div>
-          <div style="margin-top:18px;">
+          <div class="mt-18">
             <button type="button" class="sidebar-action-btn save-btn" id="btn-save-task">Salvar Cartão</button>
             <button type="button" class="sidebar-action-btn archive-btn" id="btn-archive-task"
               style="display:none;">Arquivar</button>
@@ -220,7 +220,7 @@
     <div class="modal-box">
       <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-atividades-arquivadas" aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title">Atividades do Cartão (Arquivo)</h3>
-      <div id="feed-atividades-arquivadas" class="activity-feed" style="max-height: 50vh; overflow-y: auto;">
+      <div id="feed-atividades-arquivadas" class="activity-feed activity-feed--archived">
         <!-- Preenchido via JS -->
       </div>
       <div class="modal-footer">

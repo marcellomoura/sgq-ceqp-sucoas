@@ -39,14 +39,14 @@ function renderMembers() {
       
     return `<div class="grid-row-hover membro-row${inativo ? ' membro-row--inativa' : ''}">
       <div class="member-c-name">
-        <div class="member-avatar ${corPastelPorNome(m.name)}" style="width: 38px; height: 38px; font-size: 13px;">${esc(iniciaisMembro(m.name))}</div>
+        <div class="member-avatar member-avatar--lg ${corPastelPorNome(m.name)}">${esc(iniciaisMembro(m.name))}</div>
         <span class="member-c-name-txt">${esc(m.name)}${inativo?' '+badgeInativo():''}</span>
       </div>
-      <div><span class="member-role-badge" style="font-size: 12px;">${esc(m.role)}</span></div>
+      <div><span class="member-role-badge member-role-badge--lg">${esc(m.role)}</span></div>
       <div class="member-c-email">${esc(m.email)||'-'}</div>
       <div class="member-c-email">${esc(m.emailPessoal)||'-'}</div>
       <div class="member-c-acoes">
-        <div class="cell-actions" style="justify-content:center;">${btnStatus}</div>
+        <div class="cell-actions">${btnStatus}</div>
       </div>
     </div>`;
   }).join('');
@@ -261,12 +261,12 @@ function renderArquivados(resetPage = false) {
       }
     }
     // Mesma cor de CORES_STATUS['Alta'/'Media'/'Baixa'] (fonte única) — só o texto exibido usa acento.
-    const [prioBg, prioCor] = CORES_STATUS[task.priority];
+    const prioCls = CORES_STATUS[task.priority];
 
     return `<div class="grid-row-hover arq-row">
       <div class="font-semibold text-main font-13" title="${esc(task.title)}">${esc(task.title)}</div>
       <div class="font-13">${esc(nomes)}</div>
-      <div class="text-center"><span class="tag-badge" style="background:${prioBg};color:${prioCor};">${esc(task.priority === 'Media' ? 'Média' : task.priority)}</span></div>
+      <div class="text-center"><span class="tag-badge ${prioCls}">${esc(task.priority === 'Media' ? 'Média' : task.priority)}</span></div>
       <div class="text-center font-13">${fmtBr(task.startDate)}</div>
       <div class="text-center font-13">${fmtBr(task.completionDate)}</div>
       <div class="text-center font-semibold text-secondary font-13">${duracao}</div>
@@ -301,19 +301,19 @@ function confirmarArquivarTarefa() {
 function abrirAtividadesArquivadas(id) {
   const feed = $id('feed-atividades-arquivadas');
   if (!feed) return;
-  feed.innerHTML = '<div style="font-size:12px;color:#6b7280;padding-left:10px;">A carregar atividades...</div>';
+  feed.innerHTML = '<div class="feed-msg-muted">A carregar atividades...</div>';
   abrirModal('modal-atividades-arquivadas');
   
   google.script.run
     .withSuccessHandler(function(acts) {
       if (!acts || acts.length === 0) {
-        feed.innerHTML = '<div style="font-size:12px;color:#6b7280;padding-left:10px;">Nenhuma atividade registrada.</div>';
+        feed.innerHTML = '<div class="feed-msg-muted">Nenhuma atividade registrada.</div>';
         return;
       }
       feed.innerHTML = [...acts].reverse().map(a => `<div class="hist-item"><div class="hist-date">${a.author?`<span class="hist-author">${esc(a.author)}</span> · `:''}${esc(a.date)}</div><div class="hist-action">${a.type==='comment'?'<strong>Comentou:</strong> ':''}${esc(a.text)}</div></div>`).join('');
     })
     .withFailureHandler(function(e) {
-      feed.innerHTML = '<div style="font-size:12px;color:#ef4444;padding-left:10px;">Falha ao carregar o histórico: ' + esc(String(e)) + '</div>';
+      feed.innerHTML = '<div class="feed-msg-error">Falha ao carregar o histórico: ' + esc(String(e)) + '</div>';
     })
     .getAtividadesTarefaArquivada(id);
 }
@@ -356,11 +356,11 @@ function populateLabels(selectedIds=[]) {
     const badgeStyle = info.bg ? `background:${info.bg};color:${info.cor};` : '';
     const svgIcon = checked
       ? `<svg style="width:16px;height:16px;stroke:${cor};fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line><polyline points="9 11 12 14 22 4" stroke-width="3" style="stroke:${cor};"></polyline></svg>`
-      : `<svg style="width:16px;height:16px;stroke:#6b7280;fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
+      : `<svg class="label-check-icon" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
 
-    return `<label class="checkbox-label" style="display:flex; align-items:center; cursor:pointer; padding:4px 8px; margin-bottom:2px; border-radius:4px;">
-      <input type="checkbox" style="display:none;" value="${esc(l.id.replace(/"/g,'&quot;'))}" ${checked?'checked':''}>
-      <span class="label-svg-icon" data-color="${cor}" style="display:flex;">${svgIcon}</span>
+    return `<label class="checkbox-label checkbox-label--compact">
+      <input type="checkbox" class="hidden-checkbox" value="${esc(l.id.replace(/"/g,'&quot;'))}" ${checked?'checked':''}>
+      <span class="label-svg-icon" data-color="${cor}">${svgIcon}</span>
       <span class="tag-badge ${info.cls}" style="${badgeStyle}">${esc(l.nome)}</span>
     </label>`;
   }).join('');
@@ -371,7 +371,7 @@ function populateLabels(selectedIds=[]) {
     if(e.target.checked) {
       labelSvgSpan.innerHTML = `<svg style="width:16px;height:16px;stroke:${color};fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line><polyline points="9 11 12 14 22 4" stroke-width="3" style="stroke:${color};"></polyline></svg>`;
     } else {
-      labelSvgSpan.innerHTML = `<svg style="width:16px;height:16px;stroke:#6b7280;fill:none;margin-right:8px;flex-shrink:0;" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
+      labelSvgSpan.innerHTML = `<svg class="label-check-icon" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></line></svg>`;
     }
     atualizarTagsLabels();
   }));
@@ -388,8 +388,8 @@ function populateAssignees(selectedIds=[]) {
   let lista = membrosOrdenados();
   const faltando = (selectedIds||[]).map(String).filter(id => !lista.some(m=>String(m.id)===id));
   if (faltando.length) lista = lista.concat(state.members.filter(m => faltando.includes(String(m.id))));
-  if(!lista.length){ c.innerHTML='<div style="font-size:12px;color:#6b7280;padding:8px;">Nenhum membro cadastrado.</div>'; atualizarTagsAssignee(); return; }
-  c.innerHTML=lista.map(m=>`<label class="checkbox-label"><input type="checkbox" value="${esc(m.id)}" ${selectedIds.includes(String(m.id))?'checked':''}> ${esc(m.name)}${m.ativo===false?' <span style="color:#6b7280;font-size:11px;">(inativo)</span>':''}</label>`).join('');
+  if(!lista.length){ c.innerHTML='<div class="msg-empty-compact">Nenhum membro cadastrado.</div>'; atualizarTagsAssignee(); return; }
+  c.innerHTML=lista.map(m=>`<label class="checkbox-label"><input type="checkbox" value="${esc(m.id)}" ${selectedIds.includes(String(m.id))?'checked':''}> ${esc(m.name)}${m.ativo===false?' <span class="text-inactive-tag">(inativo)</span>':''}</label>`).join('');
   c.querySelectorAll('input').forEach(i=>i.addEventListener('change',atualizarTagsAssignee));
   atualizarTagsAssignee();
 }
@@ -462,8 +462,8 @@ function abrirEditarTarefa(task) {
 // afirmando algo falso sobre o cartão.
 function renderActividades(msgEstado) {
   const feed=$id('activity-feed'); if(!feed) return;
-  if(msgEstado){ feed.innerHTML='<div style="font-size:12px;color:#6b7280;padding-left:10px;">'+esc(msgEstado)+'</div>'; return; }
-  if(!currentActivities.length){ feed.innerHTML='<div style="font-size:12px;color:#6b7280;padding-left:10px;">Nenhuma atividade registrada.</div>'; return; }
+  if(msgEstado){ feed.innerHTML='<div class="feed-msg-muted">'+esc(msgEstado)+'</div>'; return; }
+  if(!currentActivities.length){ feed.innerHTML='<div class="feed-msg-muted">Nenhuma atividade registrada.</div>'; return; }
   feed.innerHTML=[...currentActivities].reverse().map(a=>`<div class="hist-item"><div class="hist-date">${a.author?`<span class="hist-author">${esc(a.author)}</span> · `:''}${esc(a.date)}</div><div class="hist-action">${a.type==='comment'?'<strong>Comentou:</strong> ':''}${esc(a.text)}</div></div>`).join('');
 }
 function adicionarComentario() {
@@ -684,13 +684,13 @@ function renderGraficosKanban(fid) {
     elListM.innerHTML = '';
     sNamesM.forEach((nome, i) => {
       elListM.insertAdjacentHTML('beforeend', `
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: var(--radius-sm);">
-          <div style="display: flex; align-items: center; min-width: 0; margin-right: 12px;">
-            <div style="width: 28px; height: 28px; border-radius: 50%; background-color: ${bgColorsM[i]}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #ffffff; margin-right: 12px; flex-shrink: 0;">${getInitials(nome)}</div>
-            <span style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--text-secondary);">${nome}</span>
+        <div class="chart-legend-row">
+          <div class="chart-legend-left">
+            <div class="chart-legend-avatar" style="background-color: ${bgColorsM[i]};">${getInitials(nome)}</div>
+            <span class="chart-legend-name">${nome}</span>
           </div>
-          <div style="display: flex; align-items: center; flex-shrink: 0;">
-            <span style="font-size: 13px; text-align: right; min-width: 20px; font-weight: 500; color: var(--text-muted);">${sCountsM[i]}</span>
+          <div class="chart-legend-right">
+            <span class="chart-legend-count">${sCountsM[i]}</span>
           </div>
         </div>
       `);
@@ -731,13 +731,13 @@ function renderGraficosKanban(fid) {
     elListMC.innerHTML = '';
     sNamesMC.forEach((nome, i) => {
       elListMC.insertAdjacentHTML('beforeend', `
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: var(--radius-sm);">
-          <div style="display: flex; align-items: center; min-width: 0; margin-right: 12px;">
-            <div style="width: 28px; height: 28px; border-radius: 50%; background-color: ${bgColorsMC[i]}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #ffffff; margin-right: 12px; flex-shrink: 0;">${getInitials(nome)}</div>
-            <span style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--text-secondary);">${nome}</span>
+        <div class="chart-legend-row">
+          <div class="chart-legend-left">
+            <div class="chart-legend-avatar" style="background-color: ${bgColorsMC[i]};">${getInitials(nome)}</div>
+            <span class="chart-legend-name">${nome}</span>
           </div>
-          <div style="display: flex; align-items: center; flex-shrink: 0;">
-            <span style="font-size: 13px; text-align: right; min-width: 20px; font-weight: 500; color: var(--text-muted);">${sCountsMC[i]}</span>
+          <div class="chart-legend-right">
+            <span class="chart-legend-count">${sCountsMC[i]}</span>
           </div>
         </div>
       `);
@@ -765,9 +765,9 @@ function renderGraficosKanban(fid) {
 // Fragmento do relatório do Painel de Indicadores com os 4 gráficos do
 // Kanban (viram imagem estática, já que Chart.js não roda no servidor).
 function graficosKanbanPdfHtml() {
-  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Tarefas por Status','statusChart', '100%')}</tr></table>` +
-    `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Tarefas por Nível de Prioridade','priorityChart', '100%')}</tr></table>` +
-    `<table style="margin-bottom:18px;"><tr>${_pdfDoughnutComLegendaCel('Tarefas em Andamento por Membro','memberChart', memberChartInst, '50%')}${_pdfDoughnutComLegendaCel('Tarefas Concluídas por Membro','memberConcluidoChart', memberConcluidoChartInst, '50%')}</tr></table>`;
+  return `<table class="pdf-table-spaced"><tr>${_pdfGraficoCel('Tarefas por Status','statusChart', '100%')}</tr></table>` +
+    `<table class="pdf-table-spaced"><tr>${_pdfGraficoCel('Tarefas por Nível de Prioridade','priorityChart', '100%')}</tr></table>` +
+    `<table class="pdf-table-spaced-lg"><tr>${_pdfDoughnutComLegendaCel('Tarefas em Andamento por Membro','memberChart', memberChartInst, '50%')}${_pdfDoughnutComLegendaCel('Tarefas Concluídas por Membro','memberConcluidoChart', memberConcluidoChartInst, '50%')}</tr></table>`;
 }
 
 // Corpo do relatório de Arquivados — reaproveita a tabela já renderizada,

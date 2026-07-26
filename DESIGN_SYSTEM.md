@@ -3,7 +3,7 @@
 Bem-vindo à documentação oficial do Design System do Sistema de Gestão de Qualidade. Este guia documenta as regras, padrões visuais e comportamentos dos componentes do SGQ baseados na arquitetura CSS do projeto.
 
 ## 1. Visão Geral e Princípios
-- **Estética:** "Light Mode Premium". Utiliza uma interface clara e de alto contraste.
+- **Estética:** "Light Mode Premium". Utiliza uma interface clara e de alto contraste. O projeto adota estritamente o modo claro; tentativas de "Night Mode" via inversão de filtros (como `filter: invert() hue-rotate()`) foram revertidas para garantir a integridade absoluta das cores semânticas e prevenir anomalias em componentes nativos.
 - **Elevação vs. Sombras:** O design evita sombras pesadas. A separação entre elementos é feita predominantemente através de bordas claras (`var(--border-color)`) e tons sutis de fundo, garantindo um visual limpo e fluido sem pesar o processamento da interface.
 - **Micro-interações:** Transições suaves baseadas em curvas de atenuação consistentes para feedback instantâneo e amigável, sem exageros nas animações de elementos estáticos.
 - **Densidade Espacial:** Uso extensivo de espaços baseados em múltiplos de 4 para melhor legibilidade, alinhamento simétrico e consistência (Grid System Base 4).
@@ -120,7 +120,7 @@ O conteúdo central (`.view-section`) alterna sua visibilidade pelo estado de `.
 
 ### 4.1 Tabelas e Grid Lists Modernas
 Para visualização de registros da organização, o SGQ une tabelas clássicas e listagens CSS Grid avançadas:
-- **Tabelas Clássicas (`.data-table`):** Utilizadas em dados unificados (ex: Férias e Indicadores Simples). Caracterizam-se pelo Sticky Header (título fixo no scroll) e comportamento clássico com variação de cor (`--bg-hover`) nas linhas.
+- **Tabelas Clássicas (`.data-table`):** Utilizadas em dados unificados (ex: Férias e Indicadores Simples). Caracterizam-se pelo Sticky Header (título fixo no scroll) e comportamento clássico com variação de cor (`--bg-hover`) nas linhas. Todas as tabelas possuem scroll horizontal seguro isolado em um invólucro `.table-responsive` ou `.overflow-x-auto` contendo classes limitadoras nativas (como `.min-w-1000`, `.min-w-1500` etc) para preservar a proporção de colunas em telas estreitas.
 - **Grid Lists (Ex: `.log-row`, `.cap-row`, `.doc-row`):** Uma evolução semântica. Utilizam `display: grid; grid-template-columns` contendo diversas frações (`fr`). Os registros parecem mini-cards empilhados horizontalmente e respondem visualmente ao cursor flutuando e mudando de sombra com transições limpas de CPU (`.grid-row-hover`).
 
 ### 4.2 Formulários (Inputs)
@@ -130,11 +130,12 @@ A arquitetura de inputs garante alinhamento e facilidade na seleção da informa
 
 ### 4.3 Botões (`.btn`)
 Categorizados por sua prioridade:
-- `.btn.primary`: Para as ações supremas de telas (como submissão de cadastro). Fundo na cor dark (`#2E323C`). Hover e Active trazem nuances suaves, além de desativarem quando em processamento ou disabled.
-- `.btn.secondary` e `.btn-outline`: Fundo transparente ou branco que só demarca interação por bordas fortes.
+- `.btn.primary`: Para as ações supremas de telas. Fundo na cor dark (`#2E323C`). **Importante:** Padronizado rigorosamente como a cor para todos os botões de "Salvar" ou "Confirmar" presentes nos rodapés dos Modais do sistema, trazendo forte ênfase visual.
+- `.btn.secondary` e `.btn-outline`: Fundo transparente ou branco que só demarca interação por bordas fortes. Usado predominantemente para "Cancelar" ou "Fechar" nos modais.
 - `.btn.danger` / `.btn.success`: Comandos que sinalizam perdas destrutivas (deleção e arquivamento) ou aceites explícitos.
-- `.btn-icon`: Botões utilitários contidos (quadrados de aprox `32px`) responsáveis por ações na listagem de tabelas (edição `.edit`, visão de revisões `.rev`, banimento/deleção `.del`).
-- `.btn-pdf-download`: Botões circulares assíncronos. Eles possuem a capacidade nativa no CSS de sumirem seu ícone svg e rotacionarem infinitamente um "spinner" (`.loading::after`) de forma contínua até voltarem ao status normal, indicando andamento do processamento do relatorio.
+- `.btn-top-action`: Classe exclusiva do layout do cabeçalho da página (`.view-header`). São perfeitamente circulares (`40x40px`) e alinhados em proporção direta com os dropdowns de filtro, geralmente utilizados para botões utilitários de exportação (PDF, E-mail).
+- `.btn-icon`: Botões utilitários contidos (squircles quadrados compactos de `32px` com bordas arredondadas e stroke cinza). Usados de forma estrita para ações ao nível de linha dentro de tabelas/listas (ex: edição `.edit`, arquivamento `.archive`, deleção `.del`), garantindo que as linhas das tabelas não estiquem desnecessariamente.
+- `.btn-pdf-download`: Classe comportamental para relatórios assíncronos. Possui a capacidade nativa no CSS de ocultar seu ícone svg e rotacionar infinitamente um "spinner" (`.loading::after`) de forma contínua até retornar ao status normal.
 
 ### 4.4 KPIs e Cards de Indicadores
 A seção de métricas (Dashboards) engloba os `kpi-card`:

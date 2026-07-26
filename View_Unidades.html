@@ -22,8 +22,8 @@
         </header>
 
         <!-- Lista de Unidades (Grid Header + Conteúdo) -->
-        <div class="list-scroll x" style="padding: 0 28px;">
-          <div style="min-width: 750px; display: flex; flex-direction: column;">
+        <div class="list-scroll x">
+          <div class="list-scroll-inner min-w-750">
             <div class="list-head unid-row gap-16">
               <div>Sigla</div>
               <div>Nome</div>
@@ -45,8 +45,8 @@
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title" id="modal-unidade-title">Editar Unidade</h3>
       <input type="hidden" id="eu-id">
-      <div class="form-row" style="margin-top:10px;">
-        <div style="flex:2;"><label class="field-label" for="eu-nome">Nome da Unidade</label><input type="text"
+      <div class="form-row mt-10">
+        <div class="flex-2"><label class="field-label" for="eu-nome">Nome da Unidade</label><input type="text"
             id="eu-nome" class="field-input"></div>
         <div class="flex-1"><label class="field-label" for="eu-sigla">Sigla</label><input type="text" id="eu-sigla"
             class="field-input"></div>
@@ -55,7 +55,7 @@
       <label class="field-label" for="eu-link-drive">Link do Drive</label><input type="text" id="eu-link-drive" class="field-input" placeholder="Link da pasta do Drive">
       <div class="modal-footer">
         <button class="btn btn-secondary" data-close="modal-unidade">Cancelar</button>
-        <button class="btn btn-primary" id="btn-confirmar-unidade">Salvar Unidade</button>
+        <button class="btn primary" id="btn-confirmar-unidade">Salvar Unidade</button>
       </div>
     </div>
   </div>

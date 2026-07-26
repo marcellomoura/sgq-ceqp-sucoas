@@ -35,8 +35,8 @@ function renderUnidades() {
     const dv = String(u.linkDrive || '').trim();
     const celulaDrive = !dv ? '-'
       : /^https?:\/\//i.test(dv)
-        ? `<a href="${esc(dv)}" target="_blank" rel="noopener noreferrer" style="color:#2b7fff; text-decoration:none; font-weight:500;">🔗 Acessar</a>`
-        : `<span style="color:#4b5563; font-size:12px;">${esc(dv)}</span>`;
+        ? `<a href="${esc(dv)}" target="_blank" rel="noopener noreferrer" class="link-external">🔗 Acessar</a>`
+        : `<span class="text-secondary font-12">${esc(dv)}</span>`;
 
     return `<div class="grid-row-hover unid-row${inativo ? ' unid-row--inativa' : ''}">
     <div class="unid-c-sigla">${esc(u.sigla)}${inativo?' '+badgeInativo():''}</div>

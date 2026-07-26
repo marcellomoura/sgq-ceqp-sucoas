@@ -26,7 +26,7 @@
           </div>
         </header>
 
-        <div class="kpi-grid compact-view" id="dash-kpis-capacitacoes" style="margin: 24px 28px 16px; flex-shrink: 0;">
+        <div class="kpi-grid compact-view" id="dash-kpis-capacitacoes">
           <div class="kpi-card kpi-fill-sky">
             <div class="kpi-icon icon-sky"><svg viewBox="0 0 24 24">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
@@ -59,8 +59,8 @@
           </div>
         </div>
 
-        <div class="list-scroll x" style="padding: 0 28px;">
-          <div style="min-width: 1150px; display: flex; flex-direction: column;">
+        <div class="list-scroll x">
+          <div class="list-scroll-inner min-w-1150">
             <div class="list-head cap-row text-left">
               <div>Título da Capacitação</div>
               <div>Tema</div>
@@ -132,21 +132,18 @@
       </div>
 
       <label class="field-label">Responsáveis</label>
-      <div class="custom-select-wrapper" style="position:relative;">
-        <div id="cap-participantes-trigger" class="multiselect-trigger">
-          <span id="cap-participantes-label" style="color:var(--text-muted);">Selecionar responsáveis...</span>
-          <span style="font-size:9px; color:var(--text-muted); pointer-events:none;">▼</span>
-        </div>
+      <div class="custom-select-wrapper">
+        <div id="cap-participantes-trigger" class="field-multiselect" tabindex="0">Selecionar responsáveis...</div>
         <div id="cap-participantes-options" class="custom-select-options"></div>
       </div>
-      <div class="selected-tags" id="cap-participantes-tags" style="margin-top:6px;"></div>
+      <div class="selected-tags" id="cap-participantes-tags"></div>
 
-      <label class="field-label" for="cap-materiais" style="margin-top:8px;">Lista de Presença (Link)</label>
+      <label class="field-label mt-8" for="cap-materiais">Lista de Presença (Link)</label>
       <input type="text" id="cap-materiais" class="field-input" placeholder="Link para a lista de presença">
 
       <div class="modal-footer">
         <button class="btn btn-secondary" data-close="modal-capacitacao">Cancelar</button>
-        <button class="btn btn-primary" id="btn-salvar-capacitacao">Salvar</button>
+        <button class="btn primary" id="btn-salvar-capacitacao">Salvar</button>
       </div>
     </div>
   </div>

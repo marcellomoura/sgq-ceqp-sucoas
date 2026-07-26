@@ -21,8 +21,8 @@
         </header>
 
         <!-- Lista de Membros (Grid Header + Conteúdo) -->
-        <div class="view-content" style="padding-bottom: 28px; scrollbar-gutter: stable;">
-          <div style="min-width: 900px; display: flex; flex-direction: column;">
+        <div class="view-content view-content--scroll-stable">
+          <div class="list-scroll-inner min-w-900">
             <div class="list-head membro-row text-left">
               <div>Nome do Membro</div>
               <div>Função / Cargo</div>
@@ -30,8 +30,7 @@
               <div>E-mail Pessoal</div>
               <div class="text-center">Ações</div>
             </div>
-            <div id="members-list"
-              style="display: flex; flex-direction: column; gap: 8px;">
+            <div id="members-list" class="list-body">
               <div class="msg-empty">A carregar...</div>
             </div>
           </div>
@@ -44,13 +43,13 @@
           <div class="page-title mb-0">Escala Semanal</div>
         </header>
 
-        <div class="escala-overview" id="escala-grid" style="padding: 0 28px; margin-bottom: 16px; flex-shrink: 0;"></div>
+        <div class="escala-overview" id="escala-grid"></div>
         
         <!-- Lista de Escala (Grid Header + Conteúdo) -->
-        <div class="list-scroll x" style="padding: 0 28px;">
-          <div style="min-width: 950px; display: flex; flex-direction: column;">
+        <div class="list-scroll x">
+          <div class="list-scroll-inner min-w-950">
             <div class="list-head escala-row text-center">
-              <div style="text-align: left;">Membro</div>
+              <div class="text-left">Membro</div>
               <div>Seg</div>
               <div>Ter</div>
               <div>Qua</div>
@@ -84,16 +83,16 @@
               <span class="btn-create-icon">+</span> Novo Ano
             </button>
             <span id="ano-novo-inline" class="flex-row items-center gap-8" style="display:none;">
-              <input type="text" id="input-novo-ano" class="field-input" style="width: 100px;" inputmode="numeric" maxlength="4" placeholder="Ex: 2027">
-              <button id="btn-confirmar-novo-ano" type="button" class="btn btn-primary">Adicionar</button>
+              <input type="text" id="input-novo-ano" class="field-input w-100px" inputmode="numeric" maxlength="4" placeholder="Ex: 2027">
+              <button id="btn-confirmar-novo-ano" type="button" class="btn primary">Adicionar</button>
               <button id="btn-cancelar-novo-ano" type="button" class="btn btn-secondary">Cancelar</button>
             </span>
           </div>
         </header>
 
         <!-- Lista de Afastamentos (Grid Header + Conteúdo) -->
-        <div class="list-scroll x" style="padding: 0 28px;">
-          <div style="min-width: 1000px; display: flex; flex-direction: column;">
+        <div class="list-scroll x">
+          <div class="list-scroll-inner min-w-1000">
             <div class="list-head ferias-row text-left">
               <div>Membro</div>
               <div>Férias 1</div>
@@ -123,7 +122,7 @@
         class="field-input">
       <label class="field-label" for="memberRole">Função / Cargo</label><input type="text" id="memberRole"
         class="field-input">
-      <div class="form-row" style="margin-top:0;">
+      <div class="form-row">
         <div class="flex-1"><label class="field-label" for="memberEmail">E-mail Funcional</label><input type="email"
             id="memberEmail" class="field-input"></div>
         <div class="flex-1"><label class="field-label" for="memberEmailPessoal">E-mail Pessoal</label><input
@@ -142,102 +141,72 @@
       <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-escala"
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title">Escala Semanal</h3>
-      <p id="ee-membro-nome" style="font-weight:600;color:var(--primary);margin:4px 0 18px;font-size:14px;"></p>
+      <p id="ee-membro-nome" class="member-modal-label"></p>
       <input type="hidden" id="ee-membro-id">
-      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;font-weight:500;">Dias que trabalha (Seg a Sáb):</p>
-      <div style="display:flex;gap:5px;margin-bottom:20px;">
-        <div
-          style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:center;border:1px solid var(--border-color);padding:6px;border-radius:6px;">
-          <label
-            style="display:inline-flex;align-items:center;gap:3px;font-weight:600;font-size:11.5px;cursor:pointer;user-select:none;">
-            <input type="checkbox" id="ee-dia-segunda" value="Segunda" style="accent-color:var(--text-main);"
+      <p class="modal-hint-text">Dias que trabalha (Seg a Sáb):</p>
+      <div class="escala-day-cards-row">
+        <div class="escala-day-card">
+          <label class="escala-day-card-label">
+            <input type="checkbox" id="ee-dia-segunda" value="Segunda"
               onchange="document.getElementById('ee-hora-segunda').disabled = !this.checked">
             Seg
           </label>
-          <input type="text" id="ee-hora-segunda"
-            style="width:100%;font-size:10.5px;padding:4px;text-align:center;height:24px;border:1px solid var(--border-strong);border-radius:4px;"
-            placeholder="Sem hor." disabled>
+          <input type="text" id="ee-hora-segunda" class="escala-hora-input" placeholder="Sem hor." disabled>
         </div>
-        <div
-          style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:center;border:1px solid var(--border-color);padding:6px;border-radius:6px;">
-          <label
-            style="display:inline-flex;align-items:center;gap:3px;font-weight:600;font-size:11.5px;cursor:pointer;user-select:none;">
-            <input type="checkbox" id="ee-dia-terca" value="Terça" style="accent-color:var(--text-main);"
+        <div class="escala-day-card">
+          <label class="escala-day-card-label">
+            <input type="checkbox" id="ee-dia-terca" value="Terça"
               onchange="document.getElementById('ee-hora-terca').disabled = !this.checked">
             Ter
           </label>
-          <input type="text" id="ee-hora-terca"
-            style="width:100%;font-size:10.5px;padding:4px;text-align:center;height:24px;border:1px solid var(--border-strong);border-radius:4px;"
-            placeholder="Sem hor." disabled>
+          <input type="text" id="ee-hora-terca" class="escala-hora-input" placeholder="Sem hor." disabled>
         </div>
-        <div
-          style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:center;border:1px solid var(--border-color);padding:6px;border-radius:6px;">
-          <label
-            style="display:inline-flex;align-items:center;gap:3px;font-weight:600;font-size:11.5px;cursor:pointer;user-select:none;">
-            <input type="checkbox" id="ee-dia-quarta" value="Quarta" style="accent-color:var(--text-main);"
+        <div class="escala-day-card">
+          <label class="escala-day-card-label">
+            <input type="checkbox" id="ee-dia-quarta" value="Quarta"
               onchange="document.getElementById('ee-hora-quarta').disabled = !this.checked">
             Qua
           </label>
-          <input type="text" id="ee-hora-quarta"
-            style="width:100%;font-size:10.5px;padding:4px;text-align:center;height:24px;border:1px solid var(--border-strong);border-radius:4px;"
-            placeholder="Sem hor." disabled>
+          <input type="text" id="ee-hora-quarta" class="escala-hora-input" placeholder="Sem hor." disabled>
         </div>
-        <div
-          style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:center;border:1px solid var(--border-color);padding:6px;border-radius:6px;">
-          <label
-            style="display:inline-flex;align-items:center;gap:3px;font-weight:600;font-size:11.5px;cursor:pointer;user-select:none;">
-            <input type="checkbox" id="ee-dia-quinta" value="Quinta" style="accent-color:var(--text-main);"
+        <div class="escala-day-card">
+          <label class="escala-day-card-label">
+            <input type="checkbox" id="ee-dia-quinta" value="Quinta"
               onchange="document.getElementById('ee-hora-quinta').disabled = !this.checked">
             Qui
           </label>
-          <input type="text" id="ee-hora-quinta"
-            style="width:100%;font-size:10.5px;padding:4px;text-align:center;height:24px;border:1px solid var(--border-strong);border-radius:4px;"
-            placeholder="Sem hor." disabled>
+          <input type="text" id="ee-hora-quinta" class="escala-hora-input" placeholder="Sem hor." disabled>
         </div>
-        <div
-          style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:center;border:1px solid var(--border-color);padding:6px;border-radius:6px;">
-          <label
-            style="display:inline-flex;align-items:center;gap:3px;font-weight:600;font-size:11.5px;cursor:pointer;user-select:none;">
-            <input type="checkbox" id="ee-dia-sexta" value="Sexta" style="accent-color:var(--text-main);"
+        <div class="escala-day-card">
+          <label class="escala-day-card-label">
+            <input type="checkbox" id="ee-dia-sexta" value="Sexta"
               onchange="document.getElementById('ee-hora-sexta').disabled = !this.checked">
             Sex
           </label>
-          <input type="text" id="ee-hora-sexta"
-            style="width:100%;font-size:10.5px;padding:4px;text-align:center;height:24px;border:1px solid var(--border-strong);border-radius:4px;"
-            placeholder="Sem hor." disabled>
+          <input type="text" id="ee-hora-sexta" class="escala-hora-input" placeholder="Sem hor." disabled>
         </div>
-        <div
-          style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;align-items:center;border:1px solid var(--border-color);padding:6px;border-radius:6px;">
-          <label
-            style="display:inline-flex;align-items:center;gap:3px;font-weight:600;font-size:11.5px;cursor:pointer;user-select:none;">
-            <input type="checkbox" id="ee-dia-sabado" value="Sábado" style="accent-color:var(--text-main);"
+        <div class="escala-day-card">
+          <label class="escala-day-card-label">
+            <input type="checkbox" id="ee-dia-sabado" value="Sábado"
               onchange="document.getElementById('ee-hora-sabado').disabled = !this.checked">
             Sáb
           </label>
-          <input type="text" id="ee-hora-sabado"
-            style="width:100%;font-size:10.5px;padding:4px;text-align:center;height:24px;border:1px solid var(--border-strong);border-radius:4px;"
-            placeholder="Sem hor." disabled>
+          <input type="text" id="ee-hora-sabado" class="escala-hora-input" placeholder="Sem hor." disabled>
         </div>
       </div>
-      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;font-weight:500;">Dia presencial (opcional):</p>
-      <div style="display:flex;gap:4px;margin-bottom:24px;overflow-x:auto;">
-        <label class="escala-day-check"
-          style="font-size:11.5px;padding:5px 8px;flex:1;justify-content:center;white-space:nowrap;"><input
+      <p class="modal-hint-text">Dia presencial (opcional):</p>
+      <div class="escala-presencial-row">
+        <label class="escala-day-check escala-day-check--compact"><input
             type="checkbox" name="ee-presencial" value="Segunda"><span>Seg</span></label>
-        <label class="escala-day-check"
-          style="font-size:11.5px;padding:5px 8px;flex:1;justify-content:center;white-space:nowrap;"><input
+        <label class="escala-day-check escala-day-check--compact"><input
             type="checkbox" name="ee-presencial" value="Terça"><span>Ter</span></label>
-        <label class="escala-day-check"
-          style="font-size:11.5px;padding:5px 8px;flex:1;justify-content:center;white-space:nowrap;"><input
+        <label class="escala-day-check escala-day-check--compact"><input
             type="checkbox" name="ee-presencial" value="Quarta"><span>Qua</span></label>
-        <label class="escala-day-check"
-          style="font-size:11.5px;padding:5px 8px;flex:1;justify-content:center;white-space:nowrap;"><input
+        <label class="escala-day-check escala-day-check--compact"><input
             type="checkbox" name="ee-presencial" value="Quinta"><span>Qui</span></label>
-        <label class="escala-day-check"
-          style="font-size:11.5px;padding:5px 8px;flex:1;justify-content:center;white-space:nowrap;"><input
+        <label class="escala-day-check escala-day-check--compact"><input
             type="checkbox" name="ee-presencial" value="Sexta"><span>Sex</span></label>
-        <label class="escala-day-check"
-          style="font-size:11.5px;padding:5px 8px;flex:1;justify-content:center;white-space:nowrap;"><input
+        <label class="escala-day-check escala-day-check--compact"><input
             type="checkbox" name="ee-presencial" value="Sábado"><span>Sáb</span></label>
       </div>
       <div class="modal-footer">
@@ -253,41 +222,40 @@
       <div class="modal-close-bar"><button type="button" class="close-modal" data-close="modal-ferias"
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title" id="modal-ferias-title">Afastamentos</h3>
-      <p id="ef-membro-nome" style="font-weight:600;color:var(--primary);margin:4px 0 4px;font-size:14px;"></p>
+      <p id="ef-membro-nome" class="member-modal-label member-modal-label--tight"></p>
       <input type="hidden" id="ef-membro-id">
 
       <!-- Seção Férias (até 3 períodos, adicionados sob demanda) -->
-      <div style="margin-top: 15px; border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; background: var(--bg-panel);">
-        <h4
-          style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--purple);"></span>
+      <div class="afast-section mt-15">
+        <h4 class="afast-section-title">
+          <span class="afast-dot afast-dot--ferias"></span>
           Férias (até 3 períodos)
         </h4>
         <div id="ef-ferias-block1" class="afast-block" style="display:none;">
-          <div class="form-row" style="gap: 10px; align-items: flex-end;">
-            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 1 -
+          <div class="form-row form-row--gap-10 items-end">
+            <div class="flex-1"><label class="field-label field-label-sm">Período 1 -
                 Início</label><input type="date" id="ef-ferias-ini1" class="field-input"></div>
-            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 1 -
+            <div class="flex-1"><label class="field-label field-label-sm">Período 1 -
                 Fim</label><input type="date" id="ef-ferias-fim1" class="field-input"></div>
             <button type="button" class="btn-rem-afast" data-afast-acao="rem-ferias" data-n="1"
               title="Remover período">&times;</button>
           </div>
         </div>
         <div id="ef-ferias-block2" class="afast-block" style="display:none;">
-          <div class="form-row" style="gap: 10px; align-items: flex-end;">
-            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 2 -
+          <div class="form-row form-row--gap-10 items-end">
+            <div class="flex-1"><label class="field-label field-label-sm">Período 2 -
                 Início</label><input type="date" id="ef-ferias-ini2" class="field-input"></div>
-            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 2 -
+            <div class="flex-1"><label class="field-label field-label-sm">Período 2 -
                 Fim</label><input type="date" id="ef-ferias-fim2" class="field-input"></div>
             <button type="button" class="btn-rem-afast" data-afast-acao="rem-ferias" data-n="2"
               title="Remover período">&times;</button>
           </div>
         </div>
         <div id="ef-ferias-block3" class="afast-block" style="display:none;">
-          <div class="form-row" style="gap: 10px; align-items: flex-end;">
-            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 3 -
+          <div class="form-row form-row--gap-10 items-end">
+            <div class="flex-1"><label class="field-label field-label-sm">Período 3 -
                 Início</label><input type="date" id="ef-ferias-ini3" class="field-input"></div>
-            <div class="flex-1"><label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Período 3 -
+            <div class="flex-1"><label class="field-label field-label-sm">Período 3 -
                 Fim</label><input type="date" id="ef-ferias-fim3" class="field-input"></div>
             <button type="button" class="btn-rem-afast" data-afast-acao="rem-ferias" data-n="3"
               title="Remover período">&times;</button>
@@ -298,59 +266,55 @@
       </div>
 
       <!-- Seção Abono e Licença -->
-      <div class="form-row" style="gap: 12px; margin-top: 12px;">
+      <div class="form-row form-row--gap-12 mt-12">
         <!-- Abonos (5 Datas fixas) -->
-        <div style="flex: 1; border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; background: var(--bg-panel);">
-          <h4
-            style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#b45309;"></span>
+        <div class="afast-section flex-1">
+          <h4 class="afast-section-title">
+            <span class="afast-dot afast-dot--abono"></span>
             Abonos (até 5 datas)
           </h4>
           <div class="grid-2-cols">
-            <div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Data 1</label><input type="date"
-                id="ef-abono1" class="field-input" style="font-size:11px;padding:4px;"></div>
-            <div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Data 2</label><input type="date"
-                id="ef-abono2" class="field-input" style="font-size:11px;padding:4px;"></div>
-            <div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Data 3</label><input type="date"
-                id="ef-abono3" class="field-input" style="font-size:11px;padding:4px;"></div>
-            <div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Data 4</label><input type="date"
-                id="ef-abono4" class="field-input" style="font-size:11px;padding:4px;"></div>
-            <div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Data 5</label><input type="date"
-                id="ef-abono5" class="field-input" style="font-size:11px;padding:4px;"></div>
+            <div><label class="field-label field-label-xs">Data 1</label><input type="date"
+                id="ef-abono1" class="field-input field-input-compact"></div>
+            <div><label class="field-label field-label-xs">Data 2</label><input type="date"
+                id="ef-abono2" class="field-input field-input-compact"></div>
+            <div><label class="field-label field-label-xs">Data 3</label><input type="date"
+                id="ef-abono3" class="field-input field-input-compact"></div>
+            <div><label class="field-label field-label-xs">Data 4</label><input type="date"
+                id="ef-abono4" class="field-input field-input-compact"></div>
+            <div><label class="field-label field-label-xs">Data 5</label><input type="date"
+                id="ef-abono5" class="field-input field-input-compact"></div>
           </div>
         </div>
 
         <!-- Licença Servidor/Prêmio e Abono Aniversário -->
-        <div style="flex: 1; display:flex; flex-direction:column; gap:12px;">
-          <div style="flex: 1; border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; background: var(--bg-panel);">
-            <h4
-              style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--accent);"></span>
+        <div class="flex-1 flex-col gap-12">
+          <div class="afast-section flex-1">
+            <h4 class="afast-section-title">
+              <span class="afast-dot afast-dot--licenca"></span>
               Licença Servidor/Prêmio
             </h4>
             <div id="ef-licenca-list"></div>
             <button type="button" class="btn-add-afast" data-afast-acao="add-licenca" id="btn-add-licenca">+ Adicionar
               Licença</button>
           </div>
-          <div style="flex: 1; border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; background: var(--bg-panel);">
-            <h4
-              style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#0f766e;"></span>
+          <div class="afast-section flex-1">
+            <h4 class="afast-section-title">
+              <span class="afast-dot afast-dot--aniversario"></span>
               Abono de Aniversário
             </h4>
             <div>
-              <label class="field-label" style="font-size: 11px; margin-bottom: 2px;">Dia Exato</label>
-              <input type="date" id="ef-abono-niver" class="field-input" style="font-size:11px;padding:4px;">
+              <label class="field-label field-label-sm">Dia Exato</label>
+              <input type="date" id="ef-abono-niver" class="field-input field-input-compact">
             </div>
           </div>
         </div>
       </div>
 
       <!-- Seção Demais Afastamentos (lista livre, sob demanda) -->
-      <div style="margin-top: 12px; border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; background: var(--bg-panel);">
-        <h4
-          style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--text-muted);"></span>
+      <div class="afast-section mt-12">
+        <h4 class="afast-section-title">
+          <span class="afast-dot afast-dot--demais"></span>
           Demais Afastamentos
         </h4>
         <div id="ef-demais-list"></div>

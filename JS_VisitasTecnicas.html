@@ -99,10 +99,9 @@ function renderVisitasTecnicas(resetPage = false) {
 
   tbody.innerHTML = exibidas.map(({v, i}) => {
     const status = v.data ? 'Realizada' : 'Planejada';
-    const [statusBg, statusColor] = CORES_STATUS[status];
 
     const relF = prefixHttp(v.relatorio);
-    const relatorioLink = relF ? linkA(relF, 'Acessar', null, true) : '<span style="color:#d1d5db;">-</span>';
+    const relatorioLink = relF ? linkA(relF, 'Acessar', null, true) : '<span class="value-empty-dash">-</span>';
 
     const nomes = v.participantes ? nomesMembros(parseIdsResponsaveis(v.participantes)) : '';
     const nomesLimit = (nomes.length > 25) ? nomes.substring(0, 25) + '...' : nomes;
@@ -112,7 +111,7 @@ function renderVisitasTecnicas(resetPage = false) {
       <div class="cap-c-sec">${esc(v.local || '-')}</div>
       <div class="cap-c-sec">${fmtData(v.data)}</div>
       <div class="cap-c-center">${badge(status)}</div>
-      <div class="cap-c-center" style="font-size:12px; color:var(--text-muted);">${nomesLimit}</div>
+      <div class="cap-c-center font-12 text-muted">${nomesLimit}</div>
       <div class="cap-c-mat">${relatorioLink}</div>
       <div class="no-print cap-c-acoes">
         ${iconBtn('edit','edit-visita','Editar Visita Técnica',`data-idx="${i}"`)}${iconBtn('del','del-visita','Excluir Visita Técnica',`data-idx="${i}"`)}
@@ -232,13 +231,13 @@ function renderGraficosVisitas(fid) {
     elListVt.innerHTML = '';
     sNamesVt.forEach((nome, i) => {
       elListVt.insertAdjacentHTML('beforeend', `
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: var(--radius-sm);">
-          <div style="display: flex; align-items: center; min-width: 0; margin-right: 12px;">
-            <div style="width: 28px; height: 28px; border-radius: 50%; background-color: ${bgColorsVt[i]}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #ffffff; margin-right: 12px; flex-shrink: 0;">${getInitialsVt(nome)}</div>
-            <span style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--text-secondary);">${nome}</span>
+        <div class="chart-legend-row">
+          <div class="chart-legend-left">
+            <div class="chart-legend-avatar" style="background-color: ${bgColorsVt[i]};">${getInitialsVt(nome)}</div>
+            <span class="chart-legend-name">${nome}</span>
           </div>
-          <div style="display: flex; align-items: center; flex-shrink: 0;">
-            <span style="font-size: 13px; text-align: right; min-width: 20px; font-weight: 500; color: var(--text-muted);">${sCountsVt[i]}</span>
+          <div class="chart-legend-right">
+            <span class="chart-legend-count">${sCountsVt[i]}</span>
           </div>
         </div>
       `);
@@ -266,8 +265,8 @@ function renderGraficosVisitas(fid) {
 // Visitas Técnicas (viram imagem estática, mesmo padrão de
 // graficosCapacitacoesPdfHtml em JS_Capacitacoes.html).
 function graficosVisitasPdfHtml() {
-  return `<table style="margin-bottom:14px;"><tr>${_pdfGraficoCel('Evolução Mensal das Visitas Técnicas','vtMesChart', '100%')}</tr></table>` +
-    `<table style="margin-bottom:14px;"><tr>${_pdfDoughnutComLegendaCel('Visitas Técnicas por Membro','vtMembroChart', vtMembroChartInst, '50%')}<td style="width:50%;border:none;"></td></tr></table>`;
+  return `<table class="pdf-table-spaced"><tr>${_pdfGraficoCel('Evolução Mensal das Visitas Técnicas','vtMesChart', '100%')}</tr></table>` +
+    `<table class="pdf-table-spaced"><tr>${_pdfDoughnutComLegendaCel('Visitas Técnicas por Membro','vtMembroChart', vtMembroChartInst, '50%')}<td class="pdf-kpi-cell"></td></tr></table>`;
 }
 
 // ------------------------------------------
@@ -294,7 +293,7 @@ function populateVtParticipantes(selectedIds = []) {
   if (!c) return;
   const membros = membrosOrdenados();
   if (!membros.length) {
-    c.innerHTML = '<div style="font-size:12px;color:#4b5563;padding:8px;">Nenhum membro cadastrado.</div>';
+    c.innerHTML = '<div class="msg-empty-compact">Nenhum membro cadastrado.</div>';
   } else {
     c.innerHTML = membros.map(m =>
       `<label class="checkbox-label"><input type="checkbox" value="${esc(String(m.id))}" ${selectedIds.includes(String(m.id)) ? 'checked' : ''}> ${esc(m.name)}</label>`

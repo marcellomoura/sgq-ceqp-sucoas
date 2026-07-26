@@ -48,7 +48,7 @@ function renderDocumentos(modo) {
   $id(tbodyId).innerHTML = filtrados.map(d => {
     const oi = idxPorIdRow.get(d.idRow);
     const auxList = [linkA(d.docAuxiliar,'Anexo 1','#4b5563'), linkA(d.docAuxiliar2,'Anexo 2','#4b5563')].filter(x=>x!=='-');
-    const aux = auxList.length > 0 ? `<div style="display:flex; flex-direction:column; gap:8px;">${auxList.join('')}</div>` : '-';
+    const aux = auxList.length > 0 ? `<div class="list-body">${auxList.join('')}</div>` : '-';
     if (modo === 'mestra') return `<div class="grid-row-hover doc-row doc-row--mestra">
       <div class="doc-c-codigo">${esc(d.codigo)}</div>
       <div class="doc-c-sec-c">v${esc(d.versao)}</div>

@@ -31,30 +31,30 @@ function renderEscala() {
     var dayTds = DIAS_SEMANA.map(function(d) {
       var ativo      = dias.indexOf(d) !== -1;
       var presencial = presList.indexOf(d) !== -1;
-      if (!ativo) return '<div style="text-align:center; display:flex; align-items:center; justify-content:center;"><span class="escala-vazio">—</span></div>';
+      if (!ativo) return '<div class="escala-cell-off"><span class="escala-vazio">—</span></div>';
       var horInfo = (m.horarios && m.horarios[d]) ? m.horarios[d] : '';
       var icon = presencial
         ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
         : '✓';
-      return '<div style="text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">' +
+      return '<div class="escala-cell-on">' +
         '<span class="escala-check' + (presencial ? ' presencial' : '') + '" title="' + esc(d) + (presencial ? ' (presencial)' : '') + '">' + icon + '</span>' +
-        (horInfo ? '<span style="font-size:9.5px;color:#4b5563;font-weight:normal;white-space:nowrap;">' + esc(horInfo) + '</span>' : '') +
+        (horInfo ? '<span class="escala-hora-info">' + esc(horInfo) + '</span>' : '') +
         '</div>';
     }).join('');
     return '<div class="grid-row-hover escala-row">' +
       '<div class="escala-c-name">' +
-        '<div class="member-avatar ' + corPastelPorNome(m.name) + '" style="width: 38px; height: 38px; font-size: 13px;">' + esc(iniciaisMembro(m.name)) + '</div>' +
+        '<div class="member-avatar member-avatar--lg ' + corPastelPorNome(m.name) + '">' + esc(iniciaisMembro(m.name)) + '</div>' +
         '<div><div class="escala-c-nome">' + esc(m.name) + '</div>' +
         '<div class="escala-c-role">' + esc(m.role) + '</div></div>' +
       '</div>' +
       dayTds +
       '<div class="text-center">' +
         (presList.length > 0
-          ? presList.map(function(p){ return '<span class="tag-badge" style="background:#35598D;font-size:11px;margin-right:2px;display:inline-block;margin-bottom:2px;">' + esc(p.substring(0,3)) + '</span>'; }).join('')
-          : '<span style="color:#6b7280;font-size:12px;">—</span>') +
+          ? presList.map(function(p){ return '<span class="tag-badge tag-badge--presencial">' + esc(p.substring(0,3)) + '</span>'; }).join('')
+          : '<span class="tag-dash">—</span>') +
       '</div>' +
       '<div class="text-center">' +
-        '<div class="cell-actions" style="justify-content:center;">' +
+        '<div class="cell-actions">' +
           iconBtn('edit','edit-escala','Editar Escala','data-idx="' + origIdx + '"') +
         '</div>' +
       '</div>' +
@@ -77,7 +77,7 @@ function renderEscalaGrid(members) {
       '<div class="escala-col-title">' + DIAS_ABREV[idx] + (ehHoje ? ' <span class="today-dot">●</span>' : '') + '</div>' +
       '<div class="escala-col-count">' + trabalhando.length + ' trabalha' + (trabalhando.length !== 1 ? 'm' : '') + '</div>' +
       (presenciais.length
-        ? '<div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">' + presenciais.map(function(m){ return '<div class="escala-member-pill">' + esc(m.name.split(' ')[0]) + '</div>'; }).join('') + '</div>'
+        ? '<div class="escala-presenciais-list">' + presenciais.map(function(m){ return '<div class="escala-member-pill">' + esc(m.name.split(' ')[0]) + '</div>'; }).join('') + '</div>'
         : '<div class="escala-empty-day">Ninguém presencial</div>') +
     '</div>';
   }).join('');
@@ -324,7 +324,7 @@ function renderFerias() {
         var agora = dt && dt.getTime() === hoje.getTime();
         return '<span class="tag-periodo ' + (agora ? 'agora' : 'abono-past') + '">' + fmtDM(d) + '</span>';
       });
-      htmlAbono = '<div class="flex-row items-center" style="flex-wrap:wrap; gap:4px;">' + tagsData.join('') + '</div>';
+      htmlAbono = '<div class="flex-row items-center flex-wrap gap-4">' + tagsData.join('') + '</div>';
     }
 
     var htmlAbonoAniv = TRACO;
@@ -416,19 +416,19 @@ function removerFeriasBlock(n) {
 function licencaRowHtml(item) {
   item = item || {};
   return '<div class="licenca-item licenca-item-grid">' +
-    '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Início</label><input type="date" class="ef-licenca-ini field-input" style="font-size:11px;padding:4px;" value="' + (item.inicio || '') + '"></div>' +
-    '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Fim</label><input type="date" class="ef-licenca-fim field-input" style="font-size:11px;padding:4px;" value="' + (item.fim || '') + '"></div>' +
-    '<button type="button" class="btn-rem-afast" data-afast-acao="rem-licenca" title="Remover licença" style="margin-bottom:4px;">&times;</button>' +
+    '<div><label class="field-label field-label-xs">Início</label><input type="date" class="ef-licenca-ini field-input field-input-compact" value="' + (item.inicio || '') + '"></div>' +
+    '<div><label class="field-label field-label-xs">Fim</label><input type="date" class="ef-licenca-fim field-input field-input-compact" value="' + (item.fim || '') + '"></div>' +
+    '<button type="button" class="btn-rem-afast mb-4" data-afast-acao="rem-licenca" title="Remover licença">&times;</button>' +
   '</div>';
 }
 // Linha de "Demais Afastamentos": descrição livre + período opcional
 function demaisRowHtml(item) {
   item = item || {};
   return '<div class="demais-item demais-item-grid">' +
-    '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Descrição</label><input type="text" class="ef-demais-desc field-input" style="font-size:11px;padding:4px;" placeholder="Descreva o afastamento..." value="' + esc(item.descricao || '') + '"></div>' +
-    '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Início</label><input type="date" class="ef-demais-ini field-input" style="font-size:11px;padding:4px;" value="' + (item.inicio || '') + '"></div>' +
-    '<div><label class="field-label" style="font-size:10px;margin-bottom:2px;">Fim</label><input type="date" class="ef-demais-fim field-input" style="font-size:11px;padding:4px;" value="' + (item.fim || '') + '"></div>' +
-    '<button type="button" class="btn-rem-afast" data-afast-acao="rem-demais" title="Remover" style="margin-bottom:4px;">&times;</button>' +
+    '<div><label class="field-label field-label-xs">Descrição</label><input type="text" class="ef-demais-desc field-input field-input-compact" placeholder="Descreva o afastamento..." value="' + esc(item.descricao || '') + '"></div>' +
+    '<div><label class="field-label field-label-xs">Início</label><input type="date" class="ef-demais-ini field-input field-input-compact" value="' + (item.inicio || '') + '"></div>' +
+    '<div><label class="field-label field-label-xs">Fim</label><input type="date" class="ef-demais-fim field-input field-input-compact" value="' + (item.fim || '') + '"></div>' +
+    '<button type="button" class="btn-rem-afast mb-4" data-afast-acao="rem-demais" title="Remover">&times;</button>' +
   '</div>';
 }
 

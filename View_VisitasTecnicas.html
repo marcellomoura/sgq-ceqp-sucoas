@@ -26,7 +26,7 @@
           </div>
         </header>
 
-        <div class="kpi-grid compact-view" id="dash-kpis-visitas" style="margin: 24px 28px 16px; flex-shrink: 0;">
+        <div class="kpi-grid compact-view" id="dash-kpis-visitas">
           <div class="kpi-card kpi-fill-sky">
             <div class="kpi-icon icon-sky"><svg viewBox="0 0 24 24">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
@@ -59,8 +59,8 @@
           </div>
         </div>
 
-        <div class="list-scroll x" style="padding: 0 28px;">
-          <div style="min-width: 1000px; display: flex; flex-direction: column;">
+        <div class="list-scroll x">
+          <div class="list-scroll-inner min-w-1000">
             <div class="list-head vt-row text-left">
               <div>Objetivo/Motivo da Visita</div>
               <div>Local Visitado</div>
@@ -101,21 +101,18 @@
       </div>
 
       <label class="field-label">Responsáveis</label>
-      <div class="custom-select-wrapper" style="position:relative;">
-        <div id="vt-participantes-trigger" class="multiselect-trigger">
-          <span id="vt-participantes-label" style="color:var(--text-muted);">Selecionar responsáveis...</span>
-          <span style="font-size:9px; color:var(--text-muted); pointer-events:none;">▼</span>
-        </div>
+      <div class="custom-select-wrapper">
+        <div id="vt-participantes-trigger" class="field-multiselect" tabindex="0">Selecionar responsáveis...</div>
         <div id="vt-participantes-options" class="custom-select-options"></div>
       </div>
-      <div class="selected-tags" id="vt-participantes-tags" style="margin-top:6px;"></div>
+      <div class="selected-tags" id="vt-participantes-tags"></div>
 
-      <label class="field-label" for="vt-relatorio" style="margin-top:8px;">Relatório/Anexo (Link)</label>
+      <label class="field-label mt-8" for="vt-relatorio">Relatório/Anexo (Link)</label>
       <input type="text" id="vt-relatorio" class="field-input" placeholder="Link para o relatório da visita">
 
       <div class="modal-footer">
         <button class="btn btn-secondary" data-close="modal-visita">Cancelar</button>
-        <button class="btn btn-primary" id="btn-salvar-visita">Salvar</button>
+        <button class="btn primary" id="btn-salvar-visita">Salvar</button>
       </div>
     </div>
   </div>

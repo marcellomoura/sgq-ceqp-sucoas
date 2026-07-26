@@ -40,9 +40,9 @@
       if (hist.length > 1) {
         const prevScore = hist[hist.length - 2].prob * hist[hist.length - 2].impacto;
         const curScore = r.probabilidade * r.impacto;
-        if (curScore < prevScore) trendIcon = '<span style="color:#2CA98F; font-weight:bold; margin-left:4px;" title="Risco reduziu">⬇️</span>';
-        else if (curScore > prevScore) trendIcon = '<span style="color:#D8483A; font-weight:bold; margin-left:4px;" title="Risco aumentou">⬆️</span>';
-        else trendIcon = '<span style="color:#6b7280; font-weight:bold; margin-left:4px;" title="Risco manteve">➖</span>';
+        if (curScore < prevScore) trendIcon = '<span style="color:var(--success); font-weight:bold; margin-left:4px;" title="Risco reduziu">⬇️</span>';
+        else if (curScore > prevScore) trendIcon = '<span style="color:var(--danger); font-weight:bold; margin-left:4px;" title="Risco aumentou">⬆️</span>';
+        else trendIcon = '<span style="color:var(--text-muted); font-weight:bold; margin-left:4px;" title="Risco manteve">➖</span>';
       }
 
       // Mantém os campos _cur* (usados por outras telas) espelhando os
@@ -91,11 +91,11 @@
     <div class="risco-c-text">${esc(r.consequencia)}</div>
     <div class="font-13">${esc(r.categoria)}</div>
     <div class="text-center font-bold font-13">${r._curProb * r._curImp}</div>
-    <div class="text-center font-13" style="white-space:nowrap;">${badge(r._curNivel)}${r._trend}</div>
+    <div class="text-center font-13 risco-c-nivel">${badge(r._curNivel)}${r._trend}</div>
     <div class="font-13">${esc(r.tipoTratamento)}</div>
     <div class="font-13">${esc(formatUnidadeUI(r.responsavel))}</div>
     <div class="risco-c-text">${esc(r.planoAcao)}</div>
-    <div class="no-print flex-row justify-center" style="gap: 4px; flex-wrap: wrap;">
+    <div class="no-print risco-c-acoes">
       ${temPlanoResolvido ? '' : iconBtn('edit', 'edit-risco', 'Editar Risco', `data-idx="${origIdx}"`)}
       ${iconBtn('rev', 'reav-risco', 'Reavaliar', `data-idx="${origIdx}"`)}
       ${iconBtn('history', 'hist-risco', 'Histórico de Reavaliações', `data-id="${r.id}"`)}
@@ -418,7 +418,7 @@
           const iconCheck = todasEntregues ? 'check' : 'check-pendente';
 
           planCardHtml = `
-          <div class="plan-card ${ehTerminal ? 'inactive' : ''} ${p.revisaoPendente === 'Sim' && !ehTerminal && isLatest ? 'needs-review' : ''}" style="margin-top: 12px; margin-bottom: 0;">
+          <div class="plan-card plan-card--nested ${ehTerminal ? 'inactive' : ''} ${p.revisaoPendente === 'Sim' && !ehTerminal && isLatest ? 'needs-review' : ''}">
             <div class="plan-actions no-print">
               ${acaoRev}
               ${(ehTerminal || p.status === 'Concluído' || temEntregaFeita) ? '' : iconBtn('edit', 'edit-plano', 'Editar', `data-idx="${oi}"`)}
@@ -465,15 +465,15 @@
             </div>
           </div>`;
         } else {
-          planCardHtml = `<div style="margin-top: 12px; font-size: 13px; color: var(--text-muted); font-style: italic;">Nenhum plano vinculado a esta versão.</div>`;
+          planCardHtml = `<div class="plan-card-empty-msg">Nenhum plano vinculado a esta versão.</div>`;
         }
 
         return `
         <div class="version-card ${isLatest ? 'is-active' : 'is-old'}">
            <div class="version-header">
               <span class="version-title">Risco ${r.id} - Versão ${vNum} ${isLatest ? '(Atual)' : ''}</span>
-              <span style="color:var(--text-muted); font-size:11px;">${fmtBr(dataA)}</span>
-              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
+              <span class="version-date">${fmtBr(dataA)}</span>
+              <span class="risk-meta-sep">|</span>
               <span>Probabilidade: <strong>${v.prob || '-'}</strong></span>
               <span>Impacto: <strong>${v.impacto || '-'}</strong></span>
               <span>Nível: <strong>${badge(v.nivel)}</strong></span>
@@ -485,22 +485,22 @@
       }).join(''); // Mantém a ordem original: mais antigas em cima, mais recentes em baixo
 
       return `<div class="risk-block">
-        <div class="risk-header" style="padding-bottom: 12px;">
+        <div class="risk-header">
           <div class="flex-1">
             <h2 class="risk-title">Risco ${r.id} — ${esc(r.nome)}</h2>
-            <div style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-size:12.5px; color:#4b5563; margin-top: 4px; line-height: 1.4;">
-              <div><strong style="color:#030712;">Macroetapa:</strong> ${esc(r.macroetapa)}</div>
-              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
-              <div><strong style="color:#030712;">Categoria:</strong> ${esc(r.categoria)}</div>
-              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
-              <div><strong style="color:#030712;">Causa:</strong> ${esc(r.causa)}</div>
-              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
-              <div><strong style="color:#030712;">Consequência:</strong> ${esc(r.consequencia)}</div>
+            <div class="risk-meta">
+              <div><strong>Macroetapa:</strong> ${esc(r.macroetapa)}</div>
+              <span class="risk-meta-sep">|</span>
+              <div><strong>Categoria:</strong> ${esc(r.categoria)}</div>
+              <span class="risk-meta-sep">|</span>
+              <div><strong>Causa:</strong> ${esc(r.causa)}</div>
+              <span class="risk-meta-sep">|</span>
+              <div><strong>Consequência:</strong> ${esc(r.consequencia)}</div>
             </div>
           </div>
         </div>
         <div class="plans-container">
-          <div class="plans-title" style="margin-bottom: 8px;">Planos de Ação</div>
+          <div class="plans-title">Planos de Ação</div>
           ${versoesHtml}
         </div>
       </div>`;
@@ -649,27 +649,27 @@
       const rowClass = entregue === 'Sim' ? 'entregue' : (entregue === 'Não' ? 'pendente' : '');
       const selClass = rowClass ? (' ' + rowClass) : '';
       return (
-        '<div class="acomp-ent-row ' + rowClass + '" data-unidade="' + esc(chave) + '" style="display:flex; align-items:center; gap:16px; flex-wrap:nowrap;">' +
-        '<div class="acomp-unit-info" style="flex:1; min-width:200px;">' +
+        '<div class="acomp-ent-row ' + rowClass + '" data-unidade="' + esc(chave) + '">' +
+        '<div class="acomp-unit-info">' +
         '<div class="acomp-unit-sigla">' + esc(u.sigla || '') + '</div>' +
-        '<div class="acomp-unit-nome" style="white-space:normal; line-height:1.2; margin-top:2px;">' + esc(u.unidade) + '</div>' +
+        '<div class="acomp-unit-nome">' + esc(u.unidade) + '</div>' +
         '</div>' +
         '<div class="acomp-field-group acomp-status-wrap">' +
         '<span class="acomp-field-label">Status</span>' +
-        '<select class="acomp-status-select acomp-status' + selClass + '" data-row="' + i + '" style="width:100%;"' + (isArquivado ? ' disabled' : '') + '>' +
+        '<select class="acomp-status-select acomp-status' + selClass + '" data-row="' + i + '"' + (isArquivado ? ' disabled' : '') + '>' +
         '<option value=""' + (!entregue ? ' selected' : '') + '>— Selecione —</option>' +
         '<option value="Sim"' + (entregue === 'Sim' ? ' selected' : '') + '>Sim — Entregue</option>' +
         '<option value="Não"' + (entregue === 'Não' ? ' selected' : '') + '>Não — Pendente</option>' +
         '</select>' +
         '</div>' +
-        '<div class="acomp-sei-wrap" style="display:flex; align-items:center; gap:12px; flex-shrink:0;">' +
+        '<div class="acomp-sei-wrap">' +
         '<div class="acomp-field-group">' +
         '<span class="acomp-field-label">Data de Entrega</span>' +
-        '<input type="date" class="acomp-data" value="' + esc(dataEnt) + '" style="width:130px; height:32px; padding:0 8px;"' + (isArquivado ? ' disabled' : '') + '>' +
+        '<input type="date" class="acomp-data" value="' + esc(dataEnt) + '"' + (isArquivado ? ' disabled' : '') + '>' +
         '</div>' +
         '<div class="acomp-field-group">' +
-        '<span class="acomp-field-label">Nº Processo SEI <span style="color:#dc2626;">*</span></span>' +
-        '<input type="text" class="acomp-sei" placeholder="Ex: 00060-000..." value="' + esc(sei) + '" style="width:150px; height:32px; padding:0 8px;"' + (isArquivado ? ' disabled' : '') + '>' +
+        '<span class="acomp-field-label">Nº Processo SEI <span class="required-mark">*</span></span>' +
+        '<input type="text" class="acomp-sei" placeholder="Ex: 00060-000..." value="' + esc(sei) + '"' + (isArquivado ? ' disabled' : '') + '>' +
         '</div>' +
         '</div>' +
         '</div>'
@@ -787,9 +787,9 @@
     ]);
 
     const matrizHtml = matrizImg
-      ? `<img src="${matrizImg}" style="display:block;width:100%;margin-bottom:14px;">` : '';
+      ? `<img src="${matrizImg}" class="pdf-img-spaced">` : '';
     const legendaHtml = legendaImg
-      ? `<img src="${legendaImg}" style="display:block;width:100%;margin:0 auto 20px;">` : '';
+      ? `<img src="${legendaImg}" class="pdf-img-centered">` : '';
 
     const riscosHtml = _pdfSecaoTitulo('Mapeamento de Riscos') +
       `<table><thead><tr>
@@ -831,11 +831,11 @@
          const label = labelDiv ? labelDiv.innerHTML : '';
          const value = valueDiv ? valueDiv.innerHTML : div.innerHTML; // Fallback se a estrutura for diferente
          
-         theadCells += `<th style="width:${w}; font-size:9.5px; color:#6b7280; border-bottom:1px solid #e5e7eb; padding:6px 4px; text-align:left; text-transform:uppercase; font-weight:bold;">${label}</th>`;
-         tbodyCells += `<td style="width:${w}; font-size:11px; color:#111827; padding:8px 4px; vertical-align:top;">${value}</td>`;
+         theadCells += `<th class="pdf-th-generic" style="width:${w};">${label}</th>`;
+         tbodyCells += `<td class="pdf-td-generic" style="width:${w};">${value}</td>`;
       });
       
-      grid.outerHTML = `<table style="width:100%; border-collapse:collapse; margin-top:8px;">
+      grid.outerHTML = `<table class="pdf-grid-table">
           <thead><tr>${theadCells}</tr></thead>
           <tbody><tr>${tbodyCells}</tr></tbody>
         </table>`;
@@ -844,6 +844,13 @@
     return clone.innerHTML;
   }
 
+  // Cores por nível de risco (fonte única: variáveis --risk-* em CSS.html).
+  const CORES_NIVEL_RISCO = {
+    'Baixo': ['var(--risk-low-bg)', 'var(--risk-low-border)', 'var(--risk-low-text)'],
+    'Médio': ['var(--risk-med-bg)', 'var(--risk-med-border)', 'var(--risk-med-text)'],
+    'Alto': ['var(--risk-high-bg)', 'var(--risk-high-border)', 'var(--risk-high-text)'],
+    'Crítico': ['var(--risk-crit-bg)', 'var(--risk-crit-border)', 'var(--risk-crit-text)']
+  };
   function atualizarLegendaRisco(prefix) {
     const probVal = $id(prefix + '-prob').value;
     const impVal = $id(prefix + '-imp').value;
@@ -863,14 +870,14 @@
     const p = Number(probVal);
     const i = Number(impVal);
     const s = p * i;
-    // Nível a partir do score; as cores saem de CORES_STATUS (fonte única, ver
-    // JS_Utilitarios.html) — a borda usa a própria cor do texto.
+    // Nível a partir do score; as cores saem de CORES_NIVEL_RISCO (fonte única,
+    // ver variáveis --risk-* em CSS.html).
     const nivel = s >= 15 ? 'Crítico' : s >= 10 ? 'Alto' : s >= 5 ? 'Médio' : 'Baixo';
-    const [bg, cor] = CORES_STATUS[nivel];
+    const [bg, borda, cor] = CORES_NIVEL_RISCO[nivel];
 
     if (leg && val) {
       leg.style.backgroundColor = bg;
-      leg.style.borderColor = cor;
+      leg.style.borderColor = borda;
       leg.style.color = cor;
       val.innerText = nivel + ' (' + s + ')';
     }
@@ -911,7 +918,7 @@
           const oi = idxPlano.get(p);
           
           planCardHtml = `
-          <div class="plan-card inactive" style="margin-top: 12px; margin-bottom: 0;">
+          <div class="plan-card plan-card--nested inactive">
             <div class="plan-actions no-print">
               ${iconBtn('history', 'acomp-entregas', 'Acompanhamento / Entregas', `data-idx="${oi}"`)}
             </div>
@@ -956,15 +963,15 @@
             </div>
           </div>`;
         } else {
-          planCardHtml = `<div style="margin-top: 12px; font-size: 13px; color: var(--text-muted); font-style: italic;">Nenhum plano vinculado a esta versão.</div>`;
+          planCardHtml = `<div class="plan-card-empty-msg">Nenhum plano vinculado a esta versão.</div>`;
         }
 
         return `
         <div class="version-card ${isLatest ? 'is-active' : 'is-old'}">
            <div class="version-header">
               <span class="version-title">Risco ${r.id} - Versão ${vNum} ${isLatest ? '(Atual)' : ''}</span>
-              <span style="color:var(--text-muted); font-size:11px;">${fmtBr(dataA)}</span>
-              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
+              <span class="version-date">${fmtBr(dataA)}</span>
+              <span class="risk-meta-sep">|</span>
               <span>Probabilidade: <strong>${v.prob || '-'}</strong></span>
               <span>Impacto: <strong>${v.impacto || '-'}</strong></span>
               <span>Nível: <strong>${badge(v.nivel)}</strong></span>
@@ -975,21 +982,21 @@
         </div>`;
       }).join(''); 
 
-      return `<div class="risk-block" style="background-color: #f8fafc; border: 1px dashed #cbd5e1;">
-        <div class="risk-header" style="padding-bottom: 12px;">
+      return `<div class="risk-block risk-block--archived">
+        <div class="risk-header">
           <div class="flex-1">
-            <div style="display:flex; align-items:center; gap:8px;">
-               <h2 class="risk-title" style="color: #4b5563;">Risco ${r.id} — ${esc(r.nome)}</h2>
-               <span style="font-size:11px; font-weight:700; background:#e2e8f0; color:#475569; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">ARQUIVADO</span>
+            <div class="risk-title-row">
+               <h2 class="risk-title risk-title--archived">Risco ${r.id} — ${esc(r.nome)}</h2>
+               <span class="tag-archived">ARQUIVADO</span>
             </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-size:12.5px; color:#4b5563; margin-top: 4px; line-height: 1.4;">
-              <div><strong style="color:#030712;">Macroetapa:</strong> ${esc(r.macroetapa)}</div>
-              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
-              <div><strong style="color:#030712;">Categoria:</strong> ${esc(r.categoria)}</div>
-              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
-              <div><strong style="color:#030712;">Causa:</strong> ${esc(r.causa)}</div>
-              <span style="color:#cbd5e1; margin: 0 4px;">|</span>
-              <div><strong style="color:#030712;">Consequência:</strong> ${esc(r.consequencia)}</div>
+            <div class="risk-meta">
+              <div><strong>Macroetapa:</strong> ${esc(r.macroetapa)}</div>
+              <span class="risk-meta-sep">|</span>
+              <div><strong>Categoria:</strong> ${esc(r.categoria)}</div>
+              <span class="risk-meta-sep">|</span>
+              <div><strong>Causa:</strong> ${esc(r.causa)}</div>
+              <span class="risk-meta-sep">|</span>
+              <div><strong>Consequência:</strong> ${esc(r.consequencia)}</div>
             </div>
           </div>
           <div class="risk-actions no-print">
@@ -997,7 +1004,7 @@
           </div>
         </div>
         <div class="plans-container">
-          <div class="plans-title" style="margin-bottom: 8px; color: #4b5563;">Planos de Ação</div>
+          <div class="plans-title plans-title--archived">Planos de Ação</div>
           ${versoesHtml}
         </div>
       </div>`;
@@ -1042,11 +1049,11 @@
          const label = labelDiv ? labelDiv.innerHTML : '';
          const value = valueDiv ? valueDiv.innerHTML : div.innerHTML; // Fallback se a estrutura for diferente
          
-         theadCells += `<th style="width:${w}; font-size:9.5px; color:#6b7280; border-bottom:1px solid #e5e7eb; padding:6px 4px; text-align:left; text-transform:uppercase; font-weight:bold;">${label}</th>`;
-         tbodyCells += `<td style="width:${w}; font-size:11px; color:#111827; padding:8px 4px; vertical-align:top;">${value}</td>`;
+         theadCells += `<th class="pdf-th-generic" style="width:${w};">${label}</th>`;
+         tbodyCells += `<td class="pdf-td-generic" style="width:${w};">${value}</td>`;
       });
       
-      grid.outerHTML = `<table style="width:100%; border-collapse:collapse; margin-top:8px;">
+      grid.outerHTML = `<table class="pdf-grid-table">
           <thead><tr>${theadCells}</tr></thead>
           <tbody><tr>${tbodyCells}</tr></tbody>
         </table>`;
