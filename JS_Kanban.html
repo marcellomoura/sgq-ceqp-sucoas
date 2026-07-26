@@ -325,13 +325,13 @@ function abrirAtividadesArquivadas(id) {
 // delas) e dá sentido temático (Urgente=vermelho, etc.). Uma etiqueta NOVA sem
 // cor/bg definidos aqui cai automaticamente no hash (ver corLabel() abaixo).
 const LABELS_DISPONIVEIS = [
-  { id:'auditoria',    nome:'Auditoria',        cor:'#3D8FC4', bg:'#E1F1FC' }, // Céu
-  { id:'nc',           nome:'Não Conformidade', cor:'#D2596F', bg:'#FBE3E6' }, // Rosa
-  { id:'melhoria',     nome:'Melhoria',         cor:'#2CA98F', bg:'#DFF6EF' }, // Menta
-  { id:'documentacao', nome:'Documentação',     cor:'#7A6CDD', bg:'#E9E6FB' }, // Lavanda
-  { id:'processo',     nome:'Processo',         cor:'#E0904A', bg:'#FBEADD' }, // Pêssego
-  { id:'treinamento',  nome:'Treinamento',      cor:'#C99A2E', bg:'#FBF3D3' }, // Dourado
-  { id:'urgente',      nome:'Urgente',          cor:'#D8483A', bg:'#FCE1DE' }  // Tijolo
+  { id:'auditoria',    nome:'Auditoria',        cor:'var(--tag-sky-text)', bg:'var(--tag-sky)' }, // Céu
+  { id:'nc',           nome:'Não Conformidade', cor:'var(--tag-rose-text)', bg:'var(--tag-rose)' }, // Rosa
+  { id:'melhoria',     nome:'Melhoria',         cor:'var(--tag-mint-text)', bg:'var(--tag-mint)' }, // Menta
+  { id:'documentacao', nome:'Documentação',     cor:'var(--tag-lavender-text)', bg:'var(--tag-lavender)' }, // Lavanda
+  { id:'processo',     nome:'Processo',         cor:'var(--tag-peach-text)', bg:'var(--tag-peach)' }, // Pêssego
+  { id:'treinamento',  nome:'Treinamento',      cor:'var(--tag-gold-text)', bg:'var(--tag-gold)' }, // Dourado
+  { id:'urgente',      nome:'Urgente',          cor:'var(--tag-brick-text)', bg:'var(--tag-brick)' }  // Tijolo
 ];
 function parseLabels(raw) {
   try { const a=JSON.parse(raw); return Array.isArray(a)?a.map(String):[]; } catch(e){ return []; }

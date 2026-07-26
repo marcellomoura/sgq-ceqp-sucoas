@@ -173,8 +173,16 @@ function iniciaisMembro(nome) {
   return partes.length > 1 ? (partes[0][0] + partes[1][0]).toUpperCase() : partes[0][0].toUpperCase();
 }
 // Hex das 12 cores pastel, na mesma ordem de .avatar-pastel-1..12 (CSS.html) —
-// usado quando é preciso o valor bruto (ex.: stroke de SVG), não uma classe.
-const PALETA_PASTEL_HEX = ['#7A6CDD','#2CA98F','#D2596F','#3D8FC4','#E0904A','#C99A2E','#D8483A','#6B9B37','#1E9AA3','#A94FA0','#55647A','#8B5E3C'];
+// usado quando é preciso o valor bruto (ex.: stroke de SVG, backgroundColor de
+// gráfico Chart.js), não uma classe. Lido ao vivo via corVar() (mesmos tokens
+// --tag-*-text usados pelas classes .avatar-pastel-N) em vez de hex fixo, para
+// funcionar tanto em canvas (que não resolve var() sozinho) quanto em DOM.
+const PALETA_PASTEL_HEX = [
+  corVar('--tag-lavender-text'), corVar('--tag-mint-text'), corVar('--tag-rose-text'),
+  corVar('--tag-sky-text'), corVar('--tag-peach-text'), corVar('--tag-gold-text'),
+  corVar('--tag-brick-text'), corVar('--tag-lime-text'), corVar('--tag-turquoise-text'),
+  corVar('--tag-orchid-text'), corVar('--tag-slate-text'), corVar('--tag-cinnamon-text')
+];
 function _hashPastel(nome) {
   const s = String(nome || '');
   let hash = 0;
@@ -288,13 +296,13 @@ function showConfirm(msg, cb, opts) {
   opts = opts || {};
   let cfg;
   if (opts.tone === 'warning') {
-    cfg = { cor:'#C99A2E', bg:'#FBF3D3', titulo:'Confirmar Arquivamento', label:'Arquivar',
+    cfg = { cor:'var(--warning)', bg:'var(--warning-bg)', titulo:'Confirmar Arquivamento', label:'Arquivar',
         icon:'<polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>' };
   } else if (opts.tone === 'restore') {
-    cfg = { cor:'#C99A2E', bg:'#FBF3D3', titulo:'Confirmar Restauração', label:'Restaurar',
+    cfg = { cor:'var(--warning)', bg:'var(--warning-bg)', titulo:'Confirmar Restauração', label:'Restaurar',
         icon:'<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>' };
   } else {
-    cfg = { cor:'#D8483A', bg:'#FCE1DE', titulo:'Confirmação de Exclusão', label:'Excluir',
+    cfg = { cor:'var(--danger)', bg:'var(--danger-bg)', titulo:'Confirmação de Exclusão', label:'Excluir',
         icon:'<path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>' };
   }
   $id('confirm-msg').innerText = msg;
