@@ -859,9 +859,9 @@
 
     if (!probVal || !impVal) {
       if (leg && val) {
-        leg.style.backgroundColor = '#f9fafb';
-        leg.style.borderColor = '#e5e7eb';
-        leg.style.color = '#4b5563';
+        leg.style.backgroundColor = 'var(--bg-panel)';
+        leg.style.borderColor = 'var(--border-color)';
+        leg.style.color = 'var(--text-secondary)';
         val.innerText = '--';
       }
       return;

@@ -263,8 +263,8 @@ function renderGraficosCapacitacoes(fid) {
   if (cMes) {
     const ctxMes = cMes.getContext('2d');
     const gradMes = ctxMes.createLinearGradient(0, 0, 0, 260);
-    gradMes.addColorStop(0, 'rgba(122,108,221,0.28)');
-    gradMes.addColorStop(1, 'rgba(122,108,221,0)');
+    gradMes.addColorStop(0, corVarRgba('--info', 0.28));
+    gradMes.addColorStop(1, corVarRgba('--info', 0));
     capMesChartInst = new Chart(ctxMes, {
       type: 'line',
       data: {
@@ -272,10 +272,10 @@ function renderGraficosCapacitacoes(fid) {
         datasets: [{
           label: 'Capacitações',
           data: dadosMes,
-          borderColor: '#7A6CDD', backgroundColor: gradMes, fill: true,
+          borderColor: corVar('--info'), backgroundColor: gradMes, fill: true,
           tension: 0.4, borderWidth: 2.5,
           pointRadius: 0, pointHoverRadius: 5, pointHitRadius: 12,
-          pointHoverBackgroundColor: '#7A6CDD', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2
+          pointHoverBackgroundColor: corVar('--info'), pointHoverBorderColor: corVar('--bg-card'), pointHoverBorderWidth: 2
         }]
       },
       options: {
@@ -292,7 +292,7 @@ function renderGraficosCapacitacoes(fid) {
     type: 'bar',
     data: {
       labels: Object.keys(pModalidade),
-      datasets: [{ data: Object.values(pModalidade), backgroundColor: ['#3D8FC4','#2CA98F','#D2596F','#7A6CDD','#E0904A'], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
+      datasets: [{ data: Object.values(pModalidade), backgroundColor: [corVar('--tag-sky-text'), corVar('--success'), corVar('--tag-rose-text'), corVar('--info'), corVar('--tag-peach-text')], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -307,7 +307,7 @@ function renderGraficosCapacitacoes(fid) {
     type: 'bar',
     data: {
       labels: Object.keys(pTema),
-      datasets: [{ data: Object.values(pTema), backgroundColor: ['#C99A2E','#D8483A','#6B9B37','#1E9AA3','#A94FA0','#55647A'], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
+      datasets: [{ data: Object.values(pTema), backgroundColor: [corVar('--warning'), corVar('--danger'), corVar('--tag-lime-text'), corVar('--tag-turquoise-text'), corVar('--tag-orchid-text'), corVar('--tag-slate-text')], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -363,12 +363,12 @@ function renderGraficosCapacitacoes(fid) {
       datasets: [{
         data: sCountsCap,
         backgroundColor: bgColorsCap,
-        borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4, borderRadius: 4
+        borderWidth: 2, borderColor: corVar('--bg-card'), hoverOffset: 4, borderRadius: 4
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '65%',
-      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: '#ffffff', font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: corVar('--text-inverse'), font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
     }
   });
 }

@@ -79,6 +79,7 @@
     /* Destaque azul-claro de período "em andamento" (Férias/Escala). */
     --color-agora-bg: #E2EBF8;
     --color-agora-text: #25497F;
+    --color-agora-border: #B8CBE3;
 
     /* Prioridade dos cartões do Kanban — mesma escada de status (Alta=Tijolo,
        Média=Dourado, Baixa=Menta), unificada com --success/--warning/--danger. */
@@ -291,7 +292,7 @@
   
   .btn-create {
     display: flex; align-items: center; justify-content: center;
-    background-color: var(--primary); color: white; border: none;
+    background-color: var(--primary); color: var(--text-inverse); border: none;
     padding: 10px 24px; border-radius: var(--radius-pill);
     font-size: 14px; font-weight: 500; cursor: pointer;
     box-shadow: var(--shadow-sm); transition: background-color var(--transition-fast);
@@ -362,9 +363,9 @@
   .sidebar-brand:hover { background: var(--sidebar-hover); }
   .sidebar-brand-icon {
     width: 38px; height: 38px;
-    background: #2E323C;
+    background: var(--sidebar-active-bg);
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0;
+    font-size: 12px; font-weight: 800; color: var(--text-inverse); flex-shrink: 0;
     letter-spacing: -0.3px; font-family: 'Inter', sans-serif;
     box-shadow: none;
   }
@@ -514,7 +515,7 @@
     padding: 14px; box-shadow: var(--shadow-sm);
     cursor: grab; display: flex; flex-direction: column; gap: 7px;
     transition: box-shadow var(--transition-base), transform var(--transition-base);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--bg-card);
     border-left: 3px solid var(--border-color);
   }
   .card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
@@ -568,23 +569,23 @@
   .grid-row-hover:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); background-color: var(--bg-hover); }
   /* Lista de Logs / Auditoria — migrado de estilos inline (Tarefa 3, parte 1).
      Layout completo de .log-row (grid-template-columns) vive na seção "CLASSES DE
-     GRID RESTANTES"; word-break preservado ali. #111827 aplicado via .log-c-user
-     (única célula sem cor própria) para não depender só do row. */
-  .log-c-data { font-size: 12px; color: var(--text-secondary); }
-  .log-c-user { font-size: 12px; color: #111827; }
+     GRID RESTANTES"; word-break preservado ali. var(--text-main) aplicado via
+     .log-c-user (única célula sem cor própria) para não depender só do row. */
+  .log-c-data { font-size: 13px; color: var(--text-secondary); }
+  .log-c-user { font-size: 12px; color: var(--text-main); }
   .log-badge {
     display: inline-block; font-weight: 600; color: var(--text-secondary);
     border: 1px solid var(--border-color); border-radius: 12px;
     padding: 2px 8px; background: var(--bg-panel); font-size: 11px;
   }
-  .log-c-ref { font-weight: 600; color: #111827; }
-  .log-c-det { font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; }
+  .log-c-ref { font-weight: 600; color: var(--text-main); }
+  .log-c-det { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
   /* Lista de Capacitações — migrado de inline (Tarefa 3, parte 2). Badge de status
      e link de materiais seguem inline (dinâmicos). Layout completo de .cap-row
      (grid-template-columns, com word-break: break-word preservado) vive na seção
      "CLASSES DE GRID RESTANTES". */
   .cap-c { font-size: 13px; }
-  .cap-c-titulo { font-weight: 600; color: #111827; font-size: 13px; }
+  .cap-c-titulo { font-weight: 600; color: var(--text-main); font-size: 13px; }
   .cap-c-sec { color: var(--text-secondary); font-size: 13px; }
   .cap-c-center { text-align: center; }
   .cap-c-mat { text-align: center; font-size: 13px; }
@@ -616,13 +617,13 @@
   .list-body { display: flex; flex-direction: column; gap: 8px; }
   .list-body--spaced { gap: 20px; }
 
-  /* Lista de Unidades — migrado de inline (Tarefa 3, parte 3). #111827/#374151 literais.
+  /* Lista de Unidades — migrado de inline (Tarefa 3, parte 3).
      A opacidade de "inativa" vira classe modificadora: escurece só as 4 células de
      dados (não os botões de ação), idêntico ao inline anterior. Layout completo de
      .unid-row (grid-template-columns) vive na seção "CLASSES DE GRID RESTANTES". */
   .unid-row--inativa > div:not(.unid-c-acoes) { opacity: 0.6; }
-  .unid-c-sigla { font-weight: 700; color: #111827; font-size: 13px; }
-  .unid-c-nome { font-size: 13px; color: #374151; }
+  .unid-c-sigla { font-weight: 700; color: var(--text-main); font-size: 13px; }
+  .unid-c-nome { font-size: 13px; color: var(--text-secondary); }
   .unid-c-email { color: var(--text-secondary); font-size: 13px; }
   .unid-c-drive { text-align: center; font-size: 13px; }
   .unid-c-acoes { display: flex; justify-content: center; gap: 4px; }
@@ -644,12 +645,12 @@
   }
   /* .doc-row--mestra/--rev (grid-template-columns) vivem na seção "CLASSES DE GRID RESTANTES". */
   .doc-c-codigo { font-weight: 700; color: var(--text-main); font-size: 13px; }
-  .doc-c-titulo { font-weight: 500; font-size: 13px; color: var(--text-main); }
+  .doc-c-titulo { font-weight: 600; font-size: 13px; color: var(--text-main); }
   .doc-c-sec { font-size: 13px; color: var(--text-secondary); }
   .doc-c-sec-c { text-align: center; font-size: 13px; color: var(--text-secondary); }
   .doc-c-center { text-align: center; font-size: 13px; }
-  .doc-c-motivo { font-size: 12px; color: var(--text-secondary); }
-  .doc-c-motivo-c { text-align: center; font-size: 12px; color: var(--text-secondary); }
+  .doc-c-motivo { font-size: 13px; color: var(--text-secondary); }
+  .doc-c-motivo-c { text-align: center; font-size: 13px; color: var(--text-secondary); }
   .doc-c-status { text-align: center; }
   .doc-c-acoes { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
   /* Lista de Membros (Kanban) — migrado de inline (Tarefa 3, parte 5). #111827 e
@@ -668,7 +669,7 @@
     grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 70px;
   }
   .escala-c-name { display: flex; align-items: center; gap: 12px; text-align: left; }
-  .escala-c-nome { font-weight: 500; font-size: 13px; color: var(--text-main); }
+  .escala-c-nome { font-weight: 600; font-size: 13px; color: var(--text-main); }
   .escala-c-role { font-size: 12px; color: var(--text-secondary); }
   
   /* Utilitários de grid locais Pessoas */
@@ -700,7 +701,7 @@
     grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px;
   }
   .ferias-c-name { display: flex; align-items: center; gap: 10px; }
-  .ferias-c-nome { font-weight: 600; font-size: 13px; color: #111827; }
+  .ferias-c-nome { font-weight: 600; font-size: 13px; color: var(--text-main); }
   .ferias-c-role { font-size: 11px; color: var(--text-secondary); }
   .ferias-c-acoes { display: flex; justify-content: flex-start; }
   /* Kanban Arquivados (lista) — SÓ o container vira classe. As CÉLULAS ficam inline
@@ -749,7 +750,7 @@
     border: 1px solid var(--border-strong); border-radius: 6px;
     padding: 4px 10px; background: var(--bg-subtle);
   }
-  .risco-c-id { text-align: center; font-weight: 700; color: #2b7fff; white-space: nowrap; font-size: 13px; }
+  .risco-c-id { text-align: center; font-weight: 700; color: var(--text-main); white-space: nowrap; font-size: 13px; }
   .risco-c-text { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
   .risco-c-nivel { white-space: nowrap; }
   .risco-c-acoes { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
@@ -818,7 +819,7 @@
   .kpi-fill-red    { background: var(--danger-bg) !important; }
   .kpi-fill-purple { background: var(--purple-bg) !important; }
   .kpi-fill-yellow { background: var(--warning-bg) !important; }
-  .kpi-fill-sky    { background: #E1F1FC !important; }
+  .kpi-fill-sky    { background: var(--tag-sky) !important; }
   .kpi-icon { width: 28px; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
   .icon-blue, #view-indicadores .c-blue { background: var(--info-border); color: var(--info); }
   .icon-green, #view-indicadores .c-green { background: var(--success-border); color: var(--success); }
@@ -826,7 +827,7 @@
   #view-indicadores .c-purple { background: var(--purple-border); color: var(--purple); }
   .icon-yellow { background: var(--warning-border); color: var(--warning); }
   /* Céu — usada em KPIs de contagem "neutra" (Total), pra não repetir a cor de Info/Lavanda (Em Andamento). */
-  .icon-sky { background: #CDE8FA; color: #3D8FC4; }
+  .icon-sky { background: var(--tag-sky); color: var(--tag-sky-text); }
   .kpi-card > div:last-child { display: flex; flex-direction: column; min-width: 0; }
   .kpi-label { order: 2; font-size: var(--fs-2xs); font-weight: 500; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .kpi-value { order: 1; font-size: 17px; font-weight: 700; color: var(--text-main); letter-spacing: -0.3px; line-height: 1.15; }
@@ -859,13 +860,13 @@
   /* ===== BOTÕES ===== */
   .btn { padding: 9px 18px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast); font-family: inherit; display: inline-flex; align-items: center; gap: 7px; }
   .btn:active { transform: translateY(1px); }
-  .btn.primary { background-color: #2E323C; color: white; box-shadow: none; }
+  .btn.primary { background-color: var(--sidebar-active-bg); color: var(--text-inverse); box-shadow: none; }
   .btn.primary:hover { background-color: var(--primary-hover); box-shadow: none; }
   .btn.secondary { background-color: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); }
   .btn.secondary:hover { background: var(--bg-hover); border-color: var(--border-strong); }
   .btn.danger { background: var(--bg-card); color: var(--danger); border: 1px solid var(--danger-border); }
   .btn.danger:hover { background: var(--danger-bg); }
-  .btn.success { background: var(--success); color: white; }
+  .btn.success { background: var(--success); color: var(--text-inverse); }
   .btn.success:hover { background: var(--success-text); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-sm { padding: 6px 12px; font-size: var(--fs-xs); }
@@ -887,17 +888,17 @@
   .btn-icon.check { color: var(--success); } .btn-icon.check:hover { background: var(--success-bg); border-color: var(--success-border); }
   .btn-icon.check-pendente { color: var(--text-secondary); } .btn-icon.check-pendente:hover { background: var(--bg-subtle); border-color: var(--border-strong); }
   .btn-icon.history { color: var(--text-secondary); } .btn-icon.history:hover { background: var(--bg-subtle); border-color: var(--border-strong); }
-  .btn-pdf { display: flex; align-items: center; gap: 8px; padding: 0 18px; height: 36px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; background: var(--text-main); color: white; cursor: pointer; transition: background var(--transition-fast), transform var(--transition-fast); white-space: nowrap; font-family: inherit; }
+  .btn-pdf { display: flex; align-items: center; gap: 8px; padding: 0 18px; height: 36px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; background: var(--text-main); color: var(--text-inverse); cursor: pointer; transition: background var(--transition-fast), transform var(--transition-fast); white-space: nowrap; font-family: inherit; }
   .btn-pdf:hover { background: #303140; }
-  .btn-pdf:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-pdf-email { display: flex; align-items: center; gap: 8px; padding: 0 18px; height: 36px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; background: var(--success); color: white; cursor: pointer; transition: filter var(--transition-fast); white-space: nowrap; font-family: inherit; }
+  .btn-pdf:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-pdf-email { display: flex; align-items: center; gap: 8px; padding: 0 18px; height: 36px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; background: var(--success); color: var(--text-inverse); cursor: pointer; transition: filter var(--transition-fast); white-space: nowrap; font-family: inherit; }
   .btn-pdf-email:hover { filter: brightness(0.92); }
-  .btn-pdf-email:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-action-icon { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: none; border-radius: var(--radius-sm); background: var(--danger); color: white; cursor: pointer; transition: background var(--transition-fast); flex-shrink: 0; outline: none; }
+  .btn-pdf-email:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-action-icon { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: none; border-radius: var(--radius-sm); background: var(--danger); color: var(--text-inverse); cursor: pointer; transition: background var(--transition-fast); flex-shrink: 0; outline: none; }
   .btn-action-icon:hover { background: var(--danger-text); }
   .btn-action-icon.email { background: var(--success); }
   .btn-action-icon.email:hover { background: var(--success-text); }
-  .btn-action-icon:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-action-icon:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-action-icon.loading { opacity: 0.5; pointer-events: none; }
   .btn-action-icon svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 
@@ -973,11 +974,11 @@
   button.close-modal:hover { background: var(--border-color); color: var(--text-main); }
   .modal-title { font-size: var(--fs-xl); font-weight: 700; color: var(--text-main); margin-bottom: 4px; letter-spacing: -0.2px; }
   .modal-subtitle { font-size: 13.5px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.5; }
-  /* Rótulo de referência (risco/plano sendo editado); migrado de inline (repetia 2x). */
-  .modal-ref-label { font-weight: 700; color: var(--primary); margin: 8px 0 16px; font-size: 14px; }
-  /* Rótulo de referência mais leve (modais de Escala/Afastamentos em Pessoas);
-     migrado de inline — peso e margem diferem do .modal-ref-label (Riscos). */
-  .member-modal-label { font-weight: 600; color: var(--primary); font-size: 14px; margin: 4px 0 18px; }
+  /* Rótulo de referência (registro sendo editado no modal) — usado em Riscos/Planos
+     (.modal-ref-label) e nos modais de Escala/Afastamentos em Pessoas
+     (.member-modal-label). Padronizado na auditoria visual (peso/margem antes
+     divergiam sem motivo funcional). */
+  .modal-ref-label, .member-modal-label { font-weight: 700; color: var(--primary); margin: 8px 0 16px; font-size: 14px; }
   .member-modal-label--tight { margin: 4px 0 4px; }
   .modal-hint-text { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; font-weight: 500; }
   .escala-day-cards-row { display: flex; gap: 5px; margin-bottom: 20px; }
@@ -1036,7 +1037,7 @@
   .sidebar-select, .sidebar-date { width: 100%; padding: 10px 13px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-panel); font-size: var(--fs-base); color: var(--text-main); cursor: pointer; outline: none; font-family: inherit; transition: border-color var(--transition-fast), background var(--transition-fast); }
   .sidebar-select:focus, .sidebar-date:focus { background: var(--bg-card); border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
   .sidebar-action-btn { width: 100%; padding: 9px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; transition: background var(--transition-fast); font-family: inherit; }
-  .save-btn { background: #2E323C; color: white; margin-bottom: 7px; }
+  .save-btn { background: var(--sidebar-active-bg); color: var(--text-inverse); margin-bottom: 7px; }
   .save-btn:hover { background: var(--primary-hover); }
   .del-btn { background: var(--bg-subtle); color: var(--danger); }
   .del-btn:hover { background: var(--danger-bg); }
@@ -1081,7 +1082,7 @@
   .hidden-checkbox { display: none; }
   .selected-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
   .assignee-tag { background: var(--border-color); color: var(--text-main); border-radius: var(--radius-xs); padding: 3px 8px; font-size: var(--fs-2xs); font-weight: 600; }
-  .label-chip { color: #fff; border-radius: var(--radius-xs); padding: 3px 9px; font-size: var(--fs-2xs); font-weight: 600; line-height: 1.3; letter-spacing: .2px; }
+  .label-chip { color: var(--text-inverse); border-radius: var(--radius-xs); padding: 3px 9px; font-size: var(--fs-2xs); font-weight: 600; line-height: 1.3; letter-spacing: .2px; }
   .card-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
   .card-labels .label-chip { padding: 2px 7px; font-size: 9.5px; }
 
@@ -1110,7 +1111,7 @@
   .acomp-status-select.pendente { border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger-text); }
   .acomp-sei-wrap { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
   .acomp-field-group { display: flex; flex-direction: column; gap: 4px; }
-  .acomp-field-label { font-size: 10.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; }
+  .acomp-field-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
   .acomp-field-group input { padding: 8px 11px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 12.5px; background: var(--bg-card); font-family: inherit; color: var(--text-main); outline: none; transition: border-color var(--transition-fast); }
   .acomp-field-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
   .acomp-data { width: 130px !important; height: 32px; padding: 0 8px !important; }
@@ -1174,7 +1175,7 @@
     margin: 2px 4px 2px 0; white-space: nowrap; line-height: 1.35;
   }
   .tag-periodo.agora {
-    background: var(--color-agora-bg); border: 1px solid #B8CBE3; border-radius: 4px;
+    background: var(--color-agora-bg); border: 1px solid var(--color-agora-border); border-radius: 4px;
     padding: 2px 6px; font-weight: 600; color: var(--color-agora-text);
   }
   .tag-periodo.abono-past {
@@ -1362,7 +1363,7 @@
     padding: 16px 24px 12px;
     border-bottom: 1px solid var(--border-color);
     display: flex; justify-content: space-between; align-items: flex-start;
-    background-color: #fafafa;
+    background-color: var(--bg-panel);
   }
   .risk-title {
     font-size: 16px; font-weight: 600;
@@ -1379,7 +1380,7 @@
   .risk-meta-sep { color: var(--border-strong); margin: 0 4px; }
   .plans-container {
     padding: 12px 24px 16px;
-    background: #ffffff;
+    background: var(--bg-card);
   }
   .plans-title {
     font-size: 12px; font-weight: 700; color: var(--text-muted);
@@ -1392,7 +1393,7 @@
     border-radius: 8px;
     padding: 10px 16px;
     margin-bottom: 12px;
-    background: #fff;
+    background: var(--bg-card);
     transition: box-shadow 0.2s, border-color 0.2s;
     position: relative;
   }
@@ -1406,13 +1407,13 @@
   .plan-card--nested { margin-top: 12px; margin-bottom: 0; }
   .plan-card-empty-msg { margin-top: 12px; font-size: 13px; color: var(--text-muted); font-style: italic; }
   .plan-card.inactive {
-    background: #f8fafc;
+    background: var(--bg-panel);
     border-style: dashed;
     opacity: 0.8;
   }
   .plan-field-label {
-    font-size: 11px; font-weight: 600; color: var(--text-muted);
-    text-transform: uppercase; margin-bottom: 4px;
+    font-size: 11px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px;
   }
   .plan-field-value {
     color: var(--text-main); font-weight: normal; font-size: 12.5px;
@@ -1441,7 +1442,7 @@
     height: 10px;
     border-radius: 50%;
     background: var(--border-color);
-    border: 2px solid #fff;
+    border: 2px solid var(--bg-card);
   }
   .version-card.is-active {
     border-left-color: var(--primary);
@@ -1459,7 +1460,7 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 12px;
-    background: #f8fafc;
+    background: var(--bg-panel);
     padding: 8px 12px;
     border-radius: 6px;
   }

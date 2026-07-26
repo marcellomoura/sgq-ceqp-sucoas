@@ -181,8 +181,8 @@ function renderGraficosVisitas(fid) {
   if (cMes) {
     const ctxMes = cMes.getContext('2d');
     const gradMes = ctxMes.createLinearGradient(0, 0, 0, 260);
-    gradMes.addColorStop(0, 'rgba(44,169,143,0.28)');
-    gradMes.addColorStop(1, 'rgba(44,169,143,0)');
+    gradMes.addColorStop(0, corVarRgba('--success', 0.28));
+    gradMes.addColorStop(1, corVarRgba('--success', 0));
     vtMesChartInst = new Chart(ctxMes, {
       type: 'line',
       data: {
@@ -190,10 +190,10 @@ function renderGraficosVisitas(fid) {
         datasets: [{
           label: 'Visitas Técnicas',
           data: dadosMes,
-          borderColor: '#2CA98F', backgroundColor: gradMes, fill: true,
+          borderColor: corVar('--success'), backgroundColor: gradMes, fill: true,
           tension: 0.4, borderWidth: 2.5,
           pointRadius: 0, pointHoverRadius: 5, pointHitRadius: 12,
-          pointHoverBackgroundColor: '#2CA98F', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2
+          pointHoverBackgroundColor: corVar('--success'), pointHoverBorderColor: corVar('--bg-card'), pointHoverBorderWidth: 2
         }]
       },
       options: {
@@ -251,12 +251,12 @@ function renderGraficosVisitas(fid) {
       datasets: [{
         data: sCountsVt,
         backgroundColor: bgColorsVt,
-        borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4, borderRadius: 4
+        borderWidth: 2, borderColor: corVar('--bg-card'), hoverOffset: 4, borderRadius: 4
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '65%',
-      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: '#ffffff', font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: corVar('--text-inverse'), font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
     }
   });
 }

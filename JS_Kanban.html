@@ -640,7 +640,7 @@ function renderGraficosKanban(fid) {
     type: 'bar',
     data: {
       labels: Object.keys(sc),
-      datasets: [{ data: Object.values(sc), backgroundColor: ['#55647A','#3D8FC4','#7A6CDD','#C99A2E','#2CA98F'], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
+      datasets: [{ data: Object.values(sc), backgroundColor: [corVar('--tag-slate-text'), corVar('--tag-sky-text'), corVar('--info'), corVar('--warning'), corVar('--success')], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -655,7 +655,7 @@ function renderGraficosKanban(fid) {
     type: 'bar',
     data: {
       labels: ['Alta', 'Média', 'Baixa'],
-      datasets: [{ data: [pc['Alta'], pc['Media'], pc['Baixa']], backgroundColor: ['#D8483A','#E0904A','#2CA98F'], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
+      datasets: [{ data: [pc['Alta'], pc['Media'], pc['Baixa']], backgroundColor: [corVar('--tag-alta'), corVar('--tag-media'), corVar('--tag-baixa')], borderWidth: 0, borderRadius: 6, maxBarThickness: 40 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -708,12 +708,12 @@ function renderGraficosKanban(fid) {
       datasets: [{
         data: sCountsM,
         backgroundColor: bgColorsM,
-        borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4, borderRadius: 4
+        borderWidth: 2, borderColor: corVar('--bg-card'), hoverOffset: 4, borderRadius: 4
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '65%',
-      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: '#ffffff', font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: corVar('--text-inverse'), font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
     }
   });
 
@@ -755,12 +755,12 @@ function renderGraficosKanban(fid) {
       datasets: [{
         data: sCountsMC,
         backgroundColor: bgColorsMC,
-        borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4, borderRadius: 4
+        borderWidth: 2, borderColor: corVar('--bg-card'), hoverOffset: 4, borderRadius: 4
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '65%',
-      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: '#ffffff', font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: corVar('--text-inverse'), font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
     }
   });
 }

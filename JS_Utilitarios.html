@@ -55,22 +55,42 @@ function renderPaginacao(containerId, opts) {
 var statusChartInst = null, memberChartInst = null, priorityChartInst = null, memberConcluidoChartInst = null;
 var capMesChartInst = null, capModalidadeChartInst = null, capMembroChartInst = null, capTemaChartInst = null;
 
+// Lê o valor atual de uma variável CSS (:root) — canvas/Chart.js não resolve
+// var() sozinho como o CSS normal resolve, então os gráficos precisam buscar
+// o valor explicitamente. Mantém os gráficos sincronizados com a paleta do
+// CSS.html sem duplicar cores em hex; chamado depois que CSS.html já carregou
+// (script incluído no fim do body, depois do <style>).
+function corVar(nome) {
+  return getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+}
+
+// Mesma ideia de corVar(), mas para os gradientes translúcidos dos gráficos de
+// linha: canvas precisa de rgba() com os 3 componentes numéricos separados,
+// não aceita substituir por um hex direto. Converte o hex do token pra RGB.
+function corVarRgba(nome, alpha) {
+  const hex = corVar(nome).replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 // Configuração base compartilhada pelos gráficos Chart.js do Painel de
 // Indicadores (Kanban e Capacitações), para manter o mesmo estilo visual.
 const CHART_TOOLTIP_BASE = {
-  backgroundColor: '#030712', padding: 11, cornerRadius: 8,
+  backgroundColor: corVar('--text-main'), padding: 11, cornerRadius: 8,
   titleFont: { size: 12, family: "'Inter',sans-serif" },
   bodyFont:  { size: 11, family: "'Inter',sans-serif" },
-  titleColor: '#ffffff', bodyColor: '#d1d5db',
+  titleColor: corVar('--text-inverse'), bodyColor: corVar('--border-strong'),
   boxPadding: 4, displayColors: true
 };
 const CHART_LEGEND_BASE = {
   position: 'bottom',
-  labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 11, family: "'Inter',sans-serif" }, color: '#4b5563' }
+  labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 11, family: "'Inter',sans-serif" }, color: corVar('--text-secondary') }
 };
 
 const CHART_DATALABELS_BASE = {
-  color: '#ffffff',
+  color: corVar('--text-inverse'),
   font: { weight: 'bold', family: "'Inter',sans-serif", size: 11 },
   formatter: function(value, context) {
     return value > 0 ? value : '';
@@ -79,12 +99,12 @@ const CHART_DATALABELS_BASE = {
 const CHART_SCALES_BASE = {
   y: {
     beginAtZero: true,
-    ticks: { precision: 0, font: { family: "'Inter',sans-serif", size: 11 }, color: '#6b7280' },
-    grid: { color: '#eef0f2', borderDash: [4, 4] }, border: { display: false }
+    ticks: { precision: 0, font: { family: "'Inter',sans-serif", size: 11 }, color: corVar('--text-muted') },
+    grid: { color: corVar('--border-subtle'), borderDash: [4, 4] }, border: { display: false }
   },
   x: {
     grid: { display: false }, border: { display: false },
-    ticks: { font: { family: "'Inter',sans-serif", size: 11, weight: '500' }, color: '#4b5563', maxRotation: 30 }
+    ticks: { font: { family: "'Inter',sans-serif", size: 11, weight: '500' }, color: corVar('--text-secondary'), maxRotation: 30 }
   }
 };
 
