@@ -375,10 +375,6 @@
   }
 
   function renderAcompanhamento() {
-    $id('kpi-p-conc').innerText = state.plans.filter(p => p.status === 'Concluído').length;
-    $id('kpi-p-and').innerText = state.plans.filter(p => p.status === 'Em Andamento').length;
-    $id('kpi-p-atr').innerText = state.plans.filter(p => p.status === 'Atrasado').length;
-
     const fU = ($id('f-acomp-unidade') || { value: '' }).value;
     const fS = ($id('f-acomp-status') || { value: '' }).value;
 
@@ -386,6 +382,18 @@
     state.risks.filter(r => r.status !== 'Superado').forEach(r => ativosRiscosMap.set('R' + r.id, r));
 
     const filtrados = state.plans.filter(p => ativosRiscosMap.has(p.riscoVinculado) && (!fU || p.who === fU) && (!fS || p.status === fS));
+
+    // KPIs contam a MESMA base da lista (`filtrados`) — antes varriam
+    // state.plans inteiro, o que ignorava tanto os riscos superados quanto os
+    // filtros de Unidade/Status: superar um risco tirava o plano da lista e o
+    // deixava no contador, a ponto de "Nenhum plano ativo encontrado" conviver
+    // com KPIs diferentes de zero. Ficam aqui, antes do return de lista vazia,
+    // para que os três zerem junto com ela.
+    // Consequência esperada de acompanhar o filtro de Status: filtrar por
+    // "Concluído" zera os outros dois cartões — é o recorte pedido, não um bug.
+    $id('kpi-p-conc').innerText = filtrados.filter(p => p.status === 'Concluído').length;
+    $id('kpi-p-and').innerText = filtrados.filter(p => p.status === 'Em Andamento').length;
+    $id('kpi-p-atr').innerText = filtrados.filter(p => p.status === 'Atrasado').length;
 
     const container = $id('container-planos');
     if (!container) return;
