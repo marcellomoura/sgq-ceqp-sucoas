@@ -24,7 +24,7 @@
     msgTabela('lista-riscos', 12, 'A carregar...');
     for (let p = 1; p <= 5; p++) for (let i = 1; i <= 5; i++) { const el = $id(`cell-${p}-${i}`); if (el) el.innerHTML = ''; }
 
-    const ativos = state.risks.filter(r => r.status !== 'Arquivado');
+    const ativos = state.risks.filter(r => r.status !== 'Superado');
 
     ativos.forEach((r, idx) => {
       // r.probabilidade/.impacto/.nivel já vêm do servidor como a versão mais
@@ -203,8 +203,8 @@
     abrirModal('modal-reavaliar-risco');
   }
 
-  // Somente leitura — usado na aba Arquivados, onde o risco já está
-  // Superado/Arquivado e não faz sentido abrir o modal de Reavaliar (que
+  // Somente leitura — usado na aba Superados, onde o risco já está
+  // Superado e não faz sentido abrir o modal de Reavaliar (que
   // permite editar/reavaliar). Recebe o ID do risco (não o índice), mesmo
   // padrão de confirmarRestaurarRisco.
   function abrirHistoricoRisco(id) {
@@ -262,8 +262,8 @@
 
       if (acao === 'superado') {
         const justificativa = $id('rev-justif').value.trim();
-        if (!justificativa) return showAlerta('Descreva a justificativa para superar/arquivar este risco.');
-        btn.disabled = true; btn.innerText = 'A arquivar...';
+        if (!justificativa) return showAlerta('Descreva a justificativa para marcar este risco como superado.');
+        btn.disabled = true; btn.innerText = 'A salvar...';
         google.script.run.withSuccessHandler(r => {
           if (r && r.sucesso === false) { btn.disabled = false; btn.innerText = 'Salvar Ação'; showAlerta(r.mensagem); return; }
           feedbackBtn(btn, '✅ Superado!', 'Salvar Ação', () => { fecharModal('modal-reavaliar-risco'); recarregarRiscosPlanos(renderMatriz); });
@@ -305,27 +305,30 @@
   // ==========================================
   // MÓDULO 4 — PLANOS DE AÇÃO (5W2H)
   // ==========================================
+  // Identifica o risco por R-{id}, não pela posição na lista. A posição vinha
+  // de state.risks (array COMPLETO), enquanto a 1ª coluna da Matriz numera
+  // sobre a lista filtrada de ativos — bastava um risco superado no meio para
+  // o mesmo risco virar "Risco 5" na Matriz e "Risco 6" aqui. R-{id} é estável,
+  // imune a filtro, e já é o que a 2ª coluna da Matriz exibe.
   function formatRiscoUI(val) {
     if (!val || val === '-') return val || '';
-    const idx = state.risks.findIndex(x => 'R' + x.id === String(val));
-    if (idx !== -1) {
-      return `Risco ${idx + 1} — ${state.risks[idx].nome}`;
-    }
-    return val;
+    const r = state.risks.find(x => 'R' + x.id === String(val));
+    return r ? `R-${r.id} — ${r.nome}` : val;
   }
 
   function carregarRiscosLivres() {
     const sel = $id('p-risco');
     sel.innerHTML = '<option value="">A carregar riscos sem plano...</option>';
     const idsComPlano = new Set(state.plans.map(p => p.riscoVinculado));
-    const livres = state.risks.filter(r => !idsComPlano.has('R' + r.id));
+    // Superado não é "livre": criar tratamento preventivo para um risco já
+    // encerrado é contraditório, e antes ele ficava oferecido para sempre
+    // (nunca ganha plano, então nunca saía desta lista).
+    const livres = state.risks.filter(r => r.status !== 'Superado' && !idsComPlano.has('R' + r.id));
     if (!livres.length) { sel.innerHTML = '<option value="">Nenhum risco sem plano de ação.</option>'; return; }
-    const idxPorIdRisco = new Map(state.risks.map((x, i) => [x.id, i]));
+    // Mesmo identificador de formatRiscoUI (R-{id}) — o mapa de posições que
+    // ficava aqui só existia para montar o número posicional divergente.
     sel.innerHTML = '<option value="" disabled selected>Selecione o risco...</option>' +
-      livres.map(r => {
-        const idx = idxPorIdRisco.has(r.id) ? idxPorIdRisco.get(r.id) : -1;
-        return `<option value="R${r.id}">Risco ${idx + 1} — ${esc(r.nome)}</option>`;
-      }).join('');
+      livres.map(r => `<option value="R${r.id}">R-${r.id} — ${esc(r.nome)}</option>`).join('');
   }
 
   function abrirModalNovoPlano() {
@@ -366,7 +369,7 @@
     const fS = ($id('f-acomp-status') || { value: '' }).value;
 
     const ativosRiscosMap = new Map();
-    state.risks.filter(r => r.status !== 'Arquivado').forEach(r => ativosRiscosMap.set('R' + r.id, r));
+    state.risks.filter(r => r.status !== 'Superado').forEach(r => ativosRiscosMap.set('R' + r.id, r));
 
     const filtrados = state.plans.filter(p => ativosRiscosMap.has(p.riscoVinculado) && (!fU || p.who === fU) && (!fS || p.status === fS));
 
@@ -620,7 +623,13 @@
     }
 
     const rRef = state.risks.find(function (x) { return 'R' + x.id === p.riscoVinculado; }) || {};
-    const isArquivado = rRef.status === 'Arquivado' || p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído';
+    // Somente leitura: risco já superado, ou plano em estado terminal.
+    const somenteLeitura = rRef.status === 'Superado' || p.status === 'Cancelado' || p.status === 'Substituído' || p.status === 'Concluído';
+
+    // Aplicado ANTES do return antecipado de "nenhuma unidade cobrada" logo
+    // abaixo: quando ficava só no fim da função, esse caminho saía sem tocar no
+    // botão e ele herdava o estado da abertura anterior do modal.
+    aplicarModoLeituraAcompEntregas(somenteLeitura, rRef, p);
 
     $id('acomp-ent-info').innerHTML =
       '<strong>Risco:</strong> ' + esc(formatRiscoUI(p.riscoVinculado)) +
@@ -656,7 +665,7 @@
         '</div>' +
         '<div class="acomp-field-group acomp-status-wrap">' +
         '<span class="acomp-field-label">Status</span>' +
-        '<select class="acomp-status-select acomp-status' + selClass + '" data-row="' + i + '"' + (isArquivado ? ' disabled' : '') + '>' +
+        '<select class="acomp-status-select acomp-status' + selClass + '" data-row="' + i + '"' + (somenteLeitura ? ' disabled' : '') + '>' +
         '<option value=""' + (!entregue ? ' selected' : '') + '>— Selecione —</option>' +
         '<option value="Sim"' + (entregue === 'Sim' ? ' selected' : '') + '>Sim — Entregue</option>' +
         '<option value="Não"' + (entregue === 'Não' ? ' selected' : '') + '>Não — Pendente</option>' +
@@ -665,11 +674,11 @@
         '<div class="acomp-sei-wrap">' +
         '<div class="acomp-field-group">' +
         '<span class="acomp-field-label">Data de Entrega</span>' +
-        '<input type="date" class="acomp-data" value="' + esc(dataEnt) + '"' + (isArquivado ? ' disabled' : '') + '>' +
+        '<input type="date" class="acomp-data" value="' + esc(dataEnt) + '"' + (somenteLeitura ? ' disabled' : '') + '>' +
         '</div>' +
         '<div class="acomp-field-group">' +
         '<span class="acomp-field-label">Nº Processo SEI <span class="required-mark">*</span></span>' +
-        '<input type="text" class="acomp-sei" placeholder="Ex: 00060-000..." value="' + esc(sei) + '"' + (isArquivado ? ' disabled' : '') + '>' +
+        '<input type="text" class="acomp-sei" placeholder="Ex: 00060-000..." value="' + esc(sei) + '"' + (somenteLeitura ? ' disabled' : '') + '>' +
         '</div>' +
         '</div>' +
         '</div>'
@@ -688,10 +697,30 @@
       });
     });
 
-    const btnSalvar = $id('btn-salvar-acomp-entregas');
-    if (btnSalvar) btnSalvar.classList.toggle('hidden', isArquivado);
-
     abrirModal('modal-acomp-entregas');
+  }
+
+  // Estado somente-leitura do modal de Entregas, num lugar só porque
+  // abrirModalAcompEntregas tem dois caminhos de saída (com e sem unidades
+  // cobradas) e os dois precisam deixar o modal no mesmo estado.
+  function aplicarModoLeituraAcompEntregas(somenteLeitura, rRef, p) {
+    const btnSalvar = $id('btn-salvar-acomp-entregas');
+    if (btnSalvar) btnSalvar.classList.toggle('hidden', somenteLeitura);
+
+    // Sem o botão de salvar, "Cancelar" não descarta nada — só fecha.
+    const btnFechar = $id('btn-fechar-acomp-entregas');
+    if (btnFechar) btnFechar.textContent = somenteLeitura ? 'Fechar' : 'Cancelar';
+
+    // Campos cinzas sem explicação lêem como defeito; o aviso diz o motivo.
+    const aviso = $id('acomp-ent-readonly');
+    if (aviso) {
+      aviso.classList.toggle('hidden', !somenteLeitura);
+      if (somenteLeitura) {
+        aviso.textContent = rRef.status === 'Superado'
+          ? 'Risco superado — registros em modo somente leitura.'
+          : 'Plano ' + (p.status || 'encerrado').toLowerCase() + ' — registros em modo somente leitura.';
+      }
+    }
   }
 
   function salvarAcompEntregas() {
@@ -891,16 +920,16 @@
   }
 
   // ==========================================
-  // ABA ARQUIVADOS (Riscos e Planos)
+  // ABA SUPERADOS (riscos superados + seus planos)
   // ==========================================
   function renderRiscosArquivados() {
-    const arquivadosRiscos = state.risks.filter(r => r.status === 'Arquivado');
+    const arquivadosRiscos = state.risks.filter(r => r.status === 'Superado');
     const container = $id('container-arquivados');
 
     if (!container) return;
 
     if (!arquivadosRiscos.length) {
-      container.innerHTML = '<div class="msg-empty">Nenhum risco ou plano arquivado no momento.</div>';
+      container.innerHTML = '<div class="msg-empty">Nenhum risco superado no momento.</div>';
       return;
     }
 
@@ -994,7 +1023,7 @@
           <div class="flex-1">
             <div class="risk-title-row">
                <h2 class="risk-title risk-title--archived">Risco ${r.id} — ${esc(r.nome)}</h2>
-               <span class="tag-archived">ARQUIVADO</span>
+               <span class="tag-archived">SUPERADO</span>
             </div>
             <div class="risk-meta">
               <div><strong>Macroetapa:</strong> ${esc(r.macroetapa)}</div>
@@ -1065,7 +1094,7 @@
         </table>`;
     });
 
-    return _pdfSecaoTitulo('Riscos Superados / Arquivados') + clone.innerHTML;
+    return _pdfSecaoTitulo('Riscos Superados') + clone.innerHTML;
   }
 
   // Mesmo padrão dos demais relatórios: o tipo 'risco-arquivado' está em

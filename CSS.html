@@ -468,10 +468,17 @@
   .w-100 { width: 100%; }
   .w-100px { width: 100px !important; }
 
-  /* Usada com classList.toggle('hidden') no JS para blocos condicionais cujo
-     estado "visível" é o display padrão do elemento (div/h4 = block) — não usar
-     em elementos que precisem de um display específico (inline-flex etc.). */
-  .hidden { display: none; }
+  /* Usada com classList.toggle('hidden') no JS para blocos condicionais.
+     O !important é proposital: sem ele, a classe só funcionava em elementos
+     cujo estado "visível" é o display padrão (div/h4 = block). Em qualquer
+     elemento com display próprio declarado DEPOIS desta linha, a regra do
+     componente ganhava por ordem da cascata (mesma especificidade, 0-1-0) e o
+     "hidden" virava no-op silencioso — foi exatamente o que aconteceu com
+     `.btn` (display: inline-flex), deixando "Salvar Registros" visível no modal
+     de entregas em modo somente leitura (ver §8.22). Classe utilitária de
+     estado é o caso legítimo de !important: a função dela é justamente vencer
+     o display do componente. */
+  .hidden { display: none !important; }
   .pointer-none { pointer-events: none; }
   .overflow-x-auto { overflow-x: auto; }
   .overflow-hidden { overflow: hidden; }
@@ -1284,6 +1291,10 @@
   .modal-info { background: var(--bg-panel); padding: 13px 15px; border-radius: var(--radius-md); font-size: var(--fs-base); line-height: 1.7; margin: 14px 0; }
   /* Variante compacta — Reavaliar/Histórico de Risco; migrado de inline (repetia 2x). */
   .modal-info--compact { background: var(--bg-app); padding: 10px; border-radius: 4px; font-size: 14px; margin: 0 0 14px; }
+  /* Aviso de modal em somente leitura (modal de Entregas quando o risco já foi
+     superado ou o plano está em status terminal). Usa os tokens --warning-*,
+     que já têm variante de modo escuro (ver §8.19/§8.20). */
+  .modal-readonly-note { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); padding: 10px 13px; border-radius: var(--radius-md); font-size: var(--fs-sm); font-weight: 600; margin: 0 0 14px; }
   /* Legenda dinâmica de Nível de Risco (cor trocada em runtime por atualizarLegendaRisco);
      migrado de inline (repetia 3x, um por modal de Risco). */
   .risco-legenda-nivel {

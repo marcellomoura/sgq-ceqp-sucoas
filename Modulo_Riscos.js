@@ -104,9 +104,14 @@ function _definirStatusRisco_(idRisco, novoStatus, acaoLog, detalheLog, msgOk) {
   } catch(e) { return erroInterno_(e); }
 }
 
+// Status gravado na coluna Status da aba Riscos. Era 'Arquivado' até
+// 2026-07-27; renomeado para 'Superado' para bater com o vocabulário da tela
+// ("Marcar como Superado" / aba "Superados"). Troca direta, sem aceitar a
+// grafia antiga na leitura: não havia nenhum risco arquivado na planilha
+// quando a renomeação foi feita, então não existe linha legada para tolerar.
 function excluirRisco(idRisco) {
-  return _definirStatusRisco_(idRisco, 'Arquivado', 'Arquivamento de Risco',
-    'Risco arquivado (soft delete).', 'Risco arquivado!');
+  return _definirStatusRisco_(idRisco, 'Superado', 'Superação de Risco',
+    'Risco marcado como superado (soft delete).', 'Risco superado!');
 }
 
 function restaurarRisco(idRisco) {
@@ -439,6 +444,7 @@ function salvarEntregasEmLote(idPlano, entregas) {
 
       let indexPlano = -1;
       let riscoVinculado = '';
+      let statusPlano = '';
 
       // Localiza pelo ID_Plano (chave estável) — ver mesmo comentário em
       // atualizarPlano/revisarPlano sobre por que "O Que" não é confiável.
@@ -446,11 +452,43 @@ function salvarEntregasEmLote(idPlano, entregas) {
         if (String(rows[i][CP('ID_Plano')]||'').trim() === String(idPlano).trim()) {
           indexPlano = i + 1;
           riscoVinculado = String(rows[i][CP('ID_Risco')]||'');
+          statusPlano = String(rows[i][CP('Status')]||'').trim();
           break;
         }
       }
 
       if (indexPlano === -1) return { sucesso: false, mensagem: 'Plano não encontrado na planilha.' };
+
+      // A regra "entregas viram somente leitura" existia só no cliente
+      // (abrirModalAcompEntregas). Campos disabled mantêm .value em JS, então
+      // um clique em Salvar ainda montava um payload válido e gravava —
+      // silenciosamente, com log — num risco já encerrado. Guarda de servidor.
+      //
+      // Só bloqueia o que é decisão DEFINITIVA e está GRAVADO na planilha.
+      // 'Substituído' é o único status terminal que algum caminho realmente
+      // grava (revisarPlano, ação "Substituir Plano"). 'Cancelado' aparece em
+      // comparações legadas de outros pontos do módulo, mas nenhuma rotina o
+      // escreve — ficaria como ramo morto e não entra aqui.
+      // 'Concluído' de propósito não entra: ele é derivado na leitura por
+      // _statusPlano (Data_Finalizacao preenchida) e não fica na coluna Status,
+      // que segue 'Em Andamento' — ler daqui nunca o veria. Bloquear por data
+      // também impediria a correção de uma entrega registrada errado num plano
+      // já finalizado, que o cliente permite tratar por outros caminhos.
+      if (statusPlano === 'Substituído')
+        return { sucesso: false, mensagem: 'Este plano foi substituído — as entregas não podem mais ser alteradas.' };
+
+      const abaR = conectarAba(SHEET_RISKS);
+      const CR = colIdx_(CABECALHOS_RISCOS);
+      const rowsR = abaR.getDataRange().getValues();
+      // Todas as linhas de um ID_Risco compartilham o mesmo Status (o sweep de
+      // _definirStatusRisco_ garante), então o primeiro match já responde.
+      for (let i = 1; i < rowsR.length; i++) {
+        if (String(rowsR[i][CR('ID_Risco')]||'').trim() === String(riscoVinculado).trim()) {
+          if (String(rowsR[i][CR('Status')]||'').trim() === 'Superado')
+            return { sucesso: false, mensagem: 'O risco vinculado a este plano já foi superado — as entregas não podem mais ser alteradas.' };
+          break;
+        }
+      }
 
       const abaE = conectarAba(SHEET_ENTREGAS_PLANOS, CABECALHOS_ENTREGAS_PLANOS);
       const CE = colIdx_(CABECALHOS_ENTREGAS_PLANOS);

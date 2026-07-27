@@ -251,7 +251,7 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 | `View_Pessoas.html` | Telas Membros, Escala e Afastamentos + modais `modal-member`/`modal-escala`/`modal-ferias`. |
 | `View_Unidades.html` | Tela Unidades + `modal-unidade`. |
 | `View_Documentos.html` | Telas Lista Mestra e Histórico de Revisões + modais `modal-doc-novo`/`modal-doc-editar`/`modal-doc-revisao`. |
-| `View_Riscos.html` | Telas Matriz, Plano de Ação e Riscos Arquivados + 7 modais (risco-novo/editar, plano-novo/editar, reavaliar-risco, revisar-plano, acomp-entregas). |
+| `View_Riscos.html` | Telas Matriz, Plano de Ação e Riscos Superados + 7 modais (risco-novo/editar, plano-novo/editar, reavaliar-risco, revisar-plano, acomp-entregas). |
 | `View_Capacitacoes.html` | Tela Capacitações + `modal-capacitacao`. |
 | `View_VisitasTecnicas.html` | Tela Visitas Técnicas + `modal-visita` (ver §8.9). |
 | `View_Monitoramento.html` | Telas Painel de Indicadores e Registros (logs). |
@@ -274,7 +274,7 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 | `Membros` | ID_Membro, Nome, Cargo, Email_Funcional, Email_Pessoal, Dias_Semana, Dia_Presencial, Ativo | ID `MEM-n`. Email(s) = login. Inativação preserva histórico. |
 | `Unidades` | ID_Unidade, Nome_Da_Unidade, Sigla, Email_Funcional, Link_Do_Drive, Ativo | ID `UN-n`. Sigla única. Link do Drive aceita texto livre. |
 | `Documentos` | Codigo, Versao, Tipo, Titulo, Data_Aprovacao, Proxima_Revisao, Status, Responsavel(ID_Unidade), Link_Principal, Doc_Auxiliar_1/2, Revisao | Código `SIGLATIPO-SIGLAUND-NN`. Revisão = nova linha + antiga vira "Obsoleto". |
-| `Riscos` | ID_Risco, Versao, Macroetapa, Risco, Causa, Consequencia, Categoria, Probabilidade, Impacto, Nivel, Tipo_Tratamento, Responsavel(ID_Unidade), Status, Justificativa, Data_Avaliacao | ID `Rn`. **1 linha por VERSÃO do risco** (adicionado 2026-07-24 — ver §8.13): toda reavaliação cria uma linha nova com o mesmo `ID_Risco` e `Versao` incrementada; a linha de maior `Versao` é o estado atual. `Status` (Ativo/Arquivado) descreve o risco inteiro — arquivar aplica a TODAS as linhas do `ID_Risco` de uma vez. Sem `Historico` (JSON) — o histórico é o próprio conjunto de linhas. |
+| `Riscos` | ID_Risco, Versao, Macroetapa, Risco, Causa, Consequencia, Categoria, Probabilidade, Impacto, Nivel, Tipo_Tratamento, Responsavel(ID_Unidade), Status, Justificativa, Data_Avaliacao | ID `Rn`. **1 linha por VERSÃO do risco** (adicionado 2026-07-24 — ver §8.13): toda reavaliação cria uma linha nova com o mesmo `ID_Risco` e `Versao` incrementada; a linha de maior `Versao` é o estado atual. `Status` (Ativo/Superado — era Ativo/Arquivado até 2026-07-27, ver §8.21) descreve o risco inteiro — superar aplica a TODAS as linhas do `ID_Risco` de uma vez. Sem `Historico` (JSON) — o histórico é o próprio conjunto de linhas. |
 | `Planos_Acao` | ID_Plano, ID_Risco, O_Que, Por_Que, Quem(ID_Unidade), Onde, Data_Prevista, Data_Finalizacao, Como, Quanto_Custa, Status, Revisao_Pendente, Justificativa, Data_Avaliacao | ID próprio `PLA-n` (adicionado 2026-07-23 — ver §8.12). Vincula a Risco (`Rn`) por `ID_Risco`. `Quem` aceita também "Todas as Subcomissões" (`.includes('TODAS')`, `_planoEhGlobal_`). **Linha nova só quando a estratégia muda de verdade** (2026-07-24 — ver §8.13): "Substituir" fecha a linha atual (`Status='Substituído'`) e cria uma linha com `ID_Plano` novo; "Manter" não cria linha — só atualiza `Justificativa`/`Data_Avaliacao`/`Revisao_Pendente` na própria linha, já que nada do 5W2H muda. Sem `Historico`/`Entregas` (JSON) — entregas viraram a aba `Entregas_Planos`. |
 | `Entregas_Planos` | ID_Plano, Unidade, Status, Data, Processo_SEI | Sem ID próprio — chave composta `(ID_Plano, Unidade)`, única por construção (upsert). Sob demanda (`conectarAba`), fora do setup eager, mesmo padrão de `Capacitacoes`/`Visitas_Tecnicas`. Adicionada 2026-07-24 — ver §8.13. |
 | `Afastamentos` | ID_Afastamento, Ano, ID_Membro, Membro_Nome, Ferias_1/2/3, Abonos, Abono_Aniversario, Licenca_Servidor_Premio (JSON), Demais_Afastamentos (JSON) | ID `AF-n`. Uma linha por (Membro+Ano). |
@@ -950,7 +950,7 @@ Descartados após análise: `.btn-create` e `.btn.primary` (preenchimento sólid
 
 | Relatório | Captura | Efeito visível ao gerar no modo escuro |
 |---|---|---|
-| Cartões Arquivados, Acompanhamento, Riscos Arquivados | — | **nenhum** |
+| Cartões Arquivados, Acompanhamento, Riscos Superados | — | **nenhum** |
 | Matriz de Risco | DOM puro | **nenhum** (resolvido pelo `onclone`) |
 | Painel de Indicadores | `<canvas>` | só os gráficos mudam de cor brevemente; a página segue escura |
 
@@ -1091,6 +1091,81 @@ Se um dia precisar clarear mais, o próximo é `#5e697b` (L\* 44, 4,52:1) — qu
 - **Eixo transparente, só texto e borda** — elegante (cabeçalho não é dado), mas mexeria no desenho da tabela nos dois temas.
 
 **`_envelopeHtml()` permanece intocada,** com suas cores em hex literal: ela gera uma folha isolada que não enxerga o `:root` (§8.19), o que agora é uma vantagem — o PDF é imune ao tema por construção. Verificado que continua com **zero** ocorrências de `var(--...)`.
+
+---
+
+### 8.21 Riscos — "Arquivados" renomeado para "Superados" (2026-07-27)
+
+**Motivo.** Na tela de Riscos, "arquivado" não era um estado neutro de armazenamento: o único caminho para um risco chegar lá é o usuário escolher, na Reavaliação, a ação "Marcar como Superado", com justificativa obrigatória. Não existe arquivamento automático por data nem por conclusão de plano — `excluirRisco` é o único ponto que grava o status. Ou seja, 100% do conteúdo daquela tela é, por construção, risco superado. O sistema já hesitava entre os dois termos (o título do PDF era literalmente "Riscos Superados / Arquivados"). A renomeação também desfaz a colisão de nomes no menu, onde "Arquivados" aparecia duas vezes significando coisas diferentes (cartões do Kanban guardados por idade vs. riscos vencidos).
+
+**O "Arquivados" do Kanban não mudou** — lá o arquivamento é organizacional, sem juízo de superação, e o termo continua correto.
+
+**Camada visível:**
+
+| Onde | Antes | Depois |
+|---|---|---|
+| `Index.html` — item de menu (`data-tab="risco-arquivado"`) | Arquivados | Superados |
+| `View_Riscos.html` — título da página | Riscos e Planos Arquivados | Riscos Superados |
+| `View_Riscos.html` — ação da Reavaliação | Marcar como Superado (Arquivar) | Marcar como Superado |
+| `JS_Riscos.html` — lista vazia | Nenhum risco ou plano arquivado no momento. | Nenhum risco superado no momento. |
+| `JS_Riscos.html` — badge do card | ARQUIVADO | SUPERADO |
+| `JS_Riscos.html` — validação / texto do botão | "superar/arquivar este risco" / "A arquivar..." | "marcar este risco como superado" / "A salvar..." |
+| `JS_Riscos.html` — título da seção no PDF | Riscos Superados / Arquivados | Riscos Superados |
+| `JS_Utilitarios.html` — `CFG_PDF` | title "Riscos e Planos Arquivados", `Riscos_Arquivados_SGQ.pdf` | title "Riscos Superados", `Riscos_Superados_SGQ.pdf` |
+
+O parêntese "(Arquivar)" e o "A arquivar..." saíram porque apontavam para uma página "Arquivados" que deixou de existir com esse nome.
+
+**Valor persistido — troca direta, sem compatibilidade com a grafia antiga.** A coluna `Status` da aba `Riscos` passou a gravar `Superado` no lugar de `Arquivado` (`excluirRisco`, `Modulo_Riscos.js`). O literal aparecia em exatamente 5 lugares — 1 escrita e 4 leituras (`JS_Riscos.html`: filtro da Matriz, filtro do Acompanhamento, bloqueio de edição de entregas, filtro da própria aba Superados) — todos trocados.
+
+A troca direta só foi segura porque **não havia nenhum risco arquivado na planilha** no momento da renomeação (mesmo critério do §8.18, onde a migração retroativa foi dispensada pelo mesmo motivo). Se houvesse dado legado, o modo de falha seria silencioso e grave: o filtro da Matriz é `status !== 'Superado'`, então uma linha que ficasse com `Arquivado` **reapareceria como risco Ativo na Matriz** e sumiria da aba Superados. Vale lembrar que `_definirStatusRisco_` grava o Status em TODAS as linhas do `ID_Risco` (1 linha por versão, §8.13) — qualquer migração futura precisa cobrir o grupo inteiro, não uma célula por risco.
+
+**Identificadores internos não mudaram** (`risco-arquivado`, `container-arquivados`, `renderRiscosArquivados`, `montarHtmlRiscoArquivadoPdf`, `excluirRisco`, classe `.tag-archived`): renomeá-los é churn com risco de quebrar roteamento de abas e PDF, para zero ganho ao usuário. Única exceção, por ter virado mentira semântica: a variável local `isArquivado` (modal de entregas) virou `somenteLeitura` — ela nunca significou "arquivado", e sim "risco superado **ou** plano em estado terminal (Cancelado/Substituído/Concluído)".
+
+Logs antigos ("Arquivamento de Risco") ficam como estão — são histórico. Novos registros usam "Superação de Risco".
+
+---
+
+### 8.22 Entregas em modo somente leitura + acertos no ciclo de risco superado (2026-07-27)
+
+Correções derivadas da renomeação da §8.21 — todas em cima de comportamento pré-existente, nenhuma regra de negócio nova.
+
+**1) Causa raiz: `.hidden` era no-op em qualquer elemento com `display` próprio.**
+
+O modal de Entregas já tinha a regra de somente leitura (`abrirModalAcompEntregas` desabilita os campos e chama `classList.toggle('hidden')` no botão "Salvar Registros"). A classe **era aplicada** — só não surtia efeito:
+
+```
+CSS.html   .hidden { display: none; }          (linha ~474)
+CSS.html   .btn    { ...; display: inline-flex } (linha ~1155)
+```
+
+Mesma especificidade (0-1-0) e `.btn` declarada **depois** → `inline-flex` vencia por ordem de cascata. Como o botão é `class="btn primary"`, ele nunca sumia: campos travados, botão de salvar convidando ao clique. O comentário que existia acima da regra já alertava para essa exata armadilha ("não usar em elementos que precisem de um display específico") — a regra estava certa, o uso é que violou o aviso.
+
+**Correção:** `.hidden { display: none !important; }`. É o caso legítimo de `!important` — classe utilitária de estado existe justamente para vencer o display do componente. Resolve a categoria inteira, não só esta ocorrência. Varridos os 12 usos de `.hidden` no projeto: este era o único sobre elemento com `display` próprio (`btn-add-ferias`, em Pessoas, usa `.btn-add-afast`, que não declara `display`, e por isso sempre funcionou). Comentário da regra reescrito.
+
+**2) Vazamento de estado entre aberturas do modal.**
+
+`abrirModalAcompEntregas` tem dois caminhos de saída, e o `return` antecipado de "nenhuma unidade cobrada" saía **antes** da linha que ajustava o botão. Abrir um plano editável e depois um sem unidades deixava o botão visível por herança. O estado de leitura foi extraído para `aplicarModoLeituraAcompEntregas(somenteLeitura, rRef, p)`, chamada **antes** do `return`, de modo que os dois caminhos deixem o modal no mesmo estado.
+
+**3) Modo leitura agora é explícito.** Campos cinzas sem explicação lêem como defeito. Adicionados: aviso no topo do modal ("Risco superado — registros em modo somente leitura." / "Plano {status} — ...", `#acomp-ent-readonly`, classe `.modal-readonly-note` sobre os tokens `--warning-*`, que já têm variante escura) e troca do rótulo "Cancelar" → "Fechar" nesse estado (sem botão de salvar, não há o que cancelar).
+
+**4) Guarda no servidor (`salvarEntregasEmLote`).** A regra de somente leitura existia **só no cliente**. Como campos `disabled` mantêm `.value` em JS, um clique no botão que não sumia montava payload válido e gravava de verdade em `Entregas_Planos`, com log, num risco já encerrado. Agora o servidor recusa quando o risco vinculado está `Superado` ou quando o plano está `Substituído`.
+
+`Cancelado` **não** entra na guarda: nenhuma rotina o grava (o modal de Revisão só oferece "Manter" e "Substituir"), então seria ramo morto. Ele continua aparecendo em comparações legadas de outros pontos do módulo — essas não foram tocadas.
+
+**`Concluído` ficou deliberadamente de fora da guarda:** ele é derivado na leitura por `_statusPlano` (`Data_Finalizacao` preenchida, §8.17) e **não** fica gravado na coluna `Status`, que segue `Em Andamento` — uma leitura do servidor nunca o veria. Bloquear por data equivaleria a impedir a correção de uma entrega registrada errado num plano já finalizado. O cliente continua tratando `Concluído` como leitura; o servidor é intencionalmente mais permissivo nesse ponto.
+
+**5) Risco superado saiu do dropdown de "riscos livres".** `carregarRiscosLivres` filtrava só por "não tem plano vinculado", sem olhar status — um risco mapeado, nunca planejado e depois superado ficava oferecido **para sempre** como destino de um plano de ação novo (nunca ganha plano, então nunca saía da lista). Passou a excluir `Status='Superado'`.
+
+**6) Numeração de risco unificada em `R-{id}`.** Coexistiam duas numerações para o mesmo risco:
+
+| Onde | Base | Com um risco superado no meio |
+|---|---|---|
+| Matriz, 1ª coluna | posição entre os **ativos** | "Risco 5" |
+| `formatRiscoUI` e dropdown de planos | posição no array **completo** | "Risco 6" |
+
+Como `formatRiscoUI` alimenta o Acompanhamento e o cabeçalho do modal de Entregas, a divergência apareceria lado a lado com a Matriz assim que o primeiro risco fosse superado. `formatRiscoUI` e o dropdown passaram a exibir `R-{id}` — estável, imune a filtro, e já é o identificador da 2ª coluna da Matriz. A 1ª coluna da Matriz continua sendo numeração de linha da tela, que é o que sempre foi. O mapa `idxPorIdRisco` de `carregarRiscosLivres` saiu junto (só existia para montar o número divergente); o de `renderMatriz` **permanece** — lá o índice é funcional (`data-idx` dos botões de ação), não de exibição.
+
+**Fora de escopo, mantido como está:** os cards de versão e os títulos de risco (`Risco ${r.id} — nome`, em Planos e na aba Superados) já usam o **id**, não posição — não sofrem da divergência acima, então não foram tocados. Identificadores internos idem (§8.21).
 
 ---
 

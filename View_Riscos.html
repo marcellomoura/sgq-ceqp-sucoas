@@ -215,7 +215,7 @@
 
       <section id="view-risco-arquivado" class="view-section">
         <header class="no-print view-header">
-          <div class="page-title mb-0">Riscos e Planos Arquivados</div>
+          <div class="page-title mb-0">Riscos Superados</div>
 
           <div class="flex-row items-center gap-16">
             <div class="flex-row items-center gap-8">
@@ -482,7 +482,7 @@
           <option value="" disabled selected>Selecione uma ação</option>
           <option value="reavaliar">Reavaliar Risco (Alterar Notas)</option>
           <option value="manter">Manter Avaliação Atual</option>
-          <option value="superado">Marcar como Superado (Arquivar)</option>
+          <option value="superado">Marcar como Superado</option>
         </select>
       </div>
 
@@ -641,9 +641,10 @@
           aria-label="Fechar">&times;</button></div>
       <h3 class="modal-title">Acompanhamento de Entregas</h3>
       <div class="modal-info mb-14" id="acomp-ent-info"></div>
+      <div id="acomp-ent-readonly" class="modal-readonly-note hidden"></div>
       <div id="acomp-ent-lista"></div>
       <div class="modal-footer">
-        <button class="btn secondary" data-close="modal-acomp-entregas">Cancelar</button>
+        <button class="btn secondary" id="btn-fechar-acomp-entregas" data-close="modal-acomp-entregas">Cancelar</button>
         <button class="btn primary" id="btn-salvar-acomp-entregas">Salvar Registros</button>
       </div>
     </div>

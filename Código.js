@@ -926,7 +926,7 @@ function _lerRiscosPlanosEntregas_(ss) {
   // 1 linha por risco com um JSON de Historico numa célula. Agrupa primeiro,
   // depois usa a linha de MAIOR Versao de cada grupo como o estado "atual" do
   // risco (nunca filtra por Status antes de achar a maior Versao: um risco
-  // arquivado tem TODAS as suas linhas com Status='Arquivado', via o sweep de
+  // superado tem TODAS as suas linhas com Status='Superado', via o sweep de
   // _definirStatusRisco_, então filtrar por Status cedo demais perderia o
   // grupo inteiro). Todas as linhas do grupo (não só as antigas) alimentam o
   // array `historico` — é o mesmo consumidor que antes lia o JSON.
