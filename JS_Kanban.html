@@ -39,7 +39,7 @@ function renderMembers() {
       
     return `<div class="grid-row-hover membro-row${inativo ? ' membro-row--inativa' : ''}">
       <div class="member-c-name">
-        <div class="member-avatar member-avatar--lg ${corPastelPorNome(m.name)}">${esc(iniciaisMembro(m.name))}</div>
+        <div class="member-avatar member-avatar--lg ${corMembroPorNome(m.name)}">${esc(iniciaisMembro(m.name))}</div>
         <span class="member-c-name-txt">${esc(m.name)}${inativo?' '+badgeInativo():''}</span>
       </div>
       <div><span class="member-role-badge member-role-badge--lg">${esc(m.role)}</span></div>
@@ -664,7 +664,6 @@ function renderGraficosKanban(fid) {
     }
   });
 
-  const chartColors = PALETA_PASTEL_HEX;
   const getInitials = (name) => {
     const p = name.split(' ');
     return p.length > 1 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : p[0].substring(0, 2).toUpperCase();
@@ -682,7 +681,7 @@ function renderGraficosKanban(fid) {
   const elTotalM = $id('memberChartTotal');
   if (elTotalM) elTotalM.textContent = totalAndamento;
 
-  const bgColorsM = sCountsM.map((_, i) => chartColors[i % chartColors.length]);
+  const bgColorsM = sNamesM.map(corMembroHex);
   const elListM = $id('memberChartList');
   if (elListM) {
     elListM.innerHTML = '';
@@ -729,7 +728,7 @@ function renderGraficosKanban(fid) {
   const elTotalMC = $id('memberConcluidoChartTotal');
   if (elTotalMC) elTotalMC.textContent = totalConcluidas;
 
-  const bgColorsMC = sCountsMC.map((_, i) => chartColors[i % chartColors.length]);
+  const bgColorsMC = sNamesMC.map(corMembroHex);
   const elListMC = $id('memberConcluidoChartList');
   if (elListMC) {
     elListMC.innerHTML = '';
@@ -766,14 +765,6 @@ function renderGraficosKanban(fid) {
 }
 
 // ---------- PDF ----------
-// Fragmento do relatório do Painel de Indicadores com os 4 gráficos do
-// Kanban (viram imagem estática, já que Chart.js não roda no servidor).
-function graficosKanbanPdfHtml() {
-  return `<table class="pdf-table-spaced"><tr>${_pdfGraficoCel('Tarefas por Status','statusChart', '100%')}</tr></table>` +
-    `<table class="pdf-table-spaced"><tr>${_pdfGraficoCel('Tarefas por Nível de Prioridade','priorityChart', '100%')}</tr></table>` +
-    `<table class="pdf-table-spaced-lg"><tr>${_pdfDoughnutComLegendaCel('Tarefas em Andamento por Membro','memberChart', memberChartInst, '50%')}${_pdfDoughnutComLegendaCel('Tarefas Concluídas por Membro','memberConcluidoChart', memberConcluidoChartInst, '50%')}</tr></table>`;
-}
-
 // Corpo do relatório de Arquivados — reaproveita a tabela já renderizada,
 // só removendo a coluna de Ações (classe .no-print, ver _tbodyParaPdf).
 function montarHtmlArquivadosPdf() {

@@ -300,6 +300,13 @@
   .btn-create-icon { font-size: 16px; margin-right: 6px; font-weight: 500; }
   .btn-create:hover { background-color: var(--primary-hover); }
 
+  /* Caixa "Novo ano" (Férias/Afastamentos): campo e botões em formato de
+     pílula, no mesmo tamanho do .btn-create ("+ Novo Ano") ao lado. */
+  #input-novo-ano { border-radius: var(--radius-pill); }
+  #btn-confirmar-novo-ano, #btn-cancelar-novo-ano {
+    border-radius: var(--radius-pill); padding: 10px 24px; font-size: 14px;
+  }
+
   /* Calendário Customizado */
   .chk-email-row { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 8px; font-size: 13px; border-radius: var(--radius-sm); margin-bottom: 2px; }
   
@@ -690,6 +697,10 @@
   .field-label-sm { font-size: 11px; margin-bottom: 2px; }
   .field-label-xs { font-size: 10px; margin-bottom: 2px; }
   .field-input-compact { font-size: 11px !important; padding: 4px !important; }
+  /* .field-input-compact zera o padding-right (4px) que o input[type="date"]
+     base reserva (32px) para o ícone de calendário, colando o ícone no texto
+     (Licença Servidor/Prêmio). Restaura só o lado direito, mantendo o resto compacto. */
+  input[type="date"].field-input-compact { padding-right: 32px !important; }
 
   /* Afastamentos/Férias (lista) — migrado de inline (Tarefa 3, parte 5b). As tags de
      período (destaque "em andamento") seguem inline (condicionais/dinâmicas). #111827 literal.
@@ -891,8 +902,8 @@
   .btn-pdf { display: flex; align-items: center; gap: 8px; padding: 0 18px; height: 36px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; background: var(--text-main); color: var(--text-inverse); cursor: pointer; transition: background var(--transition-fast), transform var(--transition-fast); white-space: nowrap; font-family: inherit; }
   .btn-pdf:hover { background: var(--primary-hover); }
   .btn-pdf:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-pdf-email { display: flex; align-items: center; gap: 8px; padding: 0 18px; height: 36px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; background: var(--success); color: var(--text-inverse); cursor: pointer; transition: filter var(--transition-fast); white-space: nowrap; font-family: inherit; }
-  .btn-pdf-email:hover { filter: brightness(0.92); }
+  .btn-pdf-email { display: flex; align-items: center; gap: 8px; padding: 0 18px; height: 36px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; background: var(--success); color: var(--text-inverse); cursor: pointer; transition: background var(--transition-fast); white-space: nowrap; font-family: inherit; }
+  .btn-pdf-email:hover { background: var(--success-text); }
   .btn-pdf-email:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-action-icon { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: none; border-radius: var(--radius-sm); background: var(--danger); color: var(--text-inverse); cursor: pointer; transition: background var(--transition-fast); flex-shrink: 0; outline: none; }
   .btn-action-icon:hover { background: var(--danger-text); }
@@ -1085,12 +1096,6 @@
   .label-chip { color: var(--text-inverse); border-radius: var(--radius-xs); padding: 3px 9px; font-size: var(--fs-2xs); font-weight: 600; line-height: 1.3; letter-spacing: .2px; }
   .card-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
   .card-labels .label-chip { padding: 2px 7px; font-size: 9.5px; }
-
-  /* ===== PDF ===== */
-  .pdf-header { display: none; margin-bottom: 26px; padding: 14px 20px; background: var(--bg-panel); border-left: 4px solid var(--primary); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
-  .pdf-header h1 { font-size: 12px; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.3px; }
-  .pdf-header .pdf-sub { color: var(--text-secondary); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.4px; margin: 3px 0 8px; }
-  .pdf-header h2 { font-size: 19px; font-weight: 700; color: var(--primary); }
 
   /* ===== ACOMPANHAMENTO DE ENTREGAS (modal) ===== */
   .acomp-ent-row {

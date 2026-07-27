@@ -322,7 +322,7 @@ Aplicação de um novo design system a todo o cliente (`CSS.html`, `Index.html`,
 |---|---|---|
 | `--primary` | `#030712` | Estado ativo do menu, botões primários, foco |
 | `--accent` | `#2b7fff` | Acento azul — não é a cor de ação principal |
-| `--success` / `--warning` / `--danger` | `#0f766e` / `#b45309` / `#dc2626` | Recalibrados nesta sessão — os tons "500" originalmente escolhidos (`#14b8a6`/`#f59e0b`/`#ef4444`) falhavam WCAG AA (contraste 2.1–3.8:1) como texto ou texto branco sobre preenchimento; os valores atuais passam em ≥4.5:1 |
+| `--success` / `--warning` / `--danger` | `#0f766e` / `#b45309` / `#dc2626` (⚠️ **desatualizado** — recalibrados numa sessão posterior para a escada "Menta/Dourado/Tijolo"; valores atuais em `:root`: `#2CA98F`/`#C99A2E`/`#D8483A`, ver §8.19) | Os tons "500" originalmente escolhidos (`#14b8a6`/`#f59e0b`/`#ef4444`) falhavam WCAG AA (contraste 2.1–3.8:1) como texto ou texto branco sobre preenchimento |
 | `--purple` | `#8b5cf6` | 5ª cor categórica (KPIs/gráficos), não faz parte da paleta do template de referência |
 | Raios | 6/8/12/16/20px + pill | Cards em 16px, botões/inputs em 12px |
 | Sombra | quase nula (`--shadow-xs: none`) | Elevação por borda + tonalidade, não por `box-shadow` — cards estáticos não têm sombra; hover de elementos arrastáveis (Kanban) mantém uma sombra sutil como affordance |
@@ -601,6 +601,59 @@ O usuário optou pela **Opção A**. O arquivamento é de mão única, igual aos
 
 Se o objetivo imediato for só resolver a lentidão de abrir cartão (sem mexer em arquivar/restaurar nem preparar o sistema pro longo prazo), o cache do conteúdo de atividades (opção 1 acima) resolve isso com uma fração do esforço e do risco — mas não reduz o tamanho de `Atividades` no longo prazo. As duas abordagens não são mutuamente exclusivas.
 
+### 8.19 Referência completa da paleta de cores (`:root` em `CSS.html`)
+
+A tabela do §8.7 listava só alguns tokens de exemplo do rollout original e ficou desatualizada (3 valores recalibrados numa sessão posterior nunca foram corrigidos ali). Esta seção é o inventário completo e atual — se algum valor mudar no futuro, atualizar aqui.
+
+**Marca (preto)** — `--primary: #030712` e variações `--primary-hover` (`#1f2937`), `--primary-active` (`#111827`), `--primary-light` (`#f3f4f6`), `--primary-lighter` (`#f9fafb`), `--primary-ring` (`rgba(3,7,18,0.14)`), `--primary-text` (`#030712`).
+
+**Acento (azul)** — `--accent: #2b7fff`, `--accent-hover: #1c6ef2`, `--accent-light: #eaf2ff`.
+
+**Superfícies (fundos)** — `--bg-app: #f3f4f6`, `--bg-card: #ffffff`, `--bg-panel: #f9fafb`, `--bg-subtle: #f3f4f6`, `--bg-hover: #f3f4f6` (as 3 últimas têm o mesmo valor literal hoje — nomes diferentes por propósito semântico diferente, não coincidência a preservar), `--kanban-list-bg: #D3D6DC`.
+
+**Barra lateral** — `--sidebar-bg`, `--sidebar-bg-alt`, `--sidebar-hover`, `--sidebar-active-bg` (`#2E323C`), `--sidebar-text`, `--sidebar-text-hover`, `--sidebar-text-active`, `--sidebar-border`, `--sidebar-icon`, `--sidebar-group-text`.
+
+**Texto** — `--text-main: #030712`, `--text-secondary: #4b5563`, `--text-muted: #6b7280`, `--text-inverse: #ffffff`.
+
+**Bordas** — `--border-color: #e5e7eb`, `--border-subtle: #eef0f2`, `--border-strong: #d1d5db`.
+
+**Status (4 famílias oficiais, cada uma com base/fundo/borda/texto — paleta unificada Menta/Dourado/Tijolo/Lavanda)**:
+| Família | base | bg | border | text |
+|---|---|---|---|---|
+| `--success` (Menta) | `#2CA98F` | `#DFF6EF` | `#A6E0D2` | `#157965` |
+| `--warning` (Dourado) | `#C99A2E` | `#FBF3D3` | `#EBD98C` | `#795B15` |
+| `--danger` (Tijolo) | `#D8483A` | `#FCE1DE` | `#F3B8B0` | `#791E15` |
+| `--info` (Lavanda) | `#7A6CDD` | `#E9E6FB` | `#CBC3F3` | `#3424A8` |
+
+Mais um `--purple` avulso (`#8b5cf6`, bg `#f3e8ff`, border `#ddd6fe`) — só base+bg+border, sem a família completa (5ª cor categórica de KPIs/gráficos).
+
+**Prioridade do Kanban** — `--tag-alta`/`--tag-media`/`--tag-baixa` são só apelidos apontando pra `--danger`/`--warning`/`--success` (não são cores novas).
+
+**Níveis de risco (Matriz de Risco)** — cada um com bg/border/text: `--risk-low` (`#72C9B7`/`#55B5A1`/`#030712`), `--risk-med` (`#E6CC8C`/`#D1B46C`/`#030712`), `--risk-high` (`#E6AD7A`/`#D59963`/`#030712`), `--risk-crit` (`#E27E73`/`#D2685C`/`#030712`) — as 4 cores do heatmap de probabilidade×impacto, texto sempre quase-preto (contraste testado sobre todos os 4 fundos).
+
+**Paleta decorativa de 12 tons** (categórica, sem significado fixo — usada em avatares de membro `.avatar-pastel-1..12`, em `PALETA_PASTEL_HEX`/`corPastelHex`/`corPastelPorNome` — JS_Utilitarios.html —, e nas tags `--tag-lavender`...`--tag-cinnamon`, mesmos 12 valores sob nomes diferentes para uso em badges/etiquetas):
+
+| # | Nome | Fundo (claro) | Texto (escuro) |
+|---|------|------|------|
+| 1 | Lavanda | `#E9E6FB` | `#7A6CDD` |
+| 2 | Menta | `#DFF6EF` | `#2CA98F` |
+| 3 | Rosa | `#FBE3E6` | `#D2596F` |
+| 4 | Céu | `#E1F1FC` | `#3D8FC4` |
+| 5 | Pêssego | `#FBEADD` | `#E0904A` |
+| 6 | Dourado | `#FBF3D3` | `#C99A2E` |
+| 7 | Tijolo | `#FCE1DE` | `#D8483A` |
+| 8 | Lima | `#EAF5DC` | `#6B9B37` |
+| 9 | Turquesa | `#DCF3F3` | `#1E9AA3` |
+| 10 | Orquídea | `#F6E3F5` | `#A94FA0` |
+| 11 | Ardósia | `#E7EBF2` | `#55647A` |
+| 12 | Canela | `#F2E4D8` | `#8B5E3C` |
+
+Avatares usam as duas metades (fundo+texto, via classe `.avatar-pastel-N`); gráficos Chart.js e a paleta `--tag-*` usam só o tom escuro (canvas não aceita duas cores por "fatia").
+
+**Decorativas pontuais** (resolvem uma necessidade específica de uma tela só, não fazem parte de nenhuma família maior): `--afast-abono` (`#b45309`)/`--afast-aniversario` (`#0f766e`) — ícones do modal de Afastamentos; `--color-presencial-bg`/`--color-presencial-text` (`#35598D`/`#fff`) — selo "presencial" da Escala; `--color-agora-bg`/`--color-agora-text`/`--color-agora-border` (`#E2EBF8`/`#25497F`/`#B8CBE3`) — destaque "em andamento" de Férias/Escala.
+
+**Fora do `:root`, deliberadamente:** a folha de estilo isolada que `_envelopeHtml()` (`JS_Utilitarios.html`) gera para os PDFs tem sua própria cópia em hex literal das cores de status/tag (ver §10, "Sétima rodada") — não enxerga `:root`, então precisa repetir os valores; e o conversor de PDF do Apps Script não renderiza `background-color` de forma confiável em `<div>`/`<span>`, então lá as cores de badge são só borda+texto, nunca preenchimento.
+
 ---
 
 ## 9. Próximas Melhorias
@@ -785,3 +838,38 @@ Nenhum `!important` novo, nenhuma duplicata criada. Validação: balanceamento d
 **Achado à parte, mais elaborado:** `PALETA_PASTEL_HEX` (`JS_Utilitarios.html`) — array de 12 hex que espelha as classes `.avatar-pastel-1..12` — é consumido de duas formas: (1) via `corPastelHex()`, num `style=""` de SVG (contexto DOM normal); (2) direto, como `backgroundColor` dos 3 gráficos de rosca "por Membro" (Kanban, Capacitações, Visitas Técnicas) — contexto canvas de verdade. Como o mesmo array alimenta os dois, não dava pra só trocar por strings `var()` (quebraria os gráficos) — a correção usa `corVar()` (já criado na rodada anterior) pra resolver os 12 tokens `--tag-*-text` em tempo de execução, funcionando nos dois contextos ao mesmo tempo.
 
 Mesma validação de sempre (grep + balanceamento de chaves). Um ponto para conferir visualmente: em `showConfirm()`, a cor do ícone SVG é aplicada via `svg.setAttribute('stroke', cfg.cor)` (atributo XML puro, não `.style`) — navegadores modernos resolvem `var()` aí também, mas vale abrir um modal de Excluir/Arquivar depois do push pra confirmar que o ícone continua colorido.
+
+`.btn-pdf-email:hover` também foi alinhado nessa mesma linha de raciocínio: usava `filter: brightness(0.92)` em vez de trocar pra `var(--success-text)` (a técnica que os outros 2 botões com o mesmo fundo — `.btn.success`, `.btn-action-icon.email` — já usavam) — mesma inconsistência de sempre (mesmo componente, técnica de hover diferente), corrigida.
+
+### Sétima rodada — auditoria dos 5 PDFs gerados pelo sistema (26/07/2026)
+
+Auditoria completa dos 5 PDFs (Painel de Indicadores, Cartões Arquivados, Matriz de Risco, Acompanhamento de Ações, Riscos e Planos Arquivados): mapeado todo o pipeline (`CFG_PDF` → `montarHtml...Pdf()` → `_envelopeHtml()` → `gerarPdfDeHtml`/`enviarPdfDeHtml` no servidor) e comparado o que cada um deveria representar com o que o código realmente produz.
+
+**Achado crítico:** badges de status/prioridade perdiam toda a cor em 4 dos 5 PDFs (todos os que clonam uma lista/tabela real da tela — só o Painel de Indicadores usa captura de tela via `html2canvas` e não é afetado). Causa: o sistema colore badges por classe CSS (`class="tag-badge tag-brick"`) desde a refatoração documentada na Primeira rodada (§10) — mas `_converterBadgesParaPdf()` só sabia extrair cor de um atributo `style=""` inline que os badges não têm mais, então nunca fazia nada, e a folha isolada do PDF nunca teve as classes de cor (`.badge-success`, `.tag-brick` etc.) definidas, só a forma. Corrigido adicionando as ~16 classes de cor que faltavam na folha isolada — **só borda + texto colorido, sem fundo**, porque o conversor de PDF do Apps Script não renderiza `background-color` de forma confiável em `<div>`/`<span>` (limitação já documentada no próprio código, testada e comprovada) — e removendo `_converterBadgesParaPdf`/`_extrairCorTexto` (ficaram sem função nenhuma).
+
+**Código morto removido** (nunca chamado por nenhum dos 5 PDFs ativos — o Painel de Indicadores usa só `html2canvas`): `_pdfKpiCell`, `_imgDeCanvas`, `_pdfGraficoCel`, `_pdfDoughnutComLegendaCel` (`JS_Utilitarios.html`), `graficosKanbanPdfHtml` (`JS_Kanban.html`), `graficosCapacitacoesPdfHtml` (`JS_Capacitacoes.html`), `graficosVisitasPdfHtml` (`JS_VisitasTecnicas.html`) — e as ~14 classes CSS que só elas emitiam na folha isolada (`.pdf-kpi-*`, `.pdf-chart-*`, `.pdf-legend-*`, `.pdf-table-spaced*`, `.matrix-table`/`.badge-cluster`/`.risk-badge`, que nunca chegam a ser emitidas porque a Matriz de Risco vai pro PDF como imagem).
+
+**`montarHtmlIndicadoresPdf()` tornado robusto:** decidia o título de cada seção só pela posição no array (`i===1` Tarefas, `i===2` Capacitações, `i===4` Visitas Técnicas) — conferido que batia com o HTML de hoje, mas quebraria silenciosamente se alguém adicionasse/removesse um gráfico no futuro. Trocado por busca dinâmica: sobe pelos `previousElementSibling` até achar o `<h3 class="tl-section-title">` mais próximo.
+
+**Mecanismo de impressão vestigial removido:** `.pdf-header`/`.print-target` (`CSS.html` + `View_Kanban.html`/`View_Riscos.html` ×3/`View_Monitoramento.html`) — zero CSS ativo (`.pdf-header` sempre `display:none`), zero uso em JS, resíduo de uma abordagem de "imprimir do navegador" anterior ao pipeline atual.
+
+**2 bugs de alinhamento visual encontrados depois, testando o resultado, e corrigidos (só nos arquivos de PDF):**
+- **Cartões Arquivados**: a coluna "Tempo de Execução" aparecia desalinhada do cabeçalho. Causa: `_gridRowsParaPdf()` remonta cada linha (`<div>` vira `<td>`) copiando só o atributo `style=""` da célula original — mas o alinhamento (`.text-center`) vem de **classe**, não de style inline, e nenhuma célula dessa tabela usa style inline (confirmado). Corrigido preservando a classe também; a captura de `style=""` (morta, nunca tinha nada pra pegar nessa tabela) foi removida.
+- **Acompanhamento de Ações**: Macroetapa/Categoria/Causa/Consequência apareciam cada uma na sua própria linha, com o separador "|" isolado entre elas. Causa: `.risk-meta` usa `display:flex` na tela pra por tudo numa linha, mas cada campo é um `<div>` (bloco por padrão) — o conversor de PDF não renderiza `flex` de forma confiável (mesmo problema já documentado com `grid`), então cada `<div>` voltava a quebrar linha sozinho. Corrigido forçando esses `<div>` a `display:inline` só dentro do clone do PDF (`montarHtmlAcompanhamentoPdf`) — `montarHtmlRiscoArquivadoPdf` (Riscos Arquivados) tem a mesma estrutura e provavelmente o mesmo bug, mas não foi tocado (fora do escopo pedido).
+
+### Oitava rodada — bugs encontrados testando a interface (26/07/2026)
+
+- **Ícone de calendário sumindo em campos compactos**: `.field-input-compact` (usada em Licença Servidor/Prêmio, Demais Afastamentos, Abono Aniversário — modal de Afastamentos) usa `padding: 4px !important`, que zera o `padding-right: 32px` que o `input[type="date"]` base reserva pro ícone — colava o ícone no texto. Corrigido com `input[type="date"].field-input-compact { padding-right: 32px !important; }`, restaurando só o lado direito.
+- **Modal de Afastamentos estourando a largura**: ao corrigir o ícone acima (que também afeta os campos de data normais — ver Sexta rodada), a coluna "Licença Servidor/Prêmio" ficou larga demais pro espaço do `.modal-box.lg` (600px), forçando rolagem horizontal. Corrigido trocando pra `.modal-box.wide` (800px, classe já existente, usada no modal do cartão do Kanban e em 3 modais de Riscos — mesmo tipo de formulário rico em colunas) em vez de inventar um valor novo.
+- **Caixa "Novo ano"** (Férias/Afastamentos): campo de ano e botões Adicionar/Cancelar não seguiam o formato de pílula padrão do sistema. Ajustados pra `border-radius: pill` + mesmo tamanho (`padding`/`font-size`) do `.btn-create` ("+ Novo Ano") ao lado.
+- **Bug real achado ao mexer no botão Cancelar dessa caixa:** `class="btn btn-secondary"` — mas a classe certa é `secondary` (sem o prefixo `btn-`); `.btn-secondary` não existe em lugar nenhum do CSS, então o botão renderizava sem nenhum estilo (sem fundo, sem borda). Varredura no projeto inteiro achou o mesmo erro em **mais 7 botões** (`btn-primary`/`btn-secondary`/`btn-danger`, sempre com o prefixo indevido): `View_Capacitacoes.html` (Cancelar), `View_Comum.html` (3 modais compartilhados — "OK - Adicionar Selecionados", Cancelar/Enviar PDF, Cancelar/Excluir, Entendi), `View_Unidades.html` (Cancelar), `View_VisitasTecnicas.html` (Cancelar). Todos corrigidos (8 botões ao todo).
+
+### Nona rodada — cor de identidade sem colisão para os membros (26/07/2026)
+
+Os 4 gráficos "por Membro" do Painel de Indicadores (Kanban ×2, Capacitações, Visitas Técnicas) coloriam cada fatia **por posição** no array ordenado (`i % 12`), não pela identidade da pessoa — a mesma pessoa podia aparecer com cores diferentes em gráficos diferentes (e até entre os 2 gráficos do próprio Kanban, já que cada um filtra um conjunto diferente de membros). O usuário pediu pra usar a mesma cor do avatar.
+
+**Risco identificado antes de implementar:** hash puro (`_hashPastel`, só 12 cores) pode fazer duas pessoas diferentes caírem na mesma cor — e isso **já aconteceu de verdade** neste projeto (comentário em `JS_Kanban.html` sobre `LABELS_DISPONIVEIS`: "o hash de corPastelPorNome() colidia em duas delas", só com 7 itens). Resolvido com um mapa único (`_mapaCoresMembros()`, `JS_Utilitarios.html`) que roda uma vez sobre `membrosOrdenados()` (lista estável de membros ativos, já existente e reaproveitada em várias partes do sistema) e resolve toda colisão de uma vez — se o hash de alguém colidir com quem já ganhou aquele tom, avança pro próximo livre da paleta. Resultado: **avatar e gráfico usam a mesma fonte de cor**, não só cada gráfico consistente consigo mesmo.
+
+Duas funções novas consomem esse mapa: `corMembroPorNome()` (classe, pros avatares — trocou `corPastelPorNome()` em 4 lugares: lista de Membros do Kanban, lista de Membros e Escala/Férias em Pessoas, avatar do usuário logado na sidebar) e `corMembroHex()` (hex puro, pros 4 gráficos — trocou o cálculo por posição, removendo os aliases `chartColors`/`chartColorsCap`/`chartColorsVt` que ficaram sem uso). `corPastelPorNome`/`corPastelHex`/`corLabel()` (etiquetas do Kanban) não foram tocados — continuam servindo as etiquetas exatamente como antes, sem nenhuma ligação com a lista de membros.
+
+Membro inativo/histórico (não está em `membrosOrdenados()`, ex.: responsável de um cartão arquivado antigo) cai no hash puro sem garantia de colisão — caso raro, documentado, nunca quebra. Acima de 12 membros ativos, repetição de cor volta a ser inevitável (limite físico da paleta) — mesma limitação de antes, não uma regressão.

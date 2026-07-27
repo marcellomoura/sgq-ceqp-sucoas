@@ -196,6 +196,46 @@ function corPastelPorNome(nome) { return 'avatar-pastel-' + (_hashPastel(nome) +
 // Mesma escolha de corPastelPorNome(), mas devolve o hex puro.
 function corPastelHex(nome) { return PALETA_PASTEL_HEX[_hashPastel(nome)]; }
 
+// Monta um mapa nome→índice de cor (0-11) para TODOS os membros ativos de uma
+// vez: tenta o hash de cada um (_hashPastel) e, se colidir com alguém que já
+// ganhou aquele índice, avança pro próximo tom livre da paleta (com volta ao
+// início). Diferente de resolver a colisão "por gráfico": aqui é resolvida uma
+// única vez pra todo mundo, então a mesma cor vale no avatar e em qualquer
+// gráfico — de verdade alinhados, não só cada um consistente consigo mesmo.
+// Ordem estável (a de membrosOrdenados()), então não muda de uma chamada pra
+// outra enquanto a lista de membros não mudar.
+function _mapaCoresMembros() {
+  const mapa = {};
+  const usados = new Set();
+  const total = PALETA_PASTEL_HEX.length;
+  membrosOrdenados().forEach(function (m) {
+    let idx = _hashPastel(m.name);
+    let tentativas = 0;
+    while (usados.has(idx) && tentativas < total) {
+      idx = (idx + 1) % total;
+      tentativas++;
+    }
+    usados.add(idx);
+    mapa[m.name] = idx;
+  });
+  return mapa;
+}
+
+// Cor de um membro (classe .avatar-pastel-N), usada nos avatares. Membro
+// inativo/histórico (não está em membrosOrdenados(), ex.: responsável de um
+// cartão arquivado antigo) cai no hash puro de corPastelPorNome — sem garantia
+// de colisão nesse caso raro, mas nunca quebra.
+function corMembroPorNome(nome) {
+  const idx = _mapaCoresMembros()[nome];
+  return idx !== undefined ? 'avatar-pastel-' + (idx + 1) : corPastelPorNome(nome);
+}
+
+// Mesma lógica, hex puro — usada nos 4 gráficos "por Membro" do Painel.
+function corMembroHex(nome) {
+  const idx = _mapaCoresMembros()[nome];
+  return idx !== undefined ? PALETA_PASTEL_HEX[idx] : corPastelHex(nome);
+}
+
 // Renderiza o perfil do usuário logado no rodapé da barra lateral.
 function renderUserAvatar() {
   const container = $id('sidebar-user-container');
@@ -211,7 +251,7 @@ function renderUserAvatar() {
   let nomeExibicao = m ? m.name : (emailLower === 'sistema' ? 'Sistema' : 'Usuário Externo');
   
   container.innerHTML = 
-    `<div class="member-avatar ${corPastelPorNome(nomeExibicao)} sidebar-user-avatar">${esc(iniciaisMembro(nomeExibicao))}</div>` +
+    `<div class="member-avatar ${corMembroPorNome(nomeExibicao)} sidebar-user-avatar">${esc(iniciaisMembro(nomeExibicao))}</div>` +
     `<div class="sidebar-user-info">` +
       `<span class="sidebar-user-name">${esc(nomeExibicao)}</span>` +
     `</div>`;
@@ -577,23 +617,30 @@ async function montarHtmlIndicadoresPdf() {
   let html = '';
   if (imgs[0] && kpiGeral) html += `<img src="${imgs[0]}" class="pdf-img-full">`;
 
-  // imgs[1] em diante são os gráficos
-  const titulos = ['Tarefas', 'Capacitações', 'Visitas Técnicas'];
-  let titleIndex = 0;
+  // Descobre o título de cada gráfico subindo pelos irmãos anteriores até achar
+  // o <h3 class="tl-section-title"> mais próximo — não depende de quantos grids
+  // cada seção tem nem de posição fixa no array (frágil a mudanças futuras em
+  // View_Monitoramento.html). imgs[0] é o KPI geral; imgs[i+1] é o grids[i].
+  let ultimoTitulo = null;
+  grids.forEach((grid, i) => {
+    const img = imgs[i + 1];
+    if (!img) return;
 
-  for (let i = 1; i < imgs.length; i++) {
-    if (imgs[i]) {
-      // Adiciona o título da seção antes da primeira grid daquela seção (Tarefas tem 1 grid, Capacitações tem 2, Visitas tem 1)
-      // Como na tela tem 4 grids (1 Tarefas, 2 Capacitações, 1 Visitas), mapeamos:
-      let titulo = '';
-      if (i === 1) titulo = _pdfSecaoTitulo('Tarefas');
-      else if (i === 2) titulo = `<div class="pdf-page-break">${_pdfSecaoTitulo('Capacitações')}</div>`;
-      else if (i === 4) titulo = `<div class="pdf-page-break">${_pdfSecaoTitulo('Visitas Técnicas')}</div>`;
-
-      html += `${titulo}<div class="pdf-avoid-break"><img src="${imgs[i]}" class="pdf-img-full"></div>`;
+    let tituloEl = grid.previousElementSibling;
+    while (tituloEl && !tituloEl.classList.contains('tl-section-title')) {
+      tituloEl = tituloEl.previousElementSibling;
     }
-  }
-  
+    const tituloTexto = tituloEl ? tituloEl.textContent.trim() : '';
+
+    if (tituloTexto && tituloTexto !== ultimoTitulo) {
+      const quebraPagina = ultimoTitulo !== null; // só quebra a partir do 2º título
+      html += quebraPagina ? `<div class="pdf-page-break">${_pdfSecaoTitulo(tituloTexto)}</div>` : _pdfSecaoTitulo(tituloTexto);
+      ultimoTitulo = tituloTexto;
+    }
+
+    html += `<div class="pdf-avoid-break"><img src="${img}" class="pdf-img-full"></div>`;
+  });
+
   return html;
 }
 
@@ -1082,40 +1129,18 @@ const CFG_PDF = {
 // no app usam pílula colorida (fundo claro + texto escuro) viram aqui borda +
 // texto colorido — sem depender de nenhum preenchimento.
 
-// Extrai a cor de "color: X" (texto) de um style inline — não confundir com
-// "background-color: X", por isso a declaração é isolada por ";" antes do match.
-function _extrairCorTexto(styleTexto) {
-  const partes = String(styleTexto || '').split(';');
-  for (const p of partes) {
-    const m = /^\s*color\s*:\s*(.+)$/i.exec(p);
-    if (m) return m[1].trim();
-  }
-  return null;
-}
-
-// Converte badges de pílula colorida (status-badge/tag-badge, que hoje usam
-// fundo claro + texto escuro) em borda + texto colorido — a única forma que
-// renderiza de maneira confiável no PDF. Usa a cor do TEXTO (escura, legível),
-// não a de fundo (clara demais para servir de cor de traço/texto no PDF).
-function _converterBadgesParaPdf(container) {
-  container.querySelectorAll('.status-badge, .tag-badge').forEach(function(el) {
-    const cor = _extrairCorTexto(el.getAttribute('style'));
-    if (!cor) return;
-    el.setAttribute('style', `border:1.3px solid ${cor};color:${cor};font-weight:700;background:none;`);
-  });
-}
-
 // Clona um <tbody> já renderizado na tela e remove qualquer célula
 // marcada com a classe "no-print" (colunas de ações/botões) — assim o
 // PDF reaproveita exatamente os mesmos dados/badges que já estão
-// corretos na tela, sem duplicar a lógica de cada tabela. Os badges
-// coloridos passam por _converterBadgesParaPdf (ver acima).
+// corretos na tela, sem duplicar a lógica de cada tabela. Os badges de
+// status/tag são coloridos por classe (.badge-success, .tag-brick etc.),
+// já definidas na folha isolada do PDF (ver _envelopeHtml), então o clone
+// não precisa de nenhum tratamento extra de cor.
 function _tbodyParaPdf(tbodyId) {
   const tbody = $id(tbodyId);
   if (!tbody) return '';
   const clone = tbody.cloneNode(true);
   clone.querySelectorAll('.no-print').forEach(el => el.remove());
-  _converterBadgesParaPdf(clone);
   return clone.innerHTML;
 }
 
@@ -1123,18 +1148,19 @@ function _tbodyParaPdf(tbodyId) {
 // em CSS Grid (não <tr>). Clonar essas <div> direto para dentro de um <tbody> é
 // HTML inválido: o conversor de PDF as expulsa da tabela (foster parenting),
 // deixando as linhas soltas e o cabeçalho isolado no fim. Este helper remonta
-// cada linha como <tr><td> de verdade, célula a célula, preservando o estilo/cor.
+// cada linha como <tr><td> de verdade, célula a célula, preservando a classe
+// (nenhuma célula desta lista usa style inline — o alinhamento, ex. .text-center
+// de Início/Conclusão/Tempo de Execução, vem todo de classe).
 function _gridRowsParaPdf(containerId) {
   const container = $id(containerId);
   if (!container) return '';
   const clone = container.cloneNode(true);
   clone.querySelectorAll('.no-print').forEach(el => el.remove());
-  _converterBadgesParaPdf(clone);
   return Array.from(clone.children).filter(function (row) {
     return row.classList && row.classList.contains('grid-row-hover');
   }).map(function (row) {
     const celulas = Array.from(row.children).map(function (cel) {
-      return '<td style="' + (cel.getAttribute('style') || '') + '">' + cel.innerHTML + '</td>';
+      return '<td class="' + (cel.getAttribute('class') || '') + '">' + cel.innerHTML + '</td>';
     }).join('');
     return '<tr>' + celulas + '</tr>';
   }).join('');
@@ -1144,55 +1170,6 @@ function _gridRowsParaPdf(containerId) {
 // conversor do que um <div> solto).
 function _pdfSecaoTitulo(texto) {
   return `<table class="pdf-titulo-secao-table"><tr><td class="pdf-titulo-secao-td">${esc(texto)}</td></tr></table>`;
-}
-
-function _pdfKpiCell(label, valor, cor, largura) {
-  return `<td bgcolor="#ffffff" class="pdf-kpi-td" style="width:${largura||'25%'};">
-    <span class="pdf-kpi-label">${esc(label)}</span><br>
-    <div class="pdf-kpi-value" style="color:${cor};">${esc(String(valor))}</div>
-  </td>`;
-}
-
-// Converte um <canvas> de gráfico Chart.js em imagem (Chart.js não roda
-// no servidor, então cada gráfico do PDF vira uma imagem estática).
-function _imgDeCanvas(canvasId) {
-  try { const c = $id(canvasId); return c ? c.toDataURL('image/png') : ''; } catch(e) { return ''; }
-}
-function _pdfGraficoCel(titulo, canvasId, largura) {
-  return `<td class="pdf-chart-td" style="width:${largura||'50%'};">
-    <div class="pdf-chart-box">
-      <span class="pdf-chart-title">${esc(titulo)}</span>
-      <div class="text-center">
-        <img src="${_imgDeCanvas(canvasId)}" class="pdf-chart-img">
-      </div>
-    </div>
-  </td>`;
-}
-
-function _pdfDoughnutComLegendaCel(titulo, canvasId, chartInst, largura) {
-  if (!chartInst) return _pdfGraficoCel(titulo, canvasId, largura);
-  const labels = chartInst.data.labels || [];
-  const data = chartInst.data.datasets[0].data || [];
-  const bgColors = chartInst.data.datasets[0].backgroundColor || [];
-  let total = data.reduce((a, b) => a + b, 0);
-
-  let listHtml = '<div class="pdf-legend-list">';
-  for (let i = 0; i < labels.length; i++) {
-    if (data[i] > 0) {
-      listHtml += `<div><span class="pdf-legend-dot" style="color:${bgColors[i] || '#ccc'};">&#9679;</span> <strong>${data[i]}</strong> - ${esc(labels[i])}</div>`;
-    }
-  }
-  listHtml += `<div class="pdf-legend-total">Total: ${total}</div></div>`;
-
-  return `<td class="pdf-chart-td" style="width:${largura||'50%'};">
-    <div class="pdf-chart-box">
-      <span class="pdf-chart-title">${esc(titulo)}</span>
-      <div class="text-center">
-        <img src="${_imgDeCanvas(canvasId)}" class="pdf-chart-img-sm">
-      </div>
-      ${listHtml}
-    </div>
-  </td>`;
 }
 
 // Cabeçalho institucional (sem fundo para alinhar com a margem 0 perfeitamente)
@@ -1222,39 +1199,45 @@ function _envelopeHtml(cfg, corpoHtml) {
     .msg-empty { text-align: center; color: #6b7280; padding: 16px; font-size: 11px; }
     .status-badge { padding: 3px 8px; border-radius: 5px; font-weight: 700; font-size: 9.5px; display: inline-block; white-space: nowrap; }
     .tag-badge { border-radius: 4px; padding: 2px 6px; font-size: 9px; font-weight: 700; color: white; display: inline-block; }
-    .matrix-table { border-collapse: separate; border-spacing: 3px; margin-bottom: 6px; }
-    .matrix-table th, .matrix-table td { height: 70px; text-align: center; font-weight: 700; border-radius: 5px; font-size: 10.5px; width: 16%; vertical-align: middle; padding: 3px; }
-    .badge-cluster { display: block; text-align: center; }
+    /* Cores de .status-badge/.tag-badge por classe (mesmos tokens de CSS.html,
+       usando a variante "texto" de cada um). Essa folha é isolada (não enxerga
+       :root) E o conversor de PDF não renderiza background-color de forma
+       confiável em <div>/<span> (ver nota acima sobre bgcolor) — por isso,
+       igual ao resto do PDF, aqui é só borda + texto colorido, sem fundo.
+       Sem essas regras, todo badge chegava ao PDF sem cor nenhuma (status) ou
+       com texto branco sem contorno (tag-badge, ilegível) — achado da
+       auditoria de PDFs. */
+    .badge-success { border: 1.3px solid #157965; color: #157965; }
+    .badge-warning { border: 1.3px solid #795B15; color: #795B15; }
+    .badge-danger  { border: 1.3px solid #791E15; color: #791E15; }
+    .badge-neutral { border: 1.3px solid #4b5563; color: #4b5563; }
+    .tag-lavender { color: #7A6CDD; border: 1.3px solid #7A6CDD; }
+    .tag-mint     { color: #2CA98F; border: 1.3px solid #2CA98F; }
+    .tag-rose     { color: #D2596F; border: 1.3px solid #D2596F; }
+    .tag-sky      { color: #3D8FC4; border: 1.3px solid #3D8FC4; }
+    .tag-peach    { color: #E0904A; border: 1.3px solid #E0904A; }
+    .tag-gold     { color: #C99A2E; border: 1.3px solid #C99A2E; }
+    .tag-brick    { color: #D8483A; border: 1.3px solid #D8483A; }
+    .tag-lime     { color: #6B9B37; border: 1.3px solid #6B9B37; }
+    .tag-turquoise{ color: #1E9AA3; border: 1.3px solid #1E9AA3; }
+    .tag-orchid   { color: #A94FA0; border: 1.3px solid #A94FA0; }
+    .tag-slate    { color: #55647A; border: 1.3px solid #55647A; }
+    .tag-cinnamon { color: #8B5E3C; border: 1.3px solid #8B5E3C; }
     .text-center { text-align: center; }
-    .risk-badge { display: inline-block; border: 1px solid #d1d5db; color: #030712; padding: 1px 5px; border-radius: 4px; font-size: 9.5px; font-weight: 700; margin: 1px; }
     .pdf-img-full { display: block; width: 100%; margin-bottom: 24px; }
     .pdf-img-spaced { display: block; width: 100%; margin-bottom: 14px; }
     .pdf-img-centered { display: block; width: 100%; margin: 0 auto 20px; }
     .pdf-page-break { page-break-before: always; }
     .pdf-avoid-break { page-break-inside: avoid; }
-    .pdf-table-spaced { margin-bottom: 14px; }
-    .pdf-table-spaced-lg { margin-bottom: 18px; }
     .pdf-th-generic { font-size: 9.5px; color: #6b7280; border-bottom: 1px solid #e5e7eb; padding: 6px 4px; text-align: left; text-transform: uppercase; font-weight: bold; }
     .pdf-td-generic { font-size: 11px; color: #111827; padding: 8px 4px; vertical-align: top; }
     .pdf-grid-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    .pdf-kpi-cell { width: 50%; border: none; }
     .pdf-section-table { margin-bottom: 20px; border-collapse: collapse; }
     .pdf-section-line1 { border: none; padding: 0 0 6px 0; font-size: 12px; font-weight: 800; color: #030712; }
     .pdf-section-line2 { border: none; padding: 0 0 16px 0; color: #6b7280; font-size: 9.5px; border-bottom: 1px solid #e5e7eb; }
     .pdf-section-line3 { border: none; padding: 16px 0 0; font-size: 24px; font-weight: 700; color: #030712; }
     .pdf-titulo-secao-table { margin: 16px 0 8px; }
     .pdf-titulo-secao-td { border: none; padding: 0; font-size: 14px; font-weight: 700; color: #030712; }
-    .pdf-kpi-td { background: #ffffff; padding: 14px 16px; border: 1px solid #e5e7eb; }
-    .pdf-kpi-label { font-size: 10.5px; font-weight: 700; color: #4b5563; }
-    .pdf-kpi-value { font-size: 24px; font-weight: 700; margin-top: 8px; }
-    .pdf-chart-td { padding: 0 4px; vertical-align: top; border: none; }
-    .pdf-chart-box { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; background-color: #ffffff; }
-    .pdf-chart-title { font-size: 11px; font-weight: 700; color: #4b5563; display: block; margin-bottom: 8px; text-align: center; }
-    .pdf-chart-img { width: 100%; height: auto; }
-    .pdf-chart-img-sm { max-height: 155px; width: auto; max-width: 100%; }
-    .pdf-legend-list { font-size: 10.5px; margin-top: 10px; text-align: left; color: #4b5563; line-height: 1.5; }
-    .pdf-legend-dot { font-size: 12px; }
-    .pdf-legend-total { margin-top: 6px; padding-top: 4px; border-top: 1px solid #e5e7eb; color: #030712; font-weight: 700; }
   </style></head><body>${_cabecalhoPdfHtml(cfg)}${corpoHtml}</body></html>`;
 }
 

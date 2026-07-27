@@ -208,7 +208,6 @@ function renderGraficosVisitas(fid) {
   const nomesMembrosVt = membrosGrafico.map(m => m.name);
   const dadosMembrosVt = membrosGrafico.map(m => pMembro[m.id]);
 
-  const chartColorsVt = PALETA_PASTEL_HEX;
   const getInitialsVt = (name) => {
     const p = name.split(' ');
     return p.length > 1 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : p[0].substring(0, 2).toUpperCase();
@@ -225,7 +224,7 @@ function renderGraficosVisitas(fid) {
   const elTotalVt = $id('vtMembroChartTotal');
   if (elTotalVt) elTotalVt.textContent = totalVt;
 
-  const bgColorsVt = sCountsVt.map((_, i) => chartColorsVt[i % chartColorsVt.length]);
+  const bgColorsVt = sNamesVt.map(corMembroHex);
   const elListVt = $id('vtMembroChartList');
   if (elListVt) {
     elListVt.innerHTML = '';
@@ -259,14 +258,6 @@ function renderGraficosVisitas(fid) {
       plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: corVar('--text-inverse'), font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
     }
   });
-}
-
-// Fragmento do relatório do Painel de Indicadores com os 2 gráficos de
-// Visitas Técnicas (viram imagem estática, mesmo padrão de
-// graficosCapacitacoesPdfHtml em JS_Capacitacoes.html).
-function graficosVisitasPdfHtml() {
-  return `<table class="pdf-table-spaced"><tr>${_pdfGraficoCel('Evolução Mensal das Visitas Técnicas','vtMesChart', '100%')}</tr></table>` +
-    `<table class="pdf-table-spaced"><tr>${_pdfDoughnutComLegendaCel('Visitas Técnicas por Membro','vtMembroChart', vtMembroChartInst, '50%')}<td class="pdf-kpi-cell"></td></tr></table>`;
 }
 
 // ------------------------------------------

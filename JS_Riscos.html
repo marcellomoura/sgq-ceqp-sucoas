@@ -767,7 +767,6 @@
     if (!lista) return '';
     const clone = lista.cloneNode(true);
     clone.querySelectorAll('.no-print').forEach(el => el.remove());
-    _converterBadgesParaPdf(clone);
     return Array.from(clone.children).filter(function (row) {
       return row.classList && row.classList.contains('grid-row-hover');
     }).map(function (row) {
@@ -808,9 +807,17 @@
 
     const clone = container.cloneNode(true);
     clone.querySelectorAll('.no-print').forEach(el => el.remove());
-    _converterBadgesParaPdf(clone);
 
-    // O layout usa .plan-single-line que é display: grid. 
+    // .risk-meta usa display:flex na tela pra colocar Macroetapa/Categoria/
+    // Causa/Consequência numa linha só — mas cada campo é um <div> (bloco por
+    // padrão). O conversor de PDF não renderiza flex de forma confiável (mesmo
+    // problema do grid, ver abaixo), então cada <div> voltava a quebrar linha
+    // sozinho, com o "|" isolado entre eles. Força-os a ficar inline.
+    clone.querySelectorAll('.risk-meta > div').forEach(function (div) {
+      div.style.display = 'inline';
+    });
+
+    // O layout usa .plan-single-line que é display: grid.
     // O conversor de PDF não lida bem com grid, então transformamos em <table>.
     clone.querySelectorAll('.plan-single-line').forEach(function (grid) {
       // O grid possui 9 divs filhas.
@@ -1029,9 +1036,8 @@
     // Limpa elementos marcados com no-print antes de jogar pro PDF
     const clone = container.cloneNode(true);
     clone.querySelectorAll('.no-print').forEach(e => e.remove());
-    _converterBadgesParaPdf(clone);
 
-    // O layout usa .plan-single-line que é display: grid. 
+    // O layout usa .plan-single-line que é display: grid.
     // O conversor de PDF não lida bem com grid, então transformamos em <table>.
     clone.querySelectorAll('.plan-single-line').forEach(function (grid) {
       // O grid possui 9 divs filhas.

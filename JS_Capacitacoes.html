@@ -320,7 +320,6 @@ function renderGraficosCapacitacoes(fid) {
   const nomesMembros = membrosGrafico.map(m => m.name);
   const dadosMembros = membrosGrafico.map(m => pMembro[m.id]);
 
-  const chartColorsCap = PALETA_PASTEL_HEX;
   const getInitialsCap = (name) => {
     const p = name.split(' ');
     return p.length > 1 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : p[0].substring(0, 2).toUpperCase();
@@ -337,7 +336,7 @@ function renderGraficosCapacitacoes(fid) {
   const elTotalCap = $id('capMembroChartTotal');
   if (elTotalCap) elTotalCap.textContent = totalCap;
 
-  const bgColorsCap = sCountsCap.map((_, i) => chartColorsCap[i % chartColorsCap.length]);
+  const bgColorsCap = sNamesCap.map(corMembroHex);
   const elListCap = $id('capMembroChartList');
   if (elListCap) {
     elListCap.innerHTML = '';
@@ -371,15 +370,6 @@ function renderGraficosCapacitacoes(fid) {
       plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { color: corVar('--text-inverse'), font: { family: 'Inter', weight: '600', size: 11 }, formatter: v => v < 1 ? '' : v, anchor: 'center', align: 'center' } }
     }
   });
-}
-
-// Fragmento do relatório do Painel de Indicadores com os 4 gráficos de
-// Capacitações (viram imagem estática, já que Chart.js não roda no servidor).
-function graficosCapacitacoesPdfHtml() {
-  return `<table class="pdf-table-spaced"><tr>${_pdfGraficoCel('Evolução Mensal das Capacitações','capMesChart', '100%')}</tr></table>` +
-    `<table class="pdf-table-spaced"><tr>${_pdfGraficoCel('Capacitações por Tema','capTemaChart', '100%')}</tr></table>` +
-    `<table class="pdf-table-spaced"><tr>${_pdfGraficoCel('Capacitações por Modalidade','capModalidadeChart', '100%')}</tr></table>` +
-    `<table class="pdf-table-spaced-lg"><tr>${_pdfDoughnutComLegendaCel('Capacitações por Membro','capMembroChart', capMembroChartInst, '50%')}<td class="pdf-kpi-cell"></td></tr></table>`;
 }
 
 // ------------------------------------------

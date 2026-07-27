@@ -43,7 +43,7 @@ function renderEscala() {
     }).join('');
     return '<div class="grid-row-hover escala-row">' +
       '<div class="escala-c-name">' +
-        '<div class="member-avatar member-avatar--lg ' + corPastelPorNome(m.name) + '">' + esc(iniciaisMembro(m.name)) + '</div>' +
+        '<div class="member-avatar member-avatar--lg ' + corMembroPorNome(m.name) + '">' + esc(iniciaisMembro(m.name)) + '</div>' +
         '<div><div class="escala-c-nome">' + esc(m.name) + '</div>' +
         '<div class="escala-c-role">' + esc(m.role) + '</div></div>' +
       '</div>' +
@@ -365,7 +365,7 @@ function renderFerias() {
 
     return '<div class="grid-row-hover ferias-row">' +
       '<div><div class="ferias-c-name">' +
-        '<div class="member-avatar ' + corPastelPorNome(m.name) + '">' + esc(iniciaisMembro(m.name)) + '</div>' +
+        '<div class="member-avatar ' + corMembroPorNome(m.name) + '">' + esc(iniciaisMembro(m.name)) + '</div>' +
         '<div><div class="ferias-c-nome">' + esc(m.name) + '</div>' +
         '<div class="ferias-c-role">' + esc(m.role) + '</div></div>' +
       '</div></div>' +
