@@ -34,6 +34,35 @@
     integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H"
     crossorigin="anonymous" defer></script>
 
+  <!-- Cor da barra do navegador (mobile). Trocada em tempo real por
+       aplicarTema() em JS_Utilitarios.html. -->
+  <meta name="theme-color" content="#f3f4f6">
+
+  <!-- ANTI-FLASH — precisa rodar ANTES do primeiro paint, por isso vive aqui no
+       <head> e não junto do resto do JS (que carrega no fim do <body>). Sem
+       isso, quem usa o modo escuro veria a tela branca por ~200ms a cada
+       carregamento, antes de escurecer.
+       Falha em silêncio de propósito: este script roda antes de tudo, então
+       uma exceção aqui derrubaria a página inteira. Sem localStorage
+       (navegação privada, cookies bloqueados) o sistema simplesmente abre no
+       modo claro. Ver DOCUMENTACAO.md §8.20. -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sgq-tema');
+        if (t !== 'dark' && t !== 'light') {
+          t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+            ? 'dark' : 'light';
+        }
+        if (t === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute('content', '#0f131a');
+        }
+      } catch (e) { /* sem localStorage: abre no claro */ }
+    })();
+  </script>
+
   <?!= include_('CSS'); ?>
 </head>
 
@@ -251,8 +280,30 @@
               </svg></span>Registros</button>
         </div>
       </nav>
-      <!-- Perfil do Usuário Logado -->
-      <div id="sidebar-user-container" class="sidebar-user"></div>
+      <!-- Rodapé: perfil do usuário + alternador de tema.
+           Os dois ícones ficam sempre no HTML; quem escolhe qual aparece é o
+           CSS, a partir do data-theme — assim o ícone certo já vem no primeiro
+           paint, sem depender de JS e sem piscar. -->
+      <div class="sidebar-foot">
+        <div id="sidebar-user-container" class="sidebar-user"></div>
+        <button type="button" id="btn-tema" class="theme-toggle"
+                title="Mudar para o modo escuro" aria-label="Mudar para o modo escuro">
+          <svg class="icone-lua" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+          </svg>
+          <svg class="icone-sol" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" />
+            <line x1="12" y1="1.6" x2="12" y2="4" />
+            <line x1="12" y1="20" x2="12" y2="22.4" />
+            <line x1="4.2" y1="4.2" x2="5.9" y2="5.9" />
+            <line x1="18.1" y1="18.1" x2="19.8" y2="19.8" />
+            <line x1="1.6" y1="12" x2="4" y2="12" />
+            <line x1="20" y1="12" x2="22.4" y2="12" />
+            <line x1="4.2" y1="19.8" x2="5.9" y2="18.1" />
+            <line x1="18.1" y1="5.9" x2="19.8" y2="4.2" />
+          </svg>
+        </button>
+      </div>
     </aside>
 
     <!-- ===== CONTEÚDO PRINCIPAL ===== -->

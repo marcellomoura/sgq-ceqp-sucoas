@@ -783,7 +783,7 @@ Inverter tudo mecanicamente produz resultado ruim — cada família tem regra pr
 | **2** | ✅ **CONCLUÍDO em 27/07/2026.** Ganchos: `--overlay-bg` (N4), `--badge-glass-bg`, `--control-accent` (N3), `--chart-grid` (G3), `--icon-calendar`/`--icon-chevron` (N1) — todos inicializados com o valor atual | ❌ Não |
 | **3** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Paleta escura: as 9 famílias de §8.20.3 | ❌ Não |
 | **4** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. **Regras estruturais do escuro** (categoria nova): recorte nos filtros/botões do topo (F1), P3, B4 | ❌ Não |
-| **5** | Infra: `data-theme`, `localStorage`, toggle, `theme-color` (N8), **anti-flash no `<head>`**, `prefers-reduced-motion` | ❌ Não |
+| **5** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Infra: `data-theme`, `localStorage`, toggle, `theme-color` (N8), **anti-flash no `<head>`** | ❌ Não |
 | **6** | Gráficos: descongelar as 3 constantes; **cache de `corVar()` invalidado no toggle** (V5); re-render (G2); sincronizar G5/K3; aplicar `--chart-grid` | ⚠️ Risco técnico |
 | **7** | PDF/export: forçar tema claro em `_capturarElementoComoImg()` com `try/finally` (N5); `_envelopeHtml()` segue com hex literais | ⚠️ Risco técnico |
 | **8** | Validação: WCAG AA; **contraste interno de família (P1)**; 12 tons lado a lado; 8 telas + modais; os 5 PDFs; Kanban com volume real | — |
@@ -893,6 +893,22 @@ Descartados após análise: `.btn-create` e `.btn.primary` (preenchimento sólid
 **Especificidade verificada regra a regra:** todas as novas vencem suas bases — inclusive `.tl-kpi-card`, cuja regra base usa `#view-indicadores` e por isso exigiu o ID também no seletor escuro (`[1,2,0]` contra `[1,1,0]`).
 
 **B4 resolvido como não-mudança.** `.btn:disabled { opacity: 0.5 }` foi analisado e mantido: o efeito é **simétrico** nos dois temas — tinta escura a 50% sobre branco e tinta clara a 50% sobre escuro chegam ao mesmo cinza médio. A preocupação levantada na auditoria não se sustentou, e inventar um valor diferente sem poder validá-lo visualmente seria pior do que manter.
+
+**Fase 5 — concluída em 27/07/2026.** O modo escuro passa a existir de verdade: a chave foi ligada.
+
+**Anti-flash (`Index.html`, `<head>`).** Script inline colocado **antes** do `include_('CSS')`, porque precisa rodar antes do primeiro paint — o resto do JS carrega no fim do `<body>`, tarde demais. Sem ele, quem usa o modo escuro veria a tela branca por ~200 ms a cada carregamento. Envolvido em `try/catch` mudo de propósito: como roda antes de tudo, uma exceção ali derrubaria a página inteira; sem `localStorage` (navegação privada, cookies bloqueados) o sistema simplesmente abre no claro.
+
+**Botão (decisões do usuário).** Ícone circular de **26 px** no rodapé da sidebar. A medida foi escolhida com uma prévia interativa montada com os tokens reais: menor que o avatar (34 px), o que mantém a hierarquia do rodapé — a pessoa em primeiro plano, o controle em segundo —, e acima do piso de **24 px** que o WCAG 2.5.8 (Target Size) exige para alvo de clique.
+
+**Layout do rodapé.** Criado `.sidebar-foot`, que recebeu o padding que era do `.sidebar-user`: expandida, avatar e botão dividem a mesma linha (uma linha só para um botão de 26 px desperdiçaria altura); **retraída, o rodapé empilha** — avatar em cima, tema embaixo. Isso atende o requisito de o botão continuar visível com a sidebar recolhida, onde sobram só 36 px úteis (68 menos o padding), que é exatamente a largura do avatar.
+
+**O ícone é trocado pelo CSS, não pelo JS.** Os dois SVGs ficam sempre no HTML e o `data-theme` decide qual aparece. Assim o ícone certo já vem no primeiro paint, sem depender de JS e sem piscar. Convenção adotada: o botão mostra **para onde vai**, não onde está — lua no claro ("clique para escurecer"), sol no escuro. Como sol/lua são ambíguos em qualquer produto, o `title` e o `aria-label` carregam a frase inteira ("Mudar para o modo escuro") e são atualizados pelo JS, que é a parte que o CSS não alcança.
+
+**Persistência e SO.** Chave `sgq-tema` no `localStorage` (distinta de `sgqSidebarCollapsed`, já existente). Sem escolha gravada, o sistema segue `prefers-color-scheme` **em tempo real** — quem alterna o tema do Windows vê o SGQ acompanhar sem recarregar. Gravar é justamente o que marca "o usuário escolheu" e faz o tema parar de seguir o SO. `<meta name="theme-color">` acompanha o tema, com valores idênticos ao `--bg-app` de cada paleta.
+
+**`aplicarTema()` é a fonte única da verdade** para troca de tema — qualquer coisa que precise reagir (redesenhar gráficos, na Fase 6) deve ser pendurada ali, não em listener paralelo.
+
+⚠️ **Estado intermediário conhecido:** entre esta fase e a Fase 6, alternar o tema deixa os gráficos com as cores do tema anterior — inclusive as 4 roscas com anel branco (achado G2). Não validar visualmente o Painel de Indicadores antes da Fase 6.
 
 ---
 

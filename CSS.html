@@ -567,7 +567,33 @@
     overflow: hidden;
     transition: width var(--transition-base);
   }
-  .sidebar-user { padding: 4px 16px 24px; display: flex; align-items: center; gap: 12px; overflow: hidden; }
+  /* Rodapé da sidebar: usuário à esquerda, alternador de tema à direita.
+     O padding que era do .sidebar-user passou para cá, porque agora os dois
+     dividem a mesma linha. */
+  .sidebar-foot { display: flex; align-items: center; gap: 10px; padding: 4px 16px 24px; overflow: hidden; }
+  .sidebar-user { padding: 0; flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; overflow: hidden; }
+
+  /* Alternador de tema — 26px: menor que o avatar (34px), o que mantém a
+     hierarquia do rodapé (a pessoa em primeiro plano, o controle em segundo),
+     e acima do piso de 24px exigido pelo WCAG 2.5.8 para alvo de clique. */
+  .theme-toggle {
+    width: 26px; height: 26px; flex-shrink: 0; padding: 0;
+    border: none; border-radius: 50%; cursor: pointer;
+    background: var(--hover-wash); color: var(--sidebar-icon);
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+  .theme-toggle:hover { color: var(--sidebar-text-hover); }
+  .theme-toggle svg {
+    width: 14px; height: 14px; stroke: currentColor; fill: none;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
+  }
+  /* Qual ícone aparece é decidido pelo CSS, não pelo JS: o botão mostra PARA
+     ONDE vai, não onde está (lua no claro = "clique para escurecer"). Como
+     depende só do atributo data-theme, o ícone certo já vem no primeiro paint. */
+  .theme-toggle .icone-sol { display: none; }
+  [data-theme="dark"] .theme-toggle .icone-lua { display: none; }
+  [data-theme="dark"] .theme-toggle .icone-sol { display: block; }
   .sidebar-user-avatar { width: 34px; height: 34px; font-size: 12px; flex-shrink: 0; }
   .sidebar-user-info { display: flex; flex-direction: column; overflow: hidden; line-height: 1.2; }
   .sidebar-user-name { color: var(--text-main); font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
@@ -641,6 +667,11 @@
 
   /* ===== SIDEBAR RETRÁTIL (modo somente ícones) ===== */
   .sidebar.collapsed { width: 68px; }
+  /* Retraída sobram 36px úteis (68 menos o padding), que é exatamente a largura
+     do avatar. Por isso o rodapé empilha: avatar em cima, tema embaixo. */
+  .sidebar.collapsed .sidebar-foot { flex-direction: column; gap: 10px; padding: 4px 0 24px; }
+  .sidebar.collapsed .sidebar-user { flex: none; justify-content: center; }
+  .sidebar.collapsed .sidebar-user-info { display: none; }
   .sidebar.collapsed .sidebar-brand-text { display: none; }
   .sidebar.collapsed .nav-group-title .nav-group-label,
   .sidebar.collapsed .nav-group-title .arrow { max-width: 0; opacity: 0; }

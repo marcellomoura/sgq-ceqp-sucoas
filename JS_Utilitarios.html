@@ -657,6 +657,8 @@ async function montarHtmlIndicadoresPdf() {
 // DELEGAÇÃO DE EVENTOS
 // ==========================================
 document.addEventListener('DOMContentLoaded', function() {
+  inicializarTema();
+
   const dashYearFilter = $id('dashYearFilter');
   if (dashYearFilter) {
     const anoAtual = new Date().getFullYear();
@@ -759,6 +761,68 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ==========================================
 // SIDEBAR RETRÁTIL (modo somente ícones)
+// ==========================================
+// TEMA CLARO / ESCURO
+// ==========================================
+// O atributo data-theme no <html> já foi aplicado pelo script anti-flash no
+// <head> do Index.html — antes do primeiro paint. O que vive aqui é só o que
+// pode esperar o DOM: ligar o botão, manter rótulo e theme-color em dia, e
+// acompanhar o sistema operacional enquanto não houver escolha manual.
+const CHAVE_TEMA = 'sgq-tema';
+// Cor da barra do navegador em mobile — acompanha --bg-app de cada tema.
+const THEME_COLOR = { light: '#f3f4f6', dark: '#0f131a' };
+
+function temaAtual() {
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
+
+// Fonte única da verdade para "trocar de tema": qualquer coisa que precise
+// reagir à mudança (ex.: redesenhar gráficos) deve ser pendurada aqui.
+function aplicarTema(tema) {
+  const escuro = tema === 'dark';
+  if (escuro) document.documentElement.setAttribute('data-theme', 'dark');
+  else document.documentElement.removeAttribute('data-theme');
+
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', THEME_COLOR[escuro ? 'dark' : 'light']);
+
+  // O ícone quem troca é o CSS; aqui só o texto, que o CSS não alcança.
+  const btn = $id('btn-tema');
+  if (btn) {
+    const rotulo = escuro ? 'Mudar para o modo claro' : 'Mudar para o modo escuro';
+    btn.setAttribute('title', rotulo);
+    btn.setAttribute('aria-label', rotulo);
+  }
+}
+
+function alternarTema() {
+  const novo = temaAtual() === 'dark' ? 'light' : 'dark';
+  aplicarTema(novo);
+  // Gravar é o que marca "o usuário escolheu" e faz o tema parar de seguir o SO.
+  try { localStorage.setItem(CHAVE_TEMA, novo); } catch (e) { /* sem storage: vale só nesta sessão */ }
+}
+
+function inicializarTema() {
+  aplicarTema(temaAtual());
+
+  const btn = $id('btn-tema');
+  if (btn) btn.addEventListener('click', alternarTema);
+
+  // Enquanto não houver escolha manual gravada, acompanha o SO em tempo real
+  // (quem alterna o tema do Windows vê o sistema acompanhar sem recarregar).
+  if (window.matchMedia) {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const aoMudarSO = function (e) {
+      let salvo = null;
+      try { salvo = localStorage.getItem(CHAVE_TEMA); } catch (err) { /* ignora */ }
+      if (salvo === 'dark' || salvo === 'light') return; // escolha manual vence
+      aplicarTema(e.matches ? 'dark' : 'light');
+    };
+    if (mq.addEventListener) mq.addEventListener('change', aoMudarSO);
+    else if (mq.addListener) mq.addListener(aoMudarSO); // Safari antigo
+  }
+}
+
 // ==========================================
 function inicializarSidebarRetratil() {
   const sidebar = document.querySelector('.sidebar');
