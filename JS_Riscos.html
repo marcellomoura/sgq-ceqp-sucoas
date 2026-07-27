@@ -235,6 +235,20 @@
     abrirModal('modal-historico-risco');
   }
 
+  // Superar um risco move ele de aba: some da Matriz, aparece em Superados.
+  // O recarregamento é assíncrono e só termina ~1,4s depois do clique (o atraso
+  // do feedbackBtn) mais o round-trip de getRiscosData — tempo de sobra para o
+  // usuário já ter trocado de aba. Fixar renderMatriz no callback repintava
+  // sempre a Matriz, então a aba Superados (renderizada nesse meio-tempo, com
+  // state.risks ainda velho) ficava vazia até ser reaberta na mão. Repinta a
+  // aba que estiver aberta quando os dados chegam. Mesmo padrão de
+  // `if (currentTab === ...)` já usado em JS_Capacitacoes.
+  function renderAbaRiscoAtual() {
+    if (currentTab === 'risco-arquivado') renderRiscosArquivados();
+    else if (currentTab === 'plano-acomp') renderAcompanhamento();
+    else renderMatriz();
+  }
+
   function toggleCamposReavaliacao() {
     const acao = $id('rev-acao').value;
     const notasDiv = $id('rev-campos-notas');
@@ -266,7 +280,7 @@
         btn.disabled = true; btn.innerText = 'A salvar...';
         google.script.run.withSuccessHandler(r => {
           if (r && r.sucesso === false) { btn.disabled = false; btn.innerText = 'Salvar Ação'; showAlerta(r.mensagem); return; }
-          feedbackBtn(btn, '✅ Superado!', 'Salvar Ação', () => { fecharModal('modal-reavaliar-risco'); recarregarRiscosPlanos(renderMatriz); });
+          feedbackBtn(btn, '✅ Superado!', 'Salvar Ação', () => { fecharModal('modal-reavaliar-risco'); recarregarRiscosPlanos(renderAbaRiscoAtual); });
         }).withFailureHandler(falha(btn, 'Salvar Ação', null)).excluirRisco(idRisco);
         return;
       }
@@ -629,7 +643,7 @@
     // Aplicado ANTES do return antecipado de "nenhuma unidade cobrada" logo
     // abaixo: quando ficava só no fim da função, esse caminho saía sem tocar no
     // botão e ele herdava o estado da abertura anterior do modal.
-    aplicarModoLeituraAcompEntregas(somenteLeitura, rRef, p);
+    aplicarModoLeituraAcompEntregas(somenteLeitura);
 
     $id('acomp-ent-info').innerHTML =
       '<strong>Risco:</strong> ' + esc(formatRiscoUI(p.riscoVinculado)) +
@@ -703,24 +717,13 @@
   // Estado somente-leitura do modal de Entregas, num lugar só porque
   // abrirModalAcompEntregas tem dois caminhos de saída (com e sem unidades
   // cobradas) e os dois precisam deixar o modal no mesmo estado.
-  function aplicarModoLeituraAcompEntregas(somenteLeitura, rRef, p) {
+  function aplicarModoLeituraAcompEntregas(somenteLeitura) {
     const btnSalvar = $id('btn-salvar-acomp-entregas');
     if (btnSalvar) btnSalvar.classList.toggle('hidden', somenteLeitura);
 
     // Sem o botão de salvar, "Cancelar" não descarta nada — só fecha.
     const btnFechar = $id('btn-fechar-acomp-entregas');
     if (btnFechar) btnFechar.textContent = somenteLeitura ? 'Fechar' : 'Cancelar';
-
-    // Campos cinzas sem explicação lêem como defeito; o aviso diz o motivo.
-    const aviso = $id('acomp-ent-readonly');
-    if (aviso) {
-      aviso.classList.toggle('hidden', !somenteLeitura);
-      if (somenteLeitura) {
-        aviso.textContent = rRef.status === 'Superado'
-          ? 'Risco superado — registros em modo somente leitura.'
-          : 'Plano ' + (p.status || 'encerrado').toLowerCase() + ' — registros em modo somente leitura.';
-      }
-    }
   }
 
   function salvarAcompEntregas() {

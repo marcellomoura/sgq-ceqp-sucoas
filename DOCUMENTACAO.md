@@ -1146,7 +1146,9 @@ Mesma especificidade (0-1-0) e `.btn` declarada **depois** → `inline-flex` ven
 
 `abrirModalAcompEntregas` tem dois caminhos de saída, e o `return` antecipado de "nenhuma unidade cobrada" saía **antes** da linha que ajustava o botão. Abrir um plano editável e depois um sem unidades deixava o botão visível por herança. O estado de leitura foi extraído para `aplicarModoLeituraAcompEntregas(somenteLeitura, rRef, p)`, chamada **antes** do `return`, de modo que os dois caminhos deixem o modal no mesmo estado.
 
-**3) Modo leitura agora é explícito.** Campos cinzas sem explicação lêem como defeito. Adicionados: aviso no topo do modal ("Risco superado — registros em modo somente leitura." / "Plano {status} — ...", `#acomp-ent-readonly`, classe `.modal-readonly-note` sobre os tokens `--warning-*`, que já têm variante escura) e troca do rótulo "Cancelar" → "Fechar" nesse estado (sem botão de salvar, não há o que cancelar).
+**3) Modo leitura sinalizado pelo rótulo do botão.** "Cancelar" vira "Fechar" quando não há botão de salvar — sem nada a salvar, não há o que cancelar.
+
+Chegou a existir um aviso em faixa amarela no topo do modal ("Risco superado — registros em modo somente leitura.", `#acomp-ent-readonly` + `.modal-readonly-note`), **removido a pedido do usuário**: com o botão de salvar já ausente e os campos travados, a faixa era ruído visual. HTML, CSS e o ramo do JS foram removidos por completo — se a sinalização voltar a ser desejada um dia, é reconstrução, não descomentar.
 
 **4) Guarda no servidor (`salvarEntregasEmLote`).** A regra de somente leitura existia **só no cliente**. Como campos `disabled` mantêm `.value` em JS, um clique no botão que não sumia montava payload válido e gravava de verdade em `Entregas_Planos`, com log, num risco já encerrado. Agora o servidor recusa quando o risco vinculado está `Superado` ou quando o plano está `Substituído`.
 
@@ -1164,6 +1166,14 @@ Mesma especificidade (0-1-0) e `.btn` declarada **depois** → `inline-flex` ven
 | `formatRiscoUI` e dropdown de planos | posição no array **completo** | "Risco 6" |
 
 Como `formatRiscoUI` alimenta o Acompanhamento e o cabeçalho do modal de Entregas, a divergência apareceria lado a lado com a Matriz assim que o primeiro risco fosse superado. `formatRiscoUI` e o dropdown passaram a exibir `R-{id}` — estável, imune a filtro, e já é o identificador da 2ª coluna da Matriz. A 1ª coluna da Matriz continua sendo numeração de linha da tela, que é o que sempre foi. O mapa `idxPorIdRisco` de `carregarRiscosLivres` saiu junto (só existia para montar o número divergente); o de `renderMatriz` **permanece** — lá o índice é funcional (`data-idx` dos botões de ação), não de exibição.
+
+**7) Risco superado não aparecia na aba Superados sem sair e voltar.** Sintoma relatado: marcar como superado e ir para a aba Superados mostrava lista vazia; só depois de trocar de aba duas vezes o risco aparecia.
+
+Cadeia: o handler de "Marcar como Superado" chamava `recarregarRiscosPlanos(renderMatriz)` **dentro do callback do `feedbackBtn`**, que só dispara **1400 ms** depois do clique ([JS_Utilitarios.html](JS_Utilitarios.html#L336)) — e aí ainda vem o round-trip de `getRiscosData`. Nessa janela (fácil de 2 s), o usuário já clicou na aba Superados, que renderizou com `state.risks` ainda velho (risco como `Ativo`) e portanto vazia. Quando os dados finalmente chegavam, o callback fixo repintava a **Matriz** — não a aba visível — deixando Superados congelada até ser reaberta na mão.
+
+Não era regressão da §8.21: a mesma corrida existia antes, só ficava invisível porque ninguém tinha motivo para ir à aba logo depois de arquivar.
+
+**Correção:** callback passou a ser `renderAbaRiscoAtual()`, que repinta a aba realmente aberta (`risco-arquivado` / `plano-acomp` / Matriz) usando o global `currentTab` — mesmo padrão de `if (currentTab === ...)` já usado em `JS_Capacitacoes.html`. O atraso de 1400 ms do `feedbackBtn` foi mantido de propósito (é helper compartilhado por vários módulos); com o repintar correto, a aba se resolve sozinha ao fim da busca, sem intervenção.
 
 **Fora de escopo, mantido como está:** os cards de versão e os títulos de risco (`Risco ${r.id} — nome`, em Planos e na aba Superados) já usam o **id**, não posição — não sofrem da divergência acima, então não foram tocados. Identificadores internos idem (§8.21).
 
