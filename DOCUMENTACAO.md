@@ -780,7 +780,7 @@ Inverter tudo mecanicamente produz resultado ruim — cada família tem regra pr
 | **0** | ✅ **DECIDIDO em 27/07/2026** — ver §8.20.7 | — |
 | **1a** | ✅ **CONCLUÍDO em 27/07/2026.** Tokenização **neutra**: 12 `.avatar-pastel-N` → `--tag-*` (V7); `#2b7fff`→`var(--accent)` e `#4b5563`→`var(--text-secondary)`; removidas as 2 constantes mortas (G4) | ❌ Não |
 | **1b** | Mudanças **visíveis**, item a item: 8 sombras (V1); fósseis de paleta (V2/V3); F2; K1; `color-scheme` (V6); **correção do B1** | ⚠️ Sim, por decisão |
-| **2** | Ganchos: `--overlay-bg` (N4), `--badge-glass-bg`, `--control-accent` (N3), `--chart-grid` (G3), `--icon-calendar`/`--icon-chevron` (N1) — todos inicializados com o valor atual | ❌ Não |
+| **2** | ✅ **CONCLUÍDO em 27/07/2026.** Ganchos: `--overlay-bg` (N4), `--badge-glass-bg`, `--control-accent` (N3), `--chart-grid` (G3), `--icon-calendar`/`--icon-chevron` (N1) — todos inicializados com o valor atual | ❌ Não |
 | **3** | Paleta escura: as 9 famílias de §8.20.3 | ❌ Não |
 | **4** | **Regras estruturais do escuro** (categoria nova): borda nos filtros/botões do topo (F1), P3, B4 | ❌ Não |
 | **5** | Infra: `data-theme`, `localStorage`, toggle, `theme-color` (N8), **anti-flash no `<head>`**, `prefers-reduced-motion` | ❌ Não |
@@ -824,7 +824,22 @@ Inverter tudo mecanicamente produz resultado ruim — cada família tem regra pr
 3. `JS_Documentos.html`: `#4b5563` → `var(--text-secondary)` nos dois links de anexo (valor idêntico).
 4. Removidas `CHART_LEGEND_BASE` e `CHART_DATALABELS_BASE` (G4) — código morto, zero consumidores. Comentário no lugar explica o porquê.
 
-Validação: sintaxe dos dois JS conferida com `new Function()`; nenhuma referência órfã às constantes removidas; 12 avatares consumindo token. **Pendente:** validação visual manual e `clasp push`.
+Validação: sintaxe dos dois JS conferida com `new Function()`; nenhuma referência órfã às constantes removidas; 12 avatares consumindo token. Validado visualmente pelo usuário. Commit `d857293`.
+
+**Fase 2 — concluída em 27/07/2026.** Seis tokens novos no `:root`, **todos inicializados com exatamente o valor que substituíram** — nenhuma mudança visual no modo claro. O objetivo é que cada um destes pontos possa divergir no modo escuro sem precisar mexer em regra nenhuma depois:
+
+| Token | Valor inicial | Consumidor | Por que precisa ser token próprio |
+|---|---|---|---|
+| `--overlay-bg` | `rgba(17,17,24,0.5)` | `.modal-overlay` | Véu escuro sobre fundo escuro deixa o modal sem separação |
+| `--badge-glass-bg` | `rgba(255,255,255,0.92)` | `.risk-badge` | O badge "de vidro" precisa inverter de branco para escuro |
+| `--control-accent` | `#030712` | `accent-color` em 3 regras | A tinta da marca inverte para quase-branca no escuro, e checkbox quase-branco sobre superfície escura some. Unificou os 3 pontos, que antes usavam `--primary` (2×) e `--text-main` (1×) — mesmo valor, propósitos distintos |
+| `--chart-grid` | `#eef0f2` | `CHART_SCALES_BASE` via `corVar()` | Grade de gráfico e borda de UI divergem no escuro (G3) |
+| `--icon-calendar` | data: URI, stroke `#4b5563` | `input[type="date"]` | A cor está **dentro** da string do data: URI; CSS não interpola `var()` ali (N1) |
+| `--icon-chevron` | data: URI, stroke `#374151` | `.sidebar-field-group .field-multiselect::after` | idem |
+
+**Validação:** comparação programática contra `HEAD` confirmou que os 2 `data:` URI ficaram **byte a byte idênticos** (um caractere trocado quebraria o ícone silenciosamente); os 4 valores literais conferidos um a um contra a origem, e os tokens de origem (`--border-subtle`, `--primary`, `--text-main`) permanecem intactos; sintaxe JS e balanceamento de chaves do CSS verificados.
+
+**Ponto de parada seguro atingido.** Com as Fases 1a e 2 concluídas, o terreno está preparado: a partir daqui o modo escuro pode ser ligado sem que nenhuma regra de CSS precise ser reescrita — só valores de token, mais as regras estruturais da Fase 4 (F1). **Pendente:** validação visual e `clasp push`.
 
 ---
 

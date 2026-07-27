@@ -93,7 +93,9 @@ const CHART_SCALES_BASE = {
   y: {
     beginAtZero: true,
     ticks: { precision: 0, font: { family: "'Inter',sans-serif", size: 11 }, color: corVar('--text-muted') },
-    grid: { color: corVar('--border-subtle'), borderDash: [4, 4] }, border: { display: false }
+    // --chart-grid, não --border-subtle: mesmo valor hoje, mas token próprio
+    // porque no modo escuro grade de gráfico e borda de UI divergem (§8.20 G3).
+    grid: { color: corVar('--chart-grid'), borderDash: [4, 4] }, border: { display: false }
   },
   x: {
     grid: { display: false }, border: { display: false },
