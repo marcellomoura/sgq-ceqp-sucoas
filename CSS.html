@@ -55,6 +55,7 @@
        inverter de branco para escuro. Ver §8.20 (N4). */
     --overlay-bg: rgba(17,17,24,0.5);
     --badge-glass-bg: rgba(255,255,255,0.92);
+    --badge-glass-border: rgba(0,0,0,0.1);
     /* Lavagem de tinta translúcida para hover sobre superfície colorida (onde
        um fundo opaco como --bg-hover não funciona, ex.: o botão "adicionar
        cartão" sobre a coluna do Kanban). No escuro precisa virar uma lavagem
@@ -254,6 +255,8 @@
        hover não se distingue do fundo (§8.20.3, família 1). */
     --overlay-bg: rgba(0,0,0,0.65);
     --badge-glass-bg: rgba(22,26,34,0.92);
+    /* Borda clara: uma borda preta a 10% sobre fundo escuro é invisível. */
+    --badge-glass-border: rgba(230,232,235,0.16);
     --hover-wash: rgba(230,232,235,0.08);
 
     /* ---- Sidebar: inversão limpa e simétrica ----
@@ -1200,7 +1203,7 @@
   .cell-orange { background: var(--risk-high-bg); color: var(--risk-high-text); border: 1px solid var(--risk-high-border); }
   .cell-red    { background: var(--risk-crit-bg); color: var(--risk-crit-text); border: 1px solid var(--risk-crit-border); }
   .badge-cluster { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; padding: 4px; }
-  .risk-badge { background: var(--badge-glass-bg); border: 1px solid rgba(0,0,0,0.1); color: var(--text-main); padding: 2px 7px; border-radius: var(--radius-xs); font-size: var(--fs-xs); font-weight: 700; cursor: default; }
+  .risk-badge { background: var(--badge-glass-bg); border: 1px solid var(--badge-glass-border); color: var(--text-main); padding: 2px 7px; border-radius: var(--radius-xs); font-size: var(--fs-xs); font-weight: 700; cursor: default; }
   .legend-row { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; background: var(--bg-card); padding: 13px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-top: 12px; break-inside: avoid; page-break-inside: avoid; }
   .legend-item { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--text-secondary); font-weight: 600; }
   .legend-dot { width: 18px; height: 18px; border-radius: var(--radius-xs); }

@@ -786,7 +786,7 @@ Inverter tudo mecanicamente produz resultado ruim — cada família tem regra pr
 | **5** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Infra: `data-theme`, `localStorage`, toggle, `theme-color` (N8), **anti-flash no `<head>`** | ❌ Não |
 | **6** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Gráficos: descongelar as constantes; **cache de `corVar()` invalidado no toggle** (V5); re-render (G2); G5/K3; `--chart-grid` | ⚠️ Risco técnico |
 | **7** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. PDF/export: tema claro forçado na montagem do relatório (N5); `_envelopeHtml()` segue com hex literais | ⚠️ Risco técnico |
-| **8** | Validação: WCAG AA; **contraste interno de família (P1)**; 12 tons lado a lado; 8 telas + modais; os 5 PDFs; Kanban com volume real | — |
+| **8** | ✅ **Parte automatizável CONCLUÍDA em 27/07/2026** — ver §8.20.8. Validação: WCAG AA; contraste interno de família (P1); 12 tons; varredura final; guarda de regressão. Resta a conferência visual manual | — |
 
 #### 8.20.6 Impacto no modo claro e proteções
 
@@ -955,6 +955,24 @@ Descartados após análise: `.btn-create` e `.btn.primary` (preenchimento sólid
 | Painel de Indicadores | `<canvas>` | só os gráficos mudam de cor brevemente; a página segue escura |
 
 Corrigida junto a ordem do `finally`: a animação do Chart.js volta ao normal **depois** do redesenho de retorno, não antes — senão a volta animava 1000 ms sem necessidade.
+
+**Fase 8 — parte automatizável concluída em 27/07/2026.** A conferência visual tela a tela continua sendo do usuário (não há dev server local no Apps Script), mas tudo que dava para verificar por código foi verificado.
+
+**Varredura final por cor literal em todos os arquivos servidos.** Um único achado real, corrigido: `.risk-badge` tinha o `background` tokenizado na Fase 2 mas a **borda** ficou em `rgba(0,0,0,0.1)` — uma borda preta a 10% sobre fundo escuro é invisível, e o badge da Matriz perderia o contorno. Criado `--badge-glass-border`. Todo o resto do que a busca trouxe é legítimo: comentários, a folha isolada do PDF (`_envelopeHtml`, que não enxerga `:root` de propósito), o `backgroundColor: '#ffffff'` do `html2canvas` (papel é branco) e o `theme-color`, que é sincronizado com `--bg-app` das duas paletas. Também conferidos e limpos: `::selection` e `@media print` não existem no projeto, `:focus-visible` já usa token, e o único `filter` é o `backdrop-filter` do overlay.
+
+**Guarda de regressão — `verificar-tema.cjs`.** O maior risco remanescente do modo escuro não é performance: é alguém adicionar um token à paleta clara e esquecer a contraparte escura. O sintoma seria um elemento com cor de tema claro no meio da interface escura — **silencioso**, sem erro no console. O script compara os dois blocos e falha com código 1 se achar divergência, em qualquer direção (token sem contraparte, ou declarado só no escuro por erro de digitação). As isenções são explícitas e cada uma tem o motivo registrado no próprio arquivo.
+
+Rodar antes de cada `clasp push`:
+
+```
+node verificar-tema.cjs
+```
+
+> ⚠️ **A extensão `.cjs` é deliberada.** O `.clasp.json` declara `scriptExtensions: [".js", ".gs"]` com `rootDir` na raiz e **não existe `.claspignore`** — um arquivo `.js` solto aqui seria enviado ao Apps Script pelo `clasp push`, onde `require`, `process` e `__dirname` não existem. Com `.cjs`, o Node roda normalmente e o clasp ignora. Vale a mesma cautela para qualquer utilitário de desenvolvimento que venha a ser adicionado ao projeto.
+
+O próprio script foi testado nos dois sentidos: apontou uma falha na sua primeira execução (a regra de isenção não cobria `--ease`, que não tem sufixo), e depois, com um token falso injetado só na paleta clara, falhou com exit 1 e voltou a passar ao restaurar.
+
+**O que só a conferência visual resolve** (em ordem de risco): os 12 tons decorativos lado a lado, onde o ΔE mínimo caiu de 19,9 para 13,8; os 5 PDFs gerados com o tema escuro ativo; as 4 roscas do Painel (anel de separação); filtros e linhas de lista, que dependem do anel da Fase 4; a sidebar retraída com o botão de tema; e recarregar a página no escuro para confirmar que não pisca branco.
 
 **`_envelopeHtml()` permanece intocada,** com suas cores em hex literal: ela gera uma folha isolada que não enxerga o `:root` (§8.19), o que agora é uma vantagem — o PDF é imune ao tema por construção. Verificado que continua com **zero** ocorrências de `var(--...)`.
 
