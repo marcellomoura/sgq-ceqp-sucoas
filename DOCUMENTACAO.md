@@ -1020,6 +1020,39 @@ Dois fatos do projeto explicam por que o sintoma era forte:
 
 **Botão de tema acima do avatar quando retraído.** A pedido do usuário, `.sidebar.collapsed .sidebar-foot` passou de `column` para `column-reverse`, deixando o avatar como último elemento da barra — a âncora visual do rodapé. Apenas a ordem visual muda: a ordem do DOM, e portanto a de tabulação, continua avatar → botão.
 
+#### 8.20.11 LIMITAÇÃO CONHECIDA — o flash branco residual do Apps Script
+
+**Não investigar de novo: já foi apurado até o fim em 27/07/2026 e não tem solução no nosso código.**
+
+Depois de corrigido o anti-flash (§8.20.10), sobrou um lampejo branco muito breve ao recarregar a página no modo escuro. Ele **não vem do nosso HTML**.
+
+`Código.js` serve a página com `XFrameOptionsMode.DEFAULT`, e o Apps Script **sempre** entrega web app dentro de um iframe. A estrutura real é:
+
+```
+script.google.com              <- página wrapper do Google, fundo BRANCO
+  └── <iframe>
+        googleusercontent.com  <- o nosso HTML
+```
+
+Ao recarregar: carrega o wrapper do Google (branco) → o wrapper cria o iframe → o iframe pede e carrega o nosso HTML → só então escurece. **Os dois primeiros passos são página do Google** — não há como injetar CSS, script ou meta tag ali.
+
+**Verificado e descartado como causa** (tudo correto do nosso lado): o script anti-flash roda antes do `include_('CSS')`; define `data-theme`, `colorScheme` e `backgroundColor` inline no `<html>`; `.app-layout` e `.main-content` não têm fundo próprio, então deixam o fundo do `<html>` aparecer; não há nenhum `<style>` ou `style=` antes do CSS; e os valores inline batem com `--bg-app` das duas paletas (agora vigiado por `verificar-tema.cjs`).
+
+**Também descartado como otimização:** mover o script para a primeira linha do `<head>` não traz ganho. O `preload` da fonte e os quatro `<script defer>` que vêm antes dele não bloqueiam o parser, então ele já roda em microssegundos. E, mesmo dentro do iframe, o navegador **só pinta depois de interpretar o `<style>` do `<head>`**, que é bloqueante para renderização — o fundo escuro existe no DOM desde cedo, mas só aparece depois que o CSS termina de ser lido. O gargalo real é rede (carregar o wrapper + pedir o iframe), inteiramente do lado do Google.
+
+**Diagnóstico usado, reaproveitável se o sintoma voltar diferente:**
+
+| O que se vê | Significado |
+|---|---|
+| Branco liso, **sem layout nenhum**, e então a interface escura aparece inteira | Wrapper do Google — fora do nosso alcance, nada a fazer |
+| O **layout do app em cores claras** (sidebar, menus, cartões visíveis) e depois escurece | Aí é bug nosso — provável falha na leitura do `localStorage`, caindo no `prefers-color-scheme` |
+
+Em 27/07/2026 o usuário confirmou o **primeiro** caso.
+
+**O que o anti-flash de fato resolveu.** Ele não foi inútil — apenas não cobria essa parte. Antes: `branco do wrapper → app inteiro em tema claro (~200 ms) → escuro`. Depois: `branco do wrapper → escuro`. O trecho que estava ao nosso alcance foi eliminado; o que restou nunca esteve.
+
+**Risco correlato, ainda latente.** O `localStorage` do sandbox vive no domínio `googleusercontent.com`, cujo prefixo pode mudar entre deploys. Se mudar, é outro *origin* e **a preferência de tema salva se perde**, fazendo o sistema voltar a seguir o SO. Não foi observado até agora, mas se um dia o tema "esquecer" sozinho logo após um deploy, a causa é essa — não um bug de código.
+
 **`_envelopeHtml()` permanece intocada,** com suas cores em hex literal: ela gera uma folha isolada que não enxerga o `:root` (§8.19), o que agora é uma vantagem — o PDF é imune ao tema por construção. Verificado que continua com **zero** ocorrências de `var(--...)`.
 
 ---
