@@ -262,8 +262,9 @@ function linkA(url, txt, cor, comIcone) {
   // var() resolve normalmente em style="" no DOM (só canvas/PDF é que não
   // resolvem) — e nenhuma das listas que usam linkA() (Documentos,
   // Capacitações, Visitas) entra em PDF: os 5 CFG_PDF não as incluem.
-  // O #2563eb continua literal por não ter token equivalente (ver §8.20, V2).
-  const corFinal = cor || (comIcone ? 'var(--accent)' : '#2563eb');
+  // O #2563eb (azul da paleta antiga) virou --accent na Fase 1b — como os dois
+  // ramos passaram a usar a mesma cor, o ternário de cor saiu (§8.20, V2).
+  const corFinal = cor || 'var(--accent)';
   const peso = comIcone ? 500 : 600;
   const icone = comIcone ? '🔗 ' : '';
   const semQuebra = comIcone ? 'white-space:nowrap;' : '';
@@ -292,7 +293,9 @@ function falha(btn, orig, statusEl) {
   return function(e) {
     if(btn){btn.disabled=false; btn.innerText=orig;}
     const msg='Erro de comunicação: '+(e&&e.message?e.message:String(e));
-    if(statusEl){statusEl.innerText=msg; statusEl.style.color='#dc2626';}
+    // #dc2626 era o valor de --danger na paleta ANTIGA (ver §8.7); ficou preso
+    // aqui quando a paleta foi recalibrada para a escada Menta/Dourado/Tijolo.
+    if(statusEl){statusEl.innerText=msg; statusEl.style.color='var(--danger)';}
     else showAlerta(msg);
   };
 }
@@ -971,8 +974,8 @@ document.addEventListener('click', function(e) {
             btn.innerText = sucessoTexto;
             const oldBg = btn.style.background;
             const oldBorder = btn.style.borderColor;
-            btn.style.background = '#16a34a';
-            btn.style.borderColor = '#16a34a';
+            btn.style.background = 'var(--success)';
+            btn.style.borderColor = 'var(--success)';
             setTimeout(() => {
               btn.innerText = orig; btn.style.background = oldBg; btn.style.borderColor = oldBorder;
               btn.disabled = false; fecharModal('modal-confirmar'); itemExcluir = null;

@@ -5,6 +5,14 @@
      (cor, tipografia, raio, sombra, espaçamento, motion)
   ========================================== */
   :root {
+    /* Informa ao navegador em que tema os controles NATIVOS devem ser pintados
+       (painel do date-picker, dropdown do select, autofill, scrollbar padrão).
+       Sem esta declaração, quem usa o sistema operacional em modo escuro pode
+       receber esses controles escuros dentro de uma interface clara. Quando o
+       modo escuro entrar, o bloco [data-theme="dark"] declara "dark" aqui.
+       Ver §8.20 (N2/V6). */
+    color-scheme: light;
+
     /* ---- Marca / Ação (tinta preta — estado ativo/primário) ---- */
     --primary: #030712;
     --primary-hover: #1f2937;
@@ -41,6 +49,11 @@
        inverter de branco para escuro. Ver §8.20 (N4). */
     --overlay-bg: rgba(17,17,24,0.5);
     --badge-glass-bg: rgba(255,255,255,0.92);
+    /* Lavagem de tinta translúcida para hover sobre superfície colorida (onde
+       um fundo opaco como --bg-hover não funciona, ex.: o botão "adicionar
+       cartão" sobre a coluna do Kanban). No escuro precisa virar uma lavagem
+       clara. Ver §8.20 (K1). */
+    --hover-wash: rgba(3,7,18,0.06);
 
     /* ---- Sidebar (claro, quase idêntico ao fundo) ---- */
     --sidebar-bg: #f3f4f6;
@@ -154,6 +167,11 @@
     --shadow-sm: 0 1px 2px rgba(3,7,18,0.05);
     --shadow-md: 0 4px 12px rgba(3,7,18,0.07);
     --shadow-lg: 0 12px 28px rgba(3,7,18,0.12);
+    /* Brilho de acento (coluna "hoje" da Escala Semanal). Fora da escada de
+       elevação porque é cor, não profundidade — deriva de --accent (#2b7fff
+       = 43,127,255). Token próprio para o modo escuro poder ajustá-lo sem
+       mexer na escada neutra. Ver §8.20 (F2). */
+    --shadow-accent: 0 4px 14px rgba(43,127,255,0.15);
 
     /* ---- Espaçamento (múltiplos de 4) ---- */
     --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
@@ -203,7 +221,7 @@
   .mb-24 { margin-bottom: 24px !important; }
   .filter-date-group {
     display: flex; align-items: center; padding: 0 4px; border-radius: 9999px;
-    background-color: var(--bg-card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    background-color: var(--bg-card); box-shadow: var(--shadow-sm);
   }
   .filter-date-input {
     padding: 10px 16px; border: none; font-size: 13px; font-family: inherit; color: var(--text-main);
@@ -273,10 +291,10 @@
     display: flex; align-items: center; justify-content: center;
     width: 40px; height: 40px; background-color: var(--bg-card);
     border-radius: 50%; border: none; cursor: pointer; flex-shrink: 0;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); color: var(--text-secondary);
+    box-shadow: var(--shadow-sm); color: var(--text-secondary);
     transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
   }
-  .btn-top-action:hover { color: var(--text-main); background: var(--bg-subtle); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+  .btn-top-action:hover { color: var(--text-main); background: var(--bg-subtle); box-shadow: var(--shadow-md); }
   .btn-top-action svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
   .font-12 { font-size: 12px; }
   .font-13 { font-size: 13px; }
@@ -545,7 +563,7 @@
     transition: background var(--transition-fast), color var(--transition-fast);
     border-radius: 0 0 var(--radius-lg) var(--radius-lg); border-top: 1px solid var(--border-color); width: 100%;
   }
-  .btn-add-card:hover { background: rgba(23,24,31,0.06); color: var(--primary); }
+  .btn-add-card:hover { background: var(--hover-wash); color: var(--primary); }
 
   /* Cards */
   .card {
@@ -902,7 +920,11 @@
   /* ===== BOTÕES ===== */
   .btn { padding: 9px 18px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast); font-family: inherit; display: inline-flex; align-items: center; gap: 7px; }
   .btn:active { transform: translateY(1px); }
-  .btn.primary { background-color: var(--sidebar-active-bg); color: var(--text-inverse); box-shadow: none; }
+  /* Usa a família da marca (--primary/--primary-hover), igual a .btn-create.
+     Antes o fundo vinha de --sidebar-active-bg e só o hover de --primary-hover:
+     famílias diferentes no mesmo botão, e os dois botões primários do sistema
+     (.btn-create e .btn.primary) tinham cores base distintas. Ver §8.20 (B1). */
+  .btn.primary { background-color: var(--primary); color: var(--text-inverse); box-shadow: none; }
   .btn.primary:hover { background-color: var(--primary-hover); box-shadow: none; }
   .btn.secondary { background-color: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); }
   .btn.secondary:hover { background: var(--bg-hover); border-color: var(--border-strong); }
@@ -1079,7 +1101,12 @@
   .sidebar-select, .sidebar-date { width: 100%; padding: 10px 13px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-panel); font-size: var(--fs-base); color: var(--text-main); cursor: pointer; outline: none; font-family: inherit; transition: border-color var(--transition-fast), background-color var(--transition-fast); }
   .sidebar-select:focus, .sidebar-date:focus { background-color: var(--bg-card); border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
   .sidebar-action-btn { width: 100%; padding: 9px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; transition: background var(--transition-fast); font-family: inherit; }
-  .save-btn { background: var(--sidebar-active-bg); color: var(--text-inverse); margin-bottom: 7px; }
+  /* Mesmo caso do .btn.primary (§8.20 B1): "Salvar Cartão" é ação primária, então
+     usa a família da marca. Antes o fundo vinha de --sidebar-active-bg (a pílula
+     do menu de navegação, sem relação com este painel) e só o hover de
+     --primary-hover. Corrigido junto para os 3 botões primários do sistema
+     (.btn-create, .btn.primary, .save-btn) ficarem na mesma cor. */
+  .save-btn { background: var(--primary); color: var(--text-inverse); margin-bottom: 7px; }
   .save-btn:hover { background: var(--primary-hover); }
   .del-btn { background: var(--bg-subtle); color: var(--danger); }
   .del-btn:hover { background: var(--danger-bg); }
@@ -1183,14 +1210,14 @@
     flex: 1; background: var(--bg-card); border: 2px solid var(--border-subtle); border-radius: var(--radius-md);
     padding: 13px 11px; min-height: 90px; text-align: center;
     transition: transform var(--transition-base), box-shadow var(--transition-base);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    box-shadow: var(--shadow-sm);
   }
-  .escala-col:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .escala-col:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
   .escala-col.today {
     background: linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
                 linear-gradient(135deg, var(--accent), var(--purple)) border-box;
     border: 2px solid transparent;
-    box-shadow: 0 4px 14px rgba(43, 127, 255, 0.15);
+    box-shadow: var(--shadow-accent);
   }
   .escala-col-title {
     font-weight: 700; font-size: var(--fs-sm); color: var(--text-secondary); margin-bottom: 4px; letter-spacing: .04em;
@@ -1389,7 +1416,7 @@
   .risk-block {
     background: var(--bg-card);
     border-radius: 12px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
     margin-bottom: 16px;
     overflow: hidden;
@@ -1438,7 +1465,7 @@
     position: relative;
   }
   .plan-card:hover {
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    box-shadow: var(--shadow-md);
     border-color: var(--border-strong);
   }
   .plan-card:last-child { margin-bottom: 0; }

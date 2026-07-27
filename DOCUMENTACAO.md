@@ -779,7 +779,7 @@ Inverter tudo mecanicamente produz resultado ruim — cada família tem regra pr
 |---|---|---|
 | **0** | ✅ **DECIDIDO em 27/07/2026** — ver §8.20.7 | — |
 | **1a** | ✅ **CONCLUÍDO em 27/07/2026.** Tokenização **neutra**: 12 `.avatar-pastel-N` → `--tag-*` (V7); `#2b7fff`→`var(--accent)` e `#4b5563`→`var(--text-secondary)`; removidas as 2 constantes mortas (G4) | ❌ Não |
-| **1b** | Mudanças **visíveis**, item a item: 8 sombras (V1); fósseis de paleta (V2/V3); F2; K1; `color-scheme` (V6); **correção do B1** | ⚠️ Sim, por decisão |
+| **1b** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Mudanças **visíveis**: 8 sombras (V1); fósseis de paleta (V2/V3); F2; K1; `color-scheme` (V6); **correção do B1 + o gêmeo `.save-btn`** | ⚠️ Sim, aprovado |
 | **2** | ✅ **CONCLUÍDO em 27/07/2026.** Ganchos: `--overlay-bg` (N4), `--badge-glass-bg`, `--control-accent` (N3), `--chart-grid` (G3), `--icon-calendar`/`--icon-chevron` (N1) — todos inicializados com o valor atual | ❌ Não |
 | **3** | Paleta escura: as 9 famílias de §8.20.3 | ❌ Não |
 | **4** | **Regras estruturais do escuro** (categoria nova): borda nos filtros/botões do topo (F1), P3, B4 | ❌ Não |
@@ -839,7 +839,23 @@ Validação: sintaxe dos dois JS conferida com `new Function()`; nenhuma referê
 
 **Validação:** comparação programática contra `HEAD` confirmou que os 2 `data:` URI ficaram **byte a byte idênticos** (um caractere trocado quebraria o ícone silenciosamente); os 4 valores literais conferidos um a um contra a origem, e os tokens de origem (`--border-subtle`, `--primary`, `--text-main`) permanecem intactos; sintaxe JS e balanceamento de chaves do CSS verificados.
 
-**Ponto de parada seguro atingido.** Com as Fases 1a e 2 concluídas, o terreno está preparado: a partir daqui o modo escuro pode ser ligado sem que nenhuma regra de CSS precise ser reescrita — só valores de token, mais as regras estruturais da Fase 4 (F1). **Pendente:** validação visual e `clasp push`.
+**Ponto de parada seguro atingido.** Com as Fases 1a e 2 concluídas, o terreno está preparado: a partir daqui o modo escuro pode ser ligado sem que nenhuma regra de CSS precise ser reescrita — só valores de token, mais as regras estruturais da Fase 4 (F1). Validado visualmente pelo usuário. Commit `609518e`.
+
+**Fase 1b — concluída em 27/07/2026.** Primeira fase que **altera o modo claro**, com as duas decisões de fundo aprovadas explicitamente pelo usuário.
+
+**Sombras (V1/F2) — decisão: consolidar na escada.** As 8 sombras com cor literal passaram a usar a escada declarada, mais um token novo `--shadow-accent` para o brilho azul da coluna "hoje" da Escala (que é cor, não profundidade, e por isso fica fora da escada neutra). Seis das oito ficaram visualmente idênticas ou imperceptíveis — cinco delas só trocavam `rgba(0,0,0)` por `rgba(3,7,18)` a 4–5% de opacidade. **Duas mudaram de verdade:** `.btn-top-action:hover` e `.plan-card:hover` ganharam sombra mais difusa ao adotar `--shadow-md`. Alternativa descartada: preservar os valores exatos criando 5 tokens de uso único, o que enshrinaria desvios ad-hoc de sessões passadas em vez de eliminá-los.
+
+**Botão primário (B1) — decisão: alinhar com a marca.** `.btn.primary` usava `var(--sidebar-active-bg)` (`#2E323C`) como fundo e `var(--primary-hover)` no hover: **duas famílias no mesmo botão**. Pior, o sistema tinha **dois botões primários com cores base diferentes** — `.btn-create` já usava `--primary` (`#030712`). Corrigido para `--primary`/`--primary-hover`, igual a `.btn-create`.
+
+> **Achado durante a execução:** `.save-btn` ("Salvar Cartão", painel de detalhe do Kanban) tinha **exatamente o mesmo defeito** — fundo de `--sidebar-active-bg`, hover de `--primary-hover`. Foi corrigido junto, e isso era **obrigatório, não opcional**: antes da correção `.btn.primary` e `.save-btn` combinavam em `#2E323C` e só `.btn-create` destoava; corrigir apenas o `.btn.primary` teria *movido* a inconsistência em vez de resolvê-la, deixando o "Salvar Cartão" como único primário em cinza. Com os três alinhados, `--sidebar-active-bg` passou a ser usado **apenas pela navegação** (`.menu-item.active`), que é o seu propósito.
+
+**Fósseis da paleta antiga (V2/V3).** Valores presos desde a recalibração da paleta para a escada Menta/Dourado/Tijolo (§8.7), agora migrados: `#dc2626` → `var(--danger)` (mensagem de erro, `falha()`); `#0f766e` → `var(--success-text)` ("Versão Atual" no modal de revisão, `View_Documentos.html`); `#16a34a` → `var(--success)` (feedback verde do botão de confirmação); `#2563eb` → `var(--accent)` em `linkA()` — como os dois ramos do ternário passaram a usar a mesma cor, o ternário de cor foi eliminado.
+
+**Outros:** `--hover-wash` criado para o hover do botão "adicionar cartão" sobre a coluna do Kanban (K1) — precisa ser translúcido porque a superfície de baixo é colorida, então um `--bg-hover` opaco não serve; `color-scheme: light` declarado no `:root` (N2/V6), garantindo que quem usa o SO em modo escuro não receba controles nativos escuros dentro da interface clara.
+
+**Validação:** nenhuma sombra com cor literal restante; nenhum fóssil de paleta fora de comentários; auditoria de tokens confirmou **139 declarados, 118 usados via `var()`, zero usados-mas-não-declarados**; sintaxe JS e balanceamento de chaves do CSS verificados.
+
+**A conferir visualmente (esta fase muda aparência):** botões primários em geral ("Salvar Documento", "Enviar PDF", "Entendi", "Salvar Cartão") — devem estar pretos como os botões "Novo"; hover dos botões redondos do topo e dos cards de Plano de Ação (sombra mais difusa); mensagens de erro; "Versão Atual" no modal de revisão de documento; hover do "adicionar cartão" no Kanban; coluna "hoje" da Escala Semanal.
 
 ---
 
