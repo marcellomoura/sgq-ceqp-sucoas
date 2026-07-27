@@ -1219,6 +1219,16 @@
   .matrix-table th, .matrix-table td { height: 100px; text-align: center; font-weight: 700; border-radius: var(--radius-sm); font-size: 13.5px; width: 16%; vertical-align: middle; padding: 4px; }
   .matrix-table tr { break-inside: avoid; page-break-inside: avoid; }
   .cell-axis { background: var(--bg-card); color: var(--text-main); font-size: var(--fs-xs); border: 1px solid var(--border-color); }
+  /* No escuro o eixo é o único elemento da matriz que acompanha o tema: as 4
+     cores do heatmap ficam idênticas nos dois temas de propósito (precisam
+     preservar a ordem perceptual baixo→crítico e ainda vão para dentro do
+     PDF, ver §8.20). Com --bg-card o eixo virava quase preto ao lado de
+     células claras e saturadas, e o contraste entre os dois destoava.
+     --bg-subtle é o degrau logo acima do cartão na escada de superfícies:
+     aproxima o eixo do heatmap sem sair da paleta escura.
+     Só a Matriz usa .cell-axis (11 usos, todos em View_Riscos.html), e o PDF
+     não é afetado porque o onclone da captura remove o data-theme. */
+  [data-theme="dark"] .cell-axis { background: var(--bg-subtle); }
   /* Heatmap alinhado à escada de nível: Baixo, Médio, Alto, Crítico. */
   .cell-green  { background: var(--risk-low-bg); color: var(--risk-low-text); border: 1px solid var(--risk-low-border); }
   .cell-yellow { background: var(--risk-med-bg); color: var(--risk-med-text); border: 1px solid var(--risk-med-border); }
