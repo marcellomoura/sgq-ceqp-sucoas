@@ -873,3 +873,17 @@ Os 4 gráficos "por Membro" do Painel de Indicadores (Kanban ×2, Capacitações
 Duas funções novas consomem esse mapa: `corMembroPorNome()` (classe, pros avatares — trocou `corPastelPorNome()` em 4 lugares: lista de Membros do Kanban, lista de Membros e Escala/Férias em Pessoas, avatar do usuário logado na sidebar) e `corMembroHex()` (hex puro, pros 4 gráficos — trocou o cálculo por posição, removendo os aliases `chartColors`/`chartColorsCap`/`chartColorsVt` que ficaram sem uso). `corPastelPorNome`/`corPastelHex`/`corLabel()` (etiquetas do Kanban) não foram tocados — continuam servindo as etiquetas exatamente como antes, sem nenhuma ligação com a lista de membros.
 
 Membro inativo/histórico (não está em `membrosOrdenados()`, ex.: responsável de um cartão arquivado antigo) cai no hash puro sem garantia de colisão — caso raro, documentado, nunca quebra. Acima de 12 membros ativos, repetição de cor volta a ser inevitável (limite físico da paleta) — mesma limitação de antes, não uma regressão.
+
+### Correção — texto invisível no botão dos modais de confirmação (27/07/2026)
+
+**Regressão introduzida pela própria oitava rodada**, reportada pelo usuário ao testar em produção depois do `clasp push`: o botão de confirmar dos modais aparecia com texto vermelho sobre fundo dourado ("Inativar") ou **sem texto visível** ("Excluir", vermelho sobre vermelho).
+
+**Causa:** a oitava rodada corrigiu 8 botões que usavam a classe errada (`class="btn btn-danger"` → `class="btn danger"`). A correção estava certa, mas `#btn-confirmar-excluir` (`View_Comum.html:44`) é **o único dos 8 que também recebe estilo inline** — de `showConfirm()` (`JS_Utilitarios.html`). Enquanto a classe não existia, nenhuma regra de cor se aplicava e o texto ficava na cor padrão do navegador; o fundo vinha do inline. **Funcionava por acidente.** Ao ativar `.btn.danger` (`CSS.html:878`), que é um botão *fantasma* (`background: var(--bg-card); color: var(--danger); border: 1px solid var(--danger-border)`), o texto passou a ser vermelho — enquanto `showConfirm()` sobrescrevia inline **apenas `background` e `borderColor`**, nunca `color`.
+
+Afetava os quatro estados do mesmo botão: Excluir (vermelho/vermelho), Arquivar e Restaurar (vermelho/dourado) e o feedback de sucesso (vermelho/verde, este ainda não observado pelo usuário).
+
+**Correção:** uma linha em `showConfirm()` — `btn.style.color = 'var(--text-inverse)'`, ao lado das duas sobrescritas que já existiam. Segue a convenção já estabelecida para botão sólido colorido no sistema (`.btn.success` e `.btn-action-icon`: fundo colorido + texto inverso) e cobre os quatro estados de uma vez. Verificado que os outros 7 botões da oitava rodada **não** recebem estilo inline, então nenhum outro foi afetado.
+
+**Ressalva registrada:** branco sobre o dourado `#C99A2E` dá ~2,6:1 de contraste, abaixo do WCAG AA. Isso **já é característica da paleta atual** (`.btn.success`, branco sobre menta, dá ~2,9:1) e não foi introduzido aqui — corrigir exigiria recalibrar a paleta de botões sólidos, o que afeta várias telas e ficou fora do escopo desta correção.
+
+**Lição:** corrigir um seletor que estava errado **ativa regras que estavam dormentes**. Sempre que um typo de classe for corrigido, verificar se o elemento também recebe `style` inline — a regra recém-ativada pode brigar com o inline e só sobrescrever parte das propriedades. É a mesma classe de colisão registrada nos achados B1/B3 de §8.20.

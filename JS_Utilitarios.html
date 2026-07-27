@@ -350,7 +350,14 @@ function showConfirm(msg, cb, opts) {
   const btn = $id('btn-confirmar-excluir');
   btn.innerText = opts.confirmLabel || cfg.label;
   btn.dataset.loadingText = opts.loadingText || 'A processar...';
+  // O botão é .btn.danger no HTML — um botão "fantasma" (fundo claro, texto e
+  // borda vermelhos). Aqui ele vira sólido, então o texto PRECISA ser
+  // sobrescrito junto com o fundo: sem esta linha o texto fica vermelho sobre
+  // vermelho (Excluir, invisível), vermelho sobre dourado (Arquivar/Restaurar)
+  // e vermelho sobre verde (feedback de sucesso, ~linha 970). Mesma convenção
+  // de .btn.success e .btn-action-icon: fundo colorido + texto inverso.
   btn.style.background = cfg.cor; btn.style.borderColor = cfg.cor;
+  btn.style.color = 'var(--text-inverse)';
   $id('confirm-box').style.borderTopColor = cfg.cor;
   $id('confirm-icon-wrap').style.background = cfg.bg;
   const svg = $id('confirm-icon'); svg.setAttribute('stroke', cfg.cor); svg.innerHTML = cfg.icon;
