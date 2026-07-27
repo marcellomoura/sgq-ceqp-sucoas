@@ -784,7 +784,7 @@ Inverter tudo mecanicamente produz resultado ruim — cada família tem regra pr
 | **3** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Paleta escura: as 9 famílias de §8.20.3 | ❌ Não |
 | **4** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. **Regras estruturais do escuro** (categoria nova): recorte nos filtros/botões do topo (F1), P3, B4 | ❌ Não |
 | **5** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Infra: `data-theme`, `localStorage`, toggle, `theme-color` (N8), **anti-flash no `<head>`** | ❌ Não |
-| **6** | Gráficos: descongelar as 3 constantes; **cache de `corVar()` invalidado no toggle** (V5); re-render (G2); sincronizar G5/K3; aplicar `--chart-grid` | ⚠️ Risco técnico |
+| **6** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Gráficos: descongelar as constantes; **cache de `corVar()` invalidado no toggle** (V5); re-render (G2); G5/K3; `--chart-grid` | ⚠️ Risco técnico |
 | **7** | PDF/export: forçar tema claro em `_capturarElementoComoImg()` com `try/finally` (N5); `_envelopeHtml()` segue com hex literais | ⚠️ Risco técnico |
 | **8** | Validação: WCAG AA; **contraste interno de família (P1)**; 12 tons lado a lado; 8 telas + modais; os 5 PDFs; Kanban com volume real | — |
 
@@ -908,7 +908,21 @@ Descartados após análise: `.btn-create` e `.btn.primary` (preenchimento sólid
 
 **`aplicarTema()` é a fonte única da verdade** para troca de tema — qualquer coisa que precise reagir (redesenhar gráficos, na Fase 6) deve ser pendurada ali, não em listener paralelo.
 
-⚠️ **Estado intermediário conhecido:** entre esta fase e a Fase 6, alternar o tema deixa os gráficos com as cores do tema anterior — inclusive as 4 roscas com anel branco (achado G2). Não validar visualmente o Painel de Indicadores antes da Fase 6.
+⚠️ *Estado intermediário (resolvido pela Fase 6, a seguir): entre as duas fases, alternar o tema deixava os gráficos com as cores do tema anterior.*
+
+**Fase 6 — concluída em 27/07/2026.** Fecha o único lugar da interface que não acompanha o tema sozinho: o `canvas`.
+
+**Constantes viraram funções.** `CHART_TOOLTIP_BASE` → `chartTooltipBase()`, `CHART_SCALES_BASE` → `chartScalesBase()` e `PALETA_PASTEL_HEX` → `paletaPastelHex()`. Como `const` de topo de módulo, as cores eram resolvidas **uma vez, na carga da página**, e ficavam congeladas no tema inicial. **12 call sites** atualizados (6 de tooltip + 6 de scales, em `JS_Kanban`/`JS_Capacitacoes`/`JS_VisitasTecnicas`) mais os 3 consumidores da paleta, com verificação de que nenhuma referência órfã sobrou — errar um deles daria `undefined` no Chart.js e o gráfico simplesmente não renderizaria.
+
+**Cache em `corVar()` (V5).** Sem ele, tornar a paleta uma função seria uma **regressão de performance real**: `corPastelHex()` roda por etiqueta/cartão e `_mapaCoresMembros()` por avatar, então um Kanban cheio faria milhares de `getComputedStyle` por render. Com cache, 500 chamadas viram 1 leitura — o sistema fica **mais rápido do que era antes** desta fase. A invalidação (`limparCacheCores()`) acontece **dentro de `aplicarTema()`**, no mesmo ponto que troca o atributo, nunca num listener paralelo — senão os gráficos poderiam ser redesenhados com valores do tema anterior. `_paletaPastel` foi declarado junto do cache, e não ao lado de `paletaPastelHex()`, para que `limparCacheCores()` não possa esbarrar na TDZ do `let`.
+
+**Redesenho (G2).** `retematizarGraficos()` é chamado por `aplicarTema()` e delega a `renderIndicadores()` — o ponto de entrada único dos gráficos, que já valida o Chart.js, relê o filtro de membro e chama os três grupos, cada um destruindo e recriando suas instâncias. Guarda: só redesenha se alguma instância já existir, porque na carga `aplicarTema()` roda no `DOMContentLoaded`, antes de os dados chegarem e do Painel montar. Sem este redesenho, o sintoma mais visível seriam as **4 roscas com anel branco** sobre cartão escuro — o espaçamento entre fatias é um anel pintado em `--bg-card`.
+
+**G5 resolvido pelo mesmo caminho:** redesenhar pelo `renderIndicadores()` reconstrói também as legendas em HTML, onde a cor de fundo do avatar é inline — que era exatamente o descasamento apontado (fundo congelado + texto em token).
+
+**K3 não precisou de nada — o achado estava superestimado.** As etiquetas do Kanban usam `LABELS_DISPONIVEIS`, cujas cores já são `var(--tag-*)`, e `var()` **resolve normalmente em `style=""` no DOM** (só canvas e PDF é que não resolvem). As etiquetas sem cor curada caem em `corPastelPorNome()`, que devolve a classe `.avatar-pastel-N` — tokenizada na Fase 1a. Os dois caminhos já eram theme-aware.
+
+**Nota sobre `_mapaCoresMembros()`:** continua recalculando o mapa a cada avatar. Não foi alterado nesta fase — com o cache de `corVar()`, o custo caiu para aritmética pura, e mexer na função exigiria decidir quando invalidar (a lista de membros muda em runtime), risco desnecessário aqui.
 
 ---
 

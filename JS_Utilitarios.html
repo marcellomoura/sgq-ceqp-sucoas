@@ -60,8 +60,26 @@ var capMesChartInst = null, capModalidadeChartInst = null, capMembroChartInst = 
 // o valor explicitamente. Mantém os gráficos sincronizados com a paleta do
 // CSS.html sem duplicar cores em hex; chamado depois que CSS.html já carregou
 // (script incluído no fim do body, depois do <style>).
+// CACHE: sem ele, cada chamada é um getComputedStyle novo — e isto roda em
+// caminho quente (corPastelHex por etiqueta/cartão, _mapaCoresMembros por
+// avatar). Com dezenas de cartões viravam milhares de leituras por render.
+// O cache é limpo em limparCacheCores(), chamado por aplicarTema() — é o
+// único momento em que o valor de um token pode mudar.
+let _cacheCorVar = {};
+// Declarado aqui junto do cache, e não lá embaixo com paletaPastelHex(), para
+// que limparCacheCores() nunca possa esbarrar na TDZ do let.
+let _paletaPastel = null;
 function corVar(nome) {
-  return getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+  let v = _cacheCorVar[nome];
+  if (v === undefined) {
+    v = getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+    _cacheCorVar[nome] = v;
+  }
+  return v;
+}
+function limparCacheCores() {
+  _cacheCorVar = {};
+  _paletaPastel = null;
 }
 
 // Mesma ideia de corVar(), mas para os gradientes translúcidos dos gráficos de
@@ -77,31 +95,44 @@ function corVarRgba(nome, alpha) {
 
 // Configuração base compartilhada pelos gráficos Chart.js do Painel de
 // Indicadores (Kanban e Capacitações), para manter o mesmo estilo visual.
-const CHART_TOOLTIP_BASE = {
-  backgroundColor: corVar('--text-main'), padding: 11, cornerRadius: 8,
-  titleFont: { size: 12, family: "'Inter',sans-serif" },
-  bodyFont:  { size: 11, family: "'Inter',sans-serif" },
-  titleColor: corVar('--text-inverse'), bodyColor: corVar('--border-strong'),
-  boxPadding: 4, displayColors: true
-};
+//
+// FUNÇÃO, não constante: como const de topo de módulo estas cores eram
+// resolvidas UMA vez, na carga da página, e ficavam congeladas no tema
+// inicial — trocar de tema não as atualizava. Avaliadas a cada chamada (com
+// corVar em cache), acompanham o tema vigente. Ver §8.20 (N6/G4).
+//
+// O tooltip se auto-inverte por estar escrito em termos semânticos: fundo em
+// --text-main e título em --text-inverse. No claro é balão escuro com texto
+// claro; no escuro, balão claro com texto escuro — o correto nos dois casos.
+function chartTooltipBase() {
+  return {
+    backgroundColor: corVar('--text-main'), padding: 11, cornerRadius: 8,
+    titleFont: { size: 12, family: "'Inter',sans-serif" },
+    bodyFont:  { size: 11, family: "'Inter',sans-serif" },
+    titleColor: corVar('--text-inverse'), bodyColor: corVar('--border-strong'),
+    boxPadding: 4, displayColors: true
+  };
+}
 // CHART_LEGEND_BASE e CHART_DATALABELS_BASE foram removidas em 27/07/2026:
 // eram código morto (zero consumidores). Os 10 gráficos usam
 // legend: { display: false } e montam a legenda em HTML (.chart-legend-*,
 // .tl-donut-legend-list), e cada rosca declara seu próprio datalabels inline.
 // Ver §8.20, achado G4.
-const CHART_SCALES_BASE = {
-  y: {
-    beginAtZero: true,
-    ticks: { precision: 0, font: { family: "'Inter',sans-serif", size: 11 }, color: corVar('--text-muted') },
-    // --chart-grid, não --border-subtle: mesmo valor hoje, mas token próprio
-    // porque no modo escuro grade de gráfico e borda de UI divergem (§8.20 G3).
-    grid: { color: corVar('--chart-grid'), borderDash: [4, 4] }, border: { display: false }
-  },
-  x: {
-    grid: { display: false }, border: { display: false },
-    ticks: { font: { family: "'Inter',sans-serif", size: 11, weight: '500' }, color: corVar('--text-secondary'), maxRotation: 30 }
-  }
-};
+function chartScalesBase() {
+  return {
+    y: {
+      beginAtZero: true,
+      ticks: { precision: 0, font: { family: "'Inter',sans-serif", size: 11 }, color: corVar('--text-muted') },
+      // --chart-grid, não --border-subtle: mesmo valor no claro, mas token
+      // próprio porque no escuro grade de gráfico e borda de UI divergem (G3).
+      grid: { color: corVar('--chart-grid'), borderDash: [4, 4] }, border: { display: false }
+    },
+    x: {
+      grid: { display: false }, border: { display: false },
+      ticks: { font: { family: "'Inter',sans-serif", size: 11, weight: '500' }, color: corVar('--text-secondary'), maxRotation: 30 }
+    }
+  };
+}
 
 // Paleta unificada (ver CSS.html --success/--warning/--danger/--info):
 // Menta=sucesso, Dourado=aviso, Tijolo=perigo, Lavanda=info/andamento, Pêssego=Alto.
@@ -172,12 +203,21 @@ function iniciaisMembro(nome) {
 // gráfico Chart.js), não uma classe. Lido ao vivo via corVar() (mesmos tokens
 // --tag-*-text usados pelas classes .avatar-pastel-N) em vez de hex fixo, para
 // funcionar tanto em canvas (que não resolve var() sozinho) quanto em DOM.
-const PALETA_PASTEL_HEX = [
-  corVar('--tag-lavender-text'), corVar('--tag-mint-text'), corVar('--tag-rose-text'),
-  corVar('--tag-sky-text'), corVar('--tag-peach-text'), corVar('--tag-gold-text'),
-  corVar('--tag-brick-text'), corVar('--tag-lime-text'), corVar('--tag-turquoise-text'),
-  corVar('--tag-orchid-text'), corVar('--tag-slate-text'), corVar('--tag-cinnamon-text')
-];
+// FUNÇÃO, não constante: como const de topo de módulo o array era montado uma
+// vez na carga e congelava no tema inicial. O resultado fica em cache até
+// limparCacheCores() (chamado por aplicarTema), porque isto é caminho quente —
+// corPastelHex roda por etiqueta/cartão e _mapaCoresMembros por avatar.
+function paletaPastelHex() {
+  if (!_paletaPastel) {
+    _paletaPastel = [
+      corVar('--tag-lavender-text'), corVar('--tag-mint-text'), corVar('--tag-rose-text'),
+      corVar('--tag-sky-text'), corVar('--tag-peach-text'), corVar('--tag-gold-text'),
+      corVar('--tag-brick-text'), corVar('--tag-lime-text'), corVar('--tag-turquoise-text'),
+      corVar('--tag-orchid-text'), corVar('--tag-slate-text'), corVar('--tag-cinnamon-text')
+    ];
+  }
+  return _paletaPastel;
+}
 function _hashPastel(nome) {
   const s = String(nome || '');
   let hash = 0;
@@ -189,7 +229,7 @@ function _hashPastel(nome) {
 // também etiquetas do Kanban), sem precisar guardar a cor em nenhum lugar.
 function corPastelPorNome(nome) { return 'avatar-pastel-' + (_hashPastel(nome) + 1); }
 // Mesma escolha de corPastelPorNome(), mas devolve o hex puro.
-function corPastelHex(nome) { return PALETA_PASTEL_HEX[_hashPastel(nome)]; }
+function corPastelHex(nome) { return paletaPastelHex()[_hashPastel(nome)]; }
 
 // Monta um mapa nome→índice de cor (0-11) para TODOS os membros ativos de uma
 // vez: tenta o hash de cada um (_hashPastel) e, se colidir com alguém que já
@@ -202,7 +242,7 @@ function corPastelHex(nome) { return PALETA_PASTEL_HEX[_hashPastel(nome)]; }
 function _mapaCoresMembros() {
   const mapa = {};
   const usados = new Set();
-  const total = PALETA_PASTEL_HEX.length;
+  const total = paletaPastelHex().length;
   membrosOrdenados().forEach(function (m) {
     let idx = _hashPastel(m.name);
     let tentativas = 0;
@@ -228,7 +268,7 @@ function corMembroPorNome(nome) {
 // Mesma lógica, hex puro — usada nos 4 gráficos "por Membro" do Painel.
 function corMembroHex(nome) {
   const idx = _mapaCoresMembros()[nome];
-  return idx !== undefined ? PALETA_PASTEL_HEX[idx] : corPastelHex(nome);
+  return idx !== undefined ? paletaPastelHex()[idx] : corPastelHex(nome);
 }
 
 // Renderiza o perfil do usuário logado no rodapé da barra lateral.
@@ -793,6 +833,35 @@ function aplicarTema(tema) {
     btn.setAttribute('title', rotulo);
     btn.setAttribute('aria-label', rotulo);
   }
+
+  // O cache de cores precisa ser invalidado AQUI, no mesmo ponto que troca o
+  // atributo — nunca num listener separado, senão os gráficos podem ser
+  // redesenhados com os valores do tema anterior.
+  limparCacheCores();
+  retematizarGraficos();
+}
+
+// Canvas não resolve var(): diferente do resto da interface, os gráficos não
+// mudam de cor sozinhos quando o tema troca — precisam ser redesenhados. Sem
+// isto, o sintoma mais visível são as 4 roscas, cujo espaçamento entre fatias
+// é um anel pintado na cor do cartão: elas ficariam com anel branco sobre
+// cartão escuro. Ver §8.20 (G2).
+function retematizarGraficos() {
+  // Só redesenha o que já existe. Na carga, aplicarTema() roda no
+  // DOMContentLoaded, antes de os dados chegarem e do Painel montar — aí não
+  // há nada a retematizar, e chamar renderIndicadores() seria inútil.
+  const jaDesenhou = [
+    statusChartInst, priorityChartInst, memberChartInst, memberConcluidoChartInst,
+    capMesChartInst, capModalidadeChartInst, capMembroChartInst, capTemaChartInst
+  ].some(Boolean);
+  if (!jaDesenhou) return;
+
+  // renderIndicadores() é o ponto de entrada único dos gráficos: já valida o
+  // Chart.js, relê o filtro de membro e chama os três grupos (Kanban,
+  // Capacitações e Visitas), que destroem e recriam suas instâncias. Redesenhar
+  // por ele também reconstrói as legendas em HTML, onde a cor do avatar é
+  // inline — resolvendo o descasamento do achado G5.
+  if (typeof renderIndicadores === 'function') renderIndicadores();
 }
 
 function alternarTema() {

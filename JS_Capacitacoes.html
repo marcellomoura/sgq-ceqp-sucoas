@@ -280,8 +280,8 @@ function renderGraficosCapacitacoes(fid) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { display: false } },
-        scales: CHART_SCALES_BASE
+        plugins: { legend: { display: false }, tooltip: { ...chartTooltipBase(), callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { display: false } },
+        scales: chartScalesBase()
       }
     });
   }
@@ -296,8 +296,8 @@ function renderGraficosCapacitacoes(fid) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { display: false } },
-      scales: CHART_SCALES_BASE
+      plugins: { legend: { display: false }, tooltip: { ...chartTooltipBase(), callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { display: false } },
+      scales: chartScalesBase()
     }
   });
 
@@ -311,8 +311,8 @@ function renderGraficosCapacitacoes(fid) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { ...CHART_TOOLTIP_BASE, callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { display: false } },
-      scales: CHART_SCALES_BASE
+      plugins: { legend: { display: false }, tooltip: { ...chartTooltipBase(), callbacks: { label: ctx => ` ${ctx.parsed.y} capacitação(ões)` } }, datalabels: { display: false } },
+      scales: chartScalesBase()
     }
   });
 
