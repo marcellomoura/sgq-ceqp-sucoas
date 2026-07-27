@@ -1235,6 +1235,24 @@ O `<textarea>` do fallback não pode usar `display:none` nem `visibility:hidden`
 
 **A validar em produção:** que a cópia realmente funcione dentro do iframe. Se não funcionar, reverter é desfazer os commits desta seção — nenhum outro comportamento depende dela.
 
+### 8.26 KPIs do Acompanhamento contavam planos de riscos superados (2026-07-27)
+
+**Sintoma:** superar um risco tirava seus planos da lista de Acompanhamento, mas não dos três cartões de KPI (Concluídas / Em Andamento / Atrasadas). No limite, "Nenhum plano ativo encontrado" convivia com contadores diferentes de zero.
+
+**Causa:** dentro da **mesma função** `renderAcompanhamento`, os KPIs varriam `state.plans` inteiro enquanto a lista, oito linhas abaixo, filtrava por `ativosRiscosMap` (riscos com `status !== 'Superado'`). A exclusão de superados foi aplicada à lista e esquecida nos contadores.
+
+Havia uma **segunda divergência** na mesma origem: os KPIs também ignoravam os filtros de Unidade e Status (`f-acomp-unidade` / `f-acomp-status`), que a lista aplica — trocar a unidade mudava a lista e não os números.
+
+**Correção:** os três KPIs passaram a contar sobre `filtrados`, a mesma base da lista, o que resolve as duas divergências de uma vez. O cálculo desceu para depois da montagem de `filtrados` (que subiu), mas **antes** do `return` de lista vazia — se ficasse depois, o caso "nenhum plano" sairia da função sem atualizar os cartões e deixaria na tela os números da renderização anterior, uma versão pior do bug original.
+
+**Decisão do usuário — KPIs acompanham os dois filtros (opção A).** A alternativa avaliada era os KPIs seguirem só o filtro de Unidade, ignorando o de Status, com o argumento de que os três cartões *são* uma quebra por status e o filtro já responde essa pergunta. Optou-se por coerência total com a lista: **o que se conta é exatamente o que se vê**.
+
+Consequência esperada, documentada aqui e em comentário no código para não ser "corrigida" por engano: **filtrar por Status = "Concluído" zera os cartões "Em Andamento" e "Atrasadas"**, já que a base passa a conter só concluídos. É o recorte pedido, não um defeito.
+
+**Por que só apareceu agora:** planos de versões antigas ficam com status `Substituído`, que não entra em nenhum dos três contadores — o número nunca foi inflado por histórico de revisão. O vazamento era exclusivamente pelos riscos superados, e antes da §8.21/§8.22 quase não se superavam riscos.
+
+Sem custo novo: os `filter` percorrem um subconjunto em vez de `state.plans`, o `ativosRiscosMap` já era construído ali, e os selects já chamavam `renderAcompanhamento()` no `onchange` — nenhum listener novo.
+
 ---
 
 ## 9. Próximas Melhorias
