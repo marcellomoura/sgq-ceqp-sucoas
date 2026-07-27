@@ -1712,4 +1712,74 @@
   .plan-single-line .plan-field-label {
     font-size: 10px;
   }
+
+  /* ==========================================
+     MODO ESCURO — ajustes ESTRUTURAIS
+     ==========================================
+     Único lugar do modo escuro que muda PROPRIEDADE, não valor de token.
+
+     O problema: vários componentes deste sistema não têm borda — são
+     definidos apenas pela sombra (`border: none` + `box-shadow`). Isso
+     funciona no claro, onde uma pílula branca sobre fundo cinza ganha
+     recorte com uma sombra sutil. No escuro **sombra praticamente não
+     existe**: uma sombra escura sobre fundo escuro não recorta nada, e
+     esses componentes perderiam a definição.
+
+     Por que ANEL (box-shadow) e não `border`: borda real ocuparia espaço
+     nos elementos que não têm width/height explícitos (as pílulas de
+     filtro, as linhas de lista, o modal), empurrando o layout em 2px. O
+     `box-shadow` de raio zero desenha a mesma hairline sem afetar layout
+     nenhum — e, de quebra, substitui naturalmente a sombra que deixou de
+     funcionar.
+
+     Atenção ao mexer aqui: `box-shadow` NÃO faz merge entre declarações —
+     é substituído por inteiro. Por isso cada estado de :hover que declara
+     a própria sombra precisa reaplicar o anel explicitamente, senão o
+     anel some justamente ao passar o mouse.
+
+     Ver DOCUMENTACAO.md §8.20 (F1, P3).
+  ========================================== */
+
+  /* Filtros e ações do topo — pílulas da cor do cartão sobre o fundo do app. */
+  [data-theme="dark"] .filter-select,
+  [data-theme="dark"] .filter-input,
+  [data-theme="dark"] .filter-date-group,
+  [data-theme="dark"] .btn-top-action,
+  /* Cartões de KPI (o do Painel precisa do #id para vencer a regra base). */
+  [data-theme="dark"] .kpi-card,
+  [data-theme="dark"] #view-indicadores .tl-kpi-card,
+  /* As 10 classes de linha de lista — o componente mais repetido do sistema. */
+  [data-theme="dark"] .doc-row,
+  [data-theme="dark"] .membro-row,
+  [data-theme="dark"] .escala-row,
+  [data-theme="dark"] .vt-row,
+  [data-theme="dark"] .ferias-row,
+  [data-theme="dark"] .arq-row,
+  [data-theme="dark"] .risco-row,
+  [data-theme="dark"] .unid-row,
+  [data-theme="dark"] .log-row,
+  [data-theme="dark"] .cap-row,
+  /* Modal: no claro a --shadow-lg é que o descola do fundo. */
+  [data-theme="dark"] .modal-box {
+    box-shadow: 0 0 0 1px var(--border-color);
+  }
+
+  /* Estados de hover que declaram box-shadow próprio: reaplicam o anel (mais
+     forte) porque a propriedade é substituída por inteiro, não somada. */
+  [data-theme="dark"] .btn-top-action:hover,
+  [data-theme="dark"] .grid-row-hover:hover {
+    box-shadow: 0 0 0 1px var(--border-strong);
+  }
+
+  /* NÃO recebem anel, deliberadamente:
+     - .btn-create e .btn.primary: são preenchimento sólido colorido, o
+       próprio fill já recorta contra o fundo;
+     - .card (Kanban): a definição vem da escada de superfícies — o cartão
+       (--bg-card) é mais claro que a coluna (--kanban-list-bg). Ver §8.20 K2;
+     - .tl-chart-card, .table-wrap, .legend-row: já têm borda de verdade.
+
+     .btn:disabled mantém opacity: 0.5 — analisado e descartado como problema:
+     o efeito é simétrico nos dois temas (tinta escura a 50% sobre branco e
+     tinta clara a 50% sobre escuro chegam ao mesmo cinza médio), então não há
+     razão para um valor diferente aqui. Ver §8.20 (B4). */
 </style>

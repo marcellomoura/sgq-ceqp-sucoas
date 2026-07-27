@@ -782,7 +782,7 @@ Inverter tudo mecanicamente produz resultado ruim — cada família tem regra pr
 | **1b** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Mudanças **visíveis**: 8 sombras (V1); fósseis de paleta (V2/V3); F2; K1; `color-scheme` (V6); **correção do B1 + o gêmeo `.save-btn`** | ⚠️ Sim, aprovado |
 | **2** | ✅ **CONCLUÍDO em 27/07/2026.** Ganchos: `--overlay-bg` (N4), `--badge-glass-bg`, `--control-accent` (N3), `--chart-grid` (G3), `--icon-calendar`/`--icon-chevron` (N1) — todos inicializados com o valor atual | ❌ Não |
 | **3** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Paleta escura: as 9 famílias de §8.20.3 | ❌ Não |
-| **4** | **Regras estruturais do escuro** (categoria nova): borda nos filtros/botões do topo (F1), P3, B4 | ❌ Não |
+| **4** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. **Regras estruturais do escuro** (categoria nova): recorte nos filtros/botões do topo (F1), P3, B4 | ❌ Não |
 | **5** | Infra: `data-theme`, `localStorage`, toggle, `theme-color` (N8), **anti-flash no `<head>`**, `prefers-reduced-motion` | ❌ Não |
 | **6** | Gráficos: descongelar as 3 constantes; **cache de `corVar()` invalidado no toggle** (V5); re-render (G2); sincronizar G5/K3; aplicar `--chart-grid` | ⚠️ Risco técnico |
 | **7** | PDF/export: forçar tema claro em `_capturarElementoComoImg()` com `try/finally` (N5); `_envelopeHtml()` segue com hex literais | ⚠️ Risco técnico |
@@ -876,6 +876,23 @@ Validação: sintaxe dos dois JS conferida com `new Function()`; nenhuma referê
 **Distinguibilidade dos 12 tons decorativos.** Medida por ΔE (CIELAB) entre todos os 66 pares da metade escura (a que alimenta os gráficos): mínimo de **13,8** no escuro (peach/cinnamon) contra 19,9 no claro (peach/gold). Fica acima do limiar de 10 para "claramente distinguíveis", mas com margem menor — confirmando a previsão de §8.20.3 de que a gama útil é mais estreita no escuro. **Ainda assim exige conferência visual lado a lado**, porque ΔE não captura tudo.
 
 **Decisões de paleta aplicadas:** tinta da marca invertida (`#030712` → `#e6e8eb`), com o hover continuando a caminhar na direção do fundo (no claro escurecia menos; aqui clareia menos), preservando a gramática de interação; `--text-inverse` invertido de sentido; `--accent-light` invertido de papel (regra que vale para todo token `-light`); as três superfícies que compartilhavam `#f3f4f6` agora divergem; sidebar invertida com pílula ativa clara; sombras mais profundas (`alpha` 0,40–0,55), já que sombra rende pouco no escuro — o que reforça a necessidade da Fase 4.
+
+**Fase 4 — concluída em 27/07/2026.** Único bloco do modo escuro que muda **propriedade**, não valor de token. Inserido no fim do `CSS.html`; **70 linhas inseridas, 0 removidas** — a natureza puramente aditiva da mudança é a garantia de que o modo claro não foi tocado, e os 19 seletores novos são todos prefixados com `[data-theme="dark"]`.
+
+**A varredura ampliou o achado F1.** A auditoria original tinha mapeado 4 componentes definidos apenas por sombra; uma varredura programática (procurando regras com `background` + `box-shadow` e `border: none` ou borda ausente) encontrou **dois grupos a mais**, ambos importantes:
+
+- **As 10 classes de linha de lista** — `.doc-row`, `.membro-row`, `.escala-row`, `.vt-row`, `.ferias-row`, `.arq-row`, `.risco-row`, `.unid-row`, `.log-row`, `.cap-row`. É o componente mais repetido do sistema, presente em praticamente toda tela de listagem.
+- **`.modal-box`** — no claro é a `--shadow-lg` que descola o modal do fundo.
+
+Descartados após análise: `.btn-create` e `.btn.primary` (preenchimento sólido colorido — o próprio fill recorta), `.grid-row-hover:hover` (o `background-color` carrega o feedback), `.card` do Kanban (a definição vem da escada de superfícies, §8.20 K2) e `.tl-chart-card`/`.table-wrap`/`.legend-row` (já têm borda de verdade).
+
+**Anel em vez de borda.** A solução não usa `border`, e sim `box-shadow: 0 0 0 1px` (raio zero = hairline). Motivo: borda real ocuparia espaço nos elementos **sem `width`/`height` explícitos** — as pílulas de filtro, as linhas de lista e o modal —, empurrando o layout em 2px. O `box-shadow` desenha a mesma linha sem afetar layout nenhum e, de quebra, substitui naturalmente a sombra que deixou de funcionar. *(Correção a uma afirmação anterior desta seção: `box-sizing: border-box` só neutraliza o custo da borda quando `width`/`height` estão declarados — vale para `.btn-top-action`, que é 40×40, mas não para os demais.)*
+
+**Armadilha tratada:** `box-shadow` **não faz merge** entre declarações — é substituído por inteiro. Por isso `.btn-top-action:hover` e `.grid-row-hover:hover`, que declaram sombra própria, precisaram reaplicar o anel explicitamente (em `--border-strong`, mais forte), senão o anel sumiria justamente ao passar o mouse. É a mesma classe de problema já registrada na terceira rodada com a propriedade `transition`.
+
+**Especificidade verificada regra a regra:** todas as novas vencem suas bases — inclusive `.tl-kpi-card`, cuja regra base usa `#view-indicadores` e por isso exigiu o ID também no seletor escuro (`[1,2,0]` contra `[1,1,0]`).
+
+**B4 resolvido como não-mudança.** `.btn:disabled { opacity: 0.5 }` foi analisado e mantido: o efeito é **simétrico** nos dois temas — tinta escura a 50% sobre branco e tinta clara a 50% sobre escuro chegam ao mesmo cinza médio. A preocupação levantada na auditoria não se sustentou, e inventar um valor diferente sem poder validá-lo visualmente seria pior do que manter.
 
 ---
 
