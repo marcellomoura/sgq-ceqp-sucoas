@@ -56,6 +56,12 @@
     --overlay-bg: rgba(17,17,24,0.5);
     --badge-glass-bg: rgba(255,255,255,0.92);
     --badge-glass-border: rgba(0,0,0,0.1);
+    /* Fundo das células de eixo da Matriz de Risco (P\I e os rótulos). Token
+       próprio porque não pode seguir a escada de superfícies: as 4 cores do
+       heatmap ao lado não mudam com o tema (vivem em L* 64-83), e a escada
+       escura topa em L* 17 — qualquer degrau dela deixa o eixo destoando.
+       Ver §8.20. No claro é o mesmo branco do cartão. */
+    --matrix-axis-bg: #ffffff;
     /* Lavagem de tinta translúcida para hover sobre superfície colorida (onde
        um fundo opaco como --bg-hover não funciona, ex.: o botão "adicionar
        cartão" sobre a coluna do Kanban). No escuro precisa virar uma lavagem
@@ -257,6 +263,10 @@
     --badge-glass-bg: rgba(22,26,34,0.92);
     /* Borda clara: uma borda preta a 10% sobre fundo escuro é invisível. */
     --badge-glass-border: rgba(230,232,235,0.16);
+    /* L* 31 — bem acima do topo da escada de superfícies (L* 17), para o eixo
+       não destoar do heatmap ao lado, que fica em L* 64-83 e não muda com o
+       tema. Texto --text-main sobre ele dá 7,27:1 (AAA). */
+    --matrix-axis-bg: #414a5a;
     --hover-wash: rgba(230,232,235,0.08);
 
     /* ---- Sidebar: inversão limpa e simétrica ----
@@ -1218,17 +1228,7 @@
   .matrix-table { width: 100%; border-collapse: separate; border-spacing: 4px; break-inside: avoid; page-break-inside: avoid; }
   .matrix-table th, .matrix-table td { height: 100px; text-align: center; font-weight: 700; border-radius: var(--radius-sm); font-size: 13.5px; width: 16%; vertical-align: middle; padding: 4px; }
   .matrix-table tr { break-inside: avoid; page-break-inside: avoid; }
-  .cell-axis { background: var(--bg-card); color: var(--text-main); font-size: var(--fs-xs); border: 1px solid var(--border-color); }
-  /* No escuro o eixo é o único elemento da matriz que acompanha o tema: as 4
-     cores do heatmap ficam idênticas nos dois temas de propósito (precisam
-     preservar a ordem perceptual baixo→crítico e ainda vão para dentro do
-     PDF, ver §8.20). Com --bg-card o eixo virava quase preto ao lado de
-     células claras e saturadas, e o contraste entre os dois destoava.
-     --bg-subtle é o degrau logo acima do cartão na escada de superfícies:
-     aproxima o eixo do heatmap sem sair da paleta escura.
-     Só a Matriz usa .cell-axis (11 usos, todos em View_Riscos.html), e o PDF
-     não é afetado porque o onclone da captura remove o data-theme. */
-  [data-theme="dark"] .cell-axis { background: var(--bg-subtle); }
+  .cell-axis { background: var(--matrix-axis-bg); color: var(--text-main); font-size: var(--fs-xs); border: 1px solid var(--border-color); }
   /* Heatmap alinhado à escada de nível: Baixo, Médio, Alto, Crítico. */
   .cell-green  { background: var(--risk-low-bg); color: var(--risk-low-text); border: 1px solid var(--risk-low-border); }
   .cell-yellow { background: var(--risk-med-bg); color: var(--risk-med-text); border: 1px solid var(--risk-med-border); }
