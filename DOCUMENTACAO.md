@@ -1179,6 +1179,42 @@ Não era regressão da §8.21: a mesma corrida existia antes, só ficava invisí
 
 ---
 
+### 8.23 PDF de Riscos Superados — título duplicado e layout divergente do painel (2026-07-27)
+
+Dois defeitos no relatório `risco-arquivado` (`montarHtmlRiscoArquivadoPdf`, em [JS_Riscos.html](JS_Riscos.html#L1064)), ambos herdados da criação da aba e visíveis desde a renomeação da §8.21.
+
+**1) "Riscos Superados" impresso duas vezes.** O cabeçalho do PDF já imprime o `title` de `CFG_PDF['risco-arquivado']` ([JS_Utilitarios.html](JS_Utilitarios.html#L1291)), e a função ainda prefixava o corpo com `_pdfSecaoTitulo('Riscos Superados')` — mesmo texto, duas vezes seguidas. A chamada foi removida.
+
+Note a assimetria proposital com `montarHtmlMatrizPdf`: **lá** o `_pdfSecaoTitulo('Mapeamento de Riscos')` é legítimo, porque o corpo tem três blocos (matriz, legenda, tabela) e o título separa o terceiro dos anteriores. Superados tem um bloco só — o título do cabeçalho basta. `montarHtmlAcompanhamentoPdf` já seguia essa regra.
+
+**2) Meta do risco saía empilhada, uma linha por campo.** `.risk-title-row` e `.risk-meta` são `display:flex` na tela, e o conversor HTML→PDF do Apps Script não renderiza flex de forma confiável (mesmo problema já documentado para grid). Sem flex, cada filho `<div>` volta a ser bloco e quebra linha sozinho: Macroetapa / Categoria / Causa / Consequência saíam uma embaixo da outra com o separador `|` solto entre elas, e o selo `SUPERADO` descolado do título.
+
+**Correção:** no clone, forçar `display:inline` nos filhos de `.risk-title-row` e `.risk-meta`. É exatamente o tratamento que `montarHtmlAcompanhamentoPdf` já aplicava a `.risk-meta` desde antes — a função de Superados foi escrita por cópia parcial e ficou sem essa parte. `.version-header` também é flex, mas seus filhos são `<span>` (já inline por padrão) e por isso nunca sofreu.
+
+A conversão de `.plan-single-line` (grid → `<table>`, 9 colunas) já estava correta e não foi tocada: conferido que o card de plano da aba Superados tem as mesmas 9 divs do array `widths`.
+
+### 8.24 Kanban — tamanho de fonte do responsável e do meta no cartão (2026-07-27) — EM TESTE
+
+Ajuste visual, um degrau na escala tipográfica, **restrito ao cartão do Kanban**:
+
+| Classe | Antes | Depois |
+|---|---|---|
+| `.card-assignee` (nomes dos responsáveis) | `var(--fs-xs)` = 11px | `var(--fs-sm)` = **12px** |
+| `.card-meta` (idade do cartão, data, comentários) | `var(--fs-2xs)` = 10px | `var(--fs-xs)` = **11px** |
+
+**Por que só a classe, e não o token:** `--fs-xs`/`--fs-2xs` são usados em ~24 regras do sistema (`.status-badge`, `.risk-badge`, `.tag-badge`, `.label-chip`, `.field-label`, `.btn-sm`, `.kpi-label`, células da Matriz…). Mexer no token teria mudado badges e rótulos de módulos inteiros que não estavam em discussão. Já `.card-assignee`, `.card-meta`, `.card-meta-left/right` e `.meta-item` são usadas **exclusivamente** em `renderTasks` ([JS_Kanban.html](JS_Kanban.html#L147)) — a alteração não vaza para nenhum outro módulo. (`.meta-item` tem nome genérico, mas é privada do cartão.)
+
+**Não afeta os PDFs:** `montarHtmlArquivadosPdf` remonta os arquivados como `<table>` a partir de `#archived-list`; nenhum dos 5 relatórios consome as classes `.card-*`.
+
+**Deliberadamente fora deste passo** (avaliado e adiado até ver o resultado na tela):
+
+- `.card-title` continua em `13px` **cru** — é um dos poucos `font-size` literais fora da escala. Subi-lo para `var(--fs-md)` (14px) manteria a hierarquia 14/12/11 e o poria no token de quebra; sem isso, título e responsável ficam a 1px de distância.
+- Ícones seguem em 13px (`.card-assignee svg`) e 12px (`.meta-item svg`), agora 1px menores que o texto ao lado.
+
+**Pontos a observar antes de considerar definitivo:** cartão com 3+ responsáveis (`.card-assignee` não tem `nowrap`; a coluna é `min-width: 280px`) e cartão vencido com "Atrasado" + data + comentários na mesma `.card-meta`, que tem `flex-wrap: wrap` e pode passar a envolver em duas linhas. Se incomodar, a saída preferível é `nowrap` + `ellipsis`, não voltar o tamanho. Reversão = desfazer as duas linhas em [CSS.html](CSS.html#L830).
+
+---
+
 ## 9. Próximas Melhorias
 
 1. **Testes:** extrair lógica pura (`calcularNivelRisco`, `_statusPlano`, `_tarefaArquivada_`, `colIdx_`, `calcularProximaRevisao`) para funções testáveis + suíte com `clasp run`/GAS testing.
