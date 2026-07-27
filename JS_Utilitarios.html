@@ -69,10 +69,15 @@ let _cacheCorVar = {};
 // Declarado aqui junto do cache, e não lá embaixo com paletaPastelHex(), para
 // que limparCacheCores() nunca possa esbarrar na TDZ do let.
 let _paletaPastel = null;
+// Elemento de onde os tokens são lidos. Normalmente é o <html>, mas durante a
+// geração do PDF do Painel aponta para uma sonda invisível marcada com
+// .tema-claro — assim os gráficos são redesenhados com a paleta clara sem que
+// a tela precise trocar de tema. Ver _comGraficosNoTemaClaro().
+let _raizCor = null;
 function corVar(nome) {
   let v = _cacheCorVar[nome];
   if (v === undefined) {
-    v = getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+    v = getComputedStyle(_raizCor || document.documentElement).getPropertyValue(nome).trim();
     _cacheCorVar[nome] = v;
   }
   return v;
@@ -1404,54 +1409,54 @@ function _aposPintar() {
   });
 }
 
-// PDF é papel: sai SEMPRE claro, qualquer que seja o tema da tela. Mas só os
-// relatórios que FOTOGRAFAM a tela (html2canvas) dependem disso — e o custo de
-// forçar o tema é diferente em cada caso, por isso o mapa abaixo.
+// PDF é papel: sai SEMPRE claro, qualquer que seja o tema da tela.
 //
-//   'graficos' — a foto inclui <canvas> (montarHtmlIndicadoresPdf captura os
-//                .tl-chart-grid). Trocar o CSS repinta o DOM mas NÃO o bitmap
-//                já desenhado, então os gráficos precisam ser recriados no
-//                tema claro. É o caso mais caro, e o único que justifica isso.
-//   'dom'      — a foto é só de DOM (montarHtmlMatrizPdf captura .matrix-table
-//                e .legend-row). Basta trocar o atributo: recriar gráficos aqui
-//                seria puro desperdício e prolongaria o piscar sem motivo.
-//   ausente    — não fotografa nada. O corpo vem de clones que usam as classes
-//                da folha isolada do PDF (_envelopeHtml), que tem cores
-//                próprias em hex e é imune ao tema. Nada a fazer.
+// O grosso disso é resolvido pelo onclone em _capturarElementoComoImg(), que
+// força a paleta clara no CLONE que o html2canvas renderiza — sem tocar na
+// tela real. Dos 5 relatórios:
 //
-// Antes este mapa não existia e o tratamento mais caro era aplicado aos cinco
-// relatórios: os três que não fotografam nada trocavam de tema e recriavam os
-// dez gráficos duas vezes à toa, deixando a tela clara por vários segundos.
-const PDF_CAPTURA_TELA = { dashboard: 'graficos', matriz: 'dom' };
-
-// aplicarTema() NÃO grava no localStorage (só alternarTema grava), então a
-// preferência do usuário não é afetada; e o finally garante a volta mesmo se a
-// montagem falhar, para a tela nunca ficar presa no claro.
+//   • archived, acomp, risco-arquivado — não fotografam nada. Montam o corpo a
+//     partir de clones que usam as classes da folha isolada do PDF, que tem
+//     cores próprias em hex e é imune ao tema. Nada a fazer.
+//   • matriz — fotografa .matrix-table e .legend-row, que são DOM puro. O
+//     onclone resolve sozinho. Nada a fazer aqui.
+//   • dashboard — fotografa os .tl-chart-grid, que contêm <canvas>. O
+//     html2canvas copia o BITMAP já desenhado, e bitmap não obedece a CSS:
+//     este é o único caso em que os gráficos precisam mesmo ser redesenhados
+//     antes da foto.
+//
+// Por que não trocar o tema da página inteira (como na primeira versão): o
+// html2canvas com scale 2 leva segundos, e a tela ficava clara esse tempo todo.
+// Aqui, em vez disso, os tokens claros são lidos de uma SONDA invisível marcada
+// com .tema-claro: os gráficos são redesenhados na paleta clara enquanto o
+// restante da interface continua escuro, sem nenhuma troca de tema.
 function _montarCorpoPdfEmTemaClaro(tipo, montarFn) {
-  const modo = PDF_CAPTURA_TELA[tipo];
-  if (!modo || temaAtual() !== 'dark') return Promise.resolve(montarFn());
+  if (tipo !== 'dashboard' || temaAtual() !== 'dark') return Promise.resolve(montarFn());
 
-  if (modo === 'dom') {
-    document.documentElement.removeAttribute('data-theme');
-    return _aposPintar().then(montarFn).finally(function () {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    });
-  }
+  // Sonda fora da área visível só para servir de fonte de tokens claros.
+  const sonda = document.createElement('div');
+  sonda.className = 'tema-claro';
+  sonda.style.cssText = 'position:fixed;left:-99999px;top:0;width:0;height:0;';
+  document.body.appendChild(sonda);
 
-  // 'graficos': troca de tema de verdade, para os canvas serem repintados.
-  // A animação do Chart.js fica desligada durante TODA a operação, ida e
-  // volta — como nenhum gráfico declara `animation`, vale o padrão de 1000ms,
-  // e sem isto a foto pegaria os gráficos no meio da entrada (na ida) e a
-  // tela demoraria a voltar ao normal (na volta).
+  // Animação desligada na ida e na volta: como nenhum gráfico declara
+  // `animation`, vale o padrão de 1000ms — o que faria a foto pegar os
+  // gráficos no meio da entrada e atrasaria a volta ao normal.
   const animAntes = (typeof Chart !== 'undefined') ? Chart.defaults.animation : undefined;
   if (typeof Chart !== 'undefined') Chart.defaults.animation = false;
-  aplicarTema('light');
+
+  _raizCor = sonda;
+  limparCacheCores();
+  retematizarGraficos();
 
   return _aposPintar()
     .then(montarFn)
     .finally(function () {
-      aplicarTema('dark');
+      _raizCor = null;
+      limparCacheCores();
+      retematizarGraficos();
       if (typeof Chart !== 'undefined') Chart.defaults.animation = animAntes;
+      sonda.remove();
     });
 }
 
@@ -1615,9 +1620,22 @@ function _dispararEnvioPdfReal(email) {
 // fidelidade real (cores, fonte, badges) — usa html2canvas, mas apenas
 // sobre um elemento pequeno e já visível (não a página toda), então não
 // precisa esconder nada nem alterar o layout: sem flash na tela.
+// PDF é papel: a foto sai sempre clara. Quem garante isso é o onclone — o
+// html2canvas monta um clone do documento antes de renderizar, e ali dá para
+// tirar o data-theme e marcar a raiz com .tema-claro. O clone é invisível e
+// descartado em seguida, então a TELA REAL NUNCA MUDA DE TEMA.
+// (Isso não alcança <canvas>: o html2canvas copia o bitmap já desenhado, então
+// gráfico continua precisando ser redesenhado antes — ver _comGraficosNoTemaClaro.)
 function _capturarElementoComoImg(el) {
   if (!el || typeof html2canvas === 'undefined') return Promise.resolve('');
-  return html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false })
+  return html2canvas(el, {
+    scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
+    onclone: function (docClone) {
+      const raiz = docClone.documentElement;
+      raiz.removeAttribute('data-theme');
+      raiz.classList.add('tema-claro');
+    }
+  })
     .then(function(canvas) { return canvas.toDataURL('image/png'); })
     .catch(function() { return ''; });
 }

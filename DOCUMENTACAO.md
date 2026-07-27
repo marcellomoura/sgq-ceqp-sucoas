@@ -936,21 +936,25 @@ Descartados após análise: `.btn-create` e `.btn.primary` (preenchimento sólid
 
 **Garantias:** `aplicarTema()` **não grava no `localStorage`** (só `alternarTema` grava), então a preferência do usuário não é afetada; e a restauração está em `.finally()`, de modo que a tela nunca fica presa no claro mesmo se a montagem falhar.
 
-**Efeito colateral, restrito a 1 dos 5 relatórios.** A primeira versão desta fase aplicava o tratamento mais caro aos **cinco** relatórios, e o usuário reportou que em vários a tela ficava clara por bastante tempo. Diagnóstico: **só 2 dos 5 fotografam a tela** — e com custos diferentes. O mapa `PDF_CAPTURA_TELA` passou a classificar cada um:
+**Esta fase precisou de duas correções depois do teste do usuário** — vale registrar porque a solução final é bem melhor que a original.
 
-| Relatório | Captura | Tratamento |
+*Primeira correção:* a versão inicial trocava o tema da página inteira para os **cinco** relatórios. Só 2 fotografam a tela; os outros 3 montam o corpo a partir de clones que usam as classes da folha isolada do PDF, imune ao tema — e ainda assim disparavam `renderIndicadores()` duas vezes, vinte gráficos recriados à toa.
+
+*Segunda correção:* mesmo restrito a 2, o usuário reportou que a tela **ficava clara por muito tempo**, não apenas piscava. O motivo é que a troca de tema durava toda a captura, e `html2canvas` com `scale: 2` leva segundos. A solução foi eliminar a troca de tema quase por completo:
+
+**`onclone` — a tela real nunca muda.** O `html2canvas` monta um clone do documento antes de renderizar e expõe o hook `onclone`. Em `_capturarElementoComoImg()`, o clone tem o `data-theme` removido e a raiz marcada com `.tema-claro`; o clone é invisível e descartado em seguida. Resultado: a foto sai clara sem nenhuma alteração visível.
+
+**`.tema-claro` — válvula de escape no CSS.** O seletor `:root` virou `:root, .tema-claro`, então qualquer subárvore marcada com a classe usa a paleta clara mesmo sob `[data-theme="dark"]` — uma declaração no próprio elemento vence o valor herdado, sem depender de especificidade. Custo: uma vírgula.
+
+**A sonda invisível — para os gráficos.** O `onclone` não alcança `<canvas>`: o `html2canvas` copia o bitmap já desenhado, e bitmap não obedece a CSS. Só o Painel de Indicadores tem esse problema. Em vez de trocar o tema da página, `corVar()` ganhou uma raiz configurável (`_raizCor`) que aponta temporariamente para uma **sonda invisível** com `.tema-claro`. Os gráficos são redesenhados lendo a paleta clara **enquanto o resto da interface continua escuro**.
+
+| Relatório | Captura | Efeito visível ao gerar no modo escuro |
 |---|---|---|
-| Painel de Indicadores | `<canvas>` (gráficos) | `aplicarTema()` completo — os gráficos precisam ser recriados |
-| Matriz de Risco | só DOM (`.matrix-table`, `.legend-row`) | troca apenas o atributo — recriar gráficos aqui era desperdício puro |
-| Cartões Arquivados | — | nenhum |
-| Acompanhamento de Ações | — | nenhum |
-| Riscos Arquivados | — | nenhum |
+| Cartões Arquivados, Acompanhamento, Riscos Arquivados | — | **nenhum** |
+| Matriz de Risco | DOM puro | **nenhum** (resolvido pelo `onclone`) |
+| Painel de Indicadores | `<canvas>` | só os gráficos mudam de cor brevemente; a página segue escura |
 
-Os três últimos montam o corpo a partir de clones que usam as classes da folha isolada do PDF, que tem cores próprias em hex e é **imune ao tema**. Antes da correção, eles trocavam de tema e disparavam `renderIndicadores()` **duas vezes** — vinte gráficos recriados para relatórios que não usam gráfico nenhum. Agora: zero efeito.
-
-Corrigida junto a ordem do `finally`: a animação do Chart.js volta ao normal **depois** de `aplicarTema('dark')`, não antes — senão a re-renderização de volta ao escuro animava 1000 ms, prolongando a transição sem necessidade.
-
-Sobra o Painel de Indicadores, onde o período em tema claro é **inerente** à operação (é preciso fotografar os gráficos já repintados). A alternativa — renderizar o Painel inteiro num container oculto — seria desproporcional para uma operação que já exibe estado de carregamento no botão.
+Corrigida junto a ordem do `finally`: a animação do Chart.js volta ao normal **depois** do redesenho de retorno, não antes — senão a volta animava 1000 ms sem necessidade.
 
 **`_envelopeHtml()` permanece intocada,** com suas cores em hex literal: ela gera uma folha isolada que não enxerga o `:root` (§8.19), o que agora é uma vantagem — o PDF é imune ao tema por construção. Verificado que continua com **zero** ocorrências de `var(--...)`.
 

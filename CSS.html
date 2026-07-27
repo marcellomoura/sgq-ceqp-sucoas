@@ -4,7 +4,13 @@
      Light Mode Premium — tokens unificados
      (cor, tipografia, raio, sombra, espaçamento, motion)
   ========================================== */
-  :root {
+  /* A classe .tema-claro repete os valores claros e serve de VÁLVULA DE ESCAPE:
+     qualquer subárvore marcada com ela usa a paleta clara mesmo com o modo
+     escuro ativo, porque uma declaração no próprio elemento vence o valor
+     herdado do [data-theme="dark"]. É o que permite gerar PDF em tema claro
+     sem piscar a tela — ver _capturarElementoComoImg (JS_Utilitarios.html) e
+     DOCUMENTACAO.md §8.20. */
+  :root, .tema-claro {
     /* Informa ao navegador em que tema os controles NATIVOS devem ser pintados
        (painel do date-picker, dropdown do select, autofill, scrollbar padrão).
        Sem esta declaração, quem usa o sistema operacional em modo escuro pode
