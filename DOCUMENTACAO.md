@@ -1213,6 +1213,28 @@ Ajuste visual, um degrau na escala tipográfica, **restrito ao cartão do Kanban
 
 **Pontos a observar antes de considerar definitivo:** cartão com 3+ responsáveis (`.card-assignee` não tem `nowrap`; a coluna é `min-width: 280px`) e cartão vencido com "Atrasado" + data + comentários na mesma `.card-meta`, que tem `flex-wrap: wrap` e pode passar a envolver em duas linhas. Se incomodar, a saída preferível é `nowrap` + `ellipsis`, não voltar o tamanho. Reversão = desfazer as duas linhas em [CSS.html](CSS.html#L830).
 
+### 8.25 Botão "copiar e-mail" em Unidades e Membros (2026-07-27) — A VALIDAR EM PRODUÇÃO
+
+Botão de copiar ao lado de cada e-mail: 1 em Unidades (`.unid-c-email`) e 2 em Membros (`.member-c-email`, colunas Funcional e Pessoal).
+
+**Por que `execCommand` e não só `navigator.clipboard`.** É o ponto crítico desta implementação. O app roda dentro do iframe do Apps Script (`googleusercontent.com`), **cross-origin** em relação ao `script.google.com`. A Permissions Policy de `clipboard-write` tem allowlist padrão `self`, e quem cria aquele iframe é o Google — não há como injetar `allow="clipboard-write"`. O esperado é `navigator.clipboard.writeText()` rejeitar com `NotAllowedError`.
+
+`copiarTexto(texto, btn)` ([JS_Utilitarios.html](JS_Utilitarios.html#L340)) tenta a API moderna e cai no `catch` para `document.execCommand('copy')` com um `<textarea>` efêmero (`.clipboard-helper`) — formalmente deprecado, mas síncrono, universal e imune a Permissions Policy. A ordem é proposital: **se o Google liberar a policy um dia, o caminho bom passa a ser usado sozinho, sem editar nada**. Falhando os dois, `showAlerta` mostra o endereço para cópia manual, em vez de falhar em silêncio.
+
+O `<textarea>` do fallback não pode usar `display:none` nem `visibility:hidden` (precisa ser selecionável de verdade); por isso `.clipboard-helper` é `position:fixed` de 1×1 px com `opacity:0`. O `setSelectionRange` depois do `select()` existe para o iOS, que ignora `select()` sozinho.
+
+**Custo:** nenhum listener novo. O sistema já tem **um** handler delegado no `document` que resolve `closest('[data-acao]')` e despacha por mapa ([JS_Utilitarios.html](JS_Utilitarios.html#L1093)) — os botões são só mais 2 entradas nesse mapa, independentemente do número de linhas na tela. Nenhuma chamada nova ao servidor: os e-mails já estão em `state.units`/`state.members`.
+
+**Decisões de implementação:**
+
+- **O endereço vem do `state`, não de um atributo.** Os botões carregam `data-idx` (e, em Membros, `data-campo`), nunca `data-email` — evita depender do escape de atributo para dado que vai à área de transferência. Como Membros tem duas colunas do mesmo registro, o `idx` sozinho não distingue: `data-campo="email"|"emailPessoal"` resolve com **uma** entrada no mapa em vez de duas.
+- **Feedback sem `feedbackBtn`.** O helper padrão troca `innerText`, o que apagaria o SVG de um botão de ícone. Aqui o ícone vira um check verde (`ICON['copy-ok']`) por 1400 ms, com o `title` acompanhando (é o que o leitor de tela anuncia) e o timer sendo limpo a cada novo clique. A classe `.is-copied` mantém o botão visível durante a confirmação — sem isso o check sumiria junto com o ponteiro.
+- **Revelado no hover da linha**, mesmo padrão do `.btn-edit-card` do Kanban, em 24×24 (o `.btn-icon` padrão é 32×32 e roubaria largura de colunas que já truncam com ellipsis). Custo de render **idêntico** ao de deixar fixo: o nó existe nos dois casos e `opacity` é composição pura, sem JS e sem recálculo de layout. `:focus-visible` também revela, para não quebrar navegação por teclado. **Limitação conhecida:** não há hover em tela sensível ao toque — se o sistema passar a ser usado em tablet, a saída é `opacity:.45` fixo com cor plena no hover, que custa o mesmo.
+- **CSS compartilhado, não duplicado.** As regras foram escritas uma vez com `.unid-c-email, .member-c-email` nos seletores. `.member-c-email` perdeu o `white-space/overflow/text-overflow` próprios: o ellipsis migrou para o `<span>` interno (`.member-c-email-txt`), senão a célula virando `flex` faria o truncamento parar de funcionar e o e-mail longo empurraria o botão para fora.
+- **Sem `.no-print` nos botões.** Verificado: essa classe **não tem nenhuma regra CSS** no projeto — é só marcador para os construtores de PDF removerem nós do clone. Nem Unidades nem Membros entram em algum dos 5 relatórios, então seria classe morta.
+
+**A validar em produção:** que a cópia realmente funcione dentro do iframe. Se não funcionar, reverter é desfazer os commits desta seção — nenhum outro comportamento depende dela.
+
 ---
 
 ## 9. Próximas Melhorias
