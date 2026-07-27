@@ -936,7 +936,21 @@ Descartados após análise: `.btn-create` e `.btn.primary` (preenchimento sólid
 
 **Garantias:** `aplicarTema()` **não grava no `localStorage`** (só `alternarTema` grava), então a preferência do usuário não é afetada; e a restauração está em `.finally()`, de modo que a tela nunca fica presa no claro mesmo se a montagem falhar.
 
-**Efeito colateral aceito e documentado:** a tela pisca para o modo claro enquanto o relatório é montado. A alternativa — renderizar o Painel inteiro num container oculto — seria desproporcional para uma operação que já exibe estado de carregamento no botão.
+**Efeito colateral, restrito a 1 dos 5 relatórios.** A primeira versão desta fase aplicava o tratamento mais caro aos **cinco** relatórios, e o usuário reportou que em vários a tela ficava clara por bastante tempo. Diagnóstico: **só 2 dos 5 fotografam a tela** — e com custos diferentes. O mapa `PDF_CAPTURA_TELA` passou a classificar cada um:
+
+| Relatório | Captura | Tratamento |
+|---|---|---|
+| Painel de Indicadores | `<canvas>` (gráficos) | `aplicarTema()` completo — os gráficos precisam ser recriados |
+| Matriz de Risco | só DOM (`.matrix-table`, `.legend-row`) | troca apenas o atributo — recriar gráficos aqui era desperdício puro |
+| Cartões Arquivados | — | nenhum |
+| Acompanhamento de Ações | — | nenhum |
+| Riscos Arquivados | — | nenhum |
+
+Os três últimos montam o corpo a partir de clones que usam as classes da folha isolada do PDF, que tem cores próprias em hex e é **imune ao tema**. Antes da correção, eles trocavam de tema e disparavam `renderIndicadores()` **duas vezes** — vinte gráficos recriados para relatórios que não usam gráfico nenhum. Agora: zero efeito.
+
+Corrigida junto a ordem do `finally`: a animação do Chart.js volta ao normal **depois** de `aplicarTema('dark')`, não antes — senão a re-renderização de volta ao escuro animava 1000 ms, prolongando a transição sem necessidade.
+
+Sobra o Painel de Indicadores, onde o período em tema claro é **inerente** à operação (é preciso fotografar os gráficos já repintados). A alternativa — renderizar o Painel inteiro num container oculto — seria desproporcional para uma operação que já exibe estado de carregamento no botão.
 
 **`_envelopeHtml()` permanece intocada,** com suas cores em hex literal: ela gera uma folha isolada que não enxerga o `:root` (§8.19), o que agora é uma vantagem — o PDF é imune ao tema por construção. Verificado que continua com **zero** ocorrências de `var(--...)`.
 

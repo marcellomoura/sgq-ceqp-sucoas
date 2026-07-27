@@ -1404,28 +1404,45 @@ function _aposPintar() {
   });
 }
 
-// PDF é papel: sai SEMPRE claro, qualquer que seja o tema da tela.
+// PDF é papel: sai SEMPRE claro, qualquer que seja o tema da tela. Mas só os
+// relatórios que FOTOGRAFAM a tela (html2canvas) dependem disso — e o custo de
+// forçar o tema é diferente em cada caso, por isso o mapa abaixo.
 //
-// Não bastaria trocar o atributo data-theme: montarHtmlIndicadoresPdf()
-// fotografa os .tl-chart-grid, que contêm os CANVAS dos gráficos — e mudar o
-// CSS repinta o DOM mas não o bitmap que já foi desenhado. Por isso o tema é
-// trocado de verdade, via aplicarTema(), que recria os gráficos no tema claro.
+//   'graficos' — a foto inclui <canvas> (montarHtmlIndicadoresPdf captura os
+//                .tl-chart-grid). Trocar o CSS repinta o DOM mas NÃO o bitmap
+//                já desenhado, então os gráficos precisam ser recriados no
+//                tema claro. É o caso mais caro, e o único que justifica isso.
+//   'dom'      — a foto é só de DOM (montarHtmlMatrizPdf captura .matrix-table
+//                e .legend-row). Basta trocar o atributo: recriar gráficos aqui
+//                seria puro desperdício e prolongaria o piscar sem motivo.
+//   ausente    — não fotografa nada. O corpo vem de clones que usam as classes
+//                da folha isolada do PDF (_envelopeHtml), que tem cores
+//                próprias em hex e é imune ao tema. Nada a fazer.
 //
-// A animação do Chart.js é desligada durante a operação: como nenhum gráfico
-// declara `animation`, vale o padrão de 1000ms, e sem isto a foto pegaria os
-// gráficos no meio da entrada.
-//
-// Efeito colateral aceito: a tela pisca para o claro enquanto o relatório é
-// montado. A alternativa (renderizar fora da tela) exigiria duplicar todo o
-// Painel num container oculto — desproporcional para uma operação que já mostra
-// estado de carregamento no botão.
-//
+// Antes este mapa não existia e o tratamento mais caro era aplicado aos cinco
+// relatórios: os três que não fotografam nada trocavam de tema e recriavam os
+// dez gráficos duas vezes à toa, deixando a tela clara por vários segundos.
+const PDF_CAPTURA_TELA = { dashboard: 'graficos', matriz: 'dom' };
+
 // aplicarTema() NÃO grava no localStorage (só alternarTema grava), então a
 // preferência do usuário não é afetada; e o finally garante a volta mesmo se a
 // montagem falhar, para a tela nunca ficar presa no claro.
-function _montarCorpoPdfEmTemaClaro(montarFn) {
-  if (temaAtual() !== 'dark') return Promise.resolve(montarFn());
+function _montarCorpoPdfEmTemaClaro(tipo, montarFn) {
+  const modo = PDF_CAPTURA_TELA[tipo];
+  if (!modo || temaAtual() !== 'dark') return Promise.resolve(montarFn());
 
+  if (modo === 'dom') {
+    document.documentElement.removeAttribute('data-theme');
+    return _aposPintar().then(montarFn).finally(function () {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    });
+  }
+
+  // 'graficos': troca de tema de verdade, para os canvas serem repintados.
+  // A animação do Chart.js fica desligada durante TODA a operação, ida e
+  // volta — como nenhum gráfico declara `animation`, vale o padrão de 1000ms,
+  // e sem isto a foto pegaria os gráficos no meio da entrada (na ida) e a
+  // tela demoraria a voltar ao normal (na volta).
   const animAntes = (typeof Chart !== 'undefined') ? Chart.defaults.animation : undefined;
   if (typeof Chart !== 'undefined') Chart.defaults.animation = false;
   aplicarTema('light');
@@ -1433,8 +1450,8 @@ function _montarCorpoPdfEmTemaClaro(montarFn) {
   return _aposPintar()
     .then(montarFn)
     .finally(function () {
-      if (typeof Chart !== 'undefined') Chart.defaults.animation = animAntes;
       aplicarTema('dark');
+      if (typeof Chart !== 'undefined') Chart.defaults.animation = animAntes;
     });
 }
 
@@ -1449,7 +1466,7 @@ function _gerarPdfReal(tipo) {
   const btn = $id(btnMap[tipo]);
   if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
-  _montarCorpoPdfEmTemaClaro(window[cfg.montarFn]).then(function(corpoHtml) {
+  _montarCorpoPdfEmTemaClaro(tipo, window[cfg.montarFn]).then(function(corpoHtml) {
     const html = _envelopeHtml(cfg, corpoHtml);
     google.script.run
       .withSuccessHandler(function(r) {
@@ -1582,7 +1599,7 @@ function _dispararEnvioPdfReal(email) {
   const btn = $id('btn-enviar-pdf');
   const cfg = CFG_PDF[tipoPdfAtual];
 
-  _montarCorpoPdfEmTemaClaro(window[cfg.montarFn]).then(function(corpoHtml) {
+  _montarCorpoPdfEmTemaClaro(tipoPdfAtual, window[cfg.montarFn]).then(function(corpoHtml) {
     const html = _envelopeHtml(cfg, corpoHtml);
     google.script.run
       .withSuccessHandler(function(r) {
