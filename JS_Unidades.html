@@ -38,10 +38,18 @@ function renderUnidades() {
         ? `<a href="${esc(dv)}" target="_blank" rel="noopener noreferrer" class="link-external">🔗 Acessar</a>`
         : `<span class="text-secondary font-12">${esc(dv)}</span>`;
 
+    // Botão de copiar só quando há e-mail. O estilo (tamanho menor e aparecer
+    // no hover da linha, como o .btn-edit-card do Kanban) vem do seletor
+    // .unid-c-email .btn-icon.copy — assim não rouba largura da coluna, que já
+    // trunca o endereço com ellipsis, e o iconBtn continua sendo usado puro.
+    const btnCopiar = String(u.email || '').trim()
+      ? iconBtn('copy', 'copiar-email-unidade', 'Copiar e-mail', `data-idx="${i}"`)
+      : '';
+
     return `<div class="grid-row-hover unid-row${inativo ? ' unid-row--inativa' : ''}">
     <div class="unid-c-sigla">${esc(u.sigla)}${inativo?' '+badgeInativo():''}</div>
     <div class="unid-c-nome">${esc(u.unidade)}</div>
-    <div class="unid-c-email">${esc(u.email)}</div>
+    <div class="unid-c-email"><span class="unid-c-email-txt">${esc(u.email)}</span>${btnCopiar}</div>
     <div class="unid-c-drive">${celulaDrive}</div>
     <div class="no-print unid-c-acoes">
       ${acaoStatus}

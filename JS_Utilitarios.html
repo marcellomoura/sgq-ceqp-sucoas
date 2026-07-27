@@ -182,7 +182,11 @@ const ICON = {
   // barra diagonal. Mantém o par visualmente óbvio (mesma forma, ação oposta).
   check: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="8.5 12.5 11 15 15.5 9.5"/></svg>',
   'check-pendente': '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="8.5 12.5 11 15 15.5 9.5"/></svg>',
-  restore: '<svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>'
+  restore: '<svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+  // "Copiar" — duas folhas sobrepostas, convenção universal de copiar.
+  copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  // Confirmação momentânea da cópia (1,4 s) — ver copiarTexto().
+  'copy-ok': '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'
 };
 
 function $id(id) { return document.getElementById(id); }
@@ -334,6 +338,65 @@ function msgTabela(tbodyId, cols, txt, err) {
   }
 }
 function feedbackBtn(btn, ok, orig, cb) { btn.disabled=false; btn.innerText=ok; setTimeout(()=>{ btn.innerText=orig; if(cb) cb(); }, 1400); }
+
+// Copia texto para a área de transferência a partir de um botão de ícone.
+//
+// Por que NÃO é só navigator.clipboard.writeText: o app roda dentro do iframe
+// do Apps Script (googleusercontent.com), cross-origin em relação ao
+// script.google.com. A Permissions Policy de `clipboard-write` tem allowlist
+// padrão `self` e quem cria aquele iframe é o Google — não há como adicionar
+// allow="clipboard-write". O esperado é a Promise rejeitar com NotAllowedError.
+// Por isso a API moderna é tentada primeiro (se um dia a policy for liberada,
+// passa a ser usada sozinha, sem mexer aqui) e o fallback é
+// document.execCommand('copy'), formalmente deprecado mas síncrono, universal
+// e imune a Permissions Policy.
+//
+// Não usa feedbackBtn: aquele helper troca innerText, o que apagaria o SVG do
+// botão. Aqui a confirmação é a troca do ícone por um check pelos mesmos
+// 1400 ms, e o title acompanha (é o que leitor de tela anuncia).
+function copiarTexto(texto, btn) {
+  const valor = String(texto == null ? '' : texto).trim();
+  if (!valor) return;
+
+  function ok() {
+    if (!btn) return;
+    if (btn.dataset.copyTimer) clearTimeout(+btn.dataset.copyTimer);
+    const titleOrig = btn.dataset.copyTitle || btn.getAttribute('title') || '';
+    btn.dataset.copyTitle = titleOrig;
+    btn.innerHTML = ICON['copy-ok'];
+    btn.classList.add('is-copied');
+    btn.setAttribute('title', 'Copiado!');
+    btn.dataset.copyTimer = setTimeout(() => {
+      btn.innerHTML = ICON.copy;
+      btn.classList.remove('is-copied');
+      btn.setAttribute('title', titleOrig);
+      delete btn.dataset.copyTimer;
+    }, 1400);
+  }
+
+  function fallback() {
+    const ta = document.createElement('textarea');
+    ta.value = valor;
+    // Fora da vista, mas ainda no documento e focável — execCommand exige
+    // seleção real. position:fixed evita o scroll saltar ao dar foco.
+    ta.className = 'clipboard-helper';
+    ta.setAttribute('readonly', '');
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, valor.length); // iOS ignora select() sozinho
+    let copiou = false;
+    try { copiou = document.execCommand('copy'); } catch (e) { copiou = false; }
+    document.body.removeChild(ta);
+    if (copiou) ok();
+    else showAlerta('Não foi possível copiar automaticamente. O texto é: ' + valor);
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(valor).then(ok).catch(fallback);
+  } else {
+    fallback();
+  }
+}
 function falha(btn, orig, statusEl) {
   return function(e) {
     if(btn){btn.disabled=false; btn.innerText=orig;}
@@ -1079,10 +1142,17 @@ document.addEventListener('click', function(e) {
       showConfirm(`Reativar "${m.name}"? Ele volta a ter acesso e a aparecer nas telas.`,
         () => reativarMembro(m.id), { tone: 'warning', title: 'Confirmar Reativação', confirmLabel: 'Reativar' });
     },
+    // Membros têm duas colunas de e-mail (Funcional e Pessoal), então o idx
+    // sozinho não basta: data-campo diz qual das duas foi clicada.
+    'copiar-email-membro': () => {
+      const m = state.members[idx];
+      copiarTexto(m && m[alvo.dataset.campo === 'emailPessoal' ? 'emailPessoal' : 'email'], alvo);
+    },
     // Pessoas — Escala e Afastamentos
     'edit-escala'     : () => abrirModalEscala(state.members[idx]),
     'edit-ferias'     : () => abrirModalFerias(state.members[idx]),
     // Unidades
+    'copiar-email-unidade': () => copiarTexto(state.units[idx] && state.units[idx].email, alvo),
     'edit-unidade'    : () => abrirEditarUnidade(state.units[idx]),
     'inativar-unidade': () => {
       const u = state.units[idx];

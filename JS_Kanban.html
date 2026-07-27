@@ -37,14 +37,24 @@ function renderMembers() {
       ? iconBtn('check', 'reativar-membro', 'Reativar membro', `data-idx="${i}"`)
       : `${iconBtn('edit','edit-membro','Editar',`data-idx="${i}"`)}${iconBtn('ban','inativar-membro','Inativar membro',`data-idx="${i}"`)}`;
       
+    // Botão de copiar em cada coluna de e-mail, só quando há endereço. Mesmo
+    // padrão de Unidades: data-campo diz qual das duas colunas é, e o estilo
+    // (24px, revelado no hover da linha) vem de .member-c-email .btn-icon.copy.
+    const celulaEmail = (valor, campo) => {
+      const txt = String(valor || '').trim();
+      if (!txt) return `<div class="member-c-email">-</div>`;
+      const btn = iconBtn('copy', 'copiar-email-membro', 'Copiar e-mail', `data-idx="${i}" data-campo="${campo}"`);
+      return `<div class="member-c-email"><span class="member-c-email-txt">${esc(txt)}</span>${btn}</div>`;
+    };
+
     return `<div class="grid-row-hover membro-row${inativo ? ' membro-row--inativa' : ''}">
       <div class="member-c-name">
         <div class="member-avatar member-avatar--lg ${corMembroPorNome(m.name)}">${esc(iniciaisMembro(m.name))}</div>
         <span class="member-c-name-txt">${esc(m.name)}${inativo?' '+badgeInativo():''}</span>
       </div>
       <div><span class="member-role-badge member-role-badge--lg">${esc(m.role)}</span></div>
-      <div class="member-c-email">${esc(m.email)||'-'}</div>
-      <div class="member-c-email">${esc(m.emailPessoal)||'-'}</div>
+      ${celulaEmail(m.email, 'email')}
+      ${celulaEmail(m.emailPessoal, 'emailPessoal')}
       <div class="member-c-acoes">
         <div class="cell-actions">${btnStatus}</div>
       </div>

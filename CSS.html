@@ -921,7 +921,35 @@
   .unid-row--inativa > div:not(.unid-c-acoes) { opacity: 0.6; }
   .unid-c-sigla { font-weight: 700; color: var(--text-main); font-size: 13px; }
   .unid-c-nome { font-size: 13px; color: var(--text-secondary); }
-  .unid-c-email { color: var(--text-secondary); font-size: 13px; }
+  /* Células de e-mail com botão de copiar — Unidades e Membros (as duas
+     colunas, Funcional e Pessoal). Regras compartilhadas: a célula vira flex,
+     o endereço fica num <span> que carrega o ellipsis (antes estava na própria
+     célula) e o botão fica ao lado, sem encolher.
+     .member-c-email é definida mais abaixo, junto do grid de .membro-row. */
+  .unid-c-email, .member-c-email { color: var(--text-secondary); font-size: 13px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .unid-c-email-txt, .member-c-email-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Botão de copiar dentro da célula de e-mail: menor que o .btn-icon padrão
+     (32px roubaria largura de uma coluna que já trunca) e revelado no hover da
+     linha, mesmo padrão do .btn-edit-card do Kanban. Continua focável pelo
+     teclado — por isso :focus-visible também revela. */
+  .unid-c-email .btn-icon.copy, .member-c-email .btn-icon.copy {
+    width: 24px; height: 24px; flex-shrink: 0; color: var(--text-muted);
+    opacity: 0; transition: opacity var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  }
+  .unid-c-email .btn-icon.copy svg, .member-c-email .btn-icon.copy svg { width: 12px; height: 12px; }
+  .grid-row-hover:hover .unid-c-email .btn-icon.copy,
+  .grid-row-hover:hover .member-c-email .btn-icon.copy,
+  .unid-c-email .btn-icon.copy:focus-visible,
+  .member-c-email .btn-icon.copy:focus-visible { opacity: 1; }
+  .unid-c-email .btn-icon.copy:hover,
+  .member-c-email .btn-icon.copy:hover { background: var(--bg-subtle); border-color: var(--border-strong); color: var(--primary); }
+  /* Confirmação de 1,4 s (ver copiarTexto): fica visível mesmo sem hover, senão
+     o check some junto com o ponteiro e a confirmação passa despercebida. */
+  .unid-c-email .btn-icon.copy.is-copied,
+  .member-c-email .btn-icon.copy.is-copied { opacity: 1; color: var(--success); border-color: var(--success-border); background: var(--success-bg); }
+  /* Textarea efêmero do fallback execCommand: precisa estar no documento e ser
+     selecionável, então não pode usar display:none nem visibility:hidden. */
+  .clipboard-helper { position: fixed; top: 0; left: 0; width: 1px; height: 1px; padding: 0; border: none; outline: none; box-shadow: none; background: transparent; opacity: 0; }
   .unid-c-drive { text-align: center; font-size: 13px; }
   .unid-c-acoes { display: flex; justify-content: center; gap: 4px; }
   /* Propriedades comuns às linhas de grid das listas (Documentos, Membros, Escala,
@@ -958,7 +986,9 @@
   .membro-row--inativa { opacity: 0.6; }
   .member-c-name { font-weight: 600; display: flex; align-items: center; gap: 12px; }
   .member-c-name-txt { font-size: 13px; font-weight: 600; color: var(--text-main); }
-  .member-c-email { color: var(--text-secondary); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* .member-c-email: cor, tamanho, flex e ellipsis (este migrado para o
+     .member-c-email-txt) vêm da regra compartilhada com .unid-c-email, na
+     seção de Unidades. Não há nada próprio da célula de Membros. */
   .member-c-acoes { text-align: center; }
   /* Escala semanal (lista) — migrado de inline (Tarefa 3, parte 5b). Células de dia,
      badges de presencial e horários seguem inline (dinâmicos). #111827/#f3f4f6 literais. */
