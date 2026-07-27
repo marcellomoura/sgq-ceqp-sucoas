@@ -1069,6 +1069,16 @@
     const clone = container.cloneNode(true);
     clone.querySelectorAll('.no-print').forEach(e => e.remove());
 
+    // Mesmo tratamento do relatório de Acompanhamento: .risk-title-row e
+    // .risk-meta usam display:flex na tela, e o conversor de PDF do Apps
+    // Script não renderiza flex — cada filho volta a ser bloco e quebra
+    // linha sozinho (título separado do selo SUPERADO, e Macroetapa/
+    // Categoria/Causa/Consequência empilhados com o "|" solto entre eles).
+    // Forçar os filhos a inline devolve o mesmo layout em linha do painel.
+    clone.querySelectorAll('.risk-title-row > *, .risk-meta > div').forEach(function (el) {
+      el.style.display = 'inline';
+    });
+
     // O layout usa .plan-single-line que é display: grid.
     // O conversor de PDF não lida bem com grid, então transformamos em <table>.
     clone.querySelectorAll('.plan-single-line').forEach(function (grid) {
@@ -1097,7 +1107,10 @@
         </table>`;
     });
 
-    return _pdfSecaoTitulo('Riscos Superados') + clone.innerHTML;
+    // Sem _pdfSecaoTitulo aqui: o cabeçalho do PDF já imprime o title de
+    // CFG_PDF['risco-arquivado'] ("Riscos Superados"), então a seção repetia
+    // o mesmo título logo abaixo.
+    return clone.innerHTML;
   }
 
   // Mesmo padrão dos demais relatórios: o tipo 'risco-arquivado' está em
