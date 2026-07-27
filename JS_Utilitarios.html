@@ -1395,6 +1395,49 @@ function gerarPdfLocal(tipo) {
   }
 }
 
+// Dois requestAnimationFrame: o primeiro entra no quadro atual, o segundo só
+// dispara depois que o navegador realmente pintou o anterior. É o jeito de ter
+// certeza de que a tela já está no tema claro antes de fotografá-la.
+function _aposPintar() {
+  return new Promise(function (resolve) {
+    requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+  });
+}
+
+// PDF é papel: sai SEMPRE claro, qualquer que seja o tema da tela.
+//
+// Não bastaria trocar o atributo data-theme: montarHtmlIndicadoresPdf()
+// fotografa os .tl-chart-grid, que contêm os CANVAS dos gráficos — e mudar o
+// CSS repinta o DOM mas não o bitmap que já foi desenhado. Por isso o tema é
+// trocado de verdade, via aplicarTema(), que recria os gráficos no tema claro.
+//
+// A animação do Chart.js é desligada durante a operação: como nenhum gráfico
+// declara `animation`, vale o padrão de 1000ms, e sem isto a foto pegaria os
+// gráficos no meio da entrada.
+//
+// Efeito colateral aceito: a tela pisca para o claro enquanto o relatório é
+// montado. A alternativa (renderizar fora da tela) exigiria duplicar todo o
+// Painel num container oculto — desproporcional para uma operação que já mostra
+// estado de carregamento no botão.
+//
+// aplicarTema() NÃO grava no localStorage (só alternarTema grava), então a
+// preferência do usuário não é afetada; e o finally garante a volta mesmo se a
+// montagem falhar, para a tela nunca ficar presa no claro.
+function _montarCorpoPdfEmTemaClaro(montarFn) {
+  if (temaAtual() !== 'dark') return Promise.resolve(montarFn());
+
+  const animAntes = (typeof Chart !== 'undefined') ? Chart.defaults.animation : undefined;
+  if (typeof Chart !== 'undefined') Chart.defaults.animation = false;
+  aplicarTema('light');
+
+  return _aposPintar()
+    .then(montarFn)
+    .finally(function () {
+      if (typeof Chart !== 'undefined') Chart.defaults.animation = animAntes;
+      aplicarTema('dark');
+    });
+}
+
 // Alguns relatórios (Matriz) precisam capturar um elemento da tela como
 // imagem antes de montar o HTML (ver _capturarElementoComoImg) — isso é
 // assíncrono, então `montarFn` pode devolver uma string OU uma Promise
@@ -1406,7 +1449,7 @@ function _gerarPdfReal(tipo) {
   const btn = $id(btnMap[tipo]);
   if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
-  Promise.resolve(window[cfg.montarFn]()).then(function(corpoHtml) {
+  _montarCorpoPdfEmTemaClaro(window[cfg.montarFn]).then(function(corpoHtml) {
     const html = _envelopeHtml(cfg, corpoHtml);
     google.script.run
       .withSuccessHandler(function(r) {
@@ -1539,7 +1582,7 @@ function _dispararEnvioPdfReal(email) {
   const btn = $id('btn-enviar-pdf');
   const cfg = CFG_PDF[tipoPdfAtual];
 
-  Promise.resolve(window[cfg.montarFn]()).then(function(corpoHtml) {
+  _montarCorpoPdfEmTemaClaro(window[cfg.montarFn]).then(function(corpoHtml) {
     const html = _envelopeHtml(cfg, corpoHtml);
     google.script.run
       .withSuccessHandler(function(r) {

@@ -785,7 +785,7 @@ Inverter tudo mecanicamente produz resultado ruim — cada família tem regra pr
 | **4** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. **Regras estruturais do escuro** (categoria nova): recorte nos filtros/botões do topo (F1), P3, B4 | ❌ Não |
 | **5** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Infra: `data-theme`, `localStorage`, toggle, `theme-color` (N8), **anti-flash no `<head>`** | ❌ Não |
 | **6** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Gráficos: descongelar as constantes; **cache de `corVar()` invalidado no toggle** (V5); re-render (G2); G5/K3; `--chart-grid` | ⚠️ Risco técnico |
-| **7** | PDF/export: forçar tema claro em `_capturarElementoComoImg()` com `try/finally` (N5); `_envelopeHtml()` segue com hex literais | ⚠️ Risco técnico |
+| **7** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. PDF/export: tema claro forçado na montagem do relatório (N5); `_envelopeHtml()` segue com hex literais | ⚠️ Risco técnico |
 | **8** | Validação: WCAG AA; **contraste interno de família (P1)**; 12 tons lado a lado; 8 telas + modais; os 5 PDFs; Kanban com volume real | — |
 
 #### 8.20.6 Impacto no modo claro e proteções
@@ -923,6 +923,22 @@ Descartados após análise: `.btn-create` e `.btn.primary` (preenchimento sólid
 **K3 não precisou de nada — o achado estava superestimado.** As etiquetas do Kanban usam `LABELS_DISPONIVEIS`, cujas cores já são `var(--tag-*)`, e `var()` **resolve normalmente em `style=""` no DOM** (só canvas e PDF é que não resolvem). As etiquetas sem cor curada caem em `corPastelPorNome()`, que devolve a classe `.avatar-pastel-N` — tokenizada na Fase 1a. Os dois caminhos já eram theme-aware.
 
 **Nota sobre `_mapaCoresMembros()`:** continua recalculando o mapa a cada avatar. Não foi alterado nesta fase — com o cache de `corVar()`, o custo caiu para aritmética pura, e mexer na função exigiria decidir quando invalidar (a lista de membros muda em runtime), risco desnecessário aqui.
+
+**Fase 7 — concluída em 27/07/2026.** Blinda os relatórios: **PDF é papel e sai sempre claro**, qualquer que seja o tema da tela.
+
+**Trocar o atributo não bastaria — e essa foi a descoberta da fase.** `montarHtmlIndicadoresPdf()` fotografa os `.tl-chart-grid`, que **contêm os `<canvas>` dos gráficos**. Mudar o CSS repinta o DOM mas **não** o bitmap já desenhado: o relatório sairia com cartões claros e gráficos escuros. Por isso o tema é trocado de verdade, via `aplicarTema()`, que recria os gráficos no tema claro antes da foto. *(A Matriz de Riscos, por outro lado, captura `.matrix-table` e `.legend-row` — DOM puro, sem canvas — e teria funcionado só com o atributo.)*
+
+**Segunda armadilha: a animação.** **Nenhum gráfico do sistema declara `animation`**, então vale o padrão de 1000 ms do Chart.js. Recriar os gráficos e fotografar em seguida pegaria todos no meio da entrada. `Chart.defaults.animation` é desligado durante a operação e restaurado depois. Isso não existia antes porque, sem esta fase, os gráficos fotografados já estavam na tela havia tempo — a re-renderização é que introduziu o problema.
+
+**Sincronismo:** entre trocar o tema e fotografar há um `_aposPintar()` — dois `requestAnimationFrame` encadeados. O primeiro entra no quadro atual; o segundo só dispara depois que o navegador realmente pintou o anterior, garantindo que a tela já está clara quando o `html2canvas` roda.
+
+**Ponto de aplicação:** o wrapper `_montarCorpoPdfEmTemaClaro()` envolve os **dois** call sites de `window[cfg.montarFn]()` — o download (`_gerarPdfReal`) e o envio por e-mail (`_dispararEnvioPdfReal`) —, cobrindo os 5 relatórios de uma vez. Quando o tema já é claro, retorna direto, sem custo nenhum.
+
+**Garantias:** `aplicarTema()` **não grava no `localStorage`** (só `alternarTema` grava), então a preferência do usuário não é afetada; e a restauração está em `.finally()`, de modo que a tela nunca fica presa no claro mesmo se a montagem falhar.
+
+**Efeito colateral aceito e documentado:** a tela pisca para o modo claro enquanto o relatório é montado. A alternativa — renderizar o Painel inteiro num container oculto — seria desproporcional para uma operação que já exibe estado de carregamento no botão.
+
+**`_envelopeHtml()` permanece intocada,** com suas cores em hex literal: ela gera uma folha isolada que não enxerga o `:root` (§8.19), o que agora é uma vantagem — o PDF é imune ao tema por construção. Verificado que continua com **zero** ocorrências de `var(--...)`.
 
 ---
 
