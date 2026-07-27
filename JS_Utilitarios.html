@@ -825,8 +825,28 @@ function temaAtual() {
 // reagir à mudança (ex.: redesenhar gráficos) deve ser pendurada aqui.
 function aplicarTema(tema) {
   const escuro = tema === 'dark';
-  if (escuro) document.documentElement.setAttribute('data-theme', 'dark');
-  else document.documentElement.removeAttribute('data-theme');
+  const raiz = document.documentElement;
+
+  // Desliga as transições ANTES de mexer no atributo, senão as 33 regras que
+  // animam cor entrariam em transição e a tela ficaria misturando os dois
+  // temas por ~300ms (ver .sem-transicao em CSS.html).
+  raiz.classList.add('sem-transicao');
+
+  if (escuro) raiz.setAttribute('data-theme', 'dark');
+  else raiz.removeAttribute('data-theme');
+
+  // Leitura de layout que força o navegador a aplicar as cores novas AGORA,
+  // ainda com as transições desligadas. Sem ela, o navegador agruparia esta
+  // troca com a remoção da classe abaixo e as transições disparariam assim
+  // mesmo — é o passo que a maioria das implementações esquece.
+  void raiz.offsetHeight;
+
+  // Religa no quadro seguinte. Agendado AQUI, antes de qualquer trabalho que
+  // possa lançar: se renderIndicadores() falhar (CDN do Chart.js fora do ar,
+  // por exemplo), o rAF já está na fila e as transições voltam do mesmo jeito.
+  // Sem essa precaução, uma exceção deixaria o sistema inteiro sem transição
+  // de hover até a página ser recarregada.
+  requestAnimationFrame(function () { raiz.classList.remove('sem-transicao'); });
 
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', THEME_COLOR[escuro ? 'dark' : 'light']);

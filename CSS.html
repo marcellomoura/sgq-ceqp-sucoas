@@ -359,6 +359,25 @@
     --shadow-accent: 0 4px 14px rgba(91,155,255,0.22);
   }
 
+  /* Suprime as transições durante a troca de tema. Aplicada por aplicarTema()
+     e removida no quadro seguinte, então vale por um único frame.
+
+     Por que é necessária: trocar o tema muda ~93 tokens de uma vez, e 33
+     regras deste CSS têm `transition` numa propriedade de cor (botões, linhas
+     de lista, cartões de plano, filtros). Sem isto, os elementos SEM transição
+     trocariam na hora e os COM transição chegariam 150–300 ms depois, em
+     durações diferentes — por cerca de um terço de segundo a tela ficaria
+     misturando os dois temas, o que o olho lê como piscada. As transições
+     estão certas onde foram criadas (hover); o CSS é que não distingue
+     "mudou por hover" de "mudou porque o tema trocou".
+
+     Só `transition` é suprimido, NUNCA `animation`: as animações por keyframe
+     daqui disparam quando o elemento entra na tela (modalIn, overlayIn,
+     navExpand), não quando uma cor muda — e `spinnerRing` roda em loop no
+     botão de PDF, então seria reiniciada do zero à toa. */
+  .sem-transicao, .sem-transicao *,
+  .sem-transicao *::before, .sem-transicao *::after { transition: none !important; }
+
   /* ===== RESET E BASE ===== */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   * { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }

@@ -974,6 +974,34 @@ O próprio script foi testado nos dois sentidos: apontou uma falha na sua primei
 
 **O que só a conferência visual resolve** (em ordem de risco): os 12 tons decorativos lado a lado, onde o ΔE mínimo caiu de 19,9 para 13,8; os 5 PDFs gerados com o tema escuro ativo; as 4 roscas do Painel (anel de separação); filtros e linhas de lista, que dependem do anel da Fase 4; a sidebar retraída com o botão de tema; e recarregar a página no escuro para confirmar que não pisca branco.
 
+#### 8.20.9 Piscada na troca de tema (27/07/2026)
+
+Reportado na conferência visual: grids de todas as páginas, botões de PDF/e-mail, botões "Novo" e a borda das linhas de ação do Plano piscavam ao alternar o tema.
+
+**Causa única para os quatro sintomas:** as transições feitas para *hover* estavam sendo disparadas pela troca de tema. Alternar o tema muda ~93 tokens de uma vez, e **33 regras** do `CSS.html` declaram `transition` numa propriedade de cor. O CSS não distingue "mudou porque passou o mouse" de "mudou porque o tema trocou" — para o navegador é a mesma alteração de propriedade.
+
+| Sintoma reportado | Regra |
+|---|---|
+| Grids de todas as páginas | `.grid-row-hover`, `.data-table tbody tr` |
+| Botões de PDF e e-mail | `.btn-pdf`, `.btn-pdf-email` |
+| Botões "Novo" | `.btn-create` |
+| Borda das linhas de ação (Plano) | `.plan-card`, `.acomp-ent-row` |
+
+**Por que lia como piscada e não como transição suave:** os elementos *sem* `transition` trocavam instantaneamente enquanto os *com* `transition` chegavam 150–300 ms depois — e em durações **diferentes** (`--transition-fast` 150 ms, `--transition-base` 200 ms, mais `0.2s` e `0.3s` chumbados em `.plan-card` e `.version-card`). Por cerca de um terço de segundo a tela era uma mistura dessincronizada dos dois temas, com dezenas de elementos chegando ao destino em momentos distintos.
+
+**Correção:** classe `.sem-transicao`, aplicada por `aplicarTema()` e removida no quadro seguinte — vale por um único frame e não altera o comportamento de hover.
+
+Dois detalhes decidem se a correção é segura:
+
+1. **A remoção é agendada ANTES do redesenho dos gráficos.** `aplicarTema()` termina em `retematizarGraficos()` → `renderIndicadores()` → Chart.js. Se isso lançar (CDN fora do ar, dado inesperado) e o `requestAnimationFrame` tivesse sido registrado depois, a classe ficaria presa e **o sistema inteiro perderia as transições de hover até a página ser recarregada** — falha silenciosa, sem erro no console. Com o agendamento antes, o rAF já está na fila e as transições voltam de qualquer forma. Verificado por simulação nos dois sentidos.
+2. **Só `transition` é suprimido, nunca `animation`.** As animações por keyframe do projeto disparam quando o elemento entra na tela (`modalIn`, `overlayIn`, `navExpand`), não quando uma cor muda; e `spinnerRing` roda em loop no botão de PDF, então seria reiniciada do zero à toa se alguém trocasse o tema durante a geração de um relatório. A proposta inicial incluía `animation: none` — era mais agressiva do que o necessário.
+
+Também obrigatória a leitura de layout (`void raiz.offsetHeight`) entre a troca do atributo e o agendamento da remoção: sem ela o navegador agruparia as duas operações no mesmo quadro e as transições disparariam mesmo assim. É o passo que a maioria das implementações deste padrão esquece.
+
+**Correção a uma afirmação anterior:** o registro da Fase 5 dizia que o `prefers-reduced-motion` seria respeitado na troca de tema. Isso nunca foi implementado — o bloco `@media (prefers-reduced-motion: reduce)` existente cobre apenas a duração de um spinner e não desliga transição alguma. Com `.sem-transicao`, a troca passa a ser instantânea para todos os usuários, o que atende a preferência por consequência.
+
+**Permanece:** no Painel de Indicadores os gráficos são destruídos e recriados, o que dá um apagar-e-desenhar visível. É inerente ao `<canvas>` e nenhuma regra de CSS alcança.
+
 **`_envelopeHtml()` permanece intocada,** com suas cores em hex literal: ela gera uma folha isolada que não enxerga o `:root` (§8.19), o que agora é uma vantagem — o PDF é imune ao tema por construção. Verificado que continua com **zero** ocorrências de `var(--...)`.
 
 ---
