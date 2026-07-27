@@ -696,8 +696,11 @@
   /* ===== SIDEBAR RETRÁTIL (modo somente ícones) ===== */
   .sidebar.collapsed { width: 68px; }
   /* Retraída sobram 36px úteis (68 menos o padding), que é exatamente a largura
-     do avatar. Por isso o rodapé empilha: avatar em cima, tema embaixo. */
-  .sidebar.collapsed .sidebar-foot { flex-direction: column; gap: 10px; padding: 4px 0 24px; }
+     do avatar — por isso o rodapé empilha. column-reverse põe o botão de tema
+     ACIMA do avatar, mantendo o avatar como último elemento da barra (é a
+     âncora visual do rodapé). Só a ordem visual muda: a ordem do DOM, e
+     portanto a de tabulação, continua avatar → botão. */
+  .sidebar.collapsed .sidebar-foot { flex-direction: column-reverse; gap: 10px; padding: 4px 0 24px; }
   .sidebar.collapsed .sidebar-user { flex: none; justify-content: center; }
   .sidebar.collapsed .sidebar-user-info { display: none; }
   .sidebar.collapsed .sidebar-brand-text { display: none; }

@@ -94,8 +94,60 @@ function main() {
     console.error('');
   }
 
+  if (verificarFundos()) falhou = true;
+
   if (falhou) process.exit(1);
-  console.log('OK — as duas paletas estão sincronizadas.');
+  console.log('OK — paletas sincronizadas e cores de fundo consistentes.');
+}
+
+/**
+ * O valor de --bg-app aparece em TRÊS lugares, e não há como evitar:
+ *   1. CSS.html         — os tokens das duas paletas (fonte da verdade);
+ *   2. JS_Utilitarios   — THEME_COLOR, usado no <meta name="theme-color">
+ *                         e no fundo inline do <html>;
+ *   3. Index.html       — o script anti-flash, que roda ANTES do CSS existir
+ *                         e por isso não tem como ler o token.
+ *
+ * Se os três saírem de sincronia, o sintoma é uma piscada de cor errada no
+ * carregamento — justamente o que o anti-flash existe para evitar, e que
+ * nenhum erro de console acusaria.
+ */
+function verificarFundos() {
+  const css = fs.readFileSync(ARQ_CSS, 'utf8');
+  const js = fs.readFileSync(path.join(__dirname, 'JS_Utilitarios.html'), 'utf8');
+  const idx = fs.readFileSync(path.join(__dirname, 'Index.html'), 'utf8');
+
+  const bgApp = Array.from(css.matchAll(/--bg-app:\s*(#[0-9a-fA-F]{6})/g), (m) => m[1].toLowerCase());
+  if (bgApp.length !== 2) {
+    console.error('FALHA: esperava 2 declarações de --bg-app (clara e escura), achei ' + bgApp.length);
+    return true;
+  }
+  const [claro, escuro] = bgApp;
+
+  const tc = js.match(/THEME_COLOR\s*=\s*\{\s*light:\s*'(#[0-9a-fA-F]{6})',\s*dark:\s*'(#[0-9a-fA-F]{6})'/);
+  const af = idx.match(/backgroundColor\s*=\s*\(t === 'dark'\)\s*\?\s*'(#[0-9a-fA-F]{6})'\s*:\s*'(#[0-9a-fA-F]{6})'/);
+
+  if (!tc || !af) {
+    console.error('FALHA: não consegui ler THEME_COLOR ou o fundo do anti-flash.');
+    console.error('   Se o código mudou de forma, atualize este script junto.');
+    return true;
+  }
+
+  const problemas = [];
+  if (tc[1].toLowerCase() !== claro)  problemas.push('THEME_COLOR.light  ' + tc[1] + ' != --bg-app claro '  + claro);
+  if (tc[2].toLowerCase() !== escuro) problemas.push('THEME_COLOR.dark   ' + tc[2] + ' != --bg-app escuro ' + escuro);
+  if (af[2].toLowerCase() !== claro)  problemas.push('anti-flash claro   ' + af[2] + ' != --bg-app claro '  + claro);
+  if (af[1].toLowerCase() !== escuro) problemas.push('anti-flash escuro  ' + af[1] + ' != --bg-app escuro ' + escuro);
+
+  if (problemas.length) {
+    console.error('FALHA: cor de fundo fora de sincronia entre CSS, THEME_COLOR e anti-flash');
+    problemas.forEach((p) => console.error('   ' + p));
+    console.error('   -> sintoma: piscada de cor errada ao carregar a página.');
+    return true;
+  }
+
+  console.log('Fundo --bg-app         : ' + claro + ' / ' + escuro + ' — consistente nos 3 lugares');
+  return false;
 }
 
 main();

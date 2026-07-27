@@ -851,6 +851,13 @@ function aplicarTema(tema) {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', THEME_COLOR[escuro ? 'dark' : 'light']);
 
+  // Espelha o que o script anti-flash do <head> deixou inline no <html>. Sem
+  // isto, o inline ficaria congelado no tema da carga e passaria a brigar com
+  // a paleta ao alternar. colorScheme também controla os controles nativos
+  // (date-picker, scrollbar) e o fundo padrão do iframe do Apps Script.
+  raiz.style.colorScheme = escuro ? 'dark' : 'light';
+  raiz.style.backgroundColor = THEME_COLOR[escuro ? 'dark' : 'light'];
+
   // O ícone quem troca é o CSS; aqui só o texto, que o CSS não alcança.
   const btn = $id('btn-tema');
   if (btn) {

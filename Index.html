@@ -54,11 +54,23 @@
           t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
             ? 'dark' : 'light';
         }
+        var raiz = document.documentElement;
         if (t === 'dark') {
-          document.documentElement.setAttribute('data-theme', 'dark');
+          raiz.setAttribute('data-theme', 'dark');
           var m = document.querySelector('meta[name="theme-color"]');
           if (m) m.setAttribute('content', '#0f131a');
         }
+        // O data-theme sozinho NÃO evita o flash: ele só tem efeito depois que
+        // o CSS é interpretado, e até lá o navegador pinta a tela de fundo
+        // PADRÃO dele — branca. Estas duas linhas agem antes de qualquer CSS:
+        //   colorScheme  diz ao navegador para usar o canvas escuro no lugar
+        //                do branco (e vale também para o iframe do Apps Script,
+        //                já que a página é servida com XFrameOptionsMode.DEFAULT);
+        //   backgroundColor cobre o <html>, que no CSS não tem fundo próprio —
+        //                lá o background está só no <body>, pintado mais tarde.
+        // Mantidas em sincronia por aplicarTema() (JS_Utilitarios.html).
+        raiz.style.colorScheme = t;
+        raiz.style.backgroundColor = (t === 'dark') ? '#0f131a' : '#f3f4f6';
       } catch (e) { /* sem localStorage: abre no claro */ }
     })();
   </script>

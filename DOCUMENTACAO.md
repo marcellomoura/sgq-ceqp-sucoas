@@ -1002,6 +1002,24 @@ Também obrigatória a leitura de layout (`void raiz.offsetHeight`) entre a troc
 
 **Permanece:** no Painel de Indicadores os gráficos são destruídos e recriados, o que dá um apagar-e-desenhar visível. É inerente ao `<canvas>` e nenhuma regra de CSS alcança.
 
+#### 8.20.10 Anti-flash incompleto e posição do botão retraído (27/07/2026)
+
+**O anti-flash da Fase 5 não funcionava.** Reportado: recarregar a página no modo escuro ainda piscava branco. A implementação original apenas definia `data-theme` no `<html>` antes do CSS — mas **o atributo só tem efeito depois que o CSS é interpretado**, e até lá o navegador pinta a tela de fundo padrão dele, que é branca. Definir o atributo cedo é necessário, não suficiente.
+
+Dois fatos do projeto explicam por que o sintoma era forte:
+- `Código.js` serve a página com `XFrameOptionsMode.DEFAULT`, ou seja **dentro de um iframe** do Apps Script;
+- no `CSS.html` o fundo está declarado apenas no `body` — o `<html>` não tem fundo próprio, então nada cobre a tela até o `body` ser pintado.
+
+**Correção:** o script anti-flash passou a definir também, inline no `<html>`:
+- `style.colorScheme` — instrui o navegador a usar o canvas escuro no lugar do branco. Age antes de qualquer CSS e vale também para o iframe;
+- `style.backgroundColor` — cobre o `<html>`, que o CSS deixa sem fundo.
+
+`aplicarTema()` passou a espelhar as duas propriedades, senão o valor inline ficaria congelado no tema da carga e brigaria com a paleta na primeira troca.
+
+> ⚠️ **Duplicação inevitável, agora vigiada.** O valor de `--bg-app` passou a existir em **três** lugares: os tokens do `CSS.html` (fonte da verdade), `THEME_COLOR` em `JS_Utilitarios.html` e o script anti-flash do `Index.html`. O terceiro **não tem como ler o token** — roda antes de o CSS existir. Se os três saírem de sincronia, o sintoma é uma piscada de cor errada no carregamento, sem nenhum erro de console. `verificar-tema.cjs` ganhou a checagem `verificarFundos()`, testada nos dois sentidos.
+
+**Botão de tema acima do avatar quando retraído.** A pedido do usuário, `.sidebar.collapsed .sidebar-foot` passou de `column` para `column-reverse`, deixando o avatar como último elemento da barra — a âncora visual do rodapé. Apenas a ordem visual muda: a ordem do DOM, e portanto a de tabulação, continua avatar → botão.
+
 **`_envelopeHtml()` permanece intocada,** com suas cores em hex literal: ela gera uma folha isolada que não enxerga o `:root` (§8.19), o que agora é uma vantagem — o PDF é imune ao tema por construção. Verificado que continua com **zero** ocorrências de `var(--...)`.
 
 ---
