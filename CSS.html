@@ -533,10 +533,13 @@
     display: flex; align-items: center; justify-content: center;
     background-color: var(--primary); color: var(--text-inverse); border: none;
     padding: 10px 24px; border-radius: var(--radius-pill);
-    font-size: 14px; font-weight: 500; cursor: pointer;
+    /* 600 é o peso padrão de botão neste sistema (.btn, .btn-pdf,
+       .btn-pdf-email, .sidebar-action-btn). O .btn-create estava em 500 e era
+       o único fora do padrão. */
+    font-size: 14px; font-weight: 600; cursor: pointer;
     box-shadow: var(--shadow-sm); transition: background-color var(--transition-fast);
   }
-  .btn-create-icon { font-size: 16px; margin-right: 6px; font-weight: 500; }
+  .btn-create-icon { font-size: 16px; margin-right: 6px; font-weight: 600; }
   .btn-create:hover { background-color: var(--primary-hover); }
 
   /* Caixa "Novo ano" (Férias/Afastamentos): campo e botões em formato de
