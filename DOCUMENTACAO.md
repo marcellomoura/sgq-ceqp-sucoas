@@ -1053,6 +1053,43 @@ Em 27/07/2026 o usuário confirmou o **primeiro** caso.
 
 **Risco correlato, ainda latente.** O `localStorage` do sandbox vive no domínio `googleusercontent.com`, cujo prefixo pode mudar entre deploys. Se mudar, é outro *origin* e **a preferência de tema salva se perde**, fazendo o sistema voltar a seguir o SO. Não foi observado até agora, mas se um dia o tema "esquecer" sozinho logo após um deploy, a causa é essa — não um bug de código.
 
+#### 8.20.12 Eixo da Matriz de Risco — por que precisou de token próprio (27/07/2026)
+
+Reportado na conferência visual: no modo escuro, as células de eixo da Matriz (`P \ I` e os rótulos de probabilidade e impacto) ficavam quase pretas ao lado das células claras e saturadas do heatmap.
+
+**A causa não era o tom do eixo — era uma incoerência dentro da própria tabela.** A Fase 3 decidiu que as 4 cores de risco **não mudam com o tema** (precisam preservar a ordem perceptual baixo→crítico e são fotografadas para dentro do PDF). O eixo ficou de fora dessa decisão e continuou seguindo a paleta. Resultado: metade das células da mesma tabela ignora o tema e a outra metade obedece.
+
+**A medição mostrou que a escada de superfícies nunca resolveria** (L\* de 0 = preto a 100 = branco):
+
+| | Cor | L\* |
+|---|---|---|
+| Heatmap — Baixo / Médio / Alto / Crítico | `#72C9B7` `#E6CC8C` `#E6AD7A` `#E27E73` | **75 / 83 / 75 / 64** |
+| `--bg-card` (1ª tentativa) | `#161a22` | 9 |
+| `--bg-subtle` (2ª tentativa) | `#1f242d` | 14 |
+| `--bg-hover` (topo da escada) | `#242a34` | 17 |
+| `--border-strong` | `#384150` | 27 |
+
+O heatmap vive entre **L\* 64 e 83**; a escada de superfícies escuras **topa em 17**, porque existe para ser escura. Ir de 14 para 17 seria imperceptível, e mesmo o valor mais claro da escada ficaria ~40 pontos abaixo. **Nenhum token existente serviria.**
+
+**Solução: `--matrix-axis-bg`**, token próprio justamente porque este ponto *não pode* seguir a escada. Declarado nas duas paletas — `#ffffff` no claro (idêntico ao que `--bg-card` já entregava, então o modo claro não mudou) e um cinza claro no escuro. Como o token existe nos dois lados, a regra `[data-theme="dark"] .cell-axis` deixou de ser necessária e saiu: ficou **uma regra a menos** que antes, e sem nenhuma cor chumbada.
+
+**Progressão de valores até chegar ao atual** (ajustado por conferência visual, não por cálculo):
+
+| Valor | L\* | Contraste de `--text-main` | Veredito |
+|---|---|---|---|
+| `#1f242d` | 14 | 12,69:1 AAA | escuro demais |
+| `#414a5a` | 31 | 7,27:1 AAA | ainda escuro |
+| **`#545e6f`** | **40** | **5,33:1 AA** | **atual** |
+
+Se um dia precisar clarear mais, o próximo é `#5e697b` (L\* 44, 4,52:1) — que já raspa o limite do AA. **Acima disso o texto claro deixa de funcionar** e seria preciso inverter para texto escuro, como as células do heatmap já fazem (`--risk-*-text: #030712`).
+
+**Escopo verificado por quatro caminhos antes de alterar:** `.cell-axis` tem 11 usos, todos estáticos em `View_Riscos.html`; nenhum JS a gera; não existe na folha isolada do PDF; e `.matrix-table` só aparece nessa tela. O PDF também não muda, porque o `onclone` da captura remove o `data-theme`.
+
+**Alternativas avaliadas e descartadas** (registradas para não serem reabertas sem motivo novo):
+- **Dar contraparte escura às 4 cores de risco** — quebraria a ordem perceptual que foi a razão de mantê-las fixas, e exigiria gerenciar duas paletas de risco, já que elas vão para o PDF, que é sempre claro.
+- **Deixar o eixo também ignorar o tema** (branco nos dois) — a mais coerente em tese, e alinharia tela e PDF, mas o usuário preferiu manter o eixo escuro e apenas clareá-lo.
+- **Eixo transparente, só texto e borda** — elegante (cabeçalho não é dado), mas mexeria no desenho da tabela nos dois temas.
+
 **`_envelopeHtml()` permanece intocada,** com suas cores em hex literal: ela gera uma folha isolada que não enxerga o `:root` (§8.19), o que agora é uma vantagem — o PDF é imune ao tema por construção. Verificado que continua com **zero** ocorrências de `var(--...)`.
 
 ---
