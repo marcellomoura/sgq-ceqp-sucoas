@@ -781,7 +781,7 @@ Inverter tudo mecanicamente produz resultado ruim — cada família tem regra pr
 | **1a** | ✅ **CONCLUÍDO em 27/07/2026.** Tokenização **neutra**: 12 `.avatar-pastel-N` → `--tag-*` (V7); `#2b7fff`→`var(--accent)` e `#4b5563`→`var(--text-secondary)`; removidas as 2 constantes mortas (G4) | ❌ Não |
 | **1b** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Mudanças **visíveis**: 8 sombras (V1); fósseis de paleta (V2/V3); F2; K1; `color-scheme` (V6); **correção do B1 + o gêmeo `.save-btn`** | ⚠️ Sim, aprovado |
 | **2** | ✅ **CONCLUÍDO em 27/07/2026.** Ganchos: `--overlay-bg` (N4), `--badge-glass-bg`, `--control-accent` (N3), `--chart-grid` (G3), `--icon-calendar`/`--icon-chevron` (N1) — todos inicializados com o valor atual | ❌ Não |
-| **3** | Paleta escura: as 9 famílias de §8.20.3 | ❌ Não |
+| **3** | ✅ **CONCLUÍDO em 27/07/2026** — ver §8.20.8. Paleta escura: as 9 famílias de §8.20.3 | ❌ Não |
 | **4** | **Regras estruturais do escuro** (categoria nova): borda nos filtros/botões do topo (F1), P3, B4 | ❌ Não |
 | **5** | Infra: `data-theme`, `localStorage`, toggle, `theme-color` (N8), **anti-flash no `<head>`**, `prefers-reduced-motion` | ❌ Não |
 | **6** | Gráficos: descongelar as 3 constantes; **cache de `corVar()` invalidado no toggle** (V5); re-render (G2); sincronizar G5/K3; aplicar `--chart-grid` | ⚠️ Risco técnico |
@@ -856,6 +856,26 @@ Validação: sintaxe dos dois JS conferida com `new Function()`; nenhuma referê
 **Validação:** nenhuma sombra com cor literal restante; nenhum fóssil de paleta fora de comentários; auditoria de tokens confirmou **139 declarados, 118 usados via `var()`, zero usados-mas-não-declarados**; sintaxe JS e balanceamento de chaves do CSS verificados.
 
 **A conferir visualmente (esta fase muda aparência):** botões primários em geral ("Salvar Documento", "Enviar PDF", "Entendi", "Salvar Cartão") — devem estar pretos como os botões "Novo"; hover dos botões redondos do topo e dos cards de Plano de Ação (sombra mais difusa); mensagens de erro; "Versão Atual" no modal de revisão de documento; hover do "adicionar cartão" no Kanban; coluna "hoje" da Escala Semanal.
+
+**Fase 3 — concluída em 27/07/2026.** Criado o bloco `[data-theme="dark"]` em `CSS.html`, logo após o `:root`. **Inerte por ora:** nenhum HTML/JS aplica o atributo até a Fase 5, então o modo claro não muda em nada — verificado programaticamente que o `:root` ficou idêntico ao commit anterior.
+
+**Cobertura:** 93 tokens redeclarados. Omitidos **de propósito**: 26 de geometria/tipografia/motion (não mudam com o tema), os 12 `--risk-*` (o heatmap precisa preservar a ordem perceptual baixo→crítico, são tons médios que funcionam sobre fundo escuro, e o texto quase-preto contrasta contra o próprio preenchimento — além de a matriz ser fotografada para dentro do PDF), os 6 apelidos (`--tag-alta/media/baixa`, `--green/--red/--yellow`, que seguem `--danger/--warning/--success` sozinhos), `--shadow-xs` (é `none`, não tem cor) e `--color-presencial-text` (branco sobre o azul escurecido dá 4,6:1, passa no AA sem mudar). Auditoria confirmou **zero tokens de cor sem contraparte**.
+
+**Validação de contraste (WCAG):**
+
+| Par | Resultado |
+|---|---|
+| `--text-main` sobre as 4 superfícies | 13,3:1 a 15,8:1 — **AAA** |
+| `--text-secondary` / `--text-muted` sobre cartão | 7,95:1 e 5,13:1 — AAA / AA |
+| Texto de status sobre o próprio `-bg` (4 famílias) | 7,33:1 a 9,24:1 — **AAA** |
+| Pílula ativa da sidebar (texto escuro sobre claro) | 15,16:1 — AAA |
+| Texto sobre o botão primário (tinta invertida) | 15,16:1 — AAA |
+
+**Achado da validação — o P1 se resolve sozinho.** O contraste *interno* dos chips de ícone dos KPIs (glifo em `base` sobre fundo em `-border`, mesma família) era o critério que eu havia deixado de fora na auditoria original. Medido nas duas paletas, ele **melhora** no escuro: 1,82–3,05 no claro → 3,21–3,98 no escuro. O risco que eu havia levantado não se materializou com esta paleta.
+
+**Distinguibilidade dos 12 tons decorativos.** Medida por ΔE (CIELAB) entre todos os 66 pares da metade escura (a que alimenta os gráficos): mínimo de **13,8** no escuro (peach/cinnamon) contra 19,9 no claro (peach/gold). Fica acima do limiar de 10 para "claramente distinguíveis", mas com margem menor — confirmando a previsão de §8.20.3 de que a gama útil é mais estreita no escuro. **Ainda assim exige conferência visual lado a lado**, porque ΔE não captura tudo.
+
+**Decisões de paleta aplicadas:** tinta da marca invertida (`#030712` → `#e6e8eb`), com o hover continuando a caminhar na direção do fundo (no claro escurecia menos; aqui clareia menos), preservando a gramática de interação; `--text-inverse` invertido de sentido; `--accent-light` invertido de papel (regra que vale para todo token `-light`); as três superfícies que compartilhavam `#f3f4f6` agora divergem; sidebar invertida com pílula ativa clara; sombras mais profundas (`alpha` 0,40–0,55), já que sombra rende pouco no escuro — o que reforça a necessidade da Fase 4.
 
 ---
 

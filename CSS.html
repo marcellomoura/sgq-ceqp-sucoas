@@ -188,6 +188,168 @@
     --transition-slow: 300ms var(--ease);
   }
 
+  /* ==========================================
+     MODO ESCURO — contraparte dos tokens de cor
+     ==========================================
+     Redeclara os MESMOS nomes do :root com outros valores. Nenhuma regra de
+     CSS abaixo precisa ser tocada: a cascata resolve tudo quando o atributo
+     data-theme="dark" aparece no <html>.
+
+     Enquanto o atributo não for aplicado (Fase 5), este bloco fica inerte —
+     nada muda no modo claro.
+
+     NÃO ganham contraparte, deliberadamente:
+     - raio, espaçamento, tipografia e motion: geometria não muda com o tema;
+     - --risk-*: as 4 cores do heatmap da Matriz precisam preservar a ORDEM
+       perceptual (baixo→crítico). São tons médios saturados que funcionam
+       sobre fundo escuro, e o texto quase-preto contrasta contra o próprio
+       preenchimento, não contra a página. Mudá-las quebraria a leitura do
+       gradiente — e essa matriz ainda é fotografada para dentro do PDF;
+     - --tag-alta/media/baixa e --green/--red/--yellow: são apelidos que
+       apontam para --danger/--warning/--success, então seguem sozinhos.
+
+     Ver DOCUMENTACAO.md §8.20 para a auditoria completa e o racional de
+     cada família.
+  ========================================== */
+  [data-theme="dark"] {
+    color-scheme: dark;
+
+    /* ---- Marca: a tinta INVERTE (decisão §8.20.7) ----
+       Preto vira quase-branco; o hover continua caminhando na direção do
+       fundo (no claro escurecia menos, aqui clareia menos), preservando a
+       mesma gramática de interação. */
+    --primary: #e6e8eb;
+    --primary-hover: #c9ced6;
+    --primary-active: #b4bbc5;
+    --primary-light: #252a34;
+    --primary-lighter: #1f242d;
+    --primary-ring: rgba(230,232,235,0.22);
+    --primary-text: #e6e8eb;
+
+    /* ---- Acento: só ganha luminosidade; o -light INVERTE de papel ---- */
+    --accent: #5b9bff;
+    --accent-hover: #7db0ff;
+    --accent-light: #16233a;
+
+    /* Segue a tinta da marca, como no claro (lá era o preto --primary). */
+    --control-accent: #e6e8eb;
+
+    /* ---- Superfícies: a ordem é PRESERVADA, não espelhada ----
+       Elevação continua sendo "mais claro": o poço do Kanban fica abaixo da
+       página, o cartão acima dela. É por essa escada que o fundo não pode ser
+       preto puro — não haveria lugar para o poço do Kanban descer. */
+    --kanban-list-bg: #0a0d13;
+    --bg-app: #0f131a;
+    --bg-card: #161a22;
+    --bg-panel: #1b2029;
+    --bg-subtle: #1f242d;
+    --bg-hover: #242a34;
+    /* No claro estes três compartilhavam #f3f4f6; aqui DIVERGEM, senão o
+       hover não se distingue do fundo (§8.20.3, família 1). */
+    --overlay-bg: rgba(0,0,0,0.65);
+    --badge-glass-bg: rgba(22,26,34,0.92);
+    --hover-wash: rgba(230,232,235,0.08);
+
+    /* ---- Sidebar: inversão limpa e simétrica ----
+       No claro a barra é clara com a pílula ativa escura; aqui a barra é
+       escura e a pílula ativa fica CLARA, com texto escuro. */
+    --sidebar-bg: #0f131a;
+    --sidebar-bg-alt: #1b2029;
+    --sidebar-hover: rgba(230,232,235,0.06);
+    --sidebar-active-bg: #e6e8eb;
+    --sidebar-text: #9ba3af;
+    --sidebar-text-hover: #e6e8eb;
+    --sidebar-text-active: #0f131a;
+    --sidebar-border: #232833;
+    --sidebar-icon: #8b93a1;
+    --sidebar-group-text: #8b93a1;
+
+    /* ---- Texto ----
+       --text-main NÃO é branco puro: a #fff sobre fundo escuro causa
+       halation (o texto "sangra") e este sistema usa muito corpo de 10-13px.
+       #e6e8eb sobre --bg-card dá ~13,9:1, folgado no AAA.
+       --text-inverse inverte de SENTIDO: é "texto sobre preenchimento
+       claro", então aqui precisa ser escuro. */
+    --text-main: #e6e8eb;
+    --text-secondary: #a8b0ba;
+    --text-muted: #838c99;
+    --text-inverse: #0f131a;
+
+    /* ---- Bordas: mais discretas que no claro ----
+       Borda clara demais transforma a interface numa gaiola de linhas. Já a
+       grade do gráfico precisa continuar legível como régua — por isso
+       --chart-grid é mais visível que --border-subtle aqui (§8.20 G3). */
+    --border-color: #262c37;
+    --border-subtle: #1e232c;
+    --border-strong: #384150;
+    --chart-grid: #2b3240;
+
+    /* ---- Status: bg e text TROCAM de papel; a base quase não muda ----
+       No claro: bg pálido + texto escuro saturado.
+       No escuro: bg escuro dessaturado + texto claro saturado. */
+    --success: #35BFA2;
+    --success-bg: #102c26;
+    --success-border: #1d5a4c;
+    --success-text: #5FD9BE;
+    --warning: #D9AA3C;
+    --warning-bg: #2e2410;
+    --warning-border: #5c4a1c;
+    --warning-text: #E8C66A;
+    --danger: #E4594B;
+    --danger-bg: #301613;
+    --danger-border: #5f2823;
+    --danger-text: #F09287;
+    --info: #8B7DE8;
+    --info-bg: #1e1b33;
+    --info-border: #3b3466;
+    --info-text: #AFA4F5;
+    --purple: #9d75f8;
+    --purple-bg: #241a3d;
+    --purple-border: #43307a;
+
+    /* ---- Decorativas pontuais ---- */
+    --afast-abono: #e08a3c;
+    --afast-aniversario: #2fb3a6;
+    --color-presencial-bg: #4d76b3;
+    --color-agora-bg: #17253a;
+    --color-agora-text: #9dbde8;
+    --color-agora-border: #2d456b;
+
+    /* ---- Paleta decorativa de 12 tons ----
+       As duas metades trocam: o fundo pálido vira escuro e o texto escuro
+       vira claro. Como gráficos e --tag-* consomem só a metade escura (que
+       aqui clareia), os gráficos se corrigem sozinhos. A única obrigação
+       desta família é os 12 seguirem MUTUAMENTE distinguíveis — verificar
+       lado a lado, não só no cálculo. */
+    --tag-lavender: #241f3d; --tag-lavender-text: #AFA4F5;
+    --tag-mint: #102c26; --tag-mint-text: #5FD9BE;
+    --tag-rose: #331a20; --tag-rose-text: #EE8CA0;
+    --tag-sky: #132a3a; --tag-sky-text: #79C0EC;
+    --tag-peach: #331f12; --tag-peach-text: #F0B27C;
+    --tag-gold: #2e2410; --tag-gold-text: #E8C66A;
+    --tag-brick: #301613; --tag-brick-text: #F09287;
+    --tag-lime: #1e2a12; --tag-lime-text: #A7D16F;
+    --tag-turquoise: #0f2b2c; --tag-turquoise-text: #5FCBD3;
+    --tag-orchid: #2d1b2c; --tag-orchid-text: #DC8ED4;
+    --tag-slate: #1e242e; --tag-slate-text: #9BAAC0;
+    --tag-cinnamon: #2b1f16; --tag-cinnamon-text: #C99A72;
+
+    /* ---- Ícones embutidos: mesma geometria, stroke claro ----
+       Único lugar onde a cor precisa ser reescrita por inteiro, porque vive
+       dentro da string do data: URI (§8.20 N1). %23a8b0ba = --text-secondary. */
+    --icon-calendar: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a8b0ba' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+    --icon-chevron: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8b0ba' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+
+    /* ---- Sombra: mais profunda, porque sombra rende pouco no escuro ----
+       A elevação real vem da escada de superfícies e da borda; a sombra é
+       reforço. É também por isso que a Fase 4 precisa dar BORDA aos filtros
+       e botões do topo, que hoje são definidos só por sombra (§8.20 F1). */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.40);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.45);
+    --shadow-lg: 0 12px 28px rgba(0,0,0,0.55);
+    --shadow-accent: 0 4px 14px rgba(91,155,255,0.22);
+  }
+
   /* ===== RESET E BASE ===== */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   * { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
