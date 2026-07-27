@@ -1231,18 +1231,22 @@
   .chart-legend-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--text-inverse); margin-right: 12px; flex-shrink: 0; }
   .chart-legend-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--text-secondary); }
   .chart-legend-count { font-size: 13px; text-align: right; min-width: 20px; font-weight: 500; color: var(--text-muted); }
-  .avatar-pastel-1  { background: #E9E6FB; color: #7A6CDD; } /* Lavanda */
-  .avatar-pastel-2  { background: #DFF6EF; color: #2CA98F; } /* Menta */
-  .avatar-pastel-3  { background: #FBE3E6; color: #D2596F; } /* Rosa */
-  .avatar-pastel-4  { background: #E1F1FC; color: #3D8FC4; } /* Céu */
-  .avatar-pastel-5  { background: #FBEADD; color: #E0904A; } /* Pêssego */
-  .avatar-pastel-6  { background: #FBF3D3; color: #C99A2E; } /* Dourado */
-  .avatar-pastel-7  { background: #FCE1DE; color: #D8483A; } /* Tijolo */
-  .avatar-pastel-8  { background: #EAF5DC; color: #6B9B37; } /* Lima */
-  .avatar-pastel-9  { background: #DCF3F3; color: #1E9AA3; } /* Turquesa */
-  .avatar-pastel-10 { background: #F6E3F5; color: #A94FA0; } /* Orquídea */
-  .avatar-pastel-11 { background: #E7EBF2; color: #55647A; } /* Ardósia */
-  .avatar-pastel-12 { background: #F2E4D8; color: #8B5E3C; } /* Canela */
+  /* Os 12 tons da paleta decorativa (ver §8.19). São exatamente os mesmos
+     valores dos tokens --tag-*, que antes ficavam repetidos aqui em hex —
+     agora apontam para a fonte única, para que a paleta seja ajustável num
+     lugar só (pré-requisito do modo escuro, §8.20). */
+  .avatar-pastel-1  { background: var(--tag-lavender);  color: var(--tag-lavender-text); }  /* Lavanda */
+  .avatar-pastel-2  { background: var(--tag-mint);      color: var(--tag-mint-text); }      /* Menta */
+  .avatar-pastel-3  { background: var(--tag-rose);      color: var(--tag-rose-text); }      /* Rosa */
+  .avatar-pastel-4  { background: var(--tag-sky);       color: var(--tag-sky-text); }       /* Céu */
+  .avatar-pastel-5  { background: var(--tag-peach);     color: var(--tag-peach-text); }     /* Pêssego */
+  .avatar-pastel-6  { background: var(--tag-gold);      color: var(--tag-gold-text); }      /* Dourado */
+  .avatar-pastel-7  { background: var(--tag-brick);     color: var(--tag-brick-text); }     /* Tijolo */
+  .avatar-pastel-8  { background: var(--tag-lime);      color: var(--tag-lime-text); }      /* Lima */
+  .avatar-pastel-9  { background: var(--tag-turquoise); color: var(--tag-turquoise-text); } /* Turquesa */
+  .avatar-pastel-10 { background: var(--tag-orchid);    color: var(--tag-orchid-text); }    /* Orquídea */
+  .avatar-pastel-11 { background: var(--tag-slate);     color: var(--tag-slate-text); }     /* Ardósia */
+  .avatar-pastel-12 { background: var(--tag-cinnamon);  color: var(--tag-cinnamon-text); }  /* Canela */
 
   /* Escala — checkboxes/radios estilizados no modal */
   .escala-day-check {

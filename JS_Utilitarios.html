@@ -84,18 +84,11 @@ const CHART_TOOLTIP_BASE = {
   titleColor: corVar('--text-inverse'), bodyColor: corVar('--border-strong'),
   boxPadding: 4, displayColors: true
 };
-const CHART_LEGEND_BASE = {
-  position: 'bottom',
-  labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 11, family: "'Inter',sans-serif" }, color: corVar('--text-secondary') }
-};
-
-const CHART_DATALABELS_BASE = {
-  color: corVar('--text-inverse'),
-  font: { weight: 'bold', family: "'Inter',sans-serif", size: 11 },
-  formatter: function(value, context) {
-    return value > 0 ? value : '';
-  }
-};
+// CHART_LEGEND_BASE e CHART_DATALABELS_BASE foram removidas em 27/07/2026:
+// eram código morto (zero consumidores). Os 10 gráficos usam
+// legend: { display: false } e montam a legenda em HTML (.chart-legend-*,
+// .tl-donut-legend-list), e cada rosca declara seu próprio datalabels inline.
+// Ver §8.20, achado G4.
 const CHART_SCALES_BASE = {
   y: {
     beginAtZero: true,
@@ -264,7 +257,11 @@ function renderUserAvatar() {
 function linkA(url, txt, cor, comIcone) {
   if (!url || url === '-') return '-';
   if (!/^https?:\/\//i.test(String(url).trim())) return esc(url);
-  const corFinal = cor || (comIcone ? '#2b7fff' : '#2563eb');
+  // var() resolve normalmente em style="" no DOM (só canvas/PDF é que não
+  // resolvem) — e nenhuma das listas que usam linkA() (Documentos,
+  // Capacitações, Visitas) entra em PDF: os 5 CFG_PDF não as incluem.
+  // O #2563eb continua literal por não ter token equivalente (ver §8.20, V2).
+  const corFinal = cor || (comIcone ? 'var(--accent)' : '#2563eb');
   const peso = comIcone ? 500 : 600;
   const icone = comIcone ? '🔗 ' : '';
   const semQuebra = comIcone ? 'white-space:nowrap;' : '';

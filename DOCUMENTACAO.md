@@ -656,12 +656,184 @@ Avatares usam as duas metades (fundo+texto, via classe `.avatar-pastel-N`); grá
 
 ---
 
+### 8.20 Modo Escuro — auditoria de preparação e plano de implementação (2026-07-27)
+
+Levantamento **read-only** feito antes de qualquer alteração, consolidando 30 achados de quatro varreduras sucessivas (tokens → verificação de neutralidade → gráficos → Kanban/filtros/botões/painéis). O modo escuro **não existe no código** (ver histórico: houve uma tentativa em 19/07/2026 que nunca foi commitada). Esta seção é o plano aprovado.
+
+#### 8.20.1 Como o modo escuro é montado
+
+Quase nenhuma regra do `CSS.html` declara cor literal — todas dizem `var(--token)`. Logo, o modo escuro **não é reescrever o CSS**: é adicionar um segundo bloco que redeclara os *mesmos nomes* com outros valores, e um atributo no `<html>` que liga a chave:
+
+```
+:root                  { --bg-app: #f3f4f6; --text-main: #030712; ... }   ← claro (existe)
+[data-theme="dark"]    { --bg-app: #0f131a; --text-main: #e6e8eb; ... }   ← escuro (novo)
+```
+
+Trocar o atributo faz as ~1.400 linhas de CSS mudarem de cor de uma vez, sem que nenhuma seja modificada. Custo de runtime ≈ zero (um recálculo de estilo).
+
+**Dimensões:** o `:root` tem **131 tokens** — 101 de cor (ganham contraparte) e 30 de geometria/tipografia/motion (não ganham: `border-radius: 12px` é 12px nos dois temas). Payload atual dos 19 arquivos servidos: **472 KB**; acréscimo estimado **+4,7 KB (+1,0%)**, e bem menos na rede por ser texto altamente repetitivo.
+
+**Os três furos que a cascata não alcança:**
+
+| Furo | Motivo | Solução |
+|---|---|---|
+| Gráficos (canvas) | Chart.js pinta bitmap; `var()` não existe lá | `corVar()` + descongelar constantes + redesenhar no toggle |
+| Ícones SVG em `data:` URI | A cor está *dentro de uma string de texto* — CSS não interpola `var()` ali | Token guardando a URL inteira, uma por tema |
+| PDF | `_envelopeHtml()` gera folha isolada que não enxerga `:root` (§8.19) | **Não seguir o tema** — papel é sempre claro |
+
+**Anti-flash é obrigatório:** o atributo tem que estar no `<html>` antes do primeiro paint. Aplicado no `onload` (onde o JS carrega hoje, no fim do body), o usuário vê ~200 ms de tela branca antes de escurecer, a cada carregamento.
+
+#### 8.20.2 Decisão de paleta: quase-preto azulado, não preto puro
+
+**Preto puro (`#000`) está descartado**, e o argumento decisivo vem do próprio código: no claro, `--kanban-list-bg` (`#D3D6DC`) é **mais escuro** que `--bg-app` (`#f3f4f6`) — a coluna do Kanban é um *poço rebaixado*. Com `--bg-app: #000` **não existe lugar para essa coluna ir**, e a relação de profundidade teria de ser invertida.
+
+Reforçam a decisão: (a) o design system declara elevação por tonalidade, não por sombra (`CSS.html:121`, `--shadow-xs: none`) — precisa de espaço nos dois sentidos; (b) são 5 níveis de superfície a acomodar; (c) a tipografia é densa (`--fs-2xs: 10px`, `--fs-xs: 11px`), e branco puro sobre preto puro nesses tamanhos causa *halation*. (O argumento OLED não se aplica: app administrativo de desktop em iframe.)
+
+**Viés azul, não cinza neutro** — a rampa clara já é azulada (`#030712`, `#4b5563`, `#6b7280`, `#e5e7eb`), e manter a matiz é o que faz parecer o mesmo produto com a luz apagada.
+
+| Token | Claro | Escuro | Papel |
+|---|---|---|---|
+| `--kanban-list-bg` | `#D3D6DC` | `#0a0d13` | poço (abaixo da página) |
+| `--bg-app` | `#f3f4f6` | `#0f131a` | página |
+| `--bg-card` | `#ffffff` | `#161a22` | cartão elevado |
+| `--bg-panel` | `#f9fafb` | `#1b2029` | painel |
+| `--bg-subtle` / `--bg-hover` | `#f3f4f6` | `#21262f` | hover (passam a **divergir**) |
+
+Texto principal **`#e6e8eb`, não `#ffffff`** — contraste ≈ **13,9:1** sobre `#161a22` (AAA); branco puro daria ~16,5:1, que é contraste *demais* para leitura prolongada. Valores são ponto de partida fundamentado, sujeitos a ajuste visual (principalmente os degraus de hover).
+
+#### 8.20.3 As 9 famílias de cor e suas estratégias
+
+Inverter tudo mecanicamente produz resultado ruim — cada família tem regra própria.
+
+| # | Família | Estratégia | Cuidado específico |
+|---|---|---|---|
+| 1 | Superfícies | Inverte **preservando a ordem**, não espelhando: elevação continua sendo "mais claro" | `--bg-subtle`/`--bg-hover`/`--bg-app` têm o mesmo valor hoje e **precisam divergir** |
+| 2 | Texto | Inverte | `--text-inverse` inverte de *sentido* (é "texto sobre preenchimento") e alimenta os datalabels das roscas |
+| 3 | Bordas | Inverte com **menos** contraste | Clarear demais transforma a tela numa gaiola de linhas |
+| 4 | Marca `--primary` | **Decisão conceitual** — tinta preta não existe sobre fundo escuro | Consumidores: `:focus-visible`, `accent-color`, `.tl-section-title::before`, `.btn.primary` |
+| 5 | Acento azul | Só ajuste de luminosidade | `--accent-light` **inverte de papel**: tint pálido → escuro dessaturado (vale p/ todo token `-light`) |
+| 6 | Status ×4 (16 tokens) | `base` quase intacto; `bg` ↔ `text` trocam | Validar também **contraste interno** de família (ver P1) |
+| 7 | Níveis de risco | **Quase não muda** — heatmap precisa preservar ordem perceptual | Menor esforço, maior criticidade (vai ao PDF via html2canvas) |
+| 8 | 12 tons decorativos | Metades trocam; a metade escura clareia → **conserta os gráficos sozinha** | Os 12 devem seguir mutuamente distinguíveis — verificação visual, não cálculo |
+| 9 | Sidebar | Inversão limpa e simétrica | `--sidebar-active-bg` e `--sidebar-text-active` trocam de lado |
+| — | Decorativas pontuais | Clareamento simples | `--afast-abono`/`--afast-aniversario` são **fósseis da paleta pré-recalibração** (ver §8.7) |
+
+#### 8.20.4 Inventário completo dos achados
+
+**Infraestrutura ausente (N1–N8)**
+
+| # | Achado |
+|---|---|
+| N1 | Dois SVG `data:` URI com cor chumbada dentro da string: calendário `stroke='%234b5563'` (`CSS.html:319`) e chevron do `<select>` `stroke='%23374151'` (`CSS.html:1076`). `var()` **não** é interpolado ali |
+| N2 | Nenhum `color-scheme` no projeto — controles nativos (painel do date-picker, dropdown, autofill, scrollbar) continuam claros |
+| N3 | `accent-color: var(--primary)` em 3 lugares (`CSS.html:1089, 1256, 1266`) — `--primary` é tinta preta; no escuro o checkbox some |
+| N4 | `.modal-overlay { background: rgba(17,17,24,0.5) }` (`CSS.html:961`) — véu escuro sobre fundo escuro |
+| N5 | `_capturarElementoComoImg()` (`JS_Utilitarios.html:1416`) captura o elemento **ao vivo** → no escuro entra imagem escura dentro de PDF claro. Afeta Matriz de Riscos e KPIs/grids do Painel |
+| N6 | Constantes de gráfico congeladas no topo do módulo — **corrigido para 3 reais + 2 mortas** (ver G4) |
+| N7 | `box-shadow` com cor literal — **corrigido de 5 para 8** (ver V1) |
+| N8 | Sem `<meta name="theme-color">`; sem ponto de ancoragem para o toggle (só existe `#sidebar-user-container`) |
+
+**Verificação de neutralidade (V1–V7)** — nem toda tokenização é troca invisível:
+
+| # | Achado |
+|---|---|
+| V1 | **8** `box-shadow` com cor literal (`175, 245, 248, 1155, 1157, 1162, 1357, 1406`) e **nenhum bate com `--shadow-*`**. Trocar por token **mudaria o modo claro**. *(A contagem anterior de 5 vinha de um grep `rgba(0,0,0` sem espaços, que perdia `rgba(0, 0, 0, 0.05)`.)* |
+| V2 | `#2563eb`, `#dc2626`, `#16a34a` **não existem** como token — apontá-los para `--danger`/`--success` mudaria a cor visível |
+| V3 | `#dc2626` (`JS_Utilitarios.html:296`) e `#0f766e` (`View_Documentos.html:261`) são **fósseis da paleta antiga** (§8.7 registra `--success/--warning/--danger` = `#0f766e`/`#b45309`/`#dc2626`). Não são cores intencionais: é migração incompleta. `#16a34a` é avulso |
+| V4 | Contagem de constantes congeladas — superada por G4 |
+| V5 | `corVar()` **não tem cache** (`JS_Utilitarios.html:63`). Tornar `PALETA_PASTEL_HEX` lazy sem cache é **regressão real**: `corPastelHex()` roda por etiqueta/cartão (`JS_Kanban.html:340`) e `_mapaCoresMembros()` já recomputa o mapa a cada avatar |
+| V6 | Declarar `color-scheme: light` **muda o comportamento atual** para quem usa SO escuro (força claro nos controles nativos) |
+| V7 | ✅ Os 12 `.avatar-pastel-N` (`CSS.html:1234-1245`) batem **exatamente** com os 24 valores `--tag-*`. Troca 100% neutra |
+
+**Gráficos (G1–G5)**
+
+| # | Achado |
+|---|---|
+| G1 | ✅ Canvas é transparente — o fundo vem de `.tl-chart-card` (`var(--bg-card)`). **Nada a fazer** |
+| G2 | As 4 roscas usam `borderColor: corVar('--bg-card')` como falso espaçamento entre fatias (`JS_Kanban.html:710, 757`; `JS_Capacitacoes.html:365`; `JS_VisitasTecnicas.html:253`). Sem re-render, ficam **anéis brancos** sobre cartões escuros — o modo de falha mais visível do sistema |
+| G3 | `--border-subtle` acumula **dois propósitos** (borda de UI + grade do eixo Y, `JS_Utilitarios.html:103`) que **divergem no escuro**: borda deve ser discreta, grade precisa ser legível. Exige token `--chart-grid` dedicado |
+| G4 | `CHART_LEGEND_BASE` (`:87`) e `CHART_DATALABELS_BASE` (`:92`) são **código morto** — aparecem só na própria declaração; os 10 gráficos usam `legend:{display:false}`. Restam **3** constantes a descongelar: `CHART_TOOLTIP_BASE`, `CHART_SCALES_BASE`, `PALETA_PASTEL_HEX` |
+| G5 | Avatar da legenda tem fundo inline vindo da paleta congelada e texto em `var(--text-inverse)` (`CSS.html:1231`) — **as duas metades viram em momentos diferentes** |
+| ✅ | `CHART_TOOLTIP_BASE` está escrito em termos semânticos (`--text-main` como fundo, `--text-inverse` como título) e **se auto-inverte** corretamente |
+
+**Kanban, filtros, botões e painéis (K, F, B, P)**
+
+| # | Achado |
+|---|---|
+| K1 | `.btn-add-card:hover { background: rgba(23,24,31,0.06) }` (`CSS.html:517`) — lavagem de tinta escura, some no escuro |
+| K2 | `.card { border: 1px solid var(--bg-card) }` (`CSS.html:532`) — a borda do cartão **é a cor do cartão** (decisão da rodada 5). Funciona, mas o cartão passa a depender **inteiramente** da escada de superfícies estar correta |
+| K3 | `.label-chip` (`CSS.html:1096`) tem o mesmo descasamento do G5 — fundo inline de `corLabel()`, texto em token. **G5 tem 3 vítimas: legenda, etiquetas do Kanban e avatares** |
+| **F1** | ⚠️ **Achado estrutural.** `.filter-select`/`.filter-input` (`276`), `.filter-date-group` (`173`) e `.btn-top-action` (`241`) têm `border: none` e são definidos **só pela sombra** — que morre no escuro. **Toda a barra de filtros e ações do topo, em todas as páginas, perde o contorno.** Exige adicionar `border` no bloco escuro: muda **propriedade**, não valor |
+| F2 | `box-shadow: 0 4px 14px rgba(43, 127, 255, 0.15)` (`CSS.html:1162`) — `--accent` (`#2b7fff` = 43,127,255) chumbado como brilho |
+| B1 | ⚠️ **Bug latente.** `.btn.primary` usa `var(--sidebar-active-bg)` como fundo e `var(--primary-hover)` como hover — **famílias diferentes**. Hoje passa despercebido (ambos cinza-escuro); no escuro `--sidebar-active-bg` precisa inverter enquanto `--primary-hover` segue a marca → **hover quebra** |
+| B2 | ✅ `.btn-pdf { background: var(--text-main) }` — botão pintado com token de texto; frágil semanticamente, mas **auto-inverte** |
+| B3 | `.btn.success:hover` (`881`) e `.btn-pdf-email:hover` (`906`) usam o slot `-text` da família como **fundo** de hover — quando o slot inverter, o hover passa a clarear. Aceitável, mas acidental |
+| B4 | `.btn:disabled { opacity: 0.5 }` — sobre fundo escuro lê como "transparente", não "desabilitado" |
+| **P1** | ⚠️ `.icon-blue/green/red/yellow` e `.c-*` (`CSS.html:835-841`) usam `-border` como **fundo** e `base` como **glifo**: o contraste é **interno à família**, não contra a página. Se os dois slots convergirem no escuro, **o ícone some dentro do próprio chip**. Acrescenta um critério de validação |
+| P2 | `.tl-section-title::before` (`CSS.html:1316`) usa `var(--primary)` como barra decorativa — amarrado à decisão de marca |
+| P3 | `.kpi-card`/`.tl-kpi-card` têm `border: none; box-shadow: none` — mesma classe de problema do F1, mais brando por serem superfícies maiores |
+
+#### 8.20.5 Plano faseado
+
+| Fase | Conteúdo | Afeta o claro? |
+|---|---|---|
+| **0** | ✅ **DECIDIDO em 27/07/2026** — ver §8.20.7 | — |
+| **1a** | ✅ **CONCLUÍDO em 27/07/2026.** Tokenização **neutra**: 12 `.avatar-pastel-N` → `--tag-*` (V7); `#2b7fff`→`var(--accent)` e `#4b5563`→`var(--text-secondary)`; removidas as 2 constantes mortas (G4) | ❌ Não |
+| **1b** | Mudanças **visíveis**, item a item: 8 sombras (V1); fósseis de paleta (V2/V3); F2; K1; `color-scheme` (V6); **correção do B1** | ⚠️ Sim, por decisão |
+| **2** | Ganchos: `--overlay-bg` (N4), `--badge-glass-bg`, `--control-accent` (N3), `--chart-grid` (G3), `--icon-calendar`/`--icon-chevron` (N1) — todos inicializados com o valor atual | ❌ Não |
+| **3** | Paleta escura: as 9 famílias de §8.20.3 | ❌ Não |
+| **4** | **Regras estruturais do escuro** (categoria nova): borda nos filtros/botões do topo (F1), P3, B4 | ❌ Não |
+| **5** | Infra: `data-theme`, `localStorage`, toggle, `theme-color` (N8), **anti-flash no `<head>`**, `prefers-reduced-motion` | ❌ Não |
+| **6** | Gráficos: descongelar as 3 constantes; **cache de `corVar()` invalidado no toggle** (V5); re-render (G2); sincronizar G5/K3; aplicar `--chart-grid` | ⚠️ Risco técnico |
+| **7** | PDF/export: forçar tema claro em `_capturarElementoComoImg()` com `try/finally` (N5); `_envelopeHtml()` segue com hex literais | ⚠️ Risco técnico |
+| **8** | Validação: WCAG AA; **contraste interno de família (P1)**; 12 tons lado a lado; 8 telas + modais; os 5 PDFs; Kanban com volume real | — |
+
+#### 8.20.6 Impacto no modo claro e proteções
+
+**As Fases 1a, 2, 3, 4 e 5 não mudam nada visualmente no claro.** As Fases 3 e 4 vivem dentro de `[data-theme="dark"]`, que não existe até a Fase 5. A Fase 1b é opcional e granular. As Fases 6 e 7 não mudam aparência, mas tocam código que roda no claro.
+
+| Risco | Mitigação |
+|---|---|
+| Constante → função: errar um call site dá `undefined` no Chart.js e **o gráfico não renderiza** | Trocar declaração e os 6 call sites de `CHART_SCALES_BASE` no mesmo commit; abrir os 3 painéis antes de seguir |
+| Cache de `corVar()` mal invalidado → cores congeladas do tema anterior | Invalidar no **mesmo ponto** que troca o atributo, nunca em listener separado |
+| Anti-flash quebra a página inteira (roda antes de tudo) | `try/catch` mudo — falhar em silêncio e cair no claro |
+| Captura de PDF não restaura o tema → tela presa no claro | `try/finally`, restauração garantida mesmo com exceção |
+| Borda nos filtros altera layout | ✅ **Sem risco:** o reset já tem `box-sizing: border-box` (`CSS.html:143`) — borda não muda dimensão externa |
+
+**Regras de execução:** branch dedicada, um commit por fase (reversão granular) · **fronteira rígida** — não tocar em `comBloqueio`/`flush`, salvamento, paginação, autenticação ou lógica de negócio; este trabalho é **cor e render, só** · não mexer no `classList.toggle('hidden')` nem nas 7 exceções documentadas de `style.display` · regressão funcional a cada fase no modo claro (salvar/excluir/arquivar cartão, drag-and-drop, os 5 PDFs, filtros e paginação de Logs/Capacitações/Arquivados, modais de Riscos/Planos) · `clasp push` só após validação manual (não há dev server local no Apps Script).
+
+**Ponto de parada seguro:** ao fim da Fase 2 o sistema está mais limpo e o modo escuro pronto para ser ligado quando se quiser, sem nenhuma mudança visível.
+
+#### 8.20.7 Decisões da Fase 0 (27/07/2026)
+
+| Decisão | Escolha |
+|---|---|
+| **`--primary` no escuro** | **Inverter a tinta** — o preto `#030712` vira quase-branco; botões primários ficam claros sobre fundo escuro. Preserva a identidade "tinta" do design system em vez de passar a identidade para o azul. Consequência: `.btn.primary`, `:focus-visible`, `accent-color` e `.tl-section-title::before` seguem a tinta invertida |
+| **Posição do toggle** | Rodapé da sidebar, **abaixo do avatar do membro** (`#sidebar-user-container`), no formato sol/lua. **Requisito explícito:** dimensionado para continuar visível com a sidebar **retraída** (`.sidebar.collapsed`) — validar contra as regras de colapso em `CSS.html` |
+| **Padrão na primeira visita** | **Seguir o SO** via `prefers-color-scheme`. A escolha manual, quando feita, tem prioridade e fica persistida em `localStorage` |
+| **Export `html2canvas`** | **Sempre claro**, igual ao PDF (Fase 7) |
+| **Escada de superfícies** | Confirmada conforme §8.20.2 |
+| **Ordem de execução** | Começar **só pela Fase 1a** (mínimo verificado valor a valor), avaliando o ritmo antes de seguir |
+
+#### 8.20.8 Registro de execução
+
+**Fase 1a — concluída em 27/07/2026.** Quatro alterações, todas verificadas como neutras no modo claro:
+
+1. Os 12 `.avatar-pastel-N` (`CSS.html`) passaram de hex literal para `var(--tag-*)`. Os 24 valores foram comparados par a par antes da troca (V7) — `#E9E6FB/#7A6CDD` = Lavanda … `#F2E4D8/#8B5E3C` = Canela. Com isso, o `CSS.html` deixa de ter qualquer declaração de cor em hex fora do bloco `:root` (as ocorrências restantes de `#111827`/`#f3f4f6` no arquivo estão apenas em **comentários** que documentam estilos inline do lado JS).
+2. `linkA()` (`JS_Utilitarios.html`): `#2b7fff` → `var(--accent)`. **Verificação de segurança feita antes da troca:** `var()` não resolve em PDF, então foi confirmado que nenhuma lista que usa `linkA()` (Documentos, Capacitações, Visitas) entra em PDF — os 5 tipos de `CFG_PDF` são dashboard/archived/matriz/acomp/risco-arquivado, e o único clone de lista é `_gridRowsParaPdf('archived-list')` (`JS_Kanban.html:774`). O `#2563eb` do mesmo ternário **permaneceu literal** por não ter token equivalente (V2, pendente na Fase 1b).
+3. `JS_Documentos.html`: `#4b5563` → `var(--text-secondary)` nos dois links de anexo (valor idêntico).
+4. Removidas `CHART_LEGEND_BASE` e `CHART_DATALABELS_BASE` (G4) — código morto, zero consumidores. Comentário no lugar explica o porquê.
+
+Validação: sintaxe dos dois JS conferida com `new Function()`; nenhuma referência órfã às constantes removidas; 12 avatares consumindo token. **Pendente:** validação visual manual e `clasp push`.
+
+---
+
 ## 9. Próximas Melhorias
 
 1. **Testes:** extrair lógica pura (`calcularNivelRisco`, `_statusPlano`, `_tarefaArquivada_`, `colIdx_`, `calcularProximaRevisao`) para funções testáveis + suíte com `clasp run`/GAS testing.
 2. **Observabilidade:** painel de saúde (contagem de linhas por aba, alertas de aproximação de cotas).
 3. **Migração de store:** se o volume crescer muito, considerar Sheets como cache e um backend real (Firestore/BigQuery) para Logs/Atividades.
-4. **Tematização:** consolidar estilos inline em classes (**concluído em 26/07/2026**, ver §10 — de ~378 para 35 `style=""`, restando só casos dinâmicos/PDF-literais); falta suporte a tema claro/escuro via tokens já existentes.
+4. **Tematização:** consolidar estilos inline em classes (**concluído em 26/07/2026**, ver §10 — de ~378 para 35 `style=""`, restando só casos dinâmicos/PDF-literais); modo escuro **auditado e planejado em 27/07/2026 — ver §8.20** (30 achados catalogados, paleta decidida, plano em 8 fases; ainda não implementado).
 5. **Acessibilidade:** completar rótulos ARIA nas tabelas dinâmicas e feedback de status para leitores de tela.
 6. **CI/CD:** pipeline `clasp push` com lint (ESLint) e verificação de versões de dependência.
 
