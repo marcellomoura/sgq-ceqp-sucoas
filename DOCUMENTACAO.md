@@ -53,7 +53,8 @@ Ordem **do mais recente para o mais antigo**. "§10" indica entrada no log infor
 
 | Data | O que aconteceu | Registro |
 |---|---|---|
-| **2026-07-30** | Membros: coluna Matrícula (migração manual de coluna, mesmo padrão do item anterior) | **§8.29** |
+| **2026-07-30** | Membros: remove a pílula visual do Cargo (sem borda real, era fundo+padding) | **§8.30** |
+| 2026-07-30 | Membros: coluna Matrícula (migração manual de coluna, mesmo padrão do item anterior) | §8.29 |
 | 2026-07-30 | Visitas Técnicas: coluna Data Prevista + KPI de Planejadas redefinido | §8.28 |
 | 2026-07-29 | **Execução do backlog da auditoria de 27/07** — 22 itens em 4 fases: 2 bugs altos, 6 médios, 9 baixos, 8 de código morto | **§8.27** |
 | 2026-07-29 | Refinamento das cores do modo escuro (3 rodadas de suavização, +1–4% L\*) | §10 (Décima rodada) |
@@ -1475,6 +1476,20 @@ A auditoria de 27/07 constatou que **nenhum** item do backlog de 26/07 havia sid
 **Verificado:** `node --check` OK; `View_Pessoas.html` com `<div>` balanceadas (+1 vs. HEAD); 6 cabeçalhos batendo com as 6 frações do grid `.membro-row`; `memberMatricula` referenciado nos 3 pontos esperados (reset, popular, ler).
 
 **Pendente:** commitado e enviado por `clasp push` pelo usuário via terminal em 30/07 — mesma ressalva de verificação do item anterior. Falta validação visual em produção.
+
+---
+
+### 8.30 Membros — remove a pílula visual do Cargo (2026-07-30)
+
+**Pedido:** o Cargo, na lista de Membros, aparecia com um fundo/caixinha em volta do texto que o usuário percebeu como "uma borda".
+
+**Causa:** `.member-role-badge` (`CSS.html`) não tem nenhuma propriedade `border` — o efeito de caixinha vinha da combinação `background: var(--primary-light)` + `padding` + `border-radius`, que estiliza o texto como pílula. Diferente das classes que *de fato* têm borda (`.badge-success`/`.badge-warning`/`.badge-danger`/`.badge-neutral`, usadas em Status via o helper `badge()`), o Cargo nunca teve `border` — só parecia ter, pelo contorno criado pelo fundo colorido.
+
+**Correção:** removidas as três propriedades (`background`, `padding`, `border-radius`) de `.member-role-badge`, mantendo só `color`/`font-size`/`font-weight`. O Cargo passa a ser texto simples, igual às demais colunas da lista.
+
+**Efeito colateral avisado e aceito:** `.member-role-badge`/`.member-role-badge--lg` é classe **compartilhada** entre a lista de Membros e o Kanban (comentário em `CSS.html` já apontava os dois usos). A mudança tira a pílula do Cargo nos dois lugares — não foi criada uma classe modificadora para isolar só uma tela, por pedido explícito do usuário ("altere somente essa classe").
+
+**Arquivo:** `CSS.html` (1 linha).
 
 ---
 
