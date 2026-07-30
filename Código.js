@@ -31,7 +31,13 @@ const SHEET_VISITAS      = 'Visitas_Tecnicas';
 // 'Ativo' (Sim/Não) controla se o membro tem acesso ao sistema e aparece nas
 // telas. Em branco = ativo (compatível com linhas anteriores à coluna). Membro
 // inativo preserva o histórico (tarefas/afastamentos/logs) mas perde o login.
-const CABECALHOS_MEMBROS = ['ID_Membro','Nome','Cargo','Email_Funcional','Email_Pessoal','Dias_Semana','Dia_Presencial','Ativo'];
+// 'Matricula' inserida logo após 'Nome' — nesta ordem física exata na
+// planilha (coluna nova inserida manualmente à direita de 'Nome'). colIdx_
+// mapeia por POSIÇÃO neste array; setupDatabaseKanban() ainda reescreve o
+// TEXTO do cabeçalho sozinho se detectar divergência (ver linha ~680), então
+// o deploy deste array só pode acontecer depois que a coluna já existir
+// fisicamente na planilha na mesma posição — nunca antes.
+const CABECALHOS_MEMBROS = ['ID_Membro','Nome','Matricula','Cargo','Email_Funcional','Email_Pessoal','Dias_Semana','Dia_Presencial','Ativo'];
 // Uma linha por (Membro + Ano) — permite manter vários anos abertos ao
 // mesmo tempo sem perder histórico (ver Modulo_Pessoas.js).
 const CABECALHOS_AFASTAMENTOS = ['ID_Afastamento','Ano','ID_Membro','Membro_Nome','Ferias_1','Ferias_2','Ferias_3','Abonos','Abono_Aniversario','Licenca_Servidor_Premio','Demais_Afastamentos'];
@@ -66,7 +72,12 @@ const CABECALHOS_PLANOS   = ['ID_Plano','ID_Risco','O_Que','Por_Que','Quem(ID_Un
 const CABECALHOS_ENTREGAS_PLANOS = ['ID_Plano','Unidade','Status','Data','Processo_SEI'];
 const CABECALHOS_LOGS     = ['Data_Hora','Usuario','Acao','Referencia','Detalhes'];
 const CABECALHOS_CAPACITACOES = ['ID_Capacitacoes', 'Titulo_Da_Capacitacao', 'Tema', 'Publico_Alvo', 'Modalidade', 'Data_Prevista', 'Data_Realizada', 'Status', 'Lista_De_Presenca', 'Responsaveis(ID_Membro)'];
-const CABECALHOS_VISITAS = ['ID_Visitas_Tecnicas', 'Objetivo_Da_Visita', 'Local_Visitado', 'Data_Da_Visita', 'Status', 'Responsaveis(ID_Membro)', 'Relatorio_Anexo'];
+// 'Data_Prevista' inserida ANTES de 'Data_Da_Visita' — nesta ordem física
+// exata na planilha (coluna nova inserida manualmente à esquerda da
+// existente). colIdx_ mapeia por POSIÇÃO neste array, não pelo texto do
+// cabeçalho na planilha: se a ordem aqui divergir da ordem física real, toda
+// leitura a partir desta coluna sai desalinhada em silêncio.
+const CABECALHOS_VISITAS = ['ID_Visitas_Tecnicas', 'Objetivo_Da_Visita', 'Local_Visitado', 'Data_Prevista', 'Data_Da_Visita', 'Status', 'Responsaveis(ID_Membro)', 'Relatorio_Anexo'];
 
 // Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
 // (a mesma fonte única usada no setup da planilha). Elimina os índices
@@ -816,7 +827,7 @@ function getKanbanData_members_() {
     // filtrar quem aparece nas telas/seletores.
     const at = String(r[C('Ativo')] || '').trim().toLowerCase();
     return {
-      id: String(r[C('ID_Membro')]), name: String(r[C('Nome')]), role: String(r[C('Cargo')]), email: String(r[C('Email_Funcional')]||''), emailPessoal: String(r[C('Email_Pessoal')]||''),
+      id: String(r[C('ID_Membro')]), name: String(r[C('Nome')]), matricula: String(r[C('Matricula')]||''), role: String(r[C('Cargo')]), email: String(r[C('Email_Funcional')]||''), emailPessoal: String(r[C('Email_Pessoal')]||''),
       diasSemana: diasSemana, diaPresencial: String(r[C('Dia_Presencial')]||''),
       horarios: horarios, ativo: !(at === 'não' || at === 'nao')
     };
@@ -1098,7 +1109,11 @@ function getVisitasTecnicasData() {
     id: String(r[CV('ID_Visitas_Tecnicas')]||''),
     objetivo: String(r[CV('Objetivo_Da_Visita')]||''),
     local: String(r[CV('Local_Visitado')]||''),
-    data: formatarDataParaUI_(r[CV('Data_Da_Visita')]),
+    dataPrevista: formatarDataParaUI_(r[CV('Data_Prevista')]),
+    // Campo renomeado de "data" para "dataRealizada" (vocabulário do cliente,
+    // igual Capacitações) — a coluna física na planilha continua chamada
+    // 'Data_Da_Visita' (colIdx_ não lê o texto do cabeçalho, só a posição).
+    dataRealizada: formatarDataParaUI_(r[CV('Data_Da_Visita')]),
     status: String(r[CV('Status')]||'Planejada'),
     participantes: String(r[CV('Responsaveis(ID_Membro)')]||''),
     relatorio: String(r[CV('Relatorio_Anexo')]||'')

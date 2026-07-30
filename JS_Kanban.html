@@ -52,6 +52,7 @@ function renderMembers() {
         <div class="member-avatar member-avatar--lg ${corMembroPorNome(m.name)}">${esc(iniciaisMembro(m.name))}</div>
         <span class="member-c-name-txt">${esc(m.name)}${inativo?' '+badgeInativo():''}</span>
       </div>
+      <div>${esc(m.matricula || '-')}</div>
       <div><span class="member-role-badge member-role-badge--lg">${esc(m.role)}</span></div>
       ${celulaEmail(m.email, 'email')}
       ${celulaEmail(m.emailPessoal, 'emailPessoal')}
@@ -63,18 +64,18 @@ function renderMembers() {
 }
 
 function abrirModalMembro() {
-  $id('memberId').value=''; $id('memberName').value=''; $id('memberRole').value=''; $id('memberEmail').value=''; $id('memberEmailPessoal').value='';
+  $id('memberId').value=''; $id('memberName').value=''; $id('memberMatricula').value=''; $id('memberRole').value=''; $id('memberEmail').value=''; $id('memberEmailPessoal').value='';
   $id('modal-member-title').innerText='Novo Membro';
   abrirModal('modal-member');
 }
 function abrirEditarMembro(m) {
-  $id('memberId').value=m.id; $id('memberName').value=m.name; $id('memberRole').value=m.role; $id('memberEmail').value=m.email||''; $id('memberEmailPessoal').value=m.emailPessoal||'';
+  $id('memberId').value=m.id; $id('memberName').value=m.name; $id('memberMatricula').value=m.matricula||''; $id('memberRole').value=m.role; $id('memberEmail').value=m.email||''; $id('memberEmailPessoal').value=m.emailPessoal||'';
   $id('modal-member-title').innerText='Editar Membro';
   abrirModal('modal-member');
 }
 function salvarMembro() {
   const btn=$id('btn-save-member');
-  const dados={ id:$id('memberId').value, name:($id('memberName').value||'').trim(), role:($id('memberRole').value||'').trim(), email:($id('memberEmail').value||'').trim(), emailPessoal:($id('memberEmailPessoal').value||'').trim() };
+  const dados={ id:$id('memberId').value, name:($id('memberName').value||'').trim(), matricula:($id('memberMatricula').value||'').trim(), role:($id('memberRole').value||'').trim(), email:($id('memberEmail').value||'').trim(), emailPessoal:($id('memberEmailPessoal').value||'').trim() };
   if(!dados.name||!dados.role||!dados.email||!dados.emailPessoal){ showAlerta('Preencha todos os campos.'); return; }
   btn.disabled=true; btn.innerText='Salvando...';
   google.script.run.withSuccessHandler(r=>{

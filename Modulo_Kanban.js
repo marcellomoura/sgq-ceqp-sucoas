@@ -286,8 +286,8 @@ function saveMember(member) {
     if (member.id && member.id !== 'null' && member.id !== '') {
       for (let i = 1; i < data.length; i++) {
         if (String(data[i][C('ID_Membro')]) === String(member.id)) {
-          // Nome, Cargo e Email Funcional são contíguos (colunas 2-4)
-          sheet.getRange(i+1, C('Nome')+1, 1, 3).setValues([[member.name, member.role, member.email].map(neutralizarFormula_)]);
+          // Nome, Matrícula, Cargo e Email Funcional são contíguos (colunas 2-5)
+          sheet.getRange(i+1, C('Nome')+1, 1, 4).setValues([[member.name, member.matricula || '', member.role, member.email].map(neutralizarFormula_)]);
           // E-mail pessoal na coluna do cabeçalho (antes ia para a 13ª por
           // engano, ficando invisível na leitura — ver getKanbanData_members_)
           sheet.getRange(i+1, C('Email_Pessoal')+1).setValue(neutralizarFormula_(member.emailPessoal || ''));
@@ -300,7 +300,7 @@ function saveMember(member) {
       const newId = getNextId_(sheet, 'MEM-');
       // Nova linha no layout de CABECALHOS_MEMBROS (Dias Semana / Dia
       // Presencial ficam vazios até a edição da Escala; nasce Ativo = 'Sim')
-      const row = [newId, member.name, member.role, member.email || '', member.emailPessoal || '', '', '', 'Sim'];
+      const row = [newId, member.name, member.matricula || '', member.role, member.email || '', member.emailPessoal || '', '', '', 'Sim'];
       sheet.appendRow(row.map(neutralizarFormula_));
       SpreadsheetApp.flush();
       invalidarCacheMembros_(); // membro novo ganha acesso imediato (sem esperar TTL)
