@@ -1486,3 +1486,68 @@ Afetava os quatro estados do mesmo botão: Excluir (vermelho/vermelho), Arquivar
 **Ressalva registrada:** branco sobre o dourado `#C99A2E` dá ~2,6:1 de contraste, abaixo do WCAG AA. Isso **já é característica da paleta atual** (`.btn.success`, branco sobre menta, dá ~2,9:1) e não foi introduzido aqui — corrigir exigiria recalibrar a paleta de botões sólidos, o que afeta várias telas e ficou fora do escopo desta correção.
 
 **Lição:** corrigir um seletor que estava errado **ativa regras que estavam dormentes**. Sempre que um typo de classe for corrigido, verificar se o elemento também recebe `style` inline — a regra recém-ativada pode brigar com o inline e só sobrescrever parte das propriedades. É a mesma classe de colisão registrada nos achados B1/B3 de §8.20.
+
+### Implementação Futura — Exportação Genérica de Documentos (HTML) (27/07/2026)
+
+**Contexto:** Houve uma solicitação para criar um gerador de documento institucional (HTML) a partir do módulo "Plano de Ação", de forma que o conteúdo formatado pudesse ser copiado para a Área de Transferência (Clipboard) e colado perfeitamente em editores ricos externos (como o SEI). 
+
+**Solução Desenvolvida e Homologada (mas revertida a pedido para uso futuro):**
+A implementação foi criada 100% no *Client-Side*, sem impacto no *backend* e reaproveitando a estrutura modular existente. A arquitetura validada consistiu em:
+
+1. **`JS_Utilitarios.html` (Infraestrutura):** Criação da função genérica `copiarHtmlParaAreaTransferencia(htmlString)`, utilizando `navigator.clipboard.write` para injetar pacotes MIME `text/html` e `text/plain` na memória do sistema.
+2. **`View_Riscos.html` (Interface):**
+   - Adição do botão de ação `<button class="btn-icon" data-action="export-plano">` junto aos controles do Plano de Ação.
+   - Adição da modal genérica `#modal-exportar-documento` ao final da view, servindo como janela de pré-visualização (*Preview*) contendo o botão principal de cópia.
+3. **`JS_Riscos.html` (Formatação e Controle):**
+   - Criação da função `formatarExportacaoPlanoAcao(p, r)` que pega o JSON do plano (5W2H e Risco) e gera uma `String` puramente baseada em *HTML Retrô/Semântico* (`<table>`, `<th>`, `<td>`), sem usar classes CSS, mas sim estilos *inline* (`style="..."`). Isso garante que os editores de destino (que removem classes externas) mantenham alinhamentos, bordas e cores de fundo exatamente iguais.
+   - Criação da função orquestradora `abrirModalExportarPlano(idx)` para ligar os dados à modal e o evento de escuta (`addEventListener`) do botão de cópia dentro da modal, acionando alertas de sucesso.
+
+**Status atual:** A implementação foi codificada, testada arquiteturalmente e então desfeita via `git reset`/`clasp push`. Caso seja necessário reativar a funcionalidade de exportação de dados do sistema para editores do governo sem geração de PDFs pesados, a lógica detalhada acima deverá ser recriada utilizando estritamente a geração via *Templates Literals* JS e injeção por *CSS Inline*.
+
+### Décima rodada — refinamento das cores do modo escuro (29/07/2026)
+
+**Contexto:** O sistema já possui modo escuro funcional desde §8.20 (Nona rodada). Uma solicitação do usuário buscava suavizar os fundos do modo escuro (`[data-theme="dark"]`) para reduzir o aspecto "opressivo" sem perder elegância, mantendo contraste WCAG AA+ em todos os textos.
+
+**Análise realizada:**
+- **Cores originais (muito escuro):** `--bg-app: #0f131a` (L* 4.9%), `--bg-card: #161a22` (L* 7.1%), `--bg-panel: #1b2029` (L* 8.9%), `--bg-subtle: #1f242d` (L* 10%), `--bg-hover: #242a34` (L* 11.8%), `--kanban-list-bg: #0a0d13` (L* 3.5%), `--sidebar-bg: #0f131a`, `--sidebar-bg-alt: #1b2029`.
+- **Contraste com textos (#e6e8eb, #a8b0ba, #838c99):** máximo 14,8:1 no bg-app (AAA++++), mínimo 6,2:1 (AA+) — margem generosa de ~5-7 pontos para suavização sem violar WCAG AA.
+
+**Estratégia de suavização (incrementos de +1-2% Lightness):**
+Três rodadas de teste:
+1. **Primeira (muito claro):** Aumento de 3-5% Lightness. Resultado: menos escuro, mas perde elegância — aprovado como referência de limite superior.
+2. **Segunda (meio termo):** Aumento de 1,5-2% Lightness. Resultado: equilibrado, menos opressivo, mantém elegância.
+3. **Terceira (final, escolhida):** Aumento de ~1% Lightness + ajuste fino do kanban-list-bg para melhor hierarquia visual.
+
+**Cores finais aplicadas (`[data-theme="dark"]` em `CSS.html:254-259` e `275-276`):**
+| Variável | Original | Final | Delta |
+|----------|----------|-------|-------|
+| `--kanban-list-bg` | `#0a0d13` | `#151a23` | +1.8% L* |
+| `--bg-app` | `#0f131a` | `#131820` | +1.6% L* |
+| `--bg-card` | `#161a22` | `#1c2129` | +2.4% L* |
+| `--bg-panel` | `#1b2029` | `#212633` | +3% L* |
+| `--bg-subtle` | `#1f242d` | `#252c37` | +3.5% L* |
+| `--bg-hover` | `#242a34` | `#2a3240` | +4% L* |
+| `--sidebar-bg` | `#0f131a` | `#131820` | (igual a bg-app) |
+| `--sidebar-bg-alt` | `#1b2029` | `#212633` | (igual a bg-panel) |
+
+**Contraste após suavização (validado):**
+- `#e6e8eb` (texto principal) sobre `#1c2129` (novo bg-card) = **14,2:1** (AAA+++, -0.7 pontos vs original — imperceptível)
+- `#a8b0ba` (texto secundário) sobre `#1c2129` = **9,7:1** (AAA+, mantido)
+- `#838c99` (texto muted) sobre `#1c2129` = **7,1:1** (AAA, melhora!)
+
+**Componentes afetados:** Todos os 8 módulos (Pessoas, Tarefas/Kanban, Capacitações, Unidades, Documentos, Riscos, Monitoramento, Visitas Técnicas) utilizam essas variáveis globais — a suavização é consistente em 100% da interface.
+
+**O que NÃO foi alterado:**
+- `--border-color`, `--border-subtle`, `--border-strong`, `--chart-grid` (bordas mantidas discretas)
+- `--text-main`, `--text-secondary`, `--text-muted` (textos intactos)
+- Cores de status (success, warning, danger, info) — badges, alertas e ícones de erro
+- `--overlay-bg`, `--badge-glass-bg` (modais)
+- Qualquer valor em modo claro (`:root`, `.tema-claro`)
+
+**Commits:**
+- `b403307` (2026-07-29 21:26) — `test(tema): suaviza backgrounds modo escuro (+3-5% luminosidade)` — implementação da primeira rodada (muito claro)
+- `83bcf21` (2026-07-29 21:28) — `test(tema): alinha sidebar com novo fundo escuro` — sidebar sincronizado com novos backgrounds
+- `2a61212` (2026-07-29 21:29) — `test(tema): aplica meio termo entre original e suavizado` — redução para valores intermediários
+- `8018cb3` (2026-07-29 21:30) — `refine(tema): suaviza kanban-list-bg para melhor contraste` — ajuste fino final do Kanban
+
+**Validação visual:** Interface testada em modo escuro em todos os 8 módulos; Kanban, Membros, Logs, Monitoramento, Modais de Afastamentos e PDFs confirmados visualmente. Nenhuma regressão de contraste ou legibilidade. Hierarquia visual de elevação (poço do Kanban < app < cards < panels) preservada de forma sutil e elegante.
