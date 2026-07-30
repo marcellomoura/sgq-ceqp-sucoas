@@ -12,22 +12,22 @@ function salvarDocumento(dados) {
     // serializava desnecessariamente cadastros concorrentes.
     const mapa = { 'Instrução de Trabalho':'IT','Plano de Fiscalização':'PF','Procedimento':'PRO','Política':'POL','Regimento Interno':'RI','Manual':'MAN','Guia':'GUI','Formulário':'FOR' };
     const siglaTipo = mapa[dados.tipo] || 'DOC';
-    // A leitura de Unidades estava DENTRO do comBloqueio, ao contrário do que o
+    // A leitura de Unidades estava DENTRO do comBloqueio_, ao contrário do que o
     // comentário acima descrevia: cada cadastro segurava o ScriptLock durante um
     // getDataRange() extra. Movida para fora — Unidades não é alterada aqui, e o
     // prefixo só depende dela e do payload. A numeração sequencial do código
     // (que precisa de serialização) continua dentro do lock.
     let siglaUnd = 'UND';
     if (dados.responsavel) {
-      const uData = conectarAba(SHEET_UNITS).getDataRange().getValues();
+      const uData = conectarAba_(SHEET_UNITS).getDataRange().getValues();
       const C_UN = colIdx_(CABECALHOS_UNIDADES);
       const unRow = uData.slice(1).find(r => String(r[C_UN('ID_Unidade')]) === String(dados.responsavel));
       siglaUnd = unRow ? String(unRow[C_UN('Sigla')] || 'UND').trim()
                        : dados.responsavel.split(' - ')[0];
     }
     const prefixo = `${siglaTipo}-${siglaUnd}-`;
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_DOCS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_DOCS);
       const C = colIdx_(CABECALHOS_DOCS);
       const rows = aba.getDataRange().getValues();
       let max = 0;
@@ -39,12 +39,12 @@ function salvarDocumento(dados) {
         }
       });
       const codigo = prefixo + String(max + 1).padStart(2,'0');
-      const proxRev = calcularProximaRevisao(dados.dataAprovacao);
+      const proxRev = calcularProximaRevisao_(dados.dataAprovacao);
       // Versão gravada como NÚMERO (não texto) — mantém consistência de
       // formatação e alinhamento na planilha com as revisões seguintes.
       aba.appendRow([codigo, 1, dados.tipo, dados.titulo, dados.dataAprovacao, proxRev,
         'Vigente', dados.responsavel, dados.linkDoc, dados.docAuxiliar || '', dados.docAuxiliar2 || '', 'Emissão Inicial'].map(neutralizarFormula_));
-      registrarLog('Cadastro de Documento', codigo, 'Documento publicado: ' + dados.titulo);
+      registrarLog_('Cadastro de Documento', codigo, 'Documento publicado: ' + dados.titulo);
       return { sucesso: true, mensagem: 'Documento registrado com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -58,19 +58,19 @@ function atualizarDocumento(dados) {
     // gravava título/link em branco por cima de um documento vigente.
     if (!dados || !dados.tipo || !String(dados.titulo||'').trim() || !dados.responsavel || !String(dados.linkDoc||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos obrigatórios.' };
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_DOCS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_DOCS);
       const C = colIdx_(CABECALHOS_DOCS);
       const linha = parseInt(dados.idRow, 10);
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
         return { sucesso: false, mensagem: 'Documento não localizado.' };
       if (dados.codigo && aba.getRange(linha, C('Codigo')+1).getValue().toString() !== dados.codigo.toString())
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
-      const proxRev = calcularProximaRevisao(dados.dataAprovacao);
+      const proxRev = calcularProximaRevisao_(dados.dataAprovacao);
       // Bloco Tipo→Próxima Revisão (4 colunas) e Responsável→Doc Auxiliar 2 (4 colunas)
       aba.getRange(linha, C('Tipo')+1, 1, 4).setValues([[dados.tipo, dados.titulo, dados.dataAprovacao, proxRev].map(neutralizarFormula_)]);
       aba.getRange(linha, C('Responsavel(ID_Unidade)')+1, 1, 4).setValues([[dados.responsavel, dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||''].map(neutralizarFormula_)]);
-      registrarLog('Edição de Documento', dados.codigo, 'Metadados atualizados.');
+      registrarLog_('Edição de Documento', dados.codigo, 'Metadados atualizados.');
       return { sucesso: true, mensagem: 'Documento atualizado com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -85,8 +85,8 @@ function salvarRevisaoDocumento(dados) {
     // vigente e criaria uma nova sem data, link nem justificativa.
     if (!dados || !dados.dataAprovacao || !String(dados.motivo||'').trim() || !String(dados.linkDoc||'').trim())
       return { sucesso: false, mensagem: 'Informe a nova data de aprovação, a descrição e o link.' };
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_DOCS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_DOCS);
       const C = colIdx_(CABECALHOS_DOCS);
       const linha = parseInt(dados.idRow, 10);
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
@@ -108,10 +108,10 @@ function salvarRevisaoDocumento(dados) {
       // texto ("2.0"), o que deixava o alinhamento e a formatação da
       // coluna diferentes entre a primeira versão e as revisões seguintes.
       const novaVersaoNum = Math.floor(versao) + 1;
-      const proxRev = calcularProximaRevisao(dados.dataAprovacao);
+      const proxRev = calcularProximaRevisao_(dados.dataAprovacao);
       aba.appendRow([antiga[C('Codigo')], novaVersaoNum, antiga[C('Tipo')], antiga[C('Titulo')], dados.dataAprovacao, proxRev,
         'Vigente', antiga[C('Responsavel(ID_Unidade)')], dados.linkDoc, dados.docAuxiliar||'', dados.docAuxiliar2||'', dados.motivo].map(neutralizarFormula_));
-      registrarLog('Revisão de Documento', antiga[C('Codigo')], 'Nova versão v' + novaVersaoNum.toFixed(1));
+      registrarLog_('Revisão de Documento', antiga[C('Codigo')], 'Nova versão v' + novaVersaoNum.toFixed(1));
       return { sucesso: true, mensagem: 'Revisão publicada com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -120,8 +120,8 @@ function salvarRevisaoDocumento(dados) {
 function excluirDocumento(idRow, codigoEsperado) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_DOCS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_DOCS);
       const C = colIdx_(CABECALHOS_DOCS);
       const linha = parseInt(idRow, 10);
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
@@ -144,7 +144,7 @@ function excluirDocumento(idRow, codigoEsperado) {
       if (!linhasParaExcluir.length) linhasParaExcluir = [linha]; // fallback: só a linha atual
       // Exclui em blocos contíguos (deleteRows) em vez de um deleteRow por linha.
       _deleteRowsBatch_(aba, linhasParaExcluir);
-      registrarLog('Exclusão de Documento', cod, 'Documento removido (' + linhasParaExcluir.length + ' versão(ões)).');
+      registrarLog_('Exclusão de Documento', cod, 'Documento removido (' + linhasParaExcluir.length + ' versão(ões)).');
       return { sucesso: true, mensagem: 'Documento excluído com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }

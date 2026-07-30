@@ -14,8 +14,8 @@ function salvarCapacitacao(dados) {
     if (!dados || !String(dados.titulo||'').trim())
       return { sucesso: false, mensagem: 'O Título é obrigatório.' };
 
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
       const id  = getNextId_(aba, 'CAP-');
       const dp  = dados.dataPrevista  ? new Date(dados.dataPrevista  + 'T12:00:00') : '';
       const dr  = dados.dataRealizada ? new Date(dados.dataRealizada + 'T12:00:00') : '';
@@ -34,7 +34,7 @@ function salvarCapacitacao(dados) {
         (dados.participantes || '')
       ].map(neutralizarFormula_));
 
-      registrarLog('Cadastro de Capacitação', id, 'Capacitação incluída: ' + dados.titulo);
+      registrarLog_('Cadastro de Capacitação', id, 'Capacitação incluída: ' + dados.titulo);
       return { sucesso: true, mensagem: 'Capacitação cadastrada com sucesso!', novoId: id, novaLinha: aba.getLastRow() };
     });
   } catch(e) { return erroInterno_(e); }
@@ -46,8 +46,8 @@ function atualizarCapacitacao(dados) {
     if (!dados || !String(dados.titulo||'').trim())
       return { sucesso: false, mensagem: 'O Título é obrigatório.' };
 
-    return comBloqueio(() => {
-      const aba  = conectarAba(SHEET_CAPACITACOES);
+    return comBloqueio_(() => {
+      const aba  = conectarAba_(SHEET_CAPACITACOES);
       const C    = colIdx_(CABECALHOS_CAPACITACOES);
       const linha = parseInt(dados.idRow, 10);
 
@@ -75,7 +75,7 @@ function atualizarCapacitacao(dados) {
         (dados.participantes || '')
       ].map(neutralizarFormula_)]);
 
-      registrarLog('Edição de Capacitação', idAtual, 'Dados atualizados.');
+      registrarLog_('Edição de Capacitação', idAtual, 'Dados atualizados.');
       return { sucesso: true, mensagem: 'Capacitação atualizada com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -84,8 +84,8 @@ function atualizarCapacitacao(dados) {
 function excluirCapacitacao(idRow, idEsperado) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    return comBloqueio(() => {
-      const aba  = conectarAba(SHEET_CAPACITACOES);
+    return comBloqueio_(() => {
+      const aba  = conectarAba_(SHEET_CAPACITACOES);
       const C    = colIdx_(CABECALHOS_CAPACITACOES);
       const linha = parseInt(idRow, 10);
 
@@ -97,7 +97,7 @@ function excluirCapacitacao(idRow, idEsperado) {
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
 
       aba.deleteRow(linha);
-      registrarLog('Exclusão de Capacitação', id, 'Capacitação removida.');
+      registrarLog_('Exclusão de Capacitação', id, 'Capacitação removida.');
       return { sucesso: true, mensagem: 'Capacitação excluída com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }

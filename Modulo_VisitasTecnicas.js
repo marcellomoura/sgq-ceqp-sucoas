@@ -12,8 +12,8 @@ function salvarVisitaTecnica(dados) {
     if (!dados || !String(dados.objetivo||'').trim())
       return { sucesso: false, mensagem: 'O Objetivo/Motivo da Visita é obrigatório.' };
 
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_VISITAS, CABECALHOS_VISITAS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_VISITAS, CABECALHOS_VISITAS);
       const id  = getNextId_(aba, 'VT-');
       const dt  = dados.data ? new Date(dados.data + 'T12:00:00') : '';
       const st  = calcularStatusVisita_(dados.data);
@@ -28,7 +28,7 @@ function salvarVisitaTecnica(dados) {
         (dados.relatorio || '').trim()
       ].map(neutralizarFormula_));
 
-      registrarLog('Cadastro de Visita Técnica', id, 'Visita técnica incluída: ' + dados.objetivo);
+      registrarLog_('Cadastro de Visita Técnica', id, 'Visita técnica incluída: ' + dados.objetivo);
       return { sucesso: true, mensagem: 'Visita técnica cadastrada com sucesso!', novoId: id, novaLinha: aba.getLastRow() };
     });
   } catch(e) { return erroInterno_(e); }
@@ -40,8 +40,8 @@ function atualizarVisitaTecnica(dados) {
     if (!dados || !String(dados.objetivo||'').trim())
       return { sucesso: false, mensagem: 'O Objetivo/Motivo da Visita é obrigatório.' };
 
-    return comBloqueio(() => {
-      const aba  = conectarAba(SHEET_VISITAS);
+    return comBloqueio_(() => {
+      const aba  = conectarAba_(SHEET_VISITAS);
       const C    = colIdx_(CABECALHOS_VISITAS);
       const linha = parseInt(dados.idRow, 10);
 
@@ -65,7 +65,7 @@ function atualizarVisitaTecnica(dados) {
         (dados.relatorio || '').trim()
       ].map(neutralizarFormula_)]);
 
-      registrarLog('Edição de Visita Técnica', idAtual, 'Dados atualizados.');
+      registrarLog_('Edição de Visita Técnica', idAtual, 'Dados atualizados.');
       return { sucesso: true, mensagem: 'Visita técnica atualizada com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -74,8 +74,8 @@ function atualizarVisitaTecnica(dados) {
 function excluirVisitaTecnica(idRow, idEsperado) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    return comBloqueio(() => {
-      const aba  = conectarAba(SHEET_VISITAS);
+    return comBloqueio_(() => {
+      const aba  = conectarAba_(SHEET_VISITAS);
       const C    = colIdx_(CABECALHOS_VISITAS);
       const linha = parseInt(idRow, 10);
 
@@ -87,7 +87,7 @@ function excluirVisitaTecnica(idRow, idEsperado) {
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
 
       aba.deleteRow(linha);
-      registrarLog('Exclusão de Visita Técnica', id, 'Visita técnica removida.');
+      registrarLog_('Exclusão de Visita Técnica', id, 'Visita técnica removida.');
       return { sucesso: true, mensagem: 'Visita técnica excluída com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }

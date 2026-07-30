@@ -16,8 +16,8 @@ function salvarRisco(dados) {
     if (isNaN(dados.probabilidade) || isNaN(dados.impacto) ||
         dados.probabilidade < 1 || dados.probabilidade > 5 || dados.impacto < 1 || dados.impacto > 5)
       return { sucesso: false, mensagem: 'Probabilidade e impacto devem ser números entre 1 e 5.' };
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_RISKS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_RISKS);
       const CR = colIdx_(CABECALHOS_RISCOS);
       const rows = aba.getDataRange().getValues();
       let max = 0;
@@ -26,7 +26,7 @@ function salvarRisco(dados) {
         if (!isNaN(n) && n > max) max = n;
       });
       const id = 'R' + (max + 1);
-      const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
+      const nivel = calcularNivelRisco_(dados.probabilidade, dados.impacto);
       // Cadastro inicial = Versao 1 do risco. Reavaliações futuras entram
       // como novas linhas com o mesmo ID_Risco (ver reavaliarRisco), não mais
       // como entradas num JSON dentro desta linha.
@@ -34,7 +34,7 @@ function salvarRisco(dados) {
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel,
         dados.tipoTratamento, dados.responsavel, '', 'Ativo', 'Cadastro inicial do risco.',
         _dataLocalISO_(new Date())].map(neutralizarFormula_));
-      registrarLog('Cadastro de Risco', id, 'Risco criado: ' + nomeR);
+      registrarLog_('Cadastro de Risco', id, 'Risco criado: ' + nomeR);
       return { sucesso: true, mensagem: 'Risco mapeado com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -51,8 +51,8 @@ function atualizarRisco(dados) {
     if (isNaN(dados.probabilidade) || isNaN(dados.impacto) ||
         dados.probabilidade < 1 || dados.probabilidade > 5 || dados.impacto < 1 || dados.impacto > 5)
       return { sucesso: false, mensagem: 'Probabilidade e impacto devem ser números entre 1 e 5.' };
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_RISKS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_RISKS);
       const CR = colIdx_(CABECALHOS_RISCOS);
       const ref = 'R' + dados.id;
       // Localiza pela linha (idRow) que o cliente tinha carregada, não mais
@@ -66,12 +66,12 @@ function atualizarRisco(dados) {
         return { sucesso: false, mensagem: 'Risco não localizado.' };
       if (aba.getRange(linha, CR('ID_Risco')+1).getValue().toString().trim() !== ref)
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
-      const nivel = calcularNivelRisco(dados.probabilidade, dados.impacto);
+      const nivel = calcularNivelRisco_(dados.probabilidade, dados.impacto);
       // Corrige a versão atual do risco (esta linha) — não é uma reavaliação,
       // não mexe em Versao/Status/Justificativa/Data_Avaliacao.
       aba.getRange(linha, CR('Macroetapa')+1, 1, 10).setValues([[dados.macroetapa, nomeR, dados.causa, dados.consequencia,
         dados.categoria, Number(dados.probabilidade), Number(dados.impacto), nivel, dados.tipoTratamento, dados.responsavel].map(neutralizarFormula_)]);
-      registrarLog('Edição de Risco', ref, 'Metadados atualizados.');
+      registrarLog_('Edição de Risco', ref, 'Metadados atualizados.');
       return { sucesso: true, mensagem: 'Risco atualizado!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -85,9 +85,9 @@ function atualizarRisco(dados) {
 function _definirStatusRisco_(idRisco, novoStatus, acaoLog, detalheLog, msgOk) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    return comBloqueio(() => {
+    return comBloqueio_(() => {
       const ref = 'R' + idRisco;
-      const abaR = conectarAba(SHEET_RISKS);
+      const abaR = conectarAba_(SHEET_RISKS);
       const rowsR = abaR.getDataRange().getValues();
       const CR = colIdx_(CABECALHOS_RISCOS);
       let encontrou = false;
@@ -98,7 +98,7 @@ function _definirStatusRisco_(idRisco, novoStatus, acaoLog, detalheLog, msgOk) {
         }
       }
       if (!encontrou) return { sucesso: false, mensagem: 'Risco ' + ref + ' não encontrado.' };
-      registrarLog(acaoLog, ref, detalheLog);
+      registrarLog_(acaoLog, ref, detalheLog);
       return { sucesso: true, mensagem: msgOk };
     });
   } catch(e) { return erroInterno_(e); }
@@ -131,10 +131,10 @@ function reavaliarRisco(dados) {
     const prob = Number(dados.probabilidade), imp = Number(dados.impacto);
     if (isNaN(prob) || isNaN(imp) || prob < 1 || prob > 5 || imp < 1 || imp > 5)
       return { sucesso: false, mensagem: 'Probabilidade e impacto devem ser números entre 1 e 5.' };
-    return comBloqueio(() => {
+    return comBloqueio_(() => {
       const ref = 'R' + dados.idRisco;
 
-      const abaR = conectarAba(SHEET_RISKS);
+      const abaR = conectarAba_(SHEET_RISKS);
       const CR = colIdx_(CABECALHOS_RISCOS);
       // Localiza pela linha (idRow) que o cliente tinha carregada — é dela que
       // vêm os campos que não mudam numa reavaliação (Macroetapa/Categoria/
@@ -148,7 +148,7 @@ function reavaliarRisco(dados) {
       if (String(linhaAtual[CR('ID_Risco')]||'').trim() !== ref)
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
 
-      const nivel = calcularNivelRisco(prob, imp);
+      const nivel = calcularNivelRisco_(prob, imp);
       const novaVersao = (parseInt(linhaAtual[CR('Versao')], 10) || 1) + 1;
 
       // Reavaliação = linha NOVA (nova versão do risco), nunca reescreve a
@@ -162,24 +162,34 @@ function reavaliarRisco(dados) {
         _dataLocalISO_(new Date())
       ].map(neutralizarFormula_));
 
-      // Só marca planos que NÃO foram Cancelados/Substituídos como pendentes
-      // de revisão — esses dois são decisão formal já tomada (abandonar/
-      // trocar o plano) e não devem voltar a pedir revisão. "Concluído" NÃO
-      // entra aqui: significa que as entregas foram feitas, mas se o risco
-      // for reavaliado depois, o tratamento já concluído ainda pode precisar
-      // ser revisto (continua válido? precisa de um novo plano?).
-      const abaP = conectarAba(SHEET_PLANS);
-      const rowsP = abaP.getDataRange().getValues();
-      const CP = colIdx_(CABECALHOS_PLANOS);
-      const STATUS_TERMINAIS = ['Cancelado', 'Substituído'];
-      for (let i = 1; i < rowsP.length; i++) {
-        if (rowsP[i][CP('ID_Risco')].toString().trim() === ref &&
-            !STATUS_TERMINAIS.includes(String(rowsP[i][CP('Status')]||'').trim())) {
-          abaP.getRange(i+1, CP('Revisao_Pendente') + 1).setValue('Sim');
+      // A ação "Manter Avaliação Atual" grava a versão acima (rastro auditável
+      // de que o risco foi confirmado naquela data), mas NÃO marca os planos
+      // como pendentes de revisão: P×I, tratamento e responsável continuam os
+      // mesmos, então não há o que revisar no 5W2H. Forçar a pendência aqui
+      // obrigava todos os responsáveis a "revisar" algo que não mudou.
+      // (Decisão de negócio — auditoria de 2026-07-27, item B-06.)
+      // Sem `acao` no payload, mantém o comportamento antigo (marca pendência).
+      if (dados.acao !== 'manter') {
+        // Só marca planos que NÃO foram Cancelados/Substituídos como pendentes
+        // de revisão — esses dois são decisão formal já tomada (abandonar/
+        // trocar o plano) e não devem voltar a pedir revisão. "Concluído" NÃO
+        // entra aqui: significa que as entregas foram feitas, mas se o risco
+        // for reavaliado depois, o tratamento já concluído ainda pode precisar
+        // ser revisto (continua válido? precisa de um novo plano?).
+        const abaP = conectarAba_(SHEET_PLANS);
+        const rowsP = abaP.getDataRange().getValues();
+        const CP = colIdx_(CABECALHOS_PLANOS);
+        const STATUS_TERMINAIS = ['Cancelado', 'Substituído'];
+        for (let i = 1; i < rowsP.length; i++) {
+          if (rowsP[i][CP('ID_Risco')].toString().trim() === ref &&
+              !STATUS_TERMINAIS.includes(String(rowsP[i][CP('Status')]||'').trim())) {
+            abaP.getRange(i+1, CP('Revisao_Pendente') + 1).setValue('Sim');
+          }
         }
       }
 
-      registrarLog('Reavaliação de Risco', ref, 'Risco reavaliado.');
+      registrarLog_('Reavaliação de Risco', ref,
+        dados.acao === 'manter' ? 'Avaliação mantida na reavaliação (sem alteração).' : 'Risco reavaliado.');
       return { sucesso: true, mensagem: 'Reavaliação salva!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -188,9 +198,9 @@ function reavaliarRisco(dados) {
 function revisarPlano(dados) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    return comBloqueio(() => {
+    return comBloqueio_(() => {
       const ref = dados.riscoVinculado;
-      const abaP = conectarAba(SHEET_PLANS);
+      const abaP = conectarAba_(SHEET_PLANS);
       const rowsP = abaP.getDataRange().getValues();
       const CP = colIdx_(CABECALHOS_PLANOS);
       
@@ -210,6 +220,15 @@ function revisarPlano(dados) {
       if (dados.acao !== 'manter' && dados.acao !== 'alterar')
         return { sucesso: false, mensagem: 'Ação de revisão inválida.' };
 
+      // Defesa em profundidade: sem esta checagem, uma chamada direta criava um
+      // plano 5W2H vazio e o vinculava à versão vigente do risco. Espelha o
+      // conjunto exigido pelo cliente (what/why/who/whenPrevisto) — de propósito
+      // não exige Onde/Como, que o modal de revisão também não obriga.
+      if (dados.acao === 'alterar' &&
+          (!String(dados.what||'').trim() || !String(dados.why||'').trim() ||
+           !dados.who || !dados.whenPrevisto))
+        return { sucesso: false, mensagem: 'Preencha os campos obrigatórios do novo plano.' };
+
       const hoje = _dataLocalISO_(new Date());
       const justifTexto = dados.justificativa;
 
@@ -224,7 +243,7 @@ function revisarPlano(dados) {
         abaP.getRange(linhaP, CP('Justificativa') + 1, 1, 2).setValues([[
           justifTexto || 'Mantido após reavaliação.', hoje
         ].map(neutralizarFormula_)]);
-        registrarLog('Revisão de Plano', ref, 'Plano mantido em andamento.');
+        registrarLog_('Revisão de Plano', ref, 'Plano mantido em andamento.');
         return { sucesso: true, mensagem: 'Plano mantido com sucesso!' };
       }
 
@@ -251,14 +270,14 @@ function revisarPlano(dados) {
       novaRow[CP('Data_Finalizacao')] = dados.whenFinalizado || '';
       novaRow[CP('Como')] = dados.how;
       novaRow[CP('Quanto_Custa')] = dados.howMuch;
-      novaRow[CP('Status')] = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
+      novaRow[CP('Status')] = _statusPlano_(dados.whenPrevisto, dados.whenFinalizado);
       novaRow[CP('Justificativa')] = justifTexto || 'Estratégia substituída por um novo plano.';
       novaRow[CP('Data_Avaliacao')] = hoje;
       abaP.appendRow(novaRow.map(neutralizarFormula_));
       // Estratégia nova — começa sem nenhuma entrega vinculada (de propósito).
       
       // Atualiza o plano vigente na última versão do risco correspondente
-      const abaRiscos = conectarAba(SHEET_RISKS);
+      const abaRiscos = conectarAba_(SHEET_RISKS);
       const rowsR = abaRiscos.getDataRange().getValues();
       const CR = colIdx_(CABECALHOS_RISCOS);
       let lastRiskRow = -1;
@@ -272,7 +291,7 @@ function revisarPlano(dados) {
         abaRiscos.getRange(lastRiskRow, CR('ID_Plano') + 1).setValue(novaRow[CP('ID_Plano')]);
       }
 
-      registrarLog('Revisão de Plano', ref, 'Plano substituído por nova estratégia.');
+      registrarLog_('Revisão de Plano', ref, 'Plano substituído por nova estratégia.');
       return { sucesso: true, mensagem: 'Plano antigo substituído e novo plano criado com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -281,10 +300,10 @@ function revisarPlano(dados) {
 // ==========================================
 // MÓDULO 6 — PLANOS DE AÇÃO (5W2H) E ENTREGAS
 // ==========================================
-function _statusPlano(previsto, finalizado) {
-  const fin = formatarDataParaUI(finalizado);
+function _statusPlano_(previsto, finalizado) {
+  const fin = formatarDataParaUI_(finalizado);
   if (fin && fin.trim()) return 'Concluído';
-  const prev = formatarDataParaUI(previsto);
+  const prev = formatarDataParaUI_(previsto);
   if (prev) {
     const p = prev.split('-');
     if (p.length === 3) {
@@ -301,22 +320,29 @@ function salvarPlano(dados) {
     if (!dados || !dados.riscoVinculado || !String(dados.what||'').trim() || !String(dados.why||'').trim() ||
         !dados.who || !String(dados.where||'').trim() || !dados.whenPrevisto || !String(dados.how||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos do plano.' };
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_PLANS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_PLANS);
       const CP = colIdx_(CABECALHOS_PLANOS);
       const rows = aba.getDataRange().getValues();
+      // "Um plano ativo por risco": planos Cancelado/Substituído NÃO contam —
+      // são decisão formal encerrada. Contá-los travava o cadastro para sempre,
+      // porque revisarPlano('alterar') deixa de propósito a linha antiga como
+      // 'Substituído' com o mesmo ID_Risco. Mesmos terminais de reavaliarRisco.
+      // (Auditoria de 2026-07-27, item B-07.)
+      const STATUS_TERMINAIS = ['Cancelado', 'Substituído'];
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][CP('ID_Risco')]||'') === dados.riscoVinculado)
+        if (String(rows[i][CP('ID_Risco')]||'') === dados.riscoVinculado &&
+            !STATUS_TERMINAIS.includes(String(rows[i][CP('Status')]||'').trim()))
           return { sucesso: false, mensagem: 'Já existe um plano ativo para este risco.' };
       }
-      const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
+      const status = _statusPlano_(dados.whenPrevisto, dados.whenFinalizado);
       const idPlano = getNextId_(aba, 'PLA-');
       aba.appendRow([idPlano, dados.riscoVinculado, dados.what, dados.why, dados.who,
         dados.where, dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status, 'Não',
         'Cadastro inicial do plano.', _dataLocalISO_(new Date())].map(neutralizarFormula_));
         
       // Atualiza o ID_Plano na última versão do Risco
-      const abaRiscos = conectarAba(SHEET_RISKS);
+      const abaRiscos = conectarAba_(SHEET_RISKS);
       const rowsR = abaRiscos.getDataRange().getValues();
       const CR = colIdx_(CABECALHOS_RISCOS);
       let lastRiskRow = -1;
@@ -330,7 +356,7 @@ function salvarPlano(dados) {
         abaRiscos.getRange(lastRiskRow, CR('ID_Plano') + 1).setValue(idPlano);
       }
       
-      registrarLog('Cadastro de Plano', dados.riscoVinculado, 'Plano 5W2H criado: ' + dados.what);
+      registrarLog_('Cadastro de Plano', dados.riscoVinculado, 'Plano 5W2H criado: ' + dados.what);
       return { sucesso: true, mensagem: 'Plano registrado!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -342,11 +368,10 @@ function atualizarPlano(dados) {
     if (!dados || !dados.idPlano || !dados.riscoVinculado || !String(dados.what||'').trim() || !String(dados.why||'').trim() ||
         !dados.who || !String(dados.where||'').trim() || !dados.whenPrevisto || !String(dados.how||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos do plano.' };
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_PLANS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_PLANS);
       const CP = colIdx_(CABECALHOS_PLANOS);
       const rows = aba.getDataRange().getValues();
-      const status = _statusPlano(dados.whenPrevisto, dados.whenFinalizado);
       for (let i = 1; i < rows.length; i++) {
         // Localiza pelo ID_Plano (chave estável) — o "O Que" pode se repetir
         // entre um plano Substituído e o novo que o sucedeu (ver revisarPlano,
@@ -360,17 +385,23 @@ function atualizarPlano(dados) {
           // foi entregue. Igual a checagem no cliente (renderAcompanhamento),
           // mas aqui é a que realmente impede a gravação.
           const ssE = SpreadsheetApp.getActiveSpreadsheet();
-          const rowsE = safeGetSheetData(ssE, SHEET_ENTREGAS_PLANOS);
+          const rowsE = safeGetSheetData_(ssE, SHEET_ENTREGAS_PLANOS);
           if (rowsE.length > 1) {
             const CE = colIdx_(CABECALHOS_ENTREGAS_PLANOS);
             const temEntregaFeita = rowsE.slice(1).some(rE =>
               String(rE[CE('ID_Plano')]||'').trim() === String(dados.idPlano).trim() && String(rE[CE('Status')]||'').trim() === 'Sim');
             if (temEntregaFeita) return { sucesso: false, mensagem: 'Este plano já tem entregas registradas e não pode mais ser editado.' };
           }
+          // O modal de edição não tem campo de Data de Finalização, então o
+          // payload vem sem a chave: gravar `dados.whenFinalizado||''` apagaria
+          // o valor já existente na planilha (e rebaixaria o Status). Só grava
+          // quando a chave vier no payload; caso contrário preserva a célula.
+          const finalizado = ('whenFinalizado' in dados) ? (dados.whenFinalizado || '') : rows[i][CP('Data_Finalizacao')];
+          const status = _statusPlano_(dados.whenPrevisto, finalizado);
           // Bloco contíguo O Que → Status (9 colunas)
           aba.getRange(i+1, CP('O_Que')+1, 1, 9).setValues([[dados.what, dados.why, dados.who, dados.where,
-            dados.whenPrevisto, dados.whenFinalizado||'', dados.how, dados.howMuch, status].map(neutralizarFormula_)]);
-          registrarLog('Edição de Plano', dados.riscoVinculado, 'Status: ' + status);
+            dados.whenPrevisto, finalizado, dados.how, dados.howMuch, status].map(neutralizarFormula_)]);
+          registrarLog_('Edição de Plano', dados.riscoVinculado, 'Status: ' + status);
           return { sucesso: true, mensagem: 'Plano atualizado!' };
         }
       }
@@ -387,7 +418,10 @@ function _planoEhGlobal_(quem) { return String(quem||'').toUpperCase().includes(
 function _ehSubcomissao_(nomeUnidade) { const n = String(nomeUnidade||'').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); }
 
 // A reavaliação da baixa automática do plano
-function _reavaliarBaixa(abaP, indexPlano, rowData, entregasArr) {
+// O `_` do FIM é o que torna a função privada no Apps Script — só o prefixo não
+// basta. Sem ele, esta função era um endpoint chamável sem isMembro_() (mesma
+// classe do item M-02 da auditoria, que não a listou).
+function _reavaliarBaixa_(abaP, indexPlano, rowData, entregasArr) {
   const CP = colIdx_(CABECALHOS_PLANOS);
   const who = String(rowData[CP('Quem(ID_Unidade)')]||'');
   const planoGlobal = _planoEhGlobal_(who);
@@ -399,7 +433,13 @@ function _reavaliarBaixa(abaP, indexPlano, rowData, entregasArr) {
     const CU = colIdx_(CABECALHOS_UNIDADES);
     const abaU = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_UNITS);
     const rowsU = abaU ? abaU.getDataRange().getValues() : [];
-    const subcomissoes = rowsU.slice(1).filter(r => _ehSubcomissao_(r[CU('Nome_Da_Unidade')]));
+    // Só subcomissões ATIVAS entram no total cobrado — contar as inativadas
+    // deixaria `entregaram.size >= total` inalcançável para sempre, prendendo o
+    // plano global em "Em Andamento"/"Atrasado". Mesmo critério de _lerUnidades_.
+    const subcomissoes = rowsU.slice(1).filter(r => {
+      const at = String(r[CU('Ativo')] || '').trim().toLowerCase();
+      return _ehSubcomissao_(r[CU('Nome_Da_Unidade')]) && at !== 'não' && at !== 'nao';
+    });
     const total = Math.max(subcomissoes.length, 1);
     const entregaram = new Set();
     entregasArr.forEach(e => {
@@ -429,7 +469,7 @@ function _reavaliarBaixa(abaP, indexPlano, rowData, entregasArr) {
   } else {
     if (statusAtualPlano === 'Concluído') return; // Congelamento de status aprovado (não reabrir se cadastrar nova unidade)
     abaP.getRange(indexPlano, CP('Data_Finalizacao')+1).clearContent();
-    abaP.getRange(indexPlano, CP('Status')+1).setValue(_statusPlano(rowData[CP('Data_Prevista')], ''));
+    abaP.getRange(indexPlano, CP('Status')+1).setValue(_statusPlano_(rowData[CP('Data_Prevista')], ''));
   }
 }
 
@@ -437,8 +477,8 @@ function _reavaliarBaixa(abaP, indexPlano, rowData, entregasArr) {
 function salvarEntregasEmLote(idPlano, entregas) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_PLANS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_PLANS);
       const rows = aba.getDataRange().getValues();
       const CP = colIdx_(CABECALHOS_PLANOS);
 
@@ -470,14 +510,14 @@ function salvarEntregasEmLote(idPlano, entregas) {
       // comparações legadas de outros pontos do módulo, mas nenhuma rotina o
       // escreve — ficaria como ramo morto e não entra aqui.
       // 'Concluído' de propósito não entra: ele é derivado na leitura por
-      // _statusPlano (Data_Finalizacao preenchida) e não fica na coluna Status,
+      // _statusPlano_ (Data_Finalizacao preenchida) e não fica na coluna Status,
       // que segue 'Em Andamento' — ler daqui nunca o veria. Bloquear por data
       // também impediria a correção de uma entrega registrada errado num plano
       // já finalizado, que o cliente permite tratar por outros caminhos.
       if (statusPlano === 'Substituído')
         return { sucesso: false, mensagem: 'Este plano foi substituído — as entregas não podem mais ser alteradas.' };
 
-      const abaR = conectarAba(SHEET_RISKS);
+      const abaR = conectarAba_(SHEET_RISKS);
       const CR = colIdx_(CABECALHOS_RISCOS);
       const rowsR = abaR.getDataRange().getValues();
       // Todas as linhas de um ID_Risco compartilham o mesmo Status (o sweep de
@@ -490,7 +530,7 @@ function salvarEntregasEmLote(idPlano, entregas) {
         }
       }
 
-      const abaE = conectarAba(SHEET_ENTREGAS_PLANOS, CABECALHOS_ENTREGAS_PLANOS);
+      const abaE = conectarAba_(SHEET_ENTREGAS_PLANOS, CABECALHOS_ENTREGAS_PLANOS);
       const CE = colIdx_(CABECALHOS_ENTREGAS_PLANOS);
       const rowsE = abaE.getDataRange().getValues();
 
@@ -522,12 +562,12 @@ function salvarEntregasEmLote(idPlano, entregas) {
         .map(rE => ({
            unidade: String(rE[CE('Unidade')]||''),
            status: String(rE[CE('Status')]||''),
-           data: formatarDataParaUI(rE[CE('Data')])
+           data: formatarDataParaUI_(rE[CE('Data')])
         }));
 
-      _reavaliarBaixa(aba, indexPlano, rows[indexPlano-1], entregasArr);
+      _reavaliarBaixa_(aba, indexPlano, rows[indexPlano-1], entregasArr);
 
-      registrarLog('Acompanhamento de Entregas', riscoVinculado, 'Entregas do plano atualizadas. Registros: ' + entregas.length);
+      registrarLog_('Acompanhamento de Entregas', riscoVinculado, 'Entregas do plano atualizadas. Registros: ' + entregas.length);
       return { sucesso: true, mensagem: 'Registros salvos com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }

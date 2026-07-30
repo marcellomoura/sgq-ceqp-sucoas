@@ -9,15 +9,106 @@
   function planoEhGlobal(quem) { return String(quem || '').toUpperCase().includes('TODAS'); }
   function ehSubcomissao(nomeUnidade) { const n = String(nomeUnidade || '').toLowerCase(); return n.includes('subcomissão') || n.includes('subcomissao'); }
 
-  // riscoVinculado → PRIMEIRA posição em state.plans. Substitui o
-  // state.plans.findIndex(...) que era chamado por linha dentro dos map() de
-  // render (O(n²)); o "primeiro vence" replica a semântica do findIndex.
-  function _indicePlanosPorRisco() {
-    const idx = new Map();
-    (state.plans || []).forEach((x, i) => {
-      if (!idx.has(x.riscoVinculado)) idx.set(x.riscoVinculado, i);
+  // Grid de 9 campos do 5W2H. Era repetido VERBATIM em renderAcompanhamento e
+  // renderRiscosArquivados; entre as duas telas só mudam o invólucro
+  // (.plan-card) e os botões de ação, que ficam com cada chamador.
+  // A indentação do template é a original de propósito: o PDF de
+  // Acompanhamento/Superados converte estes grids a partir do DOM clonado.
+  function _planoGridHtml(p) {
+    return `
+            <div class="plan-single-line">
+              <div>
+                <div class="plan-field-label">Ação (O Que)</div>
+                <div class="plan-field-value">${esc(p.what)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Justificativa (Por Que)</div>
+                <div class="plan-field-value">${esc(p.why)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Quem (Unid.)</div>
+                <div class="plan-field-value">${esc(formatUnidadeUI(p.who))}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Onde</div>
+                <div class="plan-field-value">${esc(p.where)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Prazo Previsto</div>
+                <div class="plan-field-value">${fmtBr(p.whenPrevisto)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Finalização</div>
+                <div class="plan-field-value">${fmtBr(p.whenFinalizado) || '-'}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Como</div>
+                <div class="plan-field-value">${esc(p.how)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Custo</div>
+                <div class="plan-field-value">${esc(p.howMuch)}</div>
+              </div>
+              <div>
+                <div class="plan-field-label">Status</div>
+                <div class="plan-field-value">${badge(p.status)}</div>
+              </div>
+            </div>`;
+  }
+
+  // Converte, no clone destinado ao PDF, cada .plan-single-line (CSS Grid) numa
+  // <table> de verdade — o conversor de PDF não lida bem com grid. Era repetido
+  // VERBATIM nos dois relatórios (Acompanhamento e Superados), inclusive o
+  // array de larguras, que precisa acompanhar as proporções de .plan-single-line
+  // em CSS.html. Muta o clone recebido (não a árvore da tela).
+  function _planoGridsParaTabelaPdf_(clone) {
+    clone.querySelectorAll('.plan-single-line').forEach(function (grid) {
+      // O grid possui 9 divs filhas.
+      const divs = Array.from(grid.children);
+
+      // Proporções do grid CSS para as larguras da tabela:
+      // minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr)
+      // Percentuais aproximados: 16%, 16%, 11%, 11%, 9%, 9%, 11%, 9%, 8%
+      const widths = ['16%', '16%', '11%', '11%', '9%', '9%', '11%', '9%', '8%'];
+
+      let theadCells = '';
+      let tbodyCells = '';
+
+      divs.forEach((div, i) => {
+         const w = widths[i] || 'auto';
+         const labelDiv = div.querySelector('.plan-field-label');
+         const valueDiv = div.querySelector('.plan-field-value');
+         const label = labelDiv ? labelDiv.innerHTML : '';
+         const value = valueDiv ? valueDiv.innerHTML : div.innerHTML; // Fallback se a estrutura for diferente
+
+         theadCells += `<th class="pdf-th-generic" style="width:${w};">${label}</th>`;
+         tbodyCells += `<td class="pdf-td-generic" style="width:${w};">${value}</td>`;
+      });
+
+      grid.outerHTML = `<table class="pdf-grid-table">
+          <thead><tr>${theadCells}</tr></thead>
+          <tbody><tr>${tbodyCells}</tr></tbody>
+        </table>`;
     });
-    return idx;
+  }
+
+  // Casca de uma versão do risco: cabeçalho (P/I/Nível/Tratamento/Responsável)
+  // + o card do plano embaixo. Também era verbatim nas duas telas.
+  function _versionCardHtml(r, v, vNum, isLatest, dataA, planCardHtml) {
+    return `
+        <div class="version-card ${isLatest ? 'is-active' : 'is-old'}">
+           <div class="version-header">
+              <span class="version-title">Risco ${r.id} - Versão ${vNum} ${isLatest ? '(Atual)' : ''}</span>
+              <span class="version-date">${fmtBr(dataA)}</span>
+              <span class="risk-meta-sep">|</span>
+              <span>Probabilidade: <strong>${v.prob || '-'}</strong></span>
+              <span>Impacto: <strong>${v.impacto || '-'}</strong></span>
+              <span>Nível: <strong>${badge(v.nivel)}</strong></span>
+              <span>Tratamento: <strong>${esc(v.tratamento) || '-'}</strong></span>
+              <span>Responsável: <strong>${esc(formatUnidadeUI(v.responsavel))}</strong></span>
+           </div>
+           ${planCardHtml}
+        </div>`;
   }
 
   function renderMatriz() {
@@ -140,8 +231,6 @@
     const r = state.risks[idx]; if (!r) return;
     $id('er-id').value = r.id;
     $id('er-id-row').value = r.idRow;
-    $id('er-prob-original').value = r.probabilidade;
-    $id('er-imp-original').value = r.impacto;
 
     const hist = state.history ? state.history.filter(h => h.id === 'R' + r.id && h.tipo === 'Risco') : [];
     // hist[0] é sempre o cadastro inicial (ver comentário em renderMatriz); só
@@ -299,6 +388,10 @@
 
       const dados = {
         idRisco: idRisco,
+        // O servidor distingue 'manter' de 'reavaliar': em 'manter' ele grava a
+        // versão (rastro da confirmação) mas não marca os planos como pendentes
+        // de revisão, porque nada mudou no risco.
+        acao: acao,
         idRow: $id('rev-id-row').value,
         probabilidade: Number($id('rev-prob').value),
         impacto: Number($id('rev-imp').value),
@@ -399,13 +492,18 @@
     if (!container) return;
 
     // idx de cada plano em state.plans, pré-computado (evita indexOf O(n²) por
-    // linha dentro do map — mesmo padrão de idxPorIdRisco/_indicePlanosPorRisco).
+    // linha dentro do map — mesmo padrão de idxPorIdRisco).
     const idxPlano = new Map(state.plans.map((pl, i) => [pl, i]));
 
     if (!filtrados.length) {
       container.innerHTML = '<div class="msg-empty">Nenhum plano ativo encontrado.</div>';
       return;
     }
+
+    // O card do plano é resolvido por versão do risco (v.idPlano), fora de
+    // `filtrados` — sem este Set os filtros de Unidade/Status escolheriam quais
+    // blocos aparecem, mas cada bloco exibiria todos os planos, divergindo dos KPIs.
+    const setFiltrados = new Set(filtrados.map(p => p.id));
 
     // Agrupar planos filtrados por risco
     const planosPorRisco = {};
@@ -416,15 +514,23 @@
 
     const html = Object.keys(planosPorRisco).map(ref => {
       const r = ativosRiscosMap.get(ref);
-      const planos = planosPorRisco[ref];
       if (!r) return '';
 
       // histRisco contém todas as versões do risco (da mais antiga para a mais nova)
       const histRisco = state.history ? state.history.filter(h => h.id === 'R' + r.id && h.tipo === 'Risco') : [];
-      
+
+      // reavaliarRisco COPIA o ID_Plano para a linha da nova versão, então um
+      // único plano é referenciado por várias versões — desenhar o card em cada
+      // uma repetia o MESMO plano N vezes na tela e no PDF (M-03). Desenha uma
+      // só vez, na versão mais RECENTE que o referencia: é lá que ele é
+      // acionável (as ações de revisar/editar dependem de isLatest).
+      const ultimaVersaoDoPlano = new Map();
+      histRisco.forEach((v, i) => { if (v.idPlano) ultimaVersaoDoPlano.set(v.idPlano, i); });
+
       let versoesHtml = histRisco.map((v, idxHist) => {
-        const p = v.idPlano ? state.plans.find(x => x.id === v.idPlano) : null;
-        
+        const ehVersaoDoCard = !!v.idPlano && ultimaVersaoDoPlano.get(v.idPlano) === idxHist;
+        const p = (ehVersaoDoCard && setFiltrados.has(v.idPlano)) ? state.plans.find(x => x.id === v.idPlano) : null;
+
         const isLatest = (idxHist === histRisco.length - 1);
         const vNum = idxHist + 1;
         const dataA = v.data && v.data !== '-' ? v.data : '';
@@ -450,63 +556,17 @@
               ${iconBtn(iconCheck, 'acomp-entregas', 'Entregas', `data-idx="${oi}"`)}
             </div>
             
-            <div class="plan-single-line">
-              <div>
-                <div class="plan-field-label">Ação (O Que)</div>
-                <div class="plan-field-value">${esc(p.what)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Justificativa (Por Que)</div>
-                <div class="plan-field-value">${esc(p.why)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Quem (Unid.)</div>
-                <div class="plan-field-value">${esc(formatUnidadeUI(p.who))}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Onde</div>
-                <div class="plan-field-value">${esc(p.where)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Prazo Previsto</div>
-                <div class="plan-field-value">${fmtBr(p.whenPrevisto)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Finalização</div>
-                <div class="plan-field-value">${fmtBr(p.whenFinalizado) || '-'}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Como</div>
-                <div class="plan-field-value">${esc(p.how)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Custo</div>
-                <div class="plan-field-value">${esc(p.howMuch)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Status</div>
-                <div class="plan-field-value">${badge(p.status)}</div>
-              </div>
-            </div>
+            ${_planoGridHtml(p)}
           </div>`;
+        } else if (v.idPlano && !ehVersaoDoCard) {
+          planCardHtml = `<div class="plan-card-empty-msg">Plano inalterado nesta reavaliação.</div>`;
+        } else if (v.idPlano) {
+          planCardHtml = `<div class="plan-card-empty-msg">Plano não corresponde ao filtro aplicado.</div>`;
         } else {
           planCardHtml = `<div class="plan-card-empty-msg">Nenhum plano vinculado a esta versão.</div>`;
         }
 
-        return `
-        <div class="version-card ${isLatest ? 'is-active' : 'is-old'}">
-           <div class="version-header">
-              <span class="version-title">Risco ${r.id} - Versão ${vNum} ${isLatest ? '(Atual)' : ''}</span>
-              <span class="version-date">${fmtBr(dataA)}</span>
-              <span class="risk-meta-sep">|</span>
-              <span>Probabilidade: <strong>${v.prob || '-'}</strong></span>
-              <span>Impacto: <strong>${v.impacto || '-'}</strong></span>
-              <span>Nível: <strong>${badge(v.nivel)}</strong></span>
-              <span>Tratamento: <strong>${esc(v.tratamento) || '-'}</strong></span>
-              <span>Responsável: <strong>${esc(formatUnidadeUI(v.responsavel))}</strong></span>
-           </div>
-           ${planCardHtml}
-        </div>`;
+        return _versionCardHtml(r, v, vNum, isLatest, dataA, planCardHtml);
       }).join(''); // Mantém a ordem original: mais antigas em cima, mais recentes em baixo
 
       return `<div class="risk-block">
@@ -630,8 +690,10 @@
     const global = planoEhGlobal(p.who);
     let unidadesCobradas;
     if (global) {
-      // "Todas as Subcomissões" cobra APENAS unidades com "Subcomissão" no nome
-      unidadesCobradas = state.units.filter(function (u) { return ehSubcomissao(u.unidade); });
+      // "Todas as Subcomissões" cobra APENAS unidades ATIVAS com "Subcomissão"
+      // no nome — espelha o total usado em _reavaliarBaixa_ (Modulo_Riscos.js);
+      // divergir aqui mostraria uma cobrança que o servidor não considera.
+      unidadesCobradas = state.units.filter(function (u) { return ehSubcomissao(u.unidade) && u.ativo !== false; });
     } else {
       // Plano atribuído a uma unidade específica — só ela é cobrada
       unidadesCobradas = state.units.filter(function (u) {
@@ -699,7 +761,7 @@
         '<input type="date" class="acomp-data" value="' + esc(dataEnt) + '"' + (somenteLeitura ? ' disabled' : '') + '>' +
         '</div>' +
         '<div class="acomp-field-group">' +
-        '<span class="acomp-field-label">Nº Processo SEI <span class="required-mark">*</span></span>' +
+        '<span class="acomp-field-label">Nº Processo SEI</span>' +
         '<input type="text" class="acomp-sei" placeholder="Ex: 00060-000..." value="' + esc(sei) + '"' + (somenteLeitura ? ' disabled' : '') + '>' +
         '</div>' +
         '</div>' +
@@ -741,7 +803,6 @@
 
     const rows = $id('acomp-ent-lista').querySelectorAll('.acomp-ent-row');
     const entregas = [];
-    let valido = true;
 
     rows.forEach(function (row) {
       const unidade = row.dataset.unidade;
@@ -751,12 +812,10 @@
 
       if (!status) return; // linha sem seleção — ignora
 
-      if (status === 'Sim' && !sei) {
-        showAlerta('Informe o número SEI para: ' + unidade);
-        valido = false;
-        return;
-      }
-
+      // O Nº Processo SEI é OPCIONAL (decisão de 2026-07-29): o rótulo não é
+      // mais marcado como obrigatório e o servidor nunca exigiu o campo. Antes
+      // havia uma checagem só aqui, que barrava a gravação sem sinalizar na
+      // tela que o campo era necessário.
       entregas.push({
         unidade: unidade,
         entregue: status,
@@ -765,7 +824,6 @@
       });
     });
 
-    if (!valido) return;
     if (!entregas.length) { fecharModal('modal-acomp-entregas'); return; }
 
     btn.disabled = true; btn.innerText = 'A gravar...';
@@ -795,28 +853,6 @@
   // Assíncrono (html2canvas devolve Promise) — ver Promise.resolve() em
   // _gerarPdfReal/_dispararEnvioPdfReal, que aceitam tanto Promise quanto
   // string dos demais relatórios (síncronos).
-  // #lista-riscos é um <div> (linhas em CSS Grid, não <tr>) — _tbodyParaPdf
-  // clonaria essas <div> direto para dentro de um <tbody>, o que é HTML
-  // inválido (só <tr> pode ficar num <tbody>). O conversor de PDF "corrige"
-  // isso sozinho tirando as <div> de dentro da tabela, e o resultado é a
-  // linha aparecendo solta (com o visual cru da tela) e a tabela real vazia,
-  // só com o cabeçalho. Este helper remonta cada linha como <tr><td> de
-  // verdade, célula a célula, preservando o estilo/cor de cada uma.
-  function _linhasMatrizParaPdf_() {
-    const lista = $id('lista-riscos');
-    if (!lista) return '';
-    const clone = lista.cloneNode(true);
-    clone.querySelectorAll('.no-print').forEach(el => el.remove());
-    return Array.from(clone.children).filter(function (row) {
-      return row.classList && row.classList.contains('grid-row-hover');
-    }).map(function (row) {
-      const celulas = Array.from(row.children).map(function (cel) {
-        return '<td style="' + (cel.getAttribute('style') || '') + '">' + cel.innerHTML + '</td>';
-      }).join('');
-      return '<tr>' + celulas + '</tr>';
-    }).join('');
-  }
-
   async function montarHtmlMatrizPdf() {
     const matrizEl = document.querySelector('#area-matriz .matrix-table');
     const legendaEl = document.querySelector('#area-matriz .legend-row');
@@ -835,7 +871,7 @@
       <th class="text-center">#</th><th class="text-center">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>
       <th>Categoria</th><th class="text-center">P×I</th><th class="text-center">Nível</th>
       <th>Tratamento</th><th>Proprietário</th><th>Plano de Ação</th>
-    </tr></thead><tbody>${_linhasMatrizParaPdf_()}</tbody></table>`;
+    </tr></thead><tbody>${_gridRowsParaPdf('lista-riscos')}</tbody></table>`;
 
     return matrizHtml + legendaHtml + riscosHtml;
   }
@@ -857,36 +893,7 @@
       div.style.display = 'inline';
     });
 
-    // O layout usa .plan-single-line que é display: grid.
-    // O conversor de PDF não lida bem com grid, então transformamos em <table>.
-    clone.querySelectorAll('.plan-single-line').forEach(function (grid) {
-      // O grid possui 9 divs filhas.
-      const divs = Array.from(grid.children);
-      
-      // Proporções do grid CSS para as larguras da tabela:
-      // minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr)
-      // Percentuais aproximados: 16%, 16%, 11%, 11%, 9%, 9%, 11%, 9%, 8%
-      const widths = ['16%', '16%', '11%', '11%', '9%', '9%', '11%', '9%', '8%'];
-      
-      let theadCells = '';
-      let tbodyCells = '';
-      
-      divs.forEach((div, i) => {
-         const w = widths[i] || 'auto';
-         const labelDiv = div.querySelector('.plan-field-label');
-         const valueDiv = div.querySelector('.plan-field-value');
-         const label = labelDiv ? labelDiv.innerHTML : '';
-         const value = valueDiv ? valueDiv.innerHTML : div.innerHTML; // Fallback se a estrutura for diferente
-         
-         theadCells += `<th class="pdf-th-generic" style="width:${w};">${label}</th>`;
-         tbodyCells += `<td class="pdf-td-generic" style="width:${w};">${value}</td>`;
-      });
-      
-      grid.outerHTML = `<table class="pdf-grid-table">
-          <thead><tr>${theadCells}</tr></thead>
-          <tbody><tr>${tbodyCells}</tr></tbody>
-        </table>`;
-    });
+    _planoGridsParaTabelaPdf_(clone);
 
     return clone.innerHTML;
   }
@@ -952,9 +959,15 @@
 
       // histRisco contém todas as versões do risco (da mais antiga para a mais nova)
       const histRisco = state.history ? state.history.filter(h => h.id === ref && h.tipo === 'Risco') : [];
-      
+
+      // Mesmo motivo de renderAcompanhamento (M-03): o ID_Plano é copiado para
+      // cada nova versão do risco, então o card sairia repetido N vezes.
+      const ultimaVersaoDoPlano = new Map();
+      histRisco.forEach((v, i) => { if (v.idPlano) ultimaVersaoDoPlano.set(v.idPlano, i); });
+
       let versoesHtml = histRisco.map((v, idxHist) => {
-        const p = v.idPlano ? state.plans.find(x => x.id === v.idPlano) : null;
+        const ehVersaoDoCard = !!v.idPlano && ultimaVersaoDoPlano.get(v.idPlano) === idxHist;
+        const p = ehVersaoDoCard ? state.plans.find(x => x.id === v.idPlano) : null;
         
         const isLatest = (idxHist === histRisco.length - 1);
         const vNum = idxHist + 1;
@@ -970,63 +983,15 @@
               ${iconBtn('history', 'acomp-entregas', 'Acompanhamento / Entregas', `data-idx="${oi}"`)}
             </div>
             
-            <div class="plan-single-line">
-              <div>
-                <div class="plan-field-label">Ação (O Que)</div>
-                <div class="plan-field-value">${esc(p.what)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Justificativa (Por Que)</div>
-                <div class="plan-field-value">${esc(p.why)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Quem (Unid.)</div>
-                <div class="plan-field-value">${esc(formatUnidadeUI(p.who))}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Onde</div>
-                <div class="plan-field-value">${esc(p.where)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Prazo Previsto</div>
-                <div class="plan-field-value">${fmtBr(p.whenPrevisto)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Finalização</div>
-                <div class="plan-field-value">${fmtBr(p.whenFinalizado) || '-'}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Como</div>
-                <div class="plan-field-value">${esc(p.how)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Custo</div>
-                <div class="plan-field-value">${esc(p.howMuch)}</div>
-              </div>
-              <div>
-                <div class="plan-field-label">Status</div>
-                <div class="plan-field-value">${badge(p.status)}</div>
-              </div>
-            </div>
+            ${_planoGridHtml(p)}
           </div>`;
+        } else if (v.idPlano) {
+          planCardHtml = `<div class="plan-card-empty-msg">Plano inalterado nesta reavaliação.</div>`;
         } else {
           planCardHtml = `<div class="plan-card-empty-msg">Nenhum plano vinculado a esta versão.</div>`;
         }
 
-        return `
-        <div class="version-card ${isLatest ? 'is-active' : 'is-old'}">
-           <div class="version-header">
-              <span class="version-title">Risco ${r.id} - Versão ${vNum} ${isLatest ? '(Atual)' : ''}</span>
-              <span class="version-date">${fmtBr(dataA)}</span>
-              <span class="risk-meta-sep">|</span>
-              <span>Probabilidade: <strong>${v.prob || '-'}</strong></span>
-              <span>Impacto: <strong>${v.impacto || '-'}</strong></span>
-              <span>Nível: <strong>${badge(v.nivel)}</strong></span>
-              <span>Tratamento: <strong>${esc(v.tratamento) || '-'}</strong></span>
-              <span>Responsável: <strong>${esc(formatUnidadeUI(v.responsavel))}</strong></span>
-           </div>
-           ${planCardHtml}
-        </div>`;
+        return _versionCardHtml(r, v, vNum, isLatest, dataA, planCardHtml);
       }).join(''); 
 
       return `<div class="risk-block risk-block--archived">

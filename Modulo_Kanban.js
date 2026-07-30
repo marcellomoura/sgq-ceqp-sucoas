@@ -6,10 +6,10 @@ function saveTask(task) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar.' };
   if (!task || !String(task.title||'').trim())
     return { sucesso: false, mensagem: 'O título do cartão é obrigatório.' };
-  return comBloqueio(() => {
-    const sheet = conectarAba(SHEET_TASKS);
+  return comBloqueio_(() => {
+    const sheet = conectarAba_(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
-    const timeNow = getNowTimestamp();
+    const timeNow = getNowTimestamp_();
     const autor = nomeUsuarioAtual_();
 
     if (task.id && task.id !== 'null' && task.id !== '') {
@@ -58,7 +58,7 @@ function saveTask(task) {
             { label: 'Descrição',        antes: String(data[i][C('Descricao')]||''),       depois: String(task.description||'') },
             { label: 'Responsáveis',     antes: String(data[i][C('ID_Membro')]||''),  depois: String(task.assigneeId||'') },
             { label: 'Prioridade',       antes: String(data[i][C('Prioridade')]||''),      depois: String(task.priority||'') },
-            { label: 'Prazo de Entrega', antes: formatarDataParaUI(data[i][C('Prazo')]),   depois: String(task.deadline||'') },
+            { label: 'Prazo de Entrega', antes: formatarDataParaUI_(data[i][C('Prazo')]),   depois: String(task.deadline||'') },
             { label: 'Etiquetas',        antes: String(data[i][C('Etiquetas')]||'[]'),     depois: String(task.labels||'[]') }
           ];
           const alterados = campos.filter(c => c.antes.trim() !== c.depois.trim()).map(c => c.label);
@@ -142,12 +142,12 @@ function saveTask(task) {
 
 function updateTaskStatus(id, newStatus) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar.' };
-  return comBloqueio(() => {
-    const sheet = conectarAba(SHEET_TASKS);
+  return comBloqueio_(() => {
+    const sheet = conectarAba_(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
     const dateNow = _dataLocalISO_(new Date());
-    const timeNow = getNowTimestamp();
+    const timeNow = getNowTimestamp_();
     const autor = nomeUsuarioAtual_();
 
     for (let i = 1; i < data.length; i++) {
@@ -183,8 +183,8 @@ function updateTaskStatus(id, newStatus) {
 
 function deleteTask(id) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para excluir.' };
-  return comBloqueio(() => {
-    const sheet = conectarAba(SHEET_TASKS);
+  return comBloqueio_(() => {
+    const sheet = conectarAba_(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
@@ -195,7 +195,7 @@ function deleteTask(id) {
         // futuro herdaria os comentários do cartão excluído).
         _excluirAtividadesDaTarefa_(id);
         SpreadsheetApp.flush();
-        registrarLog('Exclusão de Tarefa', id, 'Cartão removido do Kanban.');
+        registrarLog_('Exclusão de Tarefa', id, 'Cartão removido do Kanban.');
         return { sucesso: true };
       }
     }
@@ -206,8 +206,8 @@ function deleteTask(id) {
 // Arquiva manualmente um cartão concluído e migra suas atividades para a aba arquivada
 function arquivarTarefaManual(id) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar.' };
-  return comBloqueio(() => {
-    const sheet = conectarAba(SHEET_TASKS);
+  return comBloqueio_(() => {
+    const sheet = conectarAba_(SHEET_TASKS);
     const C = colIdx_(CABECALHOS_TAREFAS);
     const data  = sheet.getDataRange().getValues();
     let encontrou = false;
@@ -226,7 +226,7 @@ function arquivarTarefaManual(id) {
     if (!encontrou) return { sucesso: false, mensagem: 'Tarefa não encontrada.' };
     
     // Migração de Atividades (Copiar -> Flush -> Apagar)
-    const abaAtividades = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
+    const abaAtividades = safeGetSheet_(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
     if (abaAtividades && abaAtividades.getLastRow() > 1) {
       const CA = colIdx_(CABECALHOS_ATIVIDADES);
       const dadosAtividades = abaAtividades.getDataRange().getValues();
@@ -241,7 +241,7 @@ function arquivarTarefaManual(id) {
       
       if (rowsToMove.length > 0) {
         // Criar/conectar aba de destino sob demanda (não entra no setup eager)
-        const abaArquivadas = conectarAba(SHEET_ATIVIDADES_ARQUIVADAS, CABECALHOS_ATIVIDADES);
+        const abaArquivadas = conectarAba_(SHEET_ATIVIDADES_ARQUIVADAS, CABECALHOS_ATIVIDADES);
         abaArquivadas.getRange(abaArquivadas.getLastRow() + 1, 1, rowsToMove.length, rowsToMove[0].length).setValues(rowsToMove);
         SpreadsheetApp.flush(); // Garante a cópia antes de apagar a origem
         _deleteRowsBatch_(abaAtividades, linhasAtividades);
@@ -252,7 +252,7 @@ function arquivarTarefaManual(id) {
     sheet.getRange(rowIndex, C('Arquivado') + 1).setValue('Sim');
     SpreadsheetApp.flush();
     
-    registrarLog('Arquivamento Manual', id, 'Cartão arquivado manualmente e histórico migrado.');
+    registrarLog_('Arquivamento Manual', id, 'Cartão arquivado manualmente e histórico migrado.');
     return { sucesso: true };
   });
 }
@@ -267,8 +267,8 @@ function saveMember(member) {
   const reEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!reEmail.test(String(member.email).trim()) || !reEmail.test(String(member.emailPessoal).trim()))
     return { sucesso: false, mensagem: 'Informe e-mails válidos (funcional e pessoal).' };
-  return comBloqueio(() => {
-    const sheet = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
+  return comBloqueio_(() => {
+    const sheet = conectarAba_(SHEET_MEMBERS, CABECALHOS_MEMBROS);
     const C = colIdx_(CABECALHOS_MEMBROS);
     const data = sheet.getDataRange().getValues();
     // Duplicidade de e-mail (funcional OU pessoal): como o e-mail autentica o
@@ -318,8 +318,8 @@ function reativarMembro(id)  { return _definirStatusMembro_(id, true); }
 
 function _definirStatusMembro_(id, ativo) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado. Você não tem permissão para editar membros.' };
-  return comBloqueio(() => {
-    const sheet = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
+  return comBloqueio_(() => {
+    const sheet = conectarAba_(SHEET_MEMBERS, CABECALHOS_MEMBROS);
     const C = colIdx_(CABECALHOS_MEMBROS);
     const data  = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
@@ -327,7 +327,7 @@ function _definirStatusMembro_(id, ativo) {
         sheet.getRange(i+1, C('Ativo')+1).setValue(ativo ? 'Sim' : 'Não');
         SpreadsheetApp.flush();
         invalidarCacheMembros_(); // muda quem tem acesso — refaz o cache de auth
-        registrarLog(ativo ? 'Reativação de Membro' : 'Inativação de Membro',
+        registrarLog_(ativo ? 'Reativação de Membro' : 'Inativação de Membro',
           String(data[i][C('Nome')]),
           ativo ? 'Membro reativado (acesso restabelecido).' : 'Membro inativado (sem acesso ao sistema).');
         return { sucesso: true };
