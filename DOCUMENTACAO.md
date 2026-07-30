@@ -53,7 +53,9 @@ Ordem **do mais recente para o mais antigo**. "§10" indica entrada no log infor
 
 | Data | O que aconteceu | Registro |
 |---|---|---|
-| **2026-07-29** | **Execução do backlog da auditoria de 27/07** — 22 itens em 4 fases: 2 bugs altos, 6 médios, 9 baixos, 8 de código morto | **§8.27** |
+| **2026-07-30** | Membros: coluna Matrícula (migração manual de coluna, mesmo padrão do item anterior) | **§8.29** |
+| 2026-07-30 | Visitas Técnicas: coluna Data Prevista + KPI de Planejadas redefinido | §8.28 |
+| 2026-07-29 | **Execução do backlog da auditoria de 27/07** — 22 itens em 4 fases: 2 bugs altos, 6 médios, 9 baixos, 8 de código morto | **§8.27** |
 | 2026-07-29 | Refinamento das cores do modo escuro (3 rodadas de suavização, +1–4% L\*) | §10 (Décima rodada) |
 | 2026-07-27 | Modo escuro: auditoria de preparação, paleta e plano em 8 fases — **implementado** nesta data | §8.20 |
 | 2026-07-27 | Riscos: "Arquivados" renomeado para "Superados" | §8.21 |
@@ -1426,11 +1428,53 @@ O relatório classificou o **B-02** como 🟢 Baixo mas **não o incluiu em nenh
 
 #### Pendente de validação
 
-Nada disto foi commitado nem enviado por `clasp push` na sessão de 29/07. Depende de conferência em produção: o efeito visual (PDF da Matriz com as classes, scroll dos planos, novos rótulos de card, aba Superados carregando), e o critério de B-01 ("`runTests_` reporta 0 falhas"), que só roda no editor do Apps Script.
+Commitado (3 commits, branch `auditoria/execucao-backlog-2026-07-27`) e enviado por `clasp push` em 29/07. Ainda depende de conferência em produção: o efeito visual (PDF da Matriz com as classes, scroll dos planos, novos rótulos de card, aba Superados carregando), e o critério de B-01 ("`runTests_` reporta 0 falhas"), que só roda no editor do Apps Script.
 
 #### Backlog anterior (26/07) reavaliado
 
 A auditoria de 27/07 constatou que **nenhum** item do backlog de 26/07 havia sido executado: card duplicado (→ M-03), "Manter" cria versão (→ B-06), guarda de plano único (→ B-07), handler por `e.target.id` (→ B-09), crescimento da aba Tarefas (→ P-01) e a limpeza de código morto. **Todos foram fechados em 29/07, exceto P-01**, adiado por decisão.
+
+---
+
+### 8.28 Visitas Técnicas — coluna Data Prevista e KPI de Planejadas (2026-07-30)
+
+**Pedido:** distinguir a data em que uma visita técnica está *prevista* da data em que ela *aconteceu*, e um KPI de "Planejadas" que reflita isso.
+
+**Estado anterior:** a aba tinha um único campo de data. Se preenchido, a visita virava "Realizada"; se vazio, "Planejada" — ou seja, **uma visita planejada não tinha data nenhuma**, e não dava para saber quando ela era esperada, ordenar por isso, nem ver atraso. O KPI "Planejadas" já existia (`#kpi-vt-planejadas`, em `View_VisitasTecnicas.html`) contando exatamente esse vazio.
+
+**Modelo adotado — espelha Capacitações, com uma diferença deliberada:** dois campos, `Data_Prevista` e `Data_Da_Visita` (este último passou a significar "realizada" no vocabulário do cliente, sem que o texto do cabeçalho físico na planilha precisasse mudar — `colIdx_` mapeia por posição, não pelo texto). Diferente de Capacitações (3 estados: Planejada/Em Andamento/Concluída), aqui ficaram **2 estados** (Planejada/Realizada) — a Data Prevista informa quando a visita é esperada, mas não muda o status sozinha. `calcularStatusVisita_` recebe só a data realizada, de propósito, para não sobrar parâmetro sem uso.
+
+**Migração de coluna — decisão de risco:** `colIdx_()` mapeia coluna por **posição no array `CABECALHOS_VISITAS`**, não pelo texto do cabeçalho, e `conectarAba_()` só sabe completar colunas **faltantes no final**, nunca inserir no meio. Como a Data Prevista precisava vir *antes* da existente (pedido explícito do usuário), a única forma seguro foi: (1) o usuário insere manualmente a coluna na planilha (clique direito na coluna "Data da Visita" → "Inserir 1 coluna à esquerda" — operação nativa do Sheets, desloca dados existentes sem perdê-los); (2) só depois, `CABECALHOS_VISITAS` é atualizado com `'Data_Prevista'` na mesma posição física; (3) `clasp push` só depois da coluna já existir na planilha. Fazer os passos fora de ordem alinha mal em silêncio — `Status` seria lido como se fosse `Data_Da_Visita`, e por diante.
+
+**Convenção replicada de Capacitações** em todos os pontos que dependem de data (filtro de ano, filtro de período, gráfico de evolução mensal, KPI de Planejadas): `dataRef = v.dataRealizada || v.dataPrevista` — uma visita ainda não realizada entra no filtro/gráfico pelo mês em que está prevista, em vez de desaparecer por não ter uma data "realizada" ainda.
+
+**Não copiado de Capacitações:** o campo `dataPrevistaRaw` (timestamp), que existe lá (`Código.js`) e é **código morto** — declarado e nunca lido em lugar nenhum. Não foi replicado para Visitas Técnicas.
+
+**Arquivos:** `Código.js` (`CABECALHOS_VISITAS`, `getVisitasTecnicasData`), `Modulo_VisitasTecnicas.js` (`calcularStatusVisita_`, `salvarVisitaTecnica`, `atualizarVisitaTecnica`), `View_VisitasTecnicas.html` (cabeçalho da lista, `min-w-1000`→`min-w-1100`, par de campos de data no modal), `JS_VisitasTecnicas.html` (filtros, KPI, gráfico mensal, handlers do modal), `CSS.html` (`.vt-row`: 7→8 frações).
+
+**Bug à parte, achado testando a tela:** a coluna Responsáveis usava `cap-c-center` (centraliza o texto), mas o cabeçalho "Responsáveis" não tinha `text-center` — ficava desalinhado. Pré-existente (não veio desta mudança), só ficou visível ao testar a tela nova. Corrigido removendo só a classe de centralização; `font-12`/`text-muted` (tamanho e cor) ficaram intactos.
+
+**Verificado:** `node --check` no corpo do `<script>`; `View_VisitasTecnicas.html` com `<div>` balanceadas (+3 vs. HEAD); os 8 cabeçalhos da lista batendo com as 8 frações do grid `.vt-row`; nenhuma referência sobrando ao campo antigo (`v.data`, `obj.data`, `vt-data` sem sufixo, `dados.data`).
+
+**Pendente:** commitado e enviado por `clasp push` pelo usuário via terminal em 30/07 — não verificado por este agente (sem forma de confirmar um push de fora da sessão via `clasp status`). Falta validação visual em produção.
+
+---
+
+### 8.29 Membros — coluna Matrícula (2026-07-30)
+
+**Pedido:** adicionar Matrícula logo após o Nome do membro.
+
+**Migração de coluna — risco maior que o de Visitas Técnicas:** `setupDatabaseKanban()` roda **automaticamente a cada abertura do sistema** (gate de cache de 6h) e contém uma rotina (`Código.js`, dentro dessa função) que **reescreve sozinha o texto do cabeçalho** da aba Membros sempre que detecta divergência com `CABECALHOS_MEMBROS` — sem mover nenhum dado. Diferente do `conectarAba_()` padrão (só completa colunas faltantes no final), esta é uma correção automática de texto que roda sobre colunas **já existentes**. Se o array mudasse antes da coluna física existir (ou a coluna existisse antes do array mudar, com uma carga do sistema no meio), a rotina escreveria o rótulo novo em cima de uma coluna cujos dados não se moveram — por exemplo, a célula com "Analista" (Cargo) ganharia o rótulo "Matrícula" por cima, e cada campo seguinte desalinharia um lugar. `saveMember` já teve exatamente essa classe de bug antes (e-mail pessoal indo parar na coluna errada, comentário em `Modulo_Kanban.js`).
+
+**Decisão do usuário:** inserção manual na planilha (mesmo padrão de §8.28) — clique direito no cabeçalho "Cargo" → "Inserir 1 coluna à esquerda", digitar `Matricula` no cabeçalho, e só então `clasp push`. Avaliada a alternativa de uma migração 100% em código (`insertColumnAfter` via Apps Script, no espírito de `_migrarEremoverColunaAtividades_`/`_reordenarColunasTarefas_`, que já existem no projeto para Tarefas), que eliminaria a janela de risco por completo — o usuário preferiu o caminho manual.
+
+**Campo opcional:** sem validação de obrigatoriedade — o pedido foi só adicionar a coluna, não uma regra de negócio nova.
+
+**Arquivos:** `Código.js` (`CABECALHOS_MEMBROS`, `getKanbanData_members_`), `Modulo_Kanban.js` (`saveMember`: bloco de edição contíguo passou de 3 para 4 colunas — Nome/Matrícula/Cargo/Email Funcional —, e a linha de cadastro novo), `JS_Kanban.html` (`renderMembers`, `abrirModalMembro`, `abrirEditarMembro`, `salvarMembro`), `View_Pessoas.html` (cabeçalho da lista, `min-w-900`→`min-w-1100`, campo no modal), `CSS.html` (`.membro-row`: 5→6 frações).
+
+**Verificado:** `node --check` OK; `View_Pessoas.html` com `<div>` balanceadas (+1 vs. HEAD); 6 cabeçalhos batendo com as 6 frações do grid `.membro-row`; `memberMatricula` referenciado nos 3 pontos esperados (reset, popular, ler).
+
+**Pendente:** commitado e enviado por `clasp push` pelo usuário via terminal em 30/07 — mesma ressalva de verificação do item anterior. Falta validação visual em produção.
 
 ---
 
