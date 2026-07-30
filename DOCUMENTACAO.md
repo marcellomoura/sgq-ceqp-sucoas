@@ -1,6 +1,8 @@
 # Auditoria Técnica e Documentação — Sistema de Gestão da Qualidade (SGQ · CEQP)
 
-> **Documento oficial do projeto.** Auditoria técnica + documentação de engenharia reversa produzida a partir da leitura integral do código-fonte (16 arquivos, ~8.400 linhas). Toda afirmação foi extraída do código; onde há incerteza, está sinalizado explicitamente. Data-base: 2026-07-16.
+> **Documento oficial e registro único do projeto.** Auditoria técnica + documentação de engenharia reversa produzida a partir da leitura integral do código-fonte. Toda afirmação foi extraída do código; onde há incerteza, está sinalizado explicitamente.
+>
+> **Data-base da auditoria original:** 2026-07-16 (§1–§7, congelada). **Última atualização:** 2026-07-29 (§8.27). Comece pela [linha do tempo](#linha-do-tempo-consolidada) se procura uma mudança específica.
 >
 > **Escopo:** 7 arquivos `.js` (backend Apps Script, ~2.478 linhas) + arquivos `.html` (cliente: 1 CSS, 7 módulos JS, e — desde 2026-07-23 — as telas separadas em 8 arquivos `View_*` por módulo; ver §8.8). Originalmente as views/modais viviam num único `Index.html`; o total de linhas de cliente é ~o mesmo (~5.900), só redistribuído.
 
@@ -8,15 +10,87 @@
 
 ## Sumário
 
-1. [Diagnóstico Executivo](#1-diagnóstico-executivo)
+**Parte I — Auditoria inicial (data-base 2026-07-16)**
+
+1. [Diagnóstico Executivo](#1-diagnóstico-executivo) — os 12 problemas catalogados (P1–P12) e o status atual de cada um
 2. [Arquitetura Atual](#2-arquitetura-atual)
 3. [Mapa de Dependências](#3-mapa-de-dependências)
 4. [Relatório dos Agentes Especialistas](#4-relatório-dos-agentes-especialistas)
 5. [Plano de Refatoração](#5-plano-de-refatoração-faseado-seguro-preservando-comportamento)
 6. [Análise de Riscos das Alterações](#6-análise-de-riscos-das-alterações)
 7. [Checklist Final](#7-checklist-final-estado-atual)
+
+**Parte II — Referência técnica e histórico**
+
 8. [Documentação Técnica (engenharia reversa)](#8-documentação-técnica-engenharia-reversa)
+   - **§8.1–§8.6** — referência atemporal: arquivos, modelo de dados, regras de negócio, integrações, implantação, limitações
+   - **§8.19** — referência da paleta de cores
+   - **§8.7–§8.18, §8.20–§8.27** — registros técnicos datados, um por rodada de mudança
 9. [Próximas Melhorias](#9-próximas-melhorias)
+10. [Modificações Recentes (histórico informal)](#10-modificações-recentes-histórico-de-alterações)
+
+---
+
+## Como este documento está organizado
+
+Este arquivo cresceu por acréscimo e **tem dois históricos cronológicos paralelos** — o que é preciso saber para não procurar no lugar errado:
+
+| Onde | O que é | Convenção |
+|---|---|---|
+| **§8.7–§8.27** | Registro técnico detalhado de cada mudança (causa, correção, arquivos, decisões). | **É aqui que entram os registros novos.** Numeração sequencial + data. |
+| **§10** | Log informal mais antigo, organizado em "rodadas". Mantido **como está**, por valor histórico. | Não receber entradas novas. |
+| **§1–§7** | A auditoria de 2026-07-16, congelada. Os itens P1–P12 recebem apenas *atualizações de status* em linha. | Não reescrever o diagnóstico original. |
+
+A **[linha do tempo](#linha-do-tempo-consolidada)** abaixo é o índice único: lista toda entrada datada dos dois logs em ordem, para você não precisar saber em qual deles procurar. As referências são por número de seção (`§8.12`), não por link — os títulos são longos e âncoras quebram em silêncio.
+
+> **Nota de 2026-07-29:** os relatórios de auditoria que viviam soltos na raiz (`AUDITORIA.md` de 26/07, `AUDITORIA_2026-07-27.md`, `ANALISE_TEMPO_REAL.md`, `EXEMPLO_POLLING_SIMPLES.md`) foram **removidos do diretório** numa limpeza. Nunca tinham sido commitados, então não há cópia no git. **Este documento passou a ser o registro único** — por isso a auditoria de 27/07 está reproduzida por inteiro em §8.27, achado por achado, e não apenas referenciada.
+
+---
+
+## Linha do tempo consolidada
+
+Ordem **do mais recente para o mais antigo**. "§10" indica entrada no log informal; "§8.x" indica registro técnico detalhado.
+
+| Data | O que aconteceu | Registro |
+|---|---|---|
+| **2026-07-29** | **Execução do backlog da auditoria de 27/07** — 22 itens em 4 fases: 2 bugs altos, 6 médios, 9 baixos, 8 de código morto | **§8.27** |
+| 2026-07-29 | Refinamento das cores do modo escuro (3 rodadas de suavização, +1–4% L\*) | §10 (Décima rodada) |
+| 2026-07-27 | Modo escuro: auditoria de preparação, paleta e plano em 8 fases — **implementado** nesta data | §8.20 |
+| 2026-07-27 | Riscos: "Arquivados" renomeado para "Superados" | §8.21 |
+| 2026-07-27 | Entregas em modo somente leitura + acertos no ciclo de risco superado | §8.22 |
+| 2026-07-27 | PDF de Riscos Superados: título duplicado e layout divergente | §8.23 |
+| 2026-07-27 | Kanban: tamanho de fonte do responsável e do meta no cartão — *EM TESTE* | §8.24 |
+| 2026-07-27 | Botão "copiar e-mail" em Unidades e Membros — *A VALIDAR EM PRODUÇÃO* | §8.25 |
+| 2026-07-27 | KPIs do Acompanhamento contavam planos de riscos superados | §8.26 |
+| 2026-07-27 | Texto invisível no botão dos modais de confirmação | §10 |
+| 2026-07-27 | Exportação genérica de documentos (HTML) — codificada e **revertida** | §10 |
+| 2026-07-26 | Auditoria da arquitetura CSS + remediação em 10 fases (nota 74 → ~91) | §10 (3ª rodada) |
+| 2026-07-26 | Migração completa de estilos inline → classe (~378 → 35 `style=""`) | §10 (1ª e 2ª rodadas) |
+| 2026-07-26 | Auditorias de tipografia, paleta, dos 5 PDFs, e cor de membro sem colisão | §10 (4ª–7ª, 9ª rodadas) |
+| 2026-07-26 | Ajustes de proporção nas tabelas; bugs achados testando a interface | §10 (8ª rodada) |
+| 2026-07-25 | Kanban: aba física `Atividades_Arquivadas` (contenção de crescimento) | §8.18 |
+| 2026-07-25 | Status "Atrasado" de plano recalculado na leitura | §8.17 |
+| 2026-07-25 | Avatar do usuário logado no menu lateral | §10 |
+| 2026-07-25 | Modo noturno por inversão de filtro — **tentativa revertida** | §10 |
+| 2026-07-24 | **Causa raiz** da gravação intermitente: `flush()` no `comBloqueio_` | §8.16 |
+| 2026-07-24 | Riscos/Planos: migração de JSON-em-célula para linha-por-versão | §8.13 |
+| 2026-07-24 | Modal "Reavaliar" passa a exigir escolha explícita de ação | §8.14 |
+| 2026-07-24 | Refinamentos visuais e lógicos do ciclo de revisão | §8.15 |
+| 2026-07-23 | Riscos/Planos: correções em cadeia (`ID_Plano`, ciclo de revisão, UI) | §8.12 |
+| 2026-07-23 | Separação das telas em `View_*.html` por módulo | §8.8 |
+| 2026-07-23 | Módulo Visitas Técnicas | §8.9 |
+| 2026-07-23 | Documentos: versionamento, classificação e ordenação da Lista Mestra | §8.11 |
+| 2026-07-23 | Atualização "cirúrgica" de linha por módulo — **decidido manter como está** | §8.10 |
+| 2026-07-16 | Reformulação de identidade visual | §8.7 |
+| 2026-07-16 | **Auditoria técnica inicial** (read-only) + plano de refatoração faseado | §1–§7 |
+
+### Auditorias realizadas
+
+| Data | Escopo | Resultado | Onde |
+|---|---|---|---|
+| 2026-07-16 | Leitura integral do código (16 arquivos, ~8.400 linhas) | 12 problemas (P1–P12), nenhum crítico | §1–§7 |
+| 2026-07-26 | Arquitetura CSS, tipografia, paleta e os 5 PDFs | Nota 74 → ~91/100; 5 duplicatas de grid | §10 (3ª–9ª rodadas) |
+| 2026-07-27 | Projeto completo, com foco em Tarefas (Kanban) e Riscos/Planos | 2 altos, 6 médios, 9 baixos, 8 de limpeza; **nenhum crítico**; nenhuma credencial exposta | §8.27 |
 
 ---
 
@@ -33,7 +107,7 @@ O SGQ é um **web app monolítico de página única (SPA)** sobre Google Apps Sc
 | P3 | Abas `Logs` e `Atividades` crescem **indefinidamente** sem rotação (teto de 10M células/planilha) | Escalabilidade | **Alto** — ⚙️ *Endereçado (Fase 2.1, 2026-07-16): `Logs` ganhou arquivamento manual (`arquivarLogsAntigos_`) + diagnóstico (`diagnosticoAbas_`). `Atividades` não tem rotação por idade (atrelada ao ciclo do cartão) — mitigada por 2.2 (limpeza ao excluir cartão) + 2.3 (contagem cacheada). `buscarLogs` já era janelado (últimas 2.000).* |
 | P4 | Dependência de CDNs externos, `chart.js` **sem versão fixada** (risco de quebra por major + supply chain) | Segurança/Estabilidade | **Médio** |
 | P5 | `deleteRow` em laço (`_excluirAtividadesDaTarefa_`, `excluirDocumento`, `excluirPlano`) — O(n) chamadas de API dentro do lock | Performance | **Médio** — ✅ *Resolvido 2026-07-16 (Fase 2.2): helper `_deleteRowsBatch_` agrupa em blocos contíguos via `deleteRows`.* |
-| P6 | Regra de negócio **duplicada** cliente/servidor (nível de risco, `_statusPlano`, plano global) | Manutenção/DRY | **Médio** |
+| P6 | Regra de negócio **duplicada** cliente/servidor (nível de risco, `_statusPlano_`, plano global) | Manutenção/DRY | **Médio** |
 | P7 | Acoplamento por **índice de array** (`data-idx`) entre render e handlers — frágil, já causou bug histórico | Robustez | **Médio** — ⏸️ *Aceito/não urgente (2026-07-16). Hoje mitigado (cada render calcula o índice original com cuidado; não é bug ativo). Migração para `data-id` descartada: benefício preventivo, `Planos` não têm id atômico (chave composta risco+"O Que"), e a validação manual cobriria toda a app.* |
 | P8 | `Código.js` mistura responsabilidades (config + utils + auth + acesso a dados + PDF + endpoints) | Arquitetura/SoC | **Médio** — ❌ *Descartado por decisão (2026-07-16): manter arquivo único.* |
 | P9 | Ausência total de **testes automatizados**, mesmo para lógica pura testável | Qualidade | **Médio** — ⚙️ *Endereçado (Fase 5.2, 2026-07-16): `runTests_()` cobre a lógica pura (nível de risco, próxima revisão, status de plano/capacitação, arquivamento, sanitização, colIdx, links). 40 asserções. Rodar pelo editor.* |
@@ -121,18 +195,18 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 
 ### 3.2 Dependências internas do servidor (quem depende de quem)
 
-- **Núcleo compartilhado (Código.js):** `colIdx_`, `comBloqueio`, `conectarAba`, `safeGetSheet(Data)`, `isMembro_`, `membrosParaAuth_` (+ cache), `getNextId_`, `registrarLog`, `formatarDataParaUI`, `_dataLocalISO_`, `linkPermitido_`, `calcularNivelRisco`, `calcularProximaRevisao` — **usados por todos os módulos.**
-- **`isMembro_` → `membrosParaAuth_` → `conectarAba(SHEET_MEMBERS)`** roda no início de **praticamente toda** chamada (mitigado por `ScriptCache` de 6h, invalidado em escrita de membro).
-- **Cadeia de setup/migração (crítica de ordem):** `setupDatabaseKanban` → `_migrarEremoverColunaAtividades_` → `_reordenarColunasTarefas_` → `conectarAba`. **Tem de rodar antes de qualquer leitura de Tarefas** (senão `colIdx_` cai na coluna errada). Idempotente via `ScriptProperties` + re-checagem dentro do lock.
-- **Acoplamento cruzado por dados:** `reavaliarRisco` marca `Revisao_Pendente` nos planos; `salvarEntregasEmLote` → `_reavaliarBaixa` lê Unidades.
+- **Núcleo compartilhado (Código.js):** `colIdx_`, `comBloqueio_`, `conectarAba_`, `safeGetSheet_`/`safeGetSheetData_`, `isMembro_`, `membrosParaAuth_` (+ cache), `getNextId_`, `registrarLog_`, `formatarDataParaUI_`, `_dataLocalISO_`, `linkPermitido_`, `calcularNivelRisco_`, `calcularProximaRevisao_` — **usados por todos os módulos.** (Todos ganharam o sufixo `_` em 2026-07-29 para deixarem de ser endpoints públicos — ver §8.27, item M-02.)
+- **`isMembro_` → `membrosParaAuth_` → `conectarAba_(SHEET_MEMBERS)`** roda no início de **praticamente toda** chamada (mitigado por `ScriptCache` de 6h, invalidado em escrita de membro).
+- **Cadeia de setup/migração (crítica de ordem):** `setupDatabaseKanban` → `_migrarEremoverColunaAtividades_` → `_reordenarColunasTarefas_` → `conectarAba_`. **Tem de rodar antes de qualquer leitura de Tarefas** (senão `colIdx_` cai na coluna errada). Idempotente via `ScriptProperties` + re-checagem dentro do lock.
+- **Acoplamento cruzado por dados:** `reavaliarRisco` marca `Revisao_Pendente` nos planos; `salvarEntregasEmLote` → `_reavaliarBaixa_` lê Unidades.
 
 ### 3.3 Estado do cliente
 `var state = { tasks, archivedTasks, members, units, docs, risks, plans, deliveries, history, trainings, afastamentos }` — fonte única no cliente. (P11 resolvido: `afastamentos: []` já consta na inicialização de `state`.)
 
 ### 3.4 Funções órfãs / código morto
-- Nenhum item aberto (revisado em 2026-07-22): `histJson` foi removido e o endpoint latente `excluirUnidade`/`contarReferenciasUnidade_` (sem chamador de UI) foi removido.
-- Comentário final em Modulo_Riscos.js: nota sobre função de PDF que "não é mais necessária aqui" — ruído inofensivo.
+- **Nenhum item aberto** (última varredura: 2026-07-29). Histórico: `histJson` e o endpoint latente `excluirUnidade`/`contarReferenciasUnidade_` removidos em 2026-07-22; em 2026-07-29 saíram `_indicePlanosPorRisco()`, `_linhasMatrizParaPdf_` (duplicata quebrada de `_gridRowsParaPdf`), a variável `planos` nunca lida, os hidden inputs `#er-prob-original`/`#er-imp-original`, as classes `.px-28`, `.btn-pdf-email` e `.required-mark`, e o `acoesUnicas` sem consumidor — ver §8.27.
 - Não há funções GS expostas sem chamador (todos os endpoints são invocados pelo cliente).
+- ⚠️ **Cuidado ao criar helpers de servidor:** no Apps Script, função cujo nome **não termina** em `_` é chamável por `google.script.run`. Prefixo não basta — `_reavaliarBaixa` e `_statusPlano` eram endpoints públicos sem guarda por causa disso (§8.27, M-02).
 
 ### 3.5 Índice de tags de auditoria (rastreabilidade nos comentários)
 Alguns comentários do código carregam tags curtas de auditorias anteriores. O prefixo indica a série de auditoria de origem; abaixo, o que cada tag ainda presente no código significa (índice criado em 2026-07-22):
@@ -142,7 +216,7 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 | `A03` | `JS_Utilitarios.html` — handler do botão `btn-confirmar-excluir` | Proteção imediata contra clique duplo: desabilita o botão já no 1º clique. |
 | `A13` | `JS_Utilitarios.html` — `inicializarSidebarRetratil`/modais | Acessibilidade: injeta ARIA roles nos modais e configura o Focus Trap. |
 | `C04` | `Código.js` — `enviarPdfDeHtml` | Restringe o envio de PDF exclusivamente a e-mails de membros cadastrados. |
-| `H03` | `Código.js` — `enviarPdfDeHtml` → `registrarLog` | Protege o `registrarLog` do envio de PDF com `comBloqueio`, evitando colisão com escrita concorrente na aba Logs. |
+| `H03` | `Código.js` — `enviarPdfDeHtml` → `registrarLog_` | Protege o `registrarLog_` do envio de PDF com `comBloqueio_`, evitando colisão com escrita concorrente na aba Logs. |
 
 > `B17` (declaração global de `logsCache`) foi removida em 2026-07-22 na migração da paginação de logs — a tag não existe mais no código.
 
@@ -161,7 +235,7 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 - **Bom uso de:** `CacheService` (auth, setup, rate-limit), `PropertiesService` (contadores, flags de migração), `LockService` (serialização), `SpreadsheetApp.flush()`, escrita em lote (`setValues`).
 
 ### 4.3 Agente Google Sheets
-- Uso predominante de `getValues/setValues` em lote (correto). `appendRow` usado pontualmente (aceitável). `getSheetByName` encapsulado em `safeGetSheet` com normalização de acento/maiúscula + auto-rename logado.
+- Uso predominante de `getValues/setValues` em lote (correto). `appendRow` usado pontualmente (aceitável). `getSheetByName` encapsulado em `safeGetSheet_` com normalização de acento/maiúscula + auto-rename logado.
 - **Redução possível:** cachear cabeçalhos/`colIdx_` já é barato (constantes); o ganho real está em não reler abas inteiras por operação (ver P2/P5).
 
 ### 4.4 Agente Front-end
@@ -201,7 +275,7 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 **Fase 5 — Escalabilidade / robustez futura**
 11. Introduzir testes (ver §9) — **✅ FEITO (Fase 5.2, 2026-07-16).** `runTests_()` em `Código.js` (admin, roda pelo editor): harness próprio (sem dependência externa) com 40 asserções sobre a lógica pura. Expectativas auto-verificadas em Node antes de escrever. Não altera lógica de produção.
 12. Substituir acoplamento por índice (`data-idx`) por `data-id` + lookup por id (P7) — **⏸️ NÃO FEITO / aceito (2026-07-16)** para o `data-idx` da UI em geral (custo de validação manual em toda a app supera o benefício preventivo, sem bug ativo). **Reaberto e corrigido parcialmente em 2026-07-23 para Planos especificamente — ver §8.12: um bug ativo real foi encontrado** (editar/revisar um plano podia gravar por cima do plano ERRADO quando duas linhas do mesmo risco tinham o mesmo texto em "O Que") e a causa era exatamente a premissa aqui aceita ("Planos não têm id atômico"). Corrigido com a introdução de `ID_Plano`.
-13. Mover cartões arquivados para uma aba própria `Tarefas_Arquivo` (**registrado 2026-07-22 como possibilidade futura; NÃO implementado**). **Problema (risco R-01):** hoje os cartões arquivados ficam na MESMA aba `Tarefas`, apenas marcados (`Arquivado='Sim'` ou `Concluído` há mais de `DIAS_PARA_ARQUIVAR` dias). `getKanbanData` faz `getDataRange().getValues()` na aba INTEIRA **a cada ação de cartão** (arrastar/salvar/abrir) e só descarta os arquivados na memória (`_tarefaArquivada_`) — então a leitura no caminho quente cresce sem limite com o histórico de concluídos, mesmo o quadro exibindo poucos ativos. **Proposta:** espelhar o padrão já validado de `Logs`/`Logs_Arquivo` — arquivar (manual e por data) passa a **MOVER** a linha para `Tarefas_Arquivo`; `getKanbanData` lê só a `Tarefas` (agora só ativos → leitura pequena e limitada); `getTarefasArquivadas` lê a `Tarefas_Arquivo` sob demanda; restaurar move de volta. **Seguro** porque os cartões são endereçados por ID (`TAR-n`), não por posição de linha. **Ponto de atenção:** o arquivamento por DATA hoje é *virtual* (calculado na leitura, sem gravação) — precisaria de uma rotina de manutenção (gatilho diário, no espírito de `arquivarLogsAntigos_`) que move os qualificados, mantendo o filtro `_tarefaArquivada_` no `getKanbanData` como **rede de segurança** (correção não depende do timing do move). Os gráficos históricos do Kanban continuam lendo ativos + arquivo (muda só a origem no servidor). **Ganho:** caminho quente fica MAIS leve (não mais lento); sem crescimento de células (linhas realocadas, não duplicadas). **Esforço:** médio e contido; **risco:** baixo-médio (migração inicial única dos arquivados atuais + conferir os gráficos).
+13. Mover cartões arquivados para uma aba própria `Tarefas_Arquivo` (**registrado 2026-07-22 como possibilidade futura; NÃO implementado**). **Problema (risco R-01):** hoje os cartões arquivados ficam na MESMA aba `Tarefas`, apenas marcados com `Arquivado='Sim'` (o critério por data descrito na versão original deste item **não existe mais** — ver §8.3). `getKanbanData` faz `getDataRange().getValues()` na aba INTEIRA **a cada ação de cartão** (arrastar/salvar/abrir) e só descarta os arquivados na memória (`_tarefaArquivada_`) — então a leitura no caminho quente cresce sem limite com o histórico de concluídos, mesmo o quadro exibindo poucos ativos. **Proposta:** espelhar o padrão já validado de `Logs`/`Logs_Arquivo` — arquivar (manual e por data) passa a **MOVER** a linha para `Tarefas_Arquivo`; `getKanbanData` lê só a `Tarefas` (agora só ativos → leitura pequena e limitada); `getTarefasArquivadas` lê a `Tarefas_Arquivo` sob demanda; restaurar move de volta. **Seguro** porque os cartões são endereçados por ID (`TAR-n`), não por posição de linha. **Ponto de atenção:** o arquivamento por DATA hoje é *virtual* (calculado na leitura, sem gravação) — precisaria de uma rotina de manutenção (gatilho diário, no espírito de `arquivarLogsAntigos_`) que move os qualificados, mantendo o filtro `_tarefaArquivada_` no `getKanbanData` como **rede de segurança** (correção não depende do timing do move). Os gráficos históricos do Kanban continuam lendo ativos + arquivo (muda só a origem no servidor). **Ganho:** caminho quente fica MAIS leve (não mais lento); sem crescimento de células (linhas realocadas, não duplicadas). **Esforço:** médio e contido; **risco:** baixo-médio (migração inicial única dos arquivados atuais + conferir os gráficos).
 
 ---
 
@@ -220,11 +294,13 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 
 ## 7. Checklist Final (estado atual)
 
+> ⚠️ Este checklist é o de **2026-07-16** e descreve a auditoria original (read-only). O estado verificado mais recente está em §8.27 (2026-07-29).
+
 - Nenhuma funcionalidade removida ou modificada (auditoria read-only).
 - Todas as 11 abas mapeadas e referenciadas por constantes `SHEET_*`/`CABECALHOS_*`.
-- Todos os endpoints `google.script.run` têm chamador identificado.
+- Todos os endpoints `google.script.run` têm chamador identificado. *(Reconferido em 2026-07-29: os 46 endpoints invocados pelo cliente resolvem para funções existentes, e as 50 funções públicas têm guarda de autorização — 11 helpers que eram públicos por descuido ganharam o sufixo `_`; ver §8.27.)*
 - Todas as integrações Google (Sheets, Cache, Properties, Lock, Mail, Utilities, HtmlService, Session) catalogadas.
-- Nenhum trigger (`onOpen`/`onEdit`/`ScriptApp`/time-driven) existe — confirmado por busca; o auto-arquivamento é **calculado em memória na leitura** (`_tarefaArquivada_`), não por gatilho.
+- Nenhum trigger (`onOpen`/`onEdit`/`ScriptApp`/time-driven) existe — confirmado por busca em 2026-07-16 e reconfirmado em 2026-07-29. *(À época havia auto-arquivamento por data calculado em memória na leitura; hoje o arquivamento é manual — ver §8.3.)*
 - Nenhum menu personalizado — é web app puro (`doGet`).
 - ⚠️ Dependências externas (CDNs) funcionam mas não são fixadas por versão.
 
@@ -276,10 +352,10 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 | `Documentos` | Codigo, Versao, Tipo, Titulo, Data_Aprovacao, Proxima_Revisao, Status, Responsavel(ID_Unidade), Link_Principal, Doc_Auxiliar_1/2, Revisao | Código `SIGLATIPO-SIGLAUND-NN`. Revisão = nova linha + antiga vira "Obsoleto". |
 | `Riscos` | ID_Risco, Versao, Macroetapa, Risco, Causa, Consequencia, Categoria, Probabilidade, Impacto, Nivel, Tipo_Tratamento, Responsavel(ID_Unidade), Status, Justificativa, Data_Avaliacao | ID `Rn`. **1 linha por VERSÃO do risco** (adicionado 2026-07-24 — ver §8.13): toda reavaliação cria uma linha nova com o mesmo `ID_Risco` e `Versao` incrementada; a linha de maior `Versao` é o estado atual. `Status` (Ativo/Superado — era Ativo/Arquivado até 2026-07-27, ver §8.21) descreve o risco inteiro — superar aplica a TODAS as linhas do `ID_Risco` de uma vez. Sem `Historico` (JSON) — o histórico é o próprio conjunto de linhas. |
 | `Planos_Acao` | ID_Plano, ID_Risco, O_Que, Por_Que, Quem(ID_Unidade), Onde, Data_Prevista, Data_Finalizacao, Como, Quanto_Custa, Status, Revisao_Pendente, Justificativa, Data_Avaliacao | ID próprio `PLA-n` (adicionado 2026-07-23 — ver §8.12). Vincula a Risco (`Rn`) por `ID_Risco`. `Quem` aceita também "Todas as Subcomissões" (`.includes('TODAS')`, `_planoEhGlobal_`). **Linha nova só quando a estratégia muda de verdade** (2026-07-24 — ver §8.13): "Substituir" fecha a linha atual (`Status='Substituído'`) e cria uma linha com `ID_Plano` novo; "Manter" não cria linha — só atualiza `Justificativa`/`Data_Avaliacao`/`Revisao_Pendente` na própria linha, já que nada do 5W2H muda. Sem `Historico`/`Entregas` (JSON) — entregas viraram a aba `Entregas_Planos`. |
-| `Entregas_Planos` | ID_Plano, Unidade, Status, Data, Processo_SEI | Sem ID próprio — chave composta `(ID_Plano, Unidade)`, única por construção (upsert). Sob demanda (`conectarAba`), fora do setup eager, mesmo padrão de `Capacitacoes`/`Visitas_Tecnicas`. Adicionada 2026-07-24 — ver §8.13. |
+| `Entregas_Planos` | ID_Plano, Unidade, Status, Data, Processo_SEI | Sem ID próprio — chave composta `(ID_Plano, Unidade)`, única por construção (upsert). Sob demanda (`conectarAba_`), fora do setup eager, mesmo padrão de `Capacitacoes`/`Visitas_Tecnicas`. Adicionada 2026-07-24 — ver §8.13. |
 | `Afastamentos` | ID_Afastamento, Ano, ID_Membro, Membro_Nome, Ferias_1/2/3, Abonos, Abono_Aniversario, Licenca_Servidor_Premio (JSON), Demais_Afastamentos (JSON) | ID `AF-n`. Uma linha por (Membro+Ano). |
 | `Capacitacoes` | ID_Capacitacoes, Titulo_Da_Capacitacao, Tema, Publico_Alvo, Modalidade, Data_Prevista, Data_Realizada, Status, Lista_De_Presenca, Responsaveis(ID_Membro) (JSON de ids) | ID `CAP-n`. Status derivado das datas. **Não entra mais no setup automático** desde 2026-07-23 (ver §8.9) — sob demanda, igual `Visitas_Tecnicas`. |
-| `Visitas_Tecnicas` | ID_Visitas_Tecnicas, Objetivo_Da_Visita, Local_Visitado, Data_Da_Visita, Status, Responsaveis(ID_Membro) (JSON de ids), Relatorio_Anexo | ID `VT-n`. Status derivado só de Data_Da_Visita (sem "prevista", ver §8.9). **Não entra no setup automático** (`setupDatabaseResto`) — criada por `conectarAba` na 1ª leitura/gravação sob demanda. |
+| `Visitas_Tecnicas` | ID_Visitas_Tecnicas, Objetivo_Da_Visita, Local_Visitado, Data_Da_Visita, Status, Responsaveis(ID_Membro) (JSON de ids), Relatorio_Anexo | ID `VT-n`. Status derivado só de Data_Da_Visita (sem "prevista", ver §8.9). **Não entra no setup automático** (`setupDatabaseResto`) — criada por `conectarAba_` na 1ª leitura/gravação sob demanda. |
 | `Atividades` | ID_Tarefas, Tipo (comment/log), Texto, Data, Autor | Append-only, uma linha por item (substitui blob JSON que estourava 50k chars). |
 | `Logs` | Data_Hora, Usuario, Acao, Referencia, Detalhes | Trilha de auditoria append-only. |
 
@@ -287,11 +363,11 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 
 ### 8.3 Regras de negócio identificadas
 - **Autenticação/autorização:** membro = e-mail (funcional ou pessoal) presente e ativo na aba Membros. Não-membros são bloqueados em `doGet` e em cada endpoint.
-- **Nível de risco:** `P×I` → ≥15 Crítico, ≥10 Alto, ≥5 Médio, senão Baixo (`calcularNivelRisco`, espelhado em `atualizarLegendaRisco`).
-- **Próxima revisão de documento:** data de aprovação + 1 ano (`calcularProximaRevisao`). Status calculado: sem data de aprovação → "Em Elaboração"; ≤60 dias → "Próximo da Revisão"; vencido → "Vencido".
-- **Auto-arquivamento de tarefa:** concluída há ≥15 dias (`DIAS_PARA_ARQUIVAR`) e coluna Arquivado em branco → arquivada (só em memória). `Arquivado='Não'` (restauração manual) impede re-arquivamento.
-- **Status de plano:** finalizado → "Concluído"; previsto no passado → "Atrasado"; senão "Em Andamento" (`_statusPlano`).
-- **Baixa automática de plano:** plano "global" (contém "TODAS") conclui quando todas as subcomissões entregam; plano específico conclui quando há ≥1 entrega "Sim" (`_reavaliarBaixa`). Status "Concluído" não reabre.
+- **Nível de risco:** `P×I` → ≥15 Crítico, ≥10 Alto, ≥5 Médio, senão Baixo (`calcularNivelRisco_`, espelhado em `atualizarLegendaRisco`).
+- **Próxima revisão de documento:** data de aprovação + 1 ano (`calcularProximaRevisao_`). Status calculado: sem data de aprovação → "Em Elaboração"; ≤60 dias → "Próximo da Revisão"; vencido → "Vencido".
+- **Arquivamento de tarefa — 100% MANUAL:** `_tarefaArquivada_` considera arquivado **somente** quando a coluna `Arquivado` vale `'Sim'`. Não há arquivamento por data nem gatilho. *(Corrigido em 2026-07-29: até então esta linha descrevia o auto-arquivamento por `DIAS_PARA_ARQUIVAR` — concluída há ≥15 dias com a coluna em branco —, comportamento removido do código mas que sobreviveu aqui e no `runTests_`, onde deixou um teste falhando em permanência; ver §8.27, itens B-01 e B-02.)*
+- **Status de plano:** finalizado → "Concluído"; previsto no passado → "Atrasado"; senão "Em Andamento" (`_statusPlano_`).
+- **Baixa automática de plano:** plano "global" (contém "TODAS") conclui quando todas as subcomissões entregam; plano específico conclui quando há ≥1 entrega "Sim" (`_reavaliarBaixa_`). Status "Concluído" não reabre.
 - **Reavaliação de risco** marca `Revisao_Pendente=Sim` nos planos vinculados.
 - **Integridade referencial:** unidade não pode ser excluída enquanto houver Documentos/Riscos/Planos apontando para ela.
 - **Trava otimista:** `saveTask` (via "Ultima_Atualizacao") e edições de documento/unidade/capacitação (via conferência de código/sigla/id) rejeitam gravações sobre listas desatualizadas.
@@ -357,13 +433,13 @@ Refatoração **puramente organizacional** (zero mudança funcional): o `Index.h
 
 ### 8.9 Módulo Visitas Técnicas (2026-07-23)
 
-Novo módulo de domínio, seguindo à risca a mesma estrutura de arquivos de Capacitações: `Modulo_VisitasTecnicas.js` (CRUD) + `View_VisitasTecnicas.html` (tela + modal) + `JS_VisitasTecnicas.html` (render/KPIs/interações). Reaproveita 100% dos utilitários genéricos existentes (`conectarAba`, `colIdx_`, `getNextId_`, `comBloqueio`, `neutralizarFormula_`, `erroInterno_`, `registrarLog`, `isMembro_`, `renderPaginacao`, `iconBtn`, seletor de responsáveis) — nenhuma alteração em autenticação/autorização.
+Novo módulo de domínio, seguindo à risca a mesma estrutura de arquivos de Capacitações: `Modulo_VisitasTecnicas.js` (CRUD) + `View_VisitasTecnicas.html` (tela + modal) + `JS_VisitasTecnicas.html` (render/KPIs/interações). Reaproveita 100% dos utilitários genéricos existentes (`conectarAba_`, `colIdx_`, `getNextId_`, `comBloqueio_`, `neutralizarFormula_`, `erroInterno_`, `registrarLog_`, `isMembro_`, `renderPaginacao`, `iconBtn`, seletor de responsáveis) — nenhuma alteração em autenticação/autorização.
 
 **Modelo de dados** (decisão do usuário, 2026-07-23): entidade visitada é local/instituição externa em texto livre (não vinculado a `Unidades`); sem Data Prevista (só Data da Visita); Status derivado (`Planejada` sem data / `Realizada` com data); campo de Relatório/Anexo (link), no mesmo padrão do "Lista de Presença" de Capacitações.
 
 **Decisão arquitetural: carregamento SOB DEMANDA (única diferença de padrão em relação a Capacitações).** Capacitações, Documentos, Riscos, Planos e Unidades são todos lidos juntos em `getRestoData()`, pré-carregado em segundo plano ~400ms após o Kanban abrir (ver §8.2 e o comentário em `JS_Utilitarios.html` sobre `garantirRestoData`). Visitas Técnicas **não** entra nesse pacote: tem seu próprio endpoint leve (`getVisitasTecnicasData()`, em `Código.js`) e seu próprio mecanismo de carregamento no cliente (`garantirVisitasData()`, em `JS_VisitasTecnicas.html`), espelhando o padrão já usado por "Arquivados" (`garantirArquivados`/`archivedLoaded` em `JS_Kanban.html`) — busca só na 1ª vez que o usuário abre a aba "Visitas Técnicas", com fila de callbacks caso o clique aconteça durante uma busca em andamento.
 
-**Por quê:** era o ponto de atenção do usuário ao pedir o módulo — não pesar a abertura/atualização do sistema a cada novo módulo agregado ao pacote eager. Resultado prático: `getKanbanData()` e `getRestoData()` (e portanto a abertura do app e toda ação de Kanban/Capacitações/Riscos/etc.) permanecem **byte a byte** como eram antes deste módulo existir — zero linhas alteradas nessas funções. O único custo é a própria aba `Visitas_Tecnicas` (criada por `conectarAba` na 1ª leitura), que cresce de forma independente e não é lida por nenhuma outra tela.
+**Por quê:** era o ponto de atenção do usuário ao pedir o módulo — não pesar a abertura/atualização do sistema a cada novo módulo agregado ao pacote eager. Resultado prático: `getKanbanData()` e `getRestoData()` (e portanto a abertura do app e toda ação de Kanban/Capacitações/Riscos/etc.) permanecem **byte a byte** como eram antes deste módulo existir — zero linhas alteradas nessas funções. O único custo é a própria aba `Visitas_Tecnicas` (criada por `conectarAba_` na 1ª leitura), que cresce de forma independente e não é lida por nenhuma outra tela.
 
 **Trade-off aceito:** ao contrário de Capacitações (que já está pronta quando o usuário clica, por já ter sido pré-carregada), a primeira visita à aba "Visitas Técnicas" numa sessão mostra "A carregar..." por um instante — mesma UX que "Arquivados" já tem hoje. Cliques seguintes na mesma sessão são instantâneos (cache em `state.visitas`).
 
@@ -372,7 +448,7 @@ Novo módulo de domínio, seguindo à risca a mesma estrutura de arquivos de Cap
 **Consequência da carga sob demanda para o Painel:** como Visitas Técnicas não vem em `getRestoData()`, a aba "indicadores" (que já dependia de `garantirArquivados()` antes de renderizar) passou a depender também de `garantirVisitasData()` — senão os 2 gráficos novos apareceriam vazios na primeira vez que alguém abrisse o Painel sem antes visitar a aba "Visitas Técnicas". Isso é uma busca isolada da aba `Visitas_Tecnicas`, disparada só ao abrir o Painel — não reintroduz o pacote pesado no carregamento inicial do app.
 
 **Capacitações migrada para o mesmo padrão sob demanda (2026-07-23, mesmo dia, a pedido do usuário):** depois de discutir o trade-off (pacote eager sempre paga o custo da leitura, mesmo se a aba nunca for visitada na sessão; sob demanda só paga se for usada — o critério que decide é a frequência de uso, não "peso" em termos absolutos), decidiu-se tirar Capacitações do `getRestoData()`/`setupDatabaseResto()` e replicar exatamente o mecanismo de Visitas Técnicas:
-- `getCapacitacoesData()` (Código.js) passou a criar a aba sozinha via `conectarAba` (antes usava `safeGetSheetData`, que não cria) — mesmo comportamento de `getVisitasTecnicasData()`.
+- `getCapacitacoesData()` (Código.js) passou a criar a aba sozinha via `conectarAba_` (antes usava `safeGetSheetData_`, que não cria) — mesmo comportamento de `getVisitasTecnicasData()`.
 - `garantirCapacitacoesData()` novo, em `JS_Capacitacoes.html`, espelhando `garantirVisitasData()` (mesma fila de callbacks, mesmas flags `capacitacoesLoaded`/`capacitacoesLoading`).
 - `'capacitacoes-lista'` saiu de `SGQ_TABS`; ganhou o mesmo gate inline (`msgTabela` + `garantir...Data`) que `'visitas-lista'` já tinha.
 - A cadeia de dependências do Painel de Indicadores (nos dois pontos que chamam `renderIndicadores`) passou a ser `garantirArquivados → garantirCapacitacoesData → garantirVisitasData → renderIndicadores`.
@@ -410,7 +486,7 @@ Detalhamento de como a aba `Documentos` (modelo de dados em §8.2) vira as telas
 
 **Classificação Mestra vs. Histórico — pelo campo `Status`.** `_lerDocumentos_` (Código.js) marca `obsoleto=true` quando `Status` bruto é `"OBSOLETO"`. Na tela, `renderDocumentos(modo)` (JS_Documentos.html) filtra: modo `'mestra'` mostra status `Vigente`/`Vencido`/`Próximo da Revisão`/`Em Elaboração`; modo `'revisoes'` mostra só `Obsoleto`.
 
-**O selo de status é CALCULADO na leitura, não é um valor fixo gravado** (exceto `Obsoleto`, que é setado explicitamente ao revisar). Em `_lerDocumentos_`: sem `Obsoleto` e sem `Data_Aprovacao` → `"Em Elaboração"`; senão compara `Proxima_Revisao` (sempre = `Data_Aprovacao` + 1 ano, via `calcularProximaRevisao`) com a data de hoje — `diff < 0` dias → `"Vencido"`; `diff <= 60` → `"Próximo da Revisão"`; caso contrário mantém `"Vigente"`. Ou seja, o status muda sozinho com o passar do tempo, sem ninguém editar o documento.
+**O selo de status é CALCULADO na leitura, não é um valor fixo gravado** (exceto `Obsoleto`, que é setado explicitamente ao revisar). Em `_lerDocumentos_`: sem `Obsoleto` e sem `Data_Aprovacao` → `"Em Elaboração"`; senão compara `Proxima_Revisao` (sempre = `Data_Aprovacao` + 1 ano, via `calcularProximaRevisao_`) com a data de hoje — `diff < 0` dias → `"Vencido"`; `diff <= 60` → `"Próximo da Revisão"`; caso contrário mantém `"Vigente"`. Ou seja, o status muda sozinho com o passar do tempo, sem ninguém editar o documento.
 
 **Classificação por `Tipo`** é só rótulo categórico do cadastro (Instrução de Trabalho, Procedimento, Política, etc.), exibido com cor própria via `CORES_TIPO_DOC` (JS_Utilitarios.html) — paleta deliberadamente distinta da usada nos badges de Status, para não confundir as duas colunas. Não afeta em qual lista o documento cai, só filtro (`f-doc-tipo`) e cor do badge.
 
@@ -430,7 +506,7 @@ Sessão longa de bugs reais reportados pelo usuário no fluxo Risco → Reavalia
 
 **2) Título do modal de edição de plano.** "Atualizar Plano de Ação (5W2H)" → **"Editar Plano de Ação (5W2H)"** (`View_Riscos.html`, modal `modal-plano-editar`) — só texto, sem mudança de comportamento.
 
-**3) Campo "Data Finalização" removido do formulário de novo plano dentro de "Revisão Pendente do Plano".** O bloco "Novo Plano de Ação (5W2H)" da ação "Substituir Plano" (`modal-revisar-plano` → `#revp-alterar-campos`) tinha um campo "Data Finalização" que não existe no formulário de criação normal de plano (`modal-plano-novo`) — inconsistente, já que a data de finalização é sempre preenchida automaticamente pelo acompanhamento de entregas (`_reavaliarBaixa`), nunca digitada à mão. Campo `revp-fin` removido da tela e do JS; `dados.whenFinalizado` no envio ao servidor passou a ser sempre `''`, igual ao padrão já usado em `salvarPlano`.
+**3) Campo "Data Finalização" removido do formulário de novo plano dentro de "Revisão Pendente do Plano".** O bloco "Novo Plano de Ação (5W2H)" da ação "Substituir Plano" (`modal-revisar-plano` → `#revp-alterar-campos`) tinha um campo "Data Finalização" que não existe no formulário de criação normal de plano (`modal-plano-novo`) — inconsistente, já que a data de finalização é sempre preenchida automaticamente pelo acompanhamento de entregas (`_reavaliarBaixa_`), nunca digitada à mão. Campo `revp-fin` removido da tela e do JS; `dados.whenFinalizado` no envio ao servidor passou a ser sempre `''`, igual ao padrão já usado em `salvarPlano`.
 
 **4) Botão "Editar Risco" ficava oculto para sempre assim que o risco tinha qualquer plano.** `renderMatriz` escondia o botão com a condição `temPlanos` (qualquer plano vinculado, sem checar status/pendência) — forçando o usuário a usar "Reavaliar" (que sempre ACRESCENTA uma entrada ao histórico) até para corrigir um erro de digitação na reavaliação recém-feita, empilhando reavaliações espúrias. Trocado por `temPlanoResolvido` = existe algum plano **ativo** (não `Cancelado`/`Substituído`) do risco com `Revisao_Pendente !== 'Sim'`. Agora o botão reaparece enquanto a revisão está pendente de decisão, e volta a ficar oculto assim que o plano é processado. Seguro porque `atualizarRisco` já sobrescrevia a ÚLTIMA entrada do histórico quando existe histórico — nessa janela é sempre a entrada ainda pendente, nunca uma reavaliação antiga já processada.
 
@@ -449,7 +525,7 @@ Sessão longa de bugs reais reportados pelo usuário no fluxo Risco → Reavalia
 **10) RESOLVIDO (ver §8.16) — gravação intermitente: "às vezes salva, às vezes não".** Reportado pelo usuário reavaliando um risco: `Salvo!` aparecia, a mudança aparecia no painel na hora, mas ao atualizar a página (F5) a informação sumia e também não estava na planilha — de forma intermitente, sem padrão fixo, sem nenhum erro visível na tela. Hipóteses levantadas e status:
 - Deploy desatualizado (código editado aqui não chega ao app publicado sem `clasp push`/`clasp deploy`) — descartada como causa única; ver §8.16.
 - Linha `ID_Risco` duplicada na planilha (duas linhas "R4", escrita e leitura pegando linhas diferentes) — descartada. **Nota 2026-07-24 (§8.13):** múltiplas linhas por `ID_Risco` agora são esperadas e corretas (row-per-versão), não indício de corrupção.
-- `comBloqueio` (Código.js, único `LockService` do sistema) soltando o lock sem `SpreadsheetApp.flush()` antes — **confirmada como causa raiz estrutural** após auditoria completa de todos os módulos (§8.16) e corrigida.
+- `comBloqueio_` (Código.js, único `LockService` do sistema) soltando o lock sem `SpreadsheetApp.flush()` antes — **confirmada como causa raiz estrutural** após auditoria completa de todos os módulos (§8.16) e corrigida.
 
 ### 8.13 Riscos e Planos_Acao — migração de Historico/Entregas (JSON em célula) para linha-por-versão (2026-07-24)
 
@@ -457,7 +533,7 @@ Motivação: `Historico` (Riscos e Planos) e `Entregas` (Planos) guardavam JSON 
 
 **Riscos — 1 linha por VERSÃO do risco**, mesmo padrão que `Documentos` já usa (`salvarRevisaoDocumento`): toda reavaliação (`reavaliarRisco`) vira `appendRow` com o mesmo `ID_Risco` e `Versao` incrementada, nunca reescreve a linha anterior. `CABECALHOS_RISCOS` ganhou `Versao` (logo após `ID_Risco`) e `Justificativa`/`Data_Avaliacao` no lugar de `Historico`. `Status` (Ativo/Arquivado) continua descrevendo o risco inteiro — `_definirStatusRisco_` (arquivar/restaurar) já varria todas as linhas com aquele `ID_Risco` sem `break` (escrito por outro motivo, mas já servia pra isso). Escritas em linha específica (`atualizarRisco`, correção da versão atual; `reavaliarRisco`, leitura da linha base pra copiar campos que não mudam) passaram a localizar por `idRow` (número da linha, carregado pelo cliente) com trava otimista — não mais por `ID_Risco` com `break` no primeiro match, que agora acertaria a linha mais ANTIGA por engano (mesmo bug do item 1 de §8.12, mesma causa raiz: buscar por chave que deixou de ser 1:1). `_lerRiscosPlanosEntregas_` (Código.js) agrupa as linhas por `ID_Risco`; a de maior `Versao` é o estado atual (nunca filtra por `Status` antes — um risco arquivado tem TODAS as linhas arquivadas).
 
-**Planos_Acao — linha nova só quando a estratégia muda de verdade.** Desenho passou por 2 rodadas na mesma sessão. 1ª tentativa: espelhar Riscos e fazer TODA revisão (Manter ou Alterar) criar linha nova com `ID_Plano` novo, copiando os campos que não mudam em "Manter". Gerou um bug real: a linha nova de "Manter" precisava ter o `Status` recalculado do zero, e esse recálculo não considerava as entregas recém-copiadas pro `ID_Plano` novo — um plano que já tinha entregas suficientes pra baixa automática (`_reavaliarBaixa`) aparecia como `Em Andamento` depois de um "Manter", em vez de manter `Concluído`. **Correção (mesmo dia):** "Manter" deixou de criar linha — como nada do 5W2H muda, só atualiza `Justificativa`/`Data_Avaliacao`/`Revisao_Pendente` na própria linha (`revisarPlano`). Isso elimina o bug na raiz (Status nunca é recalculado, porque nada que o afeta muda) e também elimina a necessidade de copiar `Entregas_Planos` pra um `ID_Plano` novo (o `ID_Plano` não muda) e a coluna `Acao` (só "Alterar"/cadastro criam linha, então o motivo já é implícito). Só "Alterar" continua fechando a linha atual (`Status='Substituído'`, `Data_Finalizacao=hoje`) e criando uma linha com `ID_Plano` novo e dados do formulário. `CABECALHOS_PLANOS` ganhou `Justificativa`/`Data_Avaliacao` no lugar de `Historico`/`Entregas` (14 colunas, sem `Acao`, sem `Versao` — `Status='Substituído'` já marca a linha superada sem ambiguidade, já que só existe 1 linha não-terminal por `ID_Risco` por vez).
+**Planos_Acao — linha nova só quando a estratégia muda de verdade.** Desenho passou por 2 rodadas na mesma sessão. 1ª tentativa: espelhar Riscos e fazer TODA revisão (Manter ou Alterar) criar linha nova com `ID_Plano` novo, copiando os campos que não mudam em "Manter". Gerou um bug real: a linha nova de "Manter" precisava ter o `Status` recalculado do zero, e esse recálculo não considerava as entregas recém-copiadas pro `ID_Plano` novo — um plano que já tinha entregas suficientes pra baixa automática (`_reavaliarBaixa_`) aparecia como `Em Andamento` depois de um "Manter", em vez de manter `Concluído`. **Correção (mesmo dia):** "Manter" deixou de criar linha — como nada do 5W2H muda, só atualiza `Justificativa`/`Data_Avaliacao`/`Revisao_Pendente` na própria linha (`revisarPlano`). Isso elimina o bug na raiz (Status nunca é recalculado, porque nada que o afeta muda) e também elimina a necessidade de copiar `Entregas_Planos` pra um `ID_Plano` novo (o `ID_Plano` não muda) e a coluna `Acao` (só "Alterar"/cadastro criam linha, então o motivo já é implícito). Só "Alterar" continua fechando a linha atual (`Status='Substituído'`, `Data_Finalizacao=hoje`) e criando uma linha com `ID_Plano` novo e dados do formulário. `CABECALHOS_PLANOS` ganhou `Justificativa`/`Data_Avaliacao` no lugar de `Historico`/`Entregas` (14 colunas, sem `Acao`, sem `Versao` — `Status='Substituído'` já marca a linha superada sem ambiguidade, já que só existe 1 linha não-terminal por `ID_Risco` por vez).
 
 **Ação "Cancelar" removida de `revisarPlano`.** Descoberta ao mexer no código: o modal "Revisão Pendente do Plano" (`View_Riscos.html`, `modal-revisar-plano`) só tinha 2 rádios — "Manter" e "Substituir" — nunca mandava `acao:'cancelar'`; o branch `acao==='cancelar'` no servidor era código morto, inalcançável pela aplicação real. Removido sem impacto de comportamento. Isso também fecha, por consequência, a lacuna registrada em §8.12 ("Não corrigido"): um risco cujo único plano fosse `Cancelado` ficava sem caminho na UI pra receber plano novo — como a ação nunca era disparável, não deveria haver dado real preso nesse estado por uso normal do sistema.
 
@@ -497,24 +573,24 @@ Sessão focada em aprimoramento de UI, geração de relatórios e pequenas corre
 
 **5) Histórico de reavaliação exibindo "Falso Positivo" de pendência em versões antigas.** O usuário notou que planos atrelados a versões antigas do risco mostravam o ícone amarelo de "Revisão Pendente". Causa: ao reavaliar um risco (criando a Versão 2), a Versão 1 (histórica) continua apontando para o mesmo `ID_Plano` (ex: `PLA-123`). Como o `PLA-123` recebia o status `Revisao_Pendente='Sim'`, a UI renderizava o ícone de alerta em *todas* as versões do risco, confundindo o usuário (dava a impressão de que um plano histórico estava exigindo revisão). Corrigido: em `JS_Riscos.html`, a classe `.needs-review` e o botão `acaoRev` ("Revisar Plano") passaram a exigir `&& isLatest`. Agora, versões históricas de risco renderizam o plano silenciosamente, sem prompt de ação.
 
-**6) Preservação da `Data_Finalizacao` de planos concluídos e correção do bug de sobrescrita ao registrar entrega.** Na sessão anterior, corrigiu-se um bug na ação "Alterar" do modal "Revisar Plano": `revisarPlano` incondicionalmente sobrescrevia a `Data_Finalizacao` com a data da revisão. Corrigido em `Modulo_Riscos.js`: a data antiga passou a ser preservada se já existisse. Contudo, um **novo bug correlato foi identificado (2026-07-24):** ao registrar uma entrega (baixa automática do plano), o sistema (`_reavaliarBaixa`) ignorava a "Data da Entrega" que o usuário digitou no formulário e gravava a data atual (`hoje`) como a `Data_Finalizacao` do plano. Assim, se o usuário fizesse a entrega e em seguida "substituísse" o plano, ele via a data da substituição na tela e achava (erroneamente) que o `revisarPlano` estava sobrescrevendo a data da entrega. **Correção:** `_reavaliarBaixa` foi alterado para buscar a maior (mais recente) data informada nas entregas (`e.data`) que deram causa à conclusão do plano; usando `hoje` apenas como fallback caso nenhuma data tenha sido informada.
+**6) Preservação da `Data_Finalizacao` de planos concluídos e correção do bug de sobrescrita ao registrar entrega.** Na sessão anterior, corrigiu-se um bug na ação "Alterar" do modal "Revisar Plano": `revisarPlano` incondicionalmente sobrescrevia a `Data_Finalizacao` com a data da revisão. Corrigido em `Modulo_Riscos.js`: a data antiga passou a ser preservada se já existisse. Contudo, um **novo bug correlato foi identificado (2026-07-24):** ao registrar uma entrega (baixa automática do plano), o sistema (`_reavaliarBaixa_`) ignorava a "Data da Entrega" que o usuário digitou no formulário e gravava a data atual (`hoje`) como a `Data_Finalizacao` do plano. Assim, se o usuário fizesse a entrega e em seguida "substituísse" o plano, ele via a data da substituição na tela e achava (erroneamente) que o `revisarPlano` estava sobrescrevendo a data da entrega. **Correção:** `_reavaliarBaixa_` foi alterado para buscar a maior (mais recente) data informada nas entregas (`e.data`) que deram causa à conclusão do plano; usando `hoje` apenas como fallback caso nenhuma data tenha sido informada.
 
 **Como funciona hoje (resumo pós-correções) — ciclo de vida de um plano de ação:**
 > **Atualizado em 2026-07-24 (§8.13):** o ciclo de revisão mudou de "Manter/Cancelar/Alterar" pra "Manter/Alterar" (Cancelar removido — já era inalcançável pela UI). "Alterar" continua fechando a linha atual e criando uma linha nova com `ID_Plano` novo; "Manter" NÃO cria linha — só atualiza `Justificativa`/`Data_Avaliacao`/`Revisao_Pendente` na própria linha. Ver §8.13 pro comportamento atual; os pontos abaixo descrevem o estado ANTES dessa mudança, mantidos por registro histórico.
-- **Status possíveis:** `Em Andamento`, `Atrasado` (calculados por `_statusPlano`, nunca digitados), `Concluído` (via entregas completas, `_reavaliarBaixa`), `Cancelado` e `Substituído` (só via "Revisar Plano").
+- **Status possíveis:** `Em Andamento`, `Atrasado` (calculados por `_statusPlano_`, nunca digitados), `Concluído` (via entregas completas, `_reavaliarBaixa_`), `Cancelado` e `Substituído` (só via "Revisar Plano").
 - **`Revisao_Pendente`** vira `'Sim'` sempre que o risco vinculado é reavaliado (`reavaliarRisco`) — **exceto** se o plano já está `Cancelado` ou `Substituído` (decisão definitiva, não reabre). Um plano `Concluído` PODE voltar a ficar pendente.
 - Plano pendente mostra o ícone ⚠️ "Revisar Plano" em `renderAcompanhamento`; ação escolhida em `revisarPlano`: **Manter** (zera a pendência, mesma linha), **Cancelar** (`Status='Cancelado'`, zera pendência) ou **Alterar** (fecha a linha atual como `Substituído` e cria uma linha nova com `ID_Plano` novo).
 - Enquanto o plano ativo do risco está com revisão pendente (ou o risco ainda não tem nenhum plano ativo), o botão "Editar Risco" fica disponível na Matriz — depois que a pendência é resolvida, some, e mudanças de Prob./Impacto só pela via formal "Reavaliar".
 - Visualmente: `Cancelado` = riscado + esmaecido; `Substituído` = só esmaecido (fica lendo normal, mostra que foi uma decisão consciente, não um abandono); ambos perdem o botão "Editar" (5W2H), mas mantêm "Acompanhamento/Entregas" disponível para consulta.
 - Riscos arquivados (`Status='Arquivado'`) têm botão próprio para consultar o histórico completo de reavaliações, já que o botão "Reavaliar" (que também mostra esse histórico) só aparece para riscos Ativos.
 
-### 8.16 Causa raiz confirmada e corrigida — gravação intermitente em `comBloqueio` (2026-07-24)
+### 8.16 Causa raiz confirmada e corrigida — gravação intermitente em `comBloqueio_` (2026-07-24)
 
 Retomando o item 10 de §8.12 (EM ABERTO): a pedido do usuário, foi feita uma auditoria completa (somente leitura) de todos os módulos de escrita do sistema — os 7 `Modulo_*.js` e os 8 `JS_*.html` correspondentes — para verificar se o bug "às vezes salva, às vezes não" era exclusivo de Riscos ou um padrão sistêmico.
 
-**Causa raiz confirmada:** `comBloqueio` (`Código.js:108-115`), o único wrapper de `LockService` usado por todo o sistema, liberava o lock (`lock.releaseLock()`) sem chamar `SpreadsheetApp.flush()` antes. Sem o flush, não há garantia de que a escrita feita dentro do lock foi de fato persistida na planilha no momento em que o lock é liberado — uma segunda execução concorrente (por exemplo, a releitura da tela logo após "Salvo!", ou outro usuário salvando ao mesmo tempo) pode ler um estado desatualizado, e a tela reflete esse estado sem nenhum erro.
+**Causa raiz confirmada:** `comBloqueio_` (`Código.js:108-115`), o único wrapper de `LockService` usado por todo o sistema, liberava o lock (`lock.releaseLock()`) sem chamar `SpreadsheetApp.flush()` antes. Sem o flush, não há garantia de que a escrita feita dentro do lock foi de fato persistida na planilha no momento em que o lock é liberado — uma segunda execução concorrente (por exemplo, a releitura da tela logo após "Salvo!", ou outro usuário salvando ao mesmo tempo) pode ler um estado desatualizado, e a tela reflete esse estado sem nenhum erro.
 
-**Alcance:** dos 7 módulos de escrita, **6 (Riscos, Unidades, Documentos, Pessoas, Capacitações, Visitas Técnicas) compartilhavam exatamente esse padrão vulnerável.** Apenas o **Kanban** escapava, porque cada função de escrita (`Modulo_Kanban.js`) já chamava `SpreadsheetApp.flush()` manualmente antes de retornar — não por proteção do `comBloqueio`, mas por decisão pontual de quem escreveu aquele módulo.
+**Alcance:** dos 7 módulos de escrita, **6 (Riscos, Unidades, Documentos, Pessoas, Capacitações, Visitas Técnicas) compartilhavam exatamente esse padrão vulnerável.** Apenas o **Kanban** escapava, porque cada função de escrita (`Modulo_Kanban.js`) já chamava `SpreadsheetApp.flush()` manualmente antes de retornar — não por proteção do `comBloqueio_`, mas por decisão pontual de quem escreveu aquele módulo.
 
 No frontend, a exposição ao bug variava por módulo conforme o padrão de releitura pós-salvamento (sempre uma nova chamada `google.script.run`, ou seja, uma execução separada da que gravou):
 - **Documentos e Unidades:** releem o servidor imediatamente após o sucesso — janela de corrida mais estreita.
@@ -535,11 +611,11 @@ Cobre os 6 módulos afetados de uma vez, sem alterar nenhum `Modulo_*.js` indivi
 
 ### 8.17 Status "Atrasado" de Plano de Ação recalculado na leitura (2026-07-25)
 
-**Bug identificado:** `_statusPlano` (que decide `Em Andamento`/`Atrasado`/`Concluído` comparando `Data_Prevista` com hoje) só era chamado nos momentos de escrita — `salvarPlano`, `atualizarPlano`, `revisarPlano` (ação "Alterar"). A leitura (`_lerRiscosPlanosEntregas_`) só reproduzia o valor já gravado na célula `Status`, sem recalcular. Consequência: um plano `Em Andamento` cujo prazo vencesse **sem que ninguém editasse aquele plano especificamente** ficava mostrando `Em Andamento` indefinidamente — inclusive no KPI "Planos Atrasados" — até alguém tocar nele de novo (editar 5W2H, "Revisar Plano"). Nem a ação "Manter" corrige isso, pois só atualiza `Justificativa`/`Data_Avaliacao`/`Revisao_Pendente` (§8.13), não `Status`.
+**Bug identificado:** `_statusPlano_` (que decide `Em Andamento`/`Atrasado`/`Concluído` comparando `Data_Prevista` com hoje) só era chamado nos momentos de escrita — `salvarPlano`, `atualizarPlano`, `revisarPlano` (ação "Alterar"). A leitura (`_lerRiscosPlanosEntregas_`) só reproduzia o valor já gravado na célula `Status`, sem recalcular. Consequência: um plano `Em Andamento` cujo prazo vencesse **sem que ninguém editasse aquele plano especificamente** ficava mostrando `Em Andamento` indefinidamente — inclusive no KPI "Planos Atrasados" — até alguém tocar nele de novo (editar 5W2H, "Revisar Plano"). Nem a ação "Manter" corrige isso, pois só atualiza `Justificativa`/`Data_Avaliacao`/`Revisao_Pendente` (§8.13), não `Status`.
 
-**Correção aplicada** (`Código.js:982-999`, dentro de `_lerRiscosPlanosEntregas_`): quando o status gravado é `Em Andamento`, a leitura recalcula na hora com `_statusPlano(whenPrevisto, whenFinalizado)` — mesmo padrão de cálculo em memória, sem gravar nada, já usado por `_tarefaArquivada_` no Kanban ([§ítem 6 desta seção, ver comentário em Código.js:702-704]). Estados terminais (`Concluído`, `Cancelado`, `Substituído`) não são recalculados — são decisões definitivas e não devem reabrir sozinhas.
+**Correção aplicada** (`Código.js:982-999`, dentro de `_lerRiscosPlanosEntregas_`): quando o status gravado é `Em Andamento`, a leitura recalcula na hora com `_statusPlano_(whenPrevisto, whenFinalizado)` — mesmo padrão de cálculo em memória, sem gravar nada, já usado por `_tarefaArquivada_` no Kanban ([§ítem 6 desta seção, ver comentário em Código.js:702-704]). Estados terminais (`Concluído`, `Cancelado`, `Substituído`) não são recalculados — são decisões definitivas e não devem reabrir sozinhas.
 
-**Trade-off consciente, decidido em conversa com o usuário:** a célula `Status` na planilha **continua** mostrando o valor antigo (`Em Andamento`) até que o plano seja editado de verdade — só a tela do app mostra `Atrasado` corretamente. Quem abrir a planilha `Planos_Acao` diretamente no Google Sheets verá um valor desatualizado. Optou-se por isso porque: (1) gravar exigiria entrar no lock (`comBloqueio`) fora de uma ação de usuário, o mesmo problema discutido para o auto-arquivamento do Kanban; (2) calcular em memória tem custo desprezível (a aba já é lida por completo de qualquer forma; o recálculo é só comparação de data sobre dado já carregado), enquanto gravar teria custo real (lock + escrita + flush). Caso surja necessidade de consultar o status correto fora do app (relatório externo direto da planilha), revisitar essa decisão.
+**Trade-off consciente, decidido em conversa com o usuário:** a célula `Status` na planilha **continua** mostrando o valor antigo (`Em Andamento`) até que o plano seja editado de verdade — só a tela do app mostra `Atrasado` corretamente. Quem abrir a planilha `Planos_Acao` diretamente no Google Sheets verá um valor desatualizado. Optou-se por isso porque: (1) gravar exigiria entrar no lock (`comBloqueio_`) fora de uma ação de usuário, o mesmo problema discutido para o auto-arquivamento do Kanban; (2) calcular em memória tem custo desprezível (a aba já é lida por completo de qualquer forma; o recálculo é só comparação de data sobre dado já carregado), enquanto gravar teria custo real (lock + escrita + flush). Caso surja necessidade de consultar o status correto fora do app (relatório externo direto da planilha), revisitar essa decisão.
 
 **Auditoria complementar (mesma sessão):** verificado se o mesmo tipo de bug (status gravado só na edição, nunca recalculado no tempo) existe em outros módulos. Resultado: **não existe em nenhum outro módulo**. Documentos já fazia esse recálculo desde sempre (`_lerDocumentos_`, `Código.js:836-857` — `Vigente`/`Vencido`/`Próximo da Revisão`/`Em Elaboração` são todos calculados na leitura; só `Vigente` e `Obsoleto` são de fato gravados, via `salvarDocumento`/`salvarRevisaoDocumento`). Capacitações e Visitas Técnicas não têm conceito de "atrasado" (status só depende de a data já ter ocorrido ou não, nunca compara com hoje). Pessoas/Afastamentos não persiste nenhum status calculado. Unidades não tem campo de prazo/validade. Kanban nunca teve esse bug — o "Atrasado" do cartão é 100% calculado no cliente a cada render (`JS_Kanban.html:131-132`), nunca gravado em nenhuma coluna.
 
@@ -567,7 +643,7 @@ Cobre os 6 módulos afetados de uma vez, sem alterar nenhum `Modulo_*.js` indivi
 - Nova aba `Atividades_Arquivadas`, mesmos cabeçalhos de `Atividades` (`ID_Tarefas`, `Tipo`, `Texto`, `Data`, `Autor`).
 - `Tarefas` **não muda** — continua uma aba só, tanto para cartões ativos quanto arquivados (a separação de ativo/arquivado já acontece hoje via filtro em duas funções diferentes: `getKanbanData` retorna só ativos, `getTarefasArquivadas` retorna só arquivados — nenhuma das duas precisa de aba própria).
 
-**Migração de atividades (dentro de `arquivarTarefaManual`, mesmo `comBloqueio`):**
+**Migração de atividades (dentro de `arquivarTarefaManual`, mesmo `comBloqueio_`):**
 1. Ler `Atividades` inteira, filtrar linhas daquele `ID_Tarefas` (mesmo full-scan que `_excluirAtividadesDaTarefa_` já faz hoje, `Código.js:515` — nada novo em termos de leitura).
 2. Gravar (append) essas linhas em `Atividades_Arquivadas` — **operação pura de escrita, não precisa ler a aba de destino antes**. Por isso, o custo de arquivar um cartão **nunca** cresce com o tamanho de `Atividades_Arquivadas`, só com o tamanho de `Atividades` (que tende a diminuir com o tempo conforme mais cartões são arquivados — arquivar tende a ficar mais rápido, não mais lento, com o uso continuado).
 3. `SpreadsheetApp.flush()` — confirma a cópia antes do próximo passo.
@@ -800,7 +876,7 @@ Inverter tudo mecanicamente produz resultado ruim — cada família tem regra pr
 | Captura de PDF não restaura o tema → tela presa no claro | `try/finally`, restauração garantida mesmo com exceção |
 | Borda nos filtros altera layout | ✅ **Sem risco:** o reset já tem `box-sizing: border-box` (`CSS.html:143`) — borda não muda dimensão externa |
 
-**Regras de execução:** branch dedicada, um commit por fase (reversão granular) · **fronteira rígida** — não tocar em `comBloqueio`/`flush`, salvamento, paginação, autenticação ou lógica de negócio; este trabalho é **cor e render, só** · não mexer no `classList.toggle('hidden')` nem nas 7 exceções documentadas de `style.display` · regressão funcional a cada fase no modo claro (salvar/excluir/arquivar cartão, drag-and-drop, os 5 PDFs, filtros e paginação de Logs/Capacitações/Arquivados, modais de Riscos/Planos) · `clasp push` só após validação manual (não há dev server local no Apps Script).
+**Regras de execução:** branch dedicada, um commit por fase (reversão granular) · **fronteira rígida** — não tocar em `comBloqueio_`/`flush`, salvamento, paginação, autenticação ou lógica de negócio; este trabalho é **cor e render, só** · não mexer no `classList.toggle('hidden')` nem nas 7 exceções documentadas de `style.display` · regressão funcional a cada fase no modo claro (salvar/excluir/arquivar cartão, drag-and-drop, os 5 PDFs, filtros e paginação de Logs/Capacitações/Arquivados, modais de Riscos/Planos) · `clasp push` só após validação manual (não há dev server local no Apps Script).
 
 **Ponto de parada seguro:** ao fim da Fase 2 o sistema está mais limpo e o modo escuro pronto para ser ligado quando se quiser, sem nenhuma mudança visível.
 
@@ -1154,7 +1230,7 @@ Chegou a existir um aviso em faixa amarela no topo do modal ("Risco superado —
 
 `Cancelado` **não** entra na guarda: nenhuma rotina o grava (o modal de Revisão só oferece "Manter" e "Substituir"), então seria ramo morto. Ele continua aparecendo em comparações legadas de outros pontos do módulo — essas não foram tocadas.
 
-**`Concluído` ficou deliberadamente de fora da guarda:** ele é derivado na leitura por `_statusPlano` (`Data_Finalizacao` preenchida, §8.17) e **não** fica gravado na coluna `Status`, que segue `Em Andamento` — uma leitura do servidor nunca o veria. Bloquear por data equivaleria a impedir a correção de uma entrega registrada errado num plano já finalizado. O cliente continua tratando `Concluído` como leitura; o servidor é intencionalmente mais permissivo nesse ponto.
+**`Concluído` ficou deliberadamente de fora da guarda:** ele é derivado na leitura por `_statusPlano_` (`Data_Finalizacao` preenchida, §8.17) e **não** fica gravado na coluna `Status`, que segue `Em Andamento` — uma leitura do servidor nunca o veria. Bloquear por data equivaleria a impedir a correção de uma entrega registrada errado num plano já finalizado. O cliente continua tratando `Concluído` como leitura; o servidor é intencionalmente mais permissivo nesse ponto.
 
 **5) Risco superado saiu do dropdown de "riscos livres".** `carregarRiscosLivres` filtrava só por "não tem plano vinculado", sem olhar status — um risco mapeado, nunca planejado e depois superado ficava oferecido **para sempre** como destino de um plano de ação novo (nunca ganha plano, então nunca saía da lista). Passou a excluir `Status='Superado'`.
 
@@ -1255,18 +1331,119 @@ Sem custo novo: os `filter` percorrem um subconjunto em vez de `state.plans`, o 
 
 ---
 
-## 9. Próximas Melhorias
+### 8.27 Auditoria de 2026-07-27 e execução do backlog (2026-07-29)
 
-1. **Testes:** extrair lógica pura (`calcularNivelRisco`, `_statusPlano`, `_tarefaArquivada_`, `colIdx_`, `calcularProximaRevisao`) para funções testáveis + suíte com `clasp run`/GAS testing.
-2. **Observabilidade:** painel de saúde (contagem de linhas por aba, alertas de aproximação de cotas).
-3. **Migração de store:** se o volume crescer muito, considerar Sheets como cache e um backend real (Firestore/BigQuery) para Logs/Atividades.
-4. **Tematização:** consolidar estilos inline em classes (**concluído em 26/07/2026**, ver §10 — de ~378 para 35 `style=""`, restando só casos dinâmicos/PDF-literais); modo escuro **auditado e planejado em 27/07/2026 — ver §8.20** (30 achados catalogados, paleta decidida, plano em 8 fases; ainda não implementado).
-5. **Acessibilidade:** completar rótulos ARIA nas tabelas dinâmicas e feedback de status para leitores de tela.
-6. **CI/CD:** pipeline `clasp push` com lint (ESLint) e verificação de versões de dependência.
+**Origem:** auditoria completa do projeto (interface, código arquivo por arquivo, integração Apps Script ↔ Sheets, CRUD, desempenho, segurança, regressões), com prioridade em **Tarefas (Kanban)** e **Riscos / Planos 5W2H / Entregas**. O relatório vivia em `AUDITORIA_2026-07-27.md`, **removido do diretório em 29/07 sem nunca ter sido commitado** — está reproduzido aqui por isso.
+
+#### Resultado da auditoria
+
+**Nenhum achado crítico. Nenhuma credencial exposta** no repositório — o único identificador versionado é o `scriptId` em `.clasp.json`, que não é segredo. Não houve, portanto, chave a remover do código nem a rotacionar no provedor.
+
+| Gravidade | Qtd. | Itens |
+|---|:--:|---|
+| 🔴 Crítico | 0 | — |
+| 🟠 Alto | 2 | A-01, A-02 |
+| 🟡 Médio | 6 | M-01 … M-06 |
+| 🟢 Baixo | 9 | B-01 … B-09 |
+| ⚪ Código morto | 8 | D-01 … D-08 |
+
+**Controles de segurança verificados e corretos:** autorização em todo endpoint chamável; setup/migração protegido; `neutralizarFormula_` em toda gravação de texto do usuário; `sanitizarHtml_` no PDF; `esc()` em todas as interpolações de `innerHTML`; `erroInterno_` sem vazar stack; e-mail restrito a membros; rate-limit de PDF; SRI e versões fixadas nos CDNs.
+
+**Validação da integração com Sheets:** o alinhamento coluna-a-coluna das **16 operações de escrita** foi conferido manualmente contra os `CABECALHOS_*` — nenhum risco de gravar em coluna errada. Nenhuma escrita fora de lock. Migrações de layout confirmadas idempotentes.
+
+#### O que foi corrigido em 29/07
+
+Os 22 itens abaixo foram executados em 4 fases. Nada foi commitado nem enviado por `clasp` na mesma sessão.
+
+**Fase 1 — correções funcionais**
+
+| Item | Defeito | Correção |
+|---|---|---|
+| **A-01** | Aba **Superados abria vazia e nunca carregava**: `'risco-arquivado'` faltava em `SGQ_TABS`, então `mudarTab` chamava `renderRiscosArquivados()` sem passar por `garantirRestoData()`. Quem abrisse o sistema e fosse direto em Riscos ▸ Superados lia "Nenhum risco superado" — afirmação **falsa** — e a tela não se corrigia sozinha. | `'risco-arquivado'` incluído em `SGQ_TABS` (`JS_Utilitarios.html`). A aba já constava em `rotinas`. |
+| **A-02** | **Filtros de Unidade/Status não filtravam os planos exibidos** — só decidiam quais blocos de risco apareciam. O card era resolvido por `state.plans.find(...)` sobre a lista completa: o KPI dizia "1 atrasado" e a lista mostrava 4 planos. | `Set` dos ids de `filtrados` aplicado na resolução do plano por versão; versão cujo plano foi filtrado exibe "Plano não corresponde ao filtro aplicado". |
+| **M-01** | **Editar um plano apagava a `Data_Finalizacao`**: o modal não tem o campo, e `atualizarPlano` gravava `dados.whenFinalizado \|\| ''` por cima do valor da planilha, ainda rebaixando o Status. | `Data_Finalizacao` só é gravada quando a chave vem no payload (`'whenFinalizado' in dados`); senão preserva a célula. `_statusPlano_` passou para dentro do laço, para usar o valor efetivo. |
+| **M-06** | **Subcomissão inativada continuava sendo cobrada**: `_reavaliarBaixa_` contava subcomissões sem filtrar por `Ativo`, então `entregaram.size >= total` nunca era atingido e o plano global ficava preso em "Em Andamento"/"Atrasado" para sempre. | Filtro por `Ativo` nos dois lados (servidor e cliente), com o mesmo critério de `_lerUnidades_` (em branco/`Sim` = ativa; só `Não` inativa — não `=== 'Sim'`, para não quebrar linhas legadas). |
+
+**Fase 2 — integridade e confiabilidade**
+
+| Item | Defeito | Correção |
+|---|---|---|
+| **M-02** | **Helpers de servidor expostos como endpoints públicos.** No Apps Script, toda função cujo nome não termina em `_` é chamável por `google.script.run`. Um membro autenticado podia **forjar entradas na trilha de auditoria** (`registrarLog(...)`) ou **criar abas arbitrárias** (`conectarAba(...)`) pelo console. | 10 helpers renomeados com sufixo `_` (`registrarLog_`, `conectarAba_`, `comBloqueio_`, `safeGetSheet_`, `safeGetSheetData_`, `formatarDataParaUI_`, `getNowTimestamp_`, `calcularNivelRisco_`, `calcularProximaRevisao_`, `_statusPlano_`) — 224 ocorrências em 8 arquivos. Confirmado antes que nenhum é chamado pelo cliente. |
+| **B-01** | 1 teste de `runTests_` falhava em permanência: `'arquivada concluída antiga'` esperava `true` para linha `Concluído` + data antiga com `Arquivado` vazio — comportamento do tempo em que havia arquivamento automático. | Expectativa corrigida para `false` e teste renomeado. **Não verificado:** `runTests_` só roda no editor do Apps Script. |
+| **B-08** | `revisarPlano` gravava o 5W2H **sem validação** no servidor para `acao === 'alterar'` — chamada direta criava plano vazio vinculado à versão vigente do risco. | Validação de `what/why/who/whenPrevisto`. **Espelha o cliente de propósito**, sem exigir `Onde`/`Como`: o modal de revisão também não os obriga, e exigi-los rejeitaria um caso que a UI hoje aceita. Divergência com `atualizarPlano` (que exige 6) permanece consciente. |
+| **B-09** | 35 handlers comparavam `e.target.id === '…'`. Se qualquer um desses botões ganhasse um filho (ícone/`<svg>`), `e.target` passaria a ser o filho e o handler **pararia de disparar em silêncio**. | Resolução por `e.target.closest('[id]')` uma vez por clique; `data-add-card` idem. |
+| **B-06** | "Manter Avaliação Atual" caía em `reavaliarRisco` e marcava **todos** os planos não-terminais como `Revisao_Pendente`, forçando revisão de algo que não mudou. | **Decisão de negócio:** grava a versão (rastro auditável da confirmação) mas **não** marca pendência. Log distingue as duas ações. Sem `acao` no payload, mantém o comportamento antigo. |
+| **B-07** | A guarda de "plano único por risco" contava linhas `Cancelado`/`Substituído`, com a mensagem imprecisa "Já existe um plano **ativo**". Como `revisarPlano('alterar')` deixa de propósito a linha antiga como `Substituído` com o mesmo `ID_Risco`, isso travaria um novo plano para sempre. | **Decisão de negócio:** guarda ignora status terminais. |
+
+**Fase 3 — interface, PDF e consistência**
+
+| Item | Defeito | Correção |
+|---|---|---|
+| **M-04** | **PDF da Matriz perdia toda a formatação.** `_linhasMatrizParaPdf_` copiava `cel.getAttribute('style')` — atributo **sempre ausente**, porque `renderMatriz` estiliza por classe — e **descartava as classes**. Era uma duplicata divergente e quebrada de `_gridRowsParaPdf`. Pior: o comentário do CSS afirmava o contrário, o que induziu ao erro. | Helper duplicado **removido**; a Matriz usa `_gridRowsParaPdf('lista-riscos')`. Confirmado que a linha tem 13 células, a 13ª é `.no-print` e é removida pelo helper — sobram exatamente os 12 `<th>`. Os **dois** comentários enganosos do CSS corrigidos (o de `.arq-row` tinha o mesmo erro). |
+| **M-03** | Card de plano **duplicado por versão do risco**: `reavaliarRisco` copia o `ID_Plano` para cada nova versão, então o mesmo plano aparecia N vezes na tela e no PDF. Reincidente, apontado em 26/07 e não corrigido. | Card desenhado uma vez por `ID_Plano`, nas duas telas; demais versões exibem "Plano inalterado nesta reavaliação". **Divergência deliberada da recomendação original:** desenhado na versão **mais recente**, não na primeira — as ações de revisar/editar dependem de `isLatest`, e seguir a sugestão literal esconderia o botão "Revisar Plano". |
+| **M-05** | `renderAcompanhamento` rodava **duas vezes por filtro**: `onchange` inline nos dois selects **mais** a delegação de `change`. É o render mais pesado do módulo. | `onchange` inline removido; a delegação já cobria. |
+| **B-05** | O rótulo "Nº Processo SEI" perdeu o asterisco de obrigatório num diff pendente, mas `salvarAcompEntregas` continuava exigindo o campo — o usuário só descobria ao levar o alerta. | **Decisão:** SEI passa a ser **opcional**. Validação removida (o servidor nunca exigiu o campo); a variável `valido`, que só existia para ela, saiu junto. |
+| **B-04** | `MSG_TABELA_POR_ABA` apontava para `lista-acomp` e `lista-riscos-arquivados`, **IDs inexistentes** — `msgTabela` saía em silêncio (`if (!el) return`) e as duas telas nunca mostravam "A carregar…". | IDs corrigidos para `container-planos` / `container-arquivados`. `msgTabela` já tratava containers que não são `<tbody>`. |
+| **B-03** | Filtro "Ação" dos Logs era lido em `getFiltrosLogs`, mas o `<select id="f-log-acao">` **nunca existiu**. O servidor calculava e trafegava `acoesUnicas` a cada busca, sem consumidor. | **Decisão:** remover dos dois lados (leitura no cliente + `acoesUnicas` e o filtro no servidor, em 3 pontos). |
+| **F3.7** | `.plan-single-line` tem 9 colunas fracionárias e `padding-right: 120px`, **sem `min-width` nem wrapper de scroll**: em telas ≤ ~1100px cada campo ficava com ~70px e os rótulos quebravam em 3 linhas. | `#container-planos` envolvido em `.list-scroll x > .list-scroll-inner.min-w-1250` — o padrão que o projeto já usa em **10 outras listas largas**, não o da Matriz. O wrapper fica **fora** de `#container-planos` porque o PDF clona esse id. Nova classe `.min-w-1250`. |
+
+**Fase 4 — limpeza e deduplicação**
+
+- **D-01…D-07 removidos:** `_indicePlanosPorRisco()` (nunca chamada) e sua menção em comentário; `const planos = planosPorRisco[ref]` (nunca lida); os hidden inputs `#er-prob-original`/`#er-imp-original` e as duas atribuições que os preenchiam; `.px-28`; `.btn-pdf-email` (+ `:hover`, `:disabled`); `.required-mark` (morta após B-05); comentário órfão citando `renderKanbanKpis()`, função inexistente.
+- **D-08 — a auditoria estava errada:** `.DOCUMENTACAO.md.swp` **não era versionado** (`git ls-files` não o conhecia), então não havia nada a remover do repo. O arquivo foi eliminado depois, na limpeza geral de 29/07.
+- **Deduplicação de `JS_Riscos.html` (1137 → 1102 linhas):** três blocos que eram **byte-idênticos** entre `renderAcompanhamento` e `renderRiscosArquivados` foram extraídos — `_planoGridHtml(p)` (grid de 9 campos), `_versionCardHtml(...)` (casca da versão) e `_planoGridsParaTabelaPdf_(clone)` (conversão grid→`<table>` do PDF, que repetia até o array de larguras). Cerca de 145 linhas de duplicação eliminadas, somando ~110 linhas novas de helper e comentário. A indentação dos templates foi preservada porque o PDF percorre o DOM clonado.
+
+#### B-02 — item que escapou do próprio plano da auditoria
+
+O relatório classificou o **B-02** como 🟢 Baixo mas **não o incluiu em nenhuma tarefa das Fases 1–4**, então ele sobreviveu à execução e só foi pego numa conferência final. Fechado em 29/07:
+
+- `DIAS_PARA_ARQUIVAR = 15` era **constante órfã** (zero consumidores) — removida.
+- O parâmetro `hoje` de `_tarefaArquivada_` não era mais lido, mas os **7 chamadores** continuavam passando-o — removido da assinatura e das chamadas, junto com os dois `const hoje` que existiam só para isso (em `getKanbanData` e `getTarefasArquivadas`).
+- O comentário da função estava **contraditório e corrompido**: descrevia o arquivamento automático com o parêntese "(nunca decidido)" duplicado e, na frase seguinte, afirmava o oposto ("o arquivamento agora é estritamente manual"). Reescrito.
+
+**Consequência documental, mais grave que o código morto:** a mesma crença desatualizada estava em **§8.3** ("Auto-arquivamento de tarefa: concluída há ≥15 dias… → arquivada"), em §5 (item 13) e no §7. Era uma **regra de negócio falsa num documento oficial** — e foi exatamente essa divergência que manteve um teste do `runTests_` falhando sem ninguém notar (B-01). As três ocorrências foram corrigidas.
+
+#### Achado extra, fora da auditoria
+
+`_reavaliarBaixa` tinha `_` **só no prefixo**. No Apps Script, o que torna a função privada é o `_` **final** — ela era, portanto, um endpoint público sem `isMembro_()`: a mesma vulnerabilidade do M-02, que a auditoria listou para `_statusPlano` mas deixou passar aqui. Renomeada para `_reavaliarBaixa_`. Risco prático baixo (recebe objetos `Sheet`, que não trafegam por `google.script.run`), mas a superfície não deveria existir.
+
+#### Adiado por decisão
+
+| Item | Motivo |
+|---|---|
+| **F3.7(b)** — faixa responsiva 1024–1366px | Com o scroll horizontal no lugar, o esmagamento dos campos está resolvido. A auditoria não especifica o que essa faixa deveria mudar, e inventar um breakpoint novo mexeria em vários componentes com risco de regressão não verificável. |
+| **F4.3** — dividir `JS_Utilitarios.html` (1.815 linhas) em `JS_Base`/`JS_Navegacao`/`JS_Tema`/`JS_Pdf` | Reorganização pura, sem ganho funcional. Empilhar um refactor estrutural sem teste automatizado sobre ~30 mudanças ainda não validadas em produção foi julgado pior que esperar. |
+| **F4.4 / P-01** — aba `Tarefas` nunca encolhe (arquivar só marca a coluna) | Problema de crescimento futuro, não bug atual. A migração para aba física `Tarefas_Arquivadas` (padrão de §8.18) move dados de produção e é a mudança mais difícil de reverter do backlog. |
+| **P-02** | `renderAcompanhamento` faz `state.deliveries.filter(...)` dentro do `map` por versão — O(planos × versões × entregas). Irrelevante hoje; um `Map` por `idPlano` resolveria. |
+
+#### Verificações automatizadas ao final
+
+- Sintaxe (`node --check`) OK nos 8 `.js` e nos 7 `JS_*.html`.
+- **Integridade cliente↔servidor:** os **46 endpoints** invocados por `google.script.run` resolvem para funções existentes — verificação crítica após renomear 224 ocorrências, feita com scanner de parênteses balanceados (regex simples não dá conta dos handlers encadeados multi-linha).
+- **Cobertura de autorização:** 50 funções públicas, **todas** com `isMembro_()` direto ou delegando a helper que checa. Nenhuma outra função com `_` só no prefixo.
+- Os 6 módulos de rename puro são **byte-idênticos** ao original com o regex aplicado; `Código.js` diverge em exatamente 1 hunk (o teste); `Modulo_Riscos.js` em 9, todos nas 5 funções pretendidas.
+- `View_Riscos.html` fechou 174/174 `<div>` (+1 par vs. HEAD, o wrapper novo); `CSS.html` com `/* */` e `{ }` balanceados.
+
+#### Pendente de validação
+
+Nada disto foi commitado nem enviado por `clasp push` na sessão de 29/07. Depende de conferência em produção: o efeito visual (PDF da Matriz com as classes, scroll dos planos, novos rótulos de card, aba Superados carregando), e o critério de B-01 ("`runTests_` reporta 0 falhas"), que só roda no editor do Apps Script.
+
+#### Backlog anterior (26/07) reavaliado
+
+A auditoria de 27/07 constatou que **nenhum** item do backlog de 26/07 havia sido executado: card duplicado (→ M-03), "Manter" cria versão (→ B-06), guarda de plano único (→ B-07), handler por `e.target.id` (→ B-09), crescimento da aba Tarefas (→ P-01) e a limpeza de código morto. **Todos foram fechados em 29/07, exceto P-01**, adiado por decisão.
 
 ---
 
-*Documento gerado por auditoria de código read-only. Nenhum arquivo de código-fonte foi alterado na produção deste relatório.*
+## 9. Próximas Melhorias
+
+1. **Testes:** a lógica pura já está coberta por `runTests_()` (~40 asserções: nível de risco, próxima revisão, status de plano/capacitação, arquivamento, sanitização, `colIdx_`, links) — ver P9 em §1. Falta **automatizar a execução**: hoje só roda manualmente pelo editor do Apps Script, o que permitiu um teste ficar falhando em permanência sem ninguém notar (B-01, §8.27).
+2. **Observabilidade:** painel de saúde (contagem de linhas por aba, alertas de aproximação de cotas). Hoje `arquivarLogsAntigos_` e `diagnosticoAbas_` só rodam manualmente pelo editor.
+3. **Migração de store:** se o volume crescer muito, considerar Sheets como cache e um backend real (Firestore/BigQuery) para Logs/Atividades.
+4. **Contenção da aba `Tarefas`:** arquivar só marca a coluna — a aba nunca encolhe, e `getKanbanData`/`getTarefasArquivadas` leem a aba inteira a cada ação do quadro. Solução conhecida: aba física `Tarefas_Arquivadas`, no padrão já implementado para `Atividades_Arquivadas` (§8.18). **Adiado por decisão em 29/07** (ver §8.27).
+5. **Tematização:** estilos inline consolidados em classes (**concluído em 26/07/2026** — de ~378 para 35 `style=""`, restando só casos dinâmicos/PDF-literais); modo escuro **implementado em 27/07/2026** (§8.20) e refinado em 29/07 (§10, Décima rodada).
+6. **Acessibilidade:** completar rótulos ARIA nas tabelas dinâmicas e feedback de status para leitores de tela.
+7. **Responsividade:** só existe 1 media query funcional (`max-width: 768px`) + 1 pontual para gráficos (900px). Não há faixa intermediária (1024–1366px), justamente onde as listas de 9–13 colunas sofrem — mitigado com scroll horizontal, mas não resolvido (§8.27, F3.7).
+8. **CI/CD:** pipeline `clasp push` com lint (ESLint) e verificação de versões de dependência.
 
 ---
 
@@ -1551,3 +1728,19 @@ Três rodadas de teste:
 - `8018cb3` (2026-07-29 21:30) — `refine(tema): suaviza kanban-list-bg para melhor contraste` — ajuste fino final do Kanban
 
 **Validação visual:** Interface testada em modo escuro em todos os 8 módulos; Kanban, Membros, Logs, Monitoramento, Modais de Afastamentos e PDFs confirmados visualmente. Nenhuma regressão de contraste ou legibilidade. Hierarquia visual de elevação (poço do Kanban < app < cards < panels) preservada de forma sutil e elegante.
+
+---
+
+## Convenção para registros futuros
+
+Para o documento não voltar a ter dois históricos paralelos:
+
+1. **Registro novo entra como `### 8.N` no final do §8**, com data no título — nunca em §10, que está encerrado.
+2. **Acrescente uma linha na [linha do tempo](#linha-do-tempo-consolidada)**, no topo da tabela.
+3. Se a mudança nasceu de auditoria, **reproduza os achados aqui** em vez de apontar para um `.md` solto na raiz: em 2026-07-29 quatro relatórios nunca commitados foram perdidos numa limpeza de diretório.
+4. Itens P1–P12 do §1 recebem só *atualização de status em linha* (✅/⚙️/⏸️/❌ + data). O diagnóstico de 2026-07-16 não é reescrito.
+5. Marque explicitamente o que **não foi validado** — vários registros aqui trazem "EM TESTE" / "A VALIDAR EM PRODUÇÃO", e essa honestidade é o que torna o documento utilizável.
+
+---
+
+*A auditoria original de 2026-07-16 (§1–§7) foi produzida em modo read-only: nenhum arquivo de código-fonte foi alterado para gerá-la. As seções datadas de §8.7 em diante registram alterações efetivamente aplicadas ao código.*
