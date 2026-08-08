@@ -2,8 +2,12 @@
 // MÓDULO: VISITAS TÉCNICAS
 // ==========================================
 
-function calcularStatusVisita_(dataDaVisita) {
-  return dataDaVisita ? 'Realizada' : 'Planejada';
+// Só 2 estados (Planejada/Realizada) — diferente de calcularStatusCapacitacao_
+// (3 estados, com "Em Andamento" quando há Data Prevista mas não Realizada).
+// Aqui a Data Prevista não muda o status, só informa quando a visita é
+// esperada; o parâmetro nem é recebido, para não sobrar argumento sem uso.
+function calcularStatusVisita_(dataRealizada) {
+  return dataRealizada ? 'Realizada' : 'Planejada';
 }
 
 function salvarVisitaTecnica(dados) {
@@ -12,23 +16,27 @@ function salvarVisitaTecnica(dados) {
     if (!dados || !String(dados.objetivo||'').trim())
       return { sucesso: false, mensagem: 'O Objetivo/Motivo da Visita é obrigatório.' };
 
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_VISITAS, CABECALHOS_VISITAS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_VISITAS, CABECALHOS_VISITAS);
       const id  = getNextId_(aba, 'VT-');
-      const dt  = dados.data ? new Date(dados.data + 'T12:00:00') : '';
-      const st  = calcularStatusVisita_(dados.data);
+      const dp  = dados.dataPrevista  ? new Date(dados.dataPrevista  + 'T12:00:00') : '';
+      const dr  = dados.dataRealizada ? new Date(dados.dataRealizada + 'T12:00:00') : '';
+      const st  = calcularStatusVisita_(dados.dataRealizada);
 
+      // Ordem casada com CABECALHOS_VISITAS: ID → Objetivo → Local →
+      // Data_Prevista → Data_Da_Visita → Status → Responsáveis → Relatório.
       aba.appendRow([
         id,
         dados.objetivo.trim(),
         (dados.local || '').trim(),
-        dt,
+        dp,
+        dr,
         st,
         (dados.participantes || ''),
         (dados.relatorio || '').trim()
       ].map(neutralizarFormula_));
 
-      registrarLog('Cadastro de Visita Técnica', id, 'Visita técnica incluída: ' + dados.objetivo);
+      registrarLog_('Cadastro de Visita Técnica', id, 'Visita técnica incluída: ' + dados.objetivo);
       return { sucesso: true, mensagem: 'Visita técnica cadastrada com sucesso!', novoId: id, novaLinha: aba.getLastRow() };
     });
   } catch(e) { return erroInterno_(e); }
@@ -40,8 +48,8 @@ function atualizarVisitaTecnica(dados) {
     if (!dados || !String(dados.objetivo||'').trim())
       return { sucesso: false, mensagem: 'O Objetivo/Motivo da Visita é obrigatório.' };
 
-    return comBloqueio(() => {
-      const aba  = conectarAba(SHEET_VISITAS);
+    return comBloqueio_(() => {
+      const aba  = conectarAba_(SHEET_VISITAS);
       const C    = colIdx_(CABECALHOS_VISITAS);
       const linha = parseInt(dados.idRow, 10);
 
@@ -52,20 +60,23 @@ function atualizarVisitaTecnica(dados) {
       if (dados.idEsperado && idAtual !== dados.idEsperado.toString())
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
 
-      const dt = dados.data ? new Date(dados.data + 'T12:00:00') : '';
-      const st = calcularStatusVisita_(dados.data);
+      const dp = dados.dataPrevista  ? new Date(dados.dataPrevista  + 'T12:00:00') : '';
+      const dr = dados.dataRealizada ? new Date(dados.dataRealizada + 'T12:00:00') : '';
+      const st = calcularStatusVisita_(dados.dataRealizada);
 
-      // 6 colunas: Objetivo da Visita → Relatório/Anexo
-      aba.getRange(linha, C('Objetivo_Da_Visita')+1, 1, 6).setValues([[
+      // 7 colunas: Objetivo da Visita → Relatório/Anexo (Data_Prevista entrou
+      // no meio do bloco contíguo)
+      aba.getRange(linha, C('Objetivo_Da_Visita')+1, 1, 7).setValues([[
         dados.objetivo.trim(),
         (dados.local || '').trim(),
-        dt,
+        dp,
+        dr,
         st,
         (dados.participantes || ''),
         (dados.relatorio || '').trim()
       ].map(neutralizarFormula_)]);
 
-      registrarLog('Edição de Visita Técnica', idAtual, 'Dados atualizados.');
+      registrarLog_('Edição de Visita Técnica', idAtual, 'Dados atualizados.');
       return { sucesso: true, mensagem: 'Visita técnica atualizada com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -74,8 +85,8 @@ function atualizarVisitaTecnica(dados) {
 function excluirVisitaTecnica(idRow, idEsperado) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    return comBloqueio(() => {
-      const aba  = conectarAba(SHEET_VISITAS);
+    return comBloqueio_(() => {
+      const aba  = conectarAba_(SHEET_VISITAS);
       const C    = colIdx_(CABECALHOS_VISITAS);
       const linha = parseInt(idRow, 10);
 
@@ -87,7 +98,7 @@ function excluirVisitaTecnica(idRow, idEsperado) {
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
 
       aba.deleteRow(linha);
-      registrarLog('Exclusão de Visita Técnica', id, 'Visita técnica removida.');
+      registrarLog_('Exclusão de Visita Técnica', id, 'Visita técnica removida.');
       return { sucesso: true, mensagem: 'Visita técnica excluída com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }

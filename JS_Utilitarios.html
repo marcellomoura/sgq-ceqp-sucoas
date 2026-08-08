@@ -589,7 +589,7 @@ function mudarTab(tab, botao) {
   if(view) view.classList.add('active');
 
   atualizarTopBar();
-  const SGQ_TABS = ['unidades','doc-lista','doc-revisoes','risco-matriz','plano-acomp','indicadores'];
+  const SGQ_TABS = ['unidades','doc-lista','doc-revisoes','risco-matriz','plano-acomp','risco-arquivado','indicadores'];
 
   const rotinas = {
     'kanban': ()=>renderTasks(),
@@ -648,8 +648,12 @@ function mudarTab(tab, botao) {
   const MSG_TABELA_POR_ABA = {
     'unidades': ['lista-unidades', 4], 'doc-lista': ['lista-mestra', 12],
     'doc-revisoes': ['lista-revisoes', 10], 'risco-matriz': ['lista-riscos', 12],
-    'plano-acomp': ['lista-acomp', 11],
-    'risco-arquivado': ['lista-riscos-arquivados', 9]
+    // Estes dois são <div> (não <tbody>): msgTabela cai no ramo else e desenha
+    // um .msg-empty solto — a contagem de colunas é ignorada, fica só pela
+    // forma da tupla. Apontavam para 'lista-acomp'/'lista-riscos-arquivados',
+    // que não existem, e por isso saíam em silêncio (if (!el) return).
+    'plano-acomp': ['container-planos', 11],
+    'risco-arquivado': ['container-arquivados', 9]
   };
 
   if (SGQ_TABS.indexOf(tab) !== -1) {
@@ -1189,18 +1193,24 @@ document.addEventListener('click', function(e) {
 
 // Botões com ID fixo (não estão no sistema de data-acao para não poluir o HTML)
 document.addEventListener('click', function(e) {
-  if(e.target.id === 'btn-confirmar-unidade') confirmarUnidade();
-  if(e.target.id === 'btn-salvar-doc') salvarDocumento();
-  if(e.target.id === 'btn-confirmar-doc') confirmarEdicaoDoc();
-  if(e.target.id === 'btn-publicar-doc') publicarRevisaoDoc();
-  if(e.target.id === 'btn-salvar-risco') salvarRisco();
-  if(e.target.id === 'btn-confirmar-risco') confirmarEdicaoRisco();
-  if(e.target.id === 'btn-salvar-plano') salvarPlano();
-  if(e.target.id === 'btn-confirmar-plano') confirmarEdicaoPlano();
-  if(e.target.id === 'btn-salvar-acomp-entregas') salvarAcompEntregas();
-  if(e.target.id === 'btn-confirmar-excluir') {
+  // Resolve o elemento com id subindo a partir do alvo, em vez de comparar
+  // e.target.id direto: se um destes botões ganhar um filho (ícone/<svg>),
+  // e.target passa a ser o filho e os handlers parariam de disparar em
+  // silêncio. Mesmo padrão de closest() já usado no bloco data-acao acima.
+  const alvo = e.target.closest('[id]');
+  const id = alvo ? alvo.id : '';
+  if(id === 'btn-confirmar-unidade') confirmarUnidade();
+  if(id === 'btn-salvar-doc') salvarDocumento();
+  if(id === 'btn-confirmar-doc') confirmarEdicaoDoc();
+  if(id === 'btn-publicar-doc') publicarRevisaoDoc();
+  if(id === 'btn-salvar-risco') salvarRisco();
+  if(id === 'btn-confirmar-risco') confirmarEdicaoRisco();
+  if(id === 'btn-salvar-plano') salvarPlano();
+  if(id === 'btn-confirmar-plano') confirmarEdicaoPlano();
+  if(id === 'btn-salvar-acomp-entregas') salvarAcompEntregas();
+  if(id === 'btn-confirmar-excluir') {
     if(itemExcluir) {
-      const btn = e.target;
+      const btn = alvo;
       btn.disabled = true; // A03: Proteção imediata contra clique duplo
       if(itemExcluir.length > 0) {
         const orig = btn.innerText; btn.innerText = btn.dataset.loadingText || 'A processar...';
@@ -1225,33 +1235,34 @@ document.addEventListener('click', function(e) {
       }
     }
   }
-  if(e.target.id === 'btn-fechar-alerta') fecharModal('modal-alerta');
-  if(e.target.id === 'btn-novo-membro') abrirModalMembro();
-  if(e.target.id === 'btn-nova-unidade') abrirModalUnidade();
-  if(e.target.id === 'btn-novo-plano') abrirModalNovoPlano();
-  if(e.target.id === 'btn-novo-doc') abrirModalNovoDocumento();
-  if(e.target.id === 'btn-pdf-archived') gerarPdfLocal('archived');
-  if(e.target.id === 'btn-email-archived') abrirModalEmail('archived');
-  if(e.target.id === 'btn-mapear-risco') abrirModalMapearRisco();
-  if(e.target.id === 'btn-download-pdf') gerarPdfLocal('dashboard');
-  if(e.target.id === 'btn-email-dashboard') abrirModalEmail('dashboard');
-  if(e.target.id === 'btn-save-task') salvarTarefa();
-  if(e.target.id === 'btn-delete-task') confirmarExcluirTarefa();
-  if(e.target.id === 'btn-archive-task') confirmarArquivarTarefa();
-  if(e.target.id === 'btn-add-comment') adicionarComentario();
-  if(e.target.id === 'btn-save-member') salvarMembro();
-  if(e.target.id === 'btn-pdf-matriz') gerarPdfLocal('matriz');
-  if(e.target.id === 'btn-email-matriz') abrirModalEmail('matriz');
-  if(e.target.id === 'btn-pdf-acomp') gerarPdfLocal('acomp');
-  if(e.target.id === 'btn-email-acomp') abrirModalEmail('acomp');
-  if(e.target.id === 'btn-atualizar-logs')       carregarLogs();
-  if(e.target.id === 'btn-confirmar-escala')     confirmarEscala();
-  if(e.target.id === 'btn-confirmar-ferias')     confirmarFerias();
-  if(e.target.id === 'btn-enviar-pdf') dispararEnvioPdf();
-  if(e.target.id === 'assignee-display') $id('taskAssigneesContainer').classList.toggle('show');
-  if(e.target.id === 'labels-display') $id('taskLabelsContainer').classList.toggle('show');
-  // Botões add-card (têm data-add-card)
-  if(e.target.dataset.addCard) abrirModalTarefa(e.target.dataset.addCard);
+  if(id === 'btn-fechar-alerta') fecharModal('modal-alerta');
+  if(id === 'btn-novo-membro') abrirModalMembro();
+  if(id === 'btn-nova-unidade') abrirModalUnidade();
+  if(id === 'btn-novo-plano') abrirModalNovoPlano();
+  if(id === 'btn-novo-doc') abrirModalNovoDocumento();
+  if(id === 'btn-pdf-archived') gerarPdfLocal('archived');
+  if(id === 'btn-email-archived') abrirModalEmail('archived');
+  if(id === 'btn-mapear-risco') abrirModalMapearRisco();
+  if(id === 'btn-download-pdf') gerarPdfLocal('dashboard');
+  if(id === 'btn-email-dashboard') abrirModalEmail('dashboard');
+  if(id === 'btn-save-task') salvarTarefa();
+  if(id === 'btn-delete-task') confirmarExcluirTarefa();
+  if(id === 'btn-archive-task') confirmarArquivarTarefa();
+  if(id === 'btn-add-comment') adicionarComentario();
+  if(id === 'btn-save-member') salvarMembro();
+  if(id === 'btn-pdf-matriz') gerarPdfLocal('matriz');
+  if(id === 'btn-email-matriz') abrirModalEmail('matriz');
+  if(id === 'btn-pdf-acomp') gerarPdfLocal('acomp');
+  if(id === 'btn-email-acomp') abrirModalEmail('acomp');
+  if(id === 'btn-atualizar-logs')       carregarLogs();
+  if(id === 'btn-confirmar-escala')     confirmarEscala();
+  if(id === 'btn-confirmar-ferias')     confirmarFerias();
+  if(id === 'btn-enviar-pdf') dispararEnvioPdf();
+  if(id === 'assignee-display') $id('taskAssigneesContainer').classList.toggle('show');
+  if(id === 'labels-display') $id('taskLabelsContainer').classList.toggle('show');
+  // Botões add-card (têm data-add-card) — closest() pelo mesmo motivo acima
+  const addCard = e.target.closest('[data-add-card]');
+  if(addCard) abrirModalTarefa(addCard.dataset.addCard);
 });
 
 // Delegação de dragstart/drop nas colunas do Kanban. O dragstart era
@@ -1746,7 +1757,8 @@ var currentLogsPage = 1;
 
 function getFiltrosLogs() {
   return {
-    acao: ($id('f-log-acao') || {value:''}).value,
+    // Sem 'acao': não existe <select id="f-log-acao"> na tela de Monitoramento
+    // (ver B-03 na auditoria de 2026-07-27) — o servidor também não filtra mais.
     usuario: ($id('f-log-usuario') || {value:''}).value,
     dataIni: ($id('f-log-data-ini') || {value:''}).value,
     dataFim: ($id('f-log-data-fim') || {value:''}).value,

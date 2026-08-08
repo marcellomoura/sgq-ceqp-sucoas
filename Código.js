@@ -9,11 +9,11 @@ const SHEET_RISKS    = 'Riscos';
 const SHEET_PLANS    = 'Planos_Acao';
 // Entregas_Planos: NÃO entra no setup de abas (setupDatabaseResto) de propósito
 // — mesmo padrão de Visitas Técnicas/Capacitações — é criada sob demanda por
-// conectarAba na primeira vez que alguém acompanha entregas de um plano.
+// conectarAba_ na primeira vez que alguém acompanha entregas de um plano.
 const SHEET_ENTREGAS_PLANOS = 'Entregas_Planos';
 const SHEET_LOGS     = 'Logs';
 // Destino do arquivamento manual de Logs antigos (arquivarLogsAntigos_). Criada
-// sob demanda por conectarAba na primeira execução — NÃO entra no setup.
+// sob demanda por conectarAba_ na primeira execução — NÃO entra no setup.
 const SHEET_LOGS_ARQUIVO = 'Logs_Arquivo';
 const SHEET_AFASTAMENTOS = 'Afastamentos';
 const SHEET_CAPACITACOES = 'Capacitacoes';
@@ -22,7 +22,7 @@ const SHEET_ATIVIDADES   = 'Atividades';
 const SHEET_ATIVIDADES_ARQUIVADAS = 'Atividades_Arquivadas';
 // Visitas Técnicas: NÃO entra no setup de abas (setupDatabaseResto) de propósito
 // — carregamento é sob demanda (ver getVisitasTecnicasData), então a aba só é
-// criada por conectarAba na primeira vez que alguém abre a tela ou salva um
+// criada por conectarAba_ na primeira vez que alguém abre a tela ou salva um
 // registro, em vez de em toda abertura do sistema.
 const SHEET_VISITAS      = 'Visitas_Tecnicas';
 
@@ -31,7 +31,13 @@ const SHEET_VISITAS      = 'Visitas_Tecnicas';
 // 'Ativo' (Sim/Não) controla se o membro tem acesso ao sistema e aparece nas
 // telas. Em branco = ativo (compatível com linhas anteriores à coluna). Membro
 // inativo preserva o histórico (tarefas/afastamentos/logs) mas perde o login.
-const CABECALHOS_MEMBROS = ['ID_Membro','Nome','Cargo','Email_Funcional','Email_Pessoal','Dias_Semana','Dia_Presencial','Ativo'];
+// 'Matricula' inserida logo após 'Nome' — nesta ordem física exata na
+// planilha (coluna nova inserida manualmente à direita de 'Nome'). colIdx_
+// mapeia por POSIÇÃO neste array; setupDatabaseKanban() ainda reescreve o
+// TEXTO do cabeçalho sozinho se detectar divergência (ver linha ~680), então
+// o deploy deste array só pode acontecer depois que a coluna já existir
+// fisicamente na planilha na mesma posição — nunca antes.
+const CABECALHOS_MEMBROS = ['ID_Membro','Nome','Matricula','Cargo','Email_Funcional','Email_Pessoal','Dias_Semana','Dia_Presencial','Ativo'];
 // Uma linha por (Membro + Ano) — permite manter vários anos abertos ao
 // mesmo tempo sem perder histórico (ver Modulo_Pessoas.js).
 const CABECALHOS_AFASTAMENTOS = ['ID_Afastamento','Ano','ID_Membro','Membro_Nome','Ferias_1','Ferias_2','Ferias_3','Abonos','Abono_Aniversario','Licenca_Servidor_Premio','Demais_Afastamentos'];
@@ -66,7 +72,12 @@ const CABECALHOS_PLANOS   = ['ID_Plano','ID_Risco','O_Que','Por_Que','Quem(ID_Un
 const CABECALHOS_ENTREGAS_PLANOS = ['ID_Plano','Unidade','Status','Data','Processo_SEI'];
 const CABECALHOS_LOGS     = ['Data_Hora','Usuario','Acao','Referencia','Detalhes'];
 const CABECALHOS_CAPACITACOES = ['ID_Capacitacoes', 'Titulo_Da_Capacitacao', 'Tema', 'Publico_Alvo', 'Modalidade', 'Data_Prevista', 'Data_Realizada', 'Status', 'Lista_De_Presenca', 'Responsaveis(ID_Membro)'];
-const CABECALHOS_VISITAS = ['ID_Visitas_Tecnicas', 'Objetivo_Da_Visita', 'Local_Visitado', 'Data_Da_Visita', 'Status', 'Responsaveis(ID_Membro)', 'Relatorio_Anexo'];
+// 'Data_Prevista' inserida ANTES de 'Data_Da_Visita' — nesta ordem física
+// exata na planilha (coluna nova inserida manualmente à esquerda da
+// existente). colIdx_ mapeia por POSIÇÃO neste array, não pelo texto do
+// cabeçalho na planilha: se a ordem aqui divergir da ordem física real, toda
+// leitura a partir desta coluna sai desalinhada em silêncio.
+const CABECALHOS_VISITAS = ['ID_Visitas_Tecnicas', 'Objetivo_Da_Visita', 'Local_Visitado', 'Data_Prevista', 'Data_Da_Visita', 'Status', 'Responsaveis(ID_Membro)', 'Relatorio_Anexo'];
 
 // Mapa "nome da coluna" → índice 0-based, derivado do array de cabeçalhos
 // (a mesma fonte única usada no setup da planilha). Elimina os índices
@@ -107,7 +118,7 @@ function include_(filename) {
 // setup ou auto-arquivamento rodando em paralelo — estourava e mostrava um
 // erro cru "Tempo limite do bloqueio..."). Se ainda assim não obtiver, lança
 // uma mensagem clara e acionável em vez da exceção nativa.
-function comBloqueio(operacao) {
+function comBloqueio_(operacao) {
   const lock = LockService.getScriptLock();
   let obteve = false;
   try { lock.waitLock(30000); obteve = true; } catch (e) { obteve = false; }
@@ -116,7 +127,7 @@ function comBloqueio(operacao) {
   try { return operacao(); } finally { SpreadsheetApp.flush(); lock.releaseLock(); }
 }
 
-function safeGetSheet(ss, sheetName) {
+function safeGetSheet_(ss, sheetName) {
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
     const normalize = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -128,20 +139,20 @@ function safeGetSheet(ss, sheetName) {
       // Rename autom\u00e1tico \u00e9 raro (s\u00f3 quando o nome da aba diverge por
       // acento/mai\u00fascula) mas acontecia em sil\u00eancio \u2014 registra para ficar
       // rastre\u00e1vel na auditoria caso um dia isso pegue uma aba errada por coincid\u00eancia.
-      try { registrarLog('Sistema', sheetName, 'Aba renomeada automaticamente de "' + nomeAntigo + '" para "' + sheetName + '" (normaliza\u00e7\u00e3o de nome).'); } catch (e) {}
+      try { registrarLog_('Sistema', sheetName, 'Aba renomeada automaticamente de "' + nomeAntigo + '" para "' + sheetName + '" (normaliza\u00e7\u00e3o de nome).'); } catch (e) {}
     }
   }
   return sheet;
 }
 
-function safeGetSheetData(ss, sheetName) {
-  const sheet = safeGetSheet(ss, sheetName);
+function safeGetSheetData_(ss, sheetName) {
+  const sheet = safeGetSheet_(ss, sheetName);
   return sheet ? sheet.getDataRange().getValues() : [];
 }
 
-function conectarAba(nome, cabecalhos) {
+function conectarAba_(nome, cabecalhos) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let aba = safeGetSheet(ss, nome);
+  let aba = safeGetSheet_(ss, nome);
   if (!aba && cabecalhos) {
     aba = ss.insertSheet(nome);
     aba.appendRow(cabecalhos);
@@ -171,7 +182,7 @@ function _dataLocalISO_(d) {
     String(d.getDate()).padStart(2, '0');
 }
 
-function formatarDataParaUI(campo) {
+function formatarDataParaUI_(campo) {
   if (campo instanceof Date) return _dataLocalISO_(campo);
   return campo ? campo.toString() : '';
 }
@@ -208,15 +219,15 @@ function erroInterno_(e, contexto) {
   return { sucesso: false, mensagem: 'Ocorreu um erro ao processar a solicitação. Tente novamente em instantes.' };
 }
 
-function getNowTimestamp() {
+function getNowTimestamp_() {
   return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
 }
 
-// Data+hora vinda de uma célula para exibição, no formato de getNowTimestamp().
+// Data+hora vinda de uma célula para exibição, no formato de getNowTimestamp_().
 // O Sheets converte sozinho em Date qualquer texto que PAREÇA data ao ser
 // gravado — então a mesma coluna pode devolver ora Date, ora string, e ler sem
 // guarda entrega o toString cru do JS na tela. Contraparte de
-// formatarDataParaUI() (que é só data) para os campos com hora.
+// formatarDataParaUI_() (que é só data) para os campos com hora.
 function _dataHoraParaUI_(val) {
   if (Object.prototype.toString.call(val) === '[object Date]')
     return Utilities.formatDate(val, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
@@ -252,7 +263,7 @@ function membrosParaAuth_() {
   while (tentativas-- > 0) {
     try {
       const C = colIdx_(CABECALHOS_MEMBROS);
-      const mData = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS).getDataRange().getValues();
+      const mData = conectarAba_(SHEET_MEMBERS, CABECALHOS_MEMBROS).getDataRange().getValues();
       for (let i = 1; i < mData.length; i++) {
         const at = String(mData[i][C('Ativo')] || '').trim().toLowerCase();
         if (at === 'não' || at === 'nao') continue;
@@ -334,7 +345,7 @@ function dataParaISO_(val) {
 // Gera o próximo ID sequencial de um prefixo (TAR-, MEM-, UN-, CAP-, AF-),
 // guardando um contador em PropertiesService em vez de reler a coluna de IDs
 // inteira a cada gravação. Todos os chamadores já rodam dentro de um
-// comBloqueio (ver saveTask/saveMember/salvarUnidade/salvarCapacitacao/
+// comBloqueio_ (ver saveTask/saveMember/salvarUnidade/salvarCapacitacao/
 // salvarAfastamento) — por isso o incremento aqui não precisa de lock
 // próprio, já está serializado por quem chama.
 // Na primeira chamada para um prefixo (contador ainda não existe), calcula a
@@ -360,7 +371,7 @@ function getNextId_(sheet, prefixo) {
   return prefixo + proximo;
 }
 
-function calcularNivelRisco(p, i) {
+function calcularNivelRisco_(p, i) {
   const s = Number(p) * Number(i);
   if (s >= 15) return 'Crítico';
   if (s >= 10) return 'Alto';
@@ -368,7 +379,7 @@ function calcularNivelRisco(p, i) {
   return 'Baixo';
 }
 
-function calcularProximaRevisao(dataStr) {
+function calcularProximaRevisao_(dataStr) {
   if (!dataStr) return '';
   const p = dataStr.toString().split('-');
   if (p.length !== 3) return '';
@@ -378,9 +389,9 @@ function calcularProximaRevisao(dataStr) {
   return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
 }
 
-function registrarLog(acao, ref, detalhe) {
+function registrarLog_(acao, ref, detalhe) {
   try {
-    const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
+    const aba = conectarAba_(SHEET_LOGS, CABECALHOS_LOGS);
     aba.appendRow([new Date(), nomeUsuarioAtual_(), acao, ref, detalhe].map(neutralizarFormula_));
   } catch(e) { console.error('Log falhou: ' + e); }
 }
@@ -429,9 +440,9 @@ function _deleteRowsBatch_(sheet, rowNumbers) {
 function _migrarEremoverColunaAtividades_() {
   const props = PropertiesService.getScriptProperties();
   if (props.getProperty('coluna_atividades_removida_v1') === 'ok') return;
-  comBloqueio(() => {
+  comBloqueio_(() => {
     if (props.getProperty('coluna_atividades_removida_v1') === 'ok') return;
-    const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_TASKS);
+    const aba = safeGetSheet_(SpreadsheetApp.getActiveSpreadsheet(), SHEET_TASKS);
     if (!aba || aba.getLastColumn() < 1) return;
 
     const cabecalho = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0].map(h => String(h).trim());
@@ -467,7 +478,7 @@ function _migrarEremoverColunaAtividades_() {
         });
       });
       if (linhas.length) {
-        const abaA = conectarAba(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
+        const abaA = conectarAba_(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
         abaA.getRange(abaA.getLastRow() + 1, 1, linhas.length, CABECALHOS_ATIVIDADES.length).setValues(linhas);
         migrados = linhas.length;
       }
@@ -478,7 +489,7 @@ function _migrarEremoverColunaAtividades_() {
     // único lugar onde esse dado ainda existe — então para tudo e pede olho
     // humano. O sistema continua funcionando: a coluna sobrando é inerte.
     if (ilegiveis > 0) {
-      registrarLog('Sistema', 'Tarefas', 'ATENÇÃO: coluna "Atividades" NÃO removida — ' + ilegiveis +
+      registrarLog_('Sistema', 'Tarefas', 'ATENÇÃO: coluna "Atividades" NÃO removida — ' + ilegiveis +
         ' cartão(ões) com JSON ilegível que não pôde ser migrado. ' + migrados +
         ' registro(s) migrado(s). Inspecione esses cartões manualmente antes de excluir a coluna.');
       return; // sem marcar a flag: tenta de novo no próximo setup
@@ -487,7 +498,7 @@ function _migrarEremoverColunaAtividades_() {
     aba.deleteColumn(idxAtiv + 1);
     props.setProperty('coluna_atividades_removida_v1', 'ok');
     props.setProperty('migracao_atividades_v1', 'ok'); // encerra a migração antiga
-    registrarLog('Sistema', 'Tarefas', 'Coluna "Atividades" removida do layout de Tarefas. ' +
+    registrarLog_('Sistema', 'Tarefas', 'Coluna "Atividades" removida do layout de Tarefas. ' +
       migrados + ' registro(s) de histórico migrado(s) para a aba Atividades.');
   });
 }
@@ -497,7 +508,7 @@ function _migrarEremoverColunaAtividades_() {
 // em laço custaria um round-trip por item, dentro do lock.
 function _registrarAtividades_(itens) {
   if (!itens || !itens.length) return;
-  const aba = conectarAba(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
+  const aba = conectarAba_(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
   const linhas = itens.map(a => [String(a.tarefaId), String(a.tipo || 'log'), String(a.texto || ''), String(a.data || ''), String(a.autor || '')].map(neutralizarFormula_));
   aba.getRange(aba.getLastRow() + 1, 1, linhas.length, CABECALHOS_ATIVIDADES.length).setValues(linhas);
   // Só 'comment' entra na contagem do badge; itens 'log' (mover/editar) não a
@@ -509,7 +520,7 @@ function _registrarAtividades_(itens) {
 // linhas do cartão e as exclui em lote via _deleteRowsBatch_ (blocos contíguos),
 // em vez de um deleteRow por comentário.
 function _excluirAtividadesDaTarefa_(tarefaId) {
-  const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
+  const aba = safeGetSheet_(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
   if (!aba || aba.getLastRow() <= 1) return;
   const CA = colIdx_(CABECALHOS_ATIVIDADES);
   const alvo = String(tarefaId || '').trim();
@@ -535,7 +546,7 @@ function _contarComentariosPorTarefa_() {
     if (bruto) { try { return JSON.parse(bruto); } catch (e) {} }
   }
   const contagem = {};
-  const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
+  const aba = safeGetSheet_(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
   if (aba && aba.getLastRow() > 1) {
     const CA = colIdx_(CABECALHOS_ATIVIDADES);
     const dados = aba.getRange(2, CA('ID_Tarefas') + 1, aba.getLastRow() - 1, 2).getValues();
@@ -561,7 +572,7 @@ function _contarComentariosPorTarefa_() {
 // É o que permite o quadro não trafegar o histórico de todos os cartões.
 function getAtividadesTarefa(tarefaId) {
   if (!isMembro_()) throw new Error('Acesso Negado.');
-  const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
+  const aba = safeGetSheet_(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES);
   if (!aba || aba.getLastRow() <= 1) return [];
   const CA = colIdx_(CABECALHOS_ATIVIDADES);
   const alvo = String(tarefaId || '').trim();
@@ -585,7 +596,7 @@ function getAtividadesTarefa(tarefaId) {
 // em "Ver Atividades" num cartão arquivado.
 function getAtividadesTarefaArquivada(tarefaId) {
   if (!isMembro_()) throw new Error('Acesso Negado.');
-  const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES_ARQUIVADAS);
+  const aba = safeGetSheet_(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ATIVIDADES_ARQUIVADAS);
   if (!aba || aba.getLastRow() <= 1) return [];
   const CA = colIdx_(CABECALHOS_ATIVIDADES); // Mesma estrutura
   const alvo = String(tarefaId || '').trim();
@@ -613,9 +624,9 @@ function getAtividadesTarefaArquivada(tarefaId) {
 function _reordenarColunasTarefas_() {
   const props = PropertiesService.getScriptProperties();
   if (props.getProperty('ordem_tarefas_v1') === 'ok') return;
-  comBloqueio(() => {
+  comBloqueio_(() => {
     if (props.getProperty('ordem_tarefas_v1') === 'ok') return;
-    const aba = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_TASKS);
+    const aba = safeGetSheet_(SpreadsheetApp.getActiveSpreadsheet(), SHEET_TASKS);
     if (!aba || aba.getLastColumn() < 1) return;
 
     const largura = aba.getLastColumn();
@@ -626,10 +637,10 @@ function _reordenarColunasTarefas_() {
 
     // Só reordena se TODAS as colunas do layout existirem na aba. Faltando
     // alguma, remontar embaralharia o dado — melhor não tocar e pedir olho
-    // humano (o conectarAba cria as faltantes no fim; o próximo setup alinha).
+    // humano (o conectarAba_ cria as faltantes no fim; o próximo setup alinha).
     const faltando = CABECALHOS_TAREFAS.filter(c => cabecalho.indexOf(c) === -1);
     if (faltando.length) {
-      registrarLog('Sistema', 'Tarefas', 'Reordenação de colunas adiada — ausente(s) na aba: ' + faltando.join(', '));
+      registrarLog_('Sistema', 'Tarefas', 'Reordenação de colunas adiada — ausente(s) na aba: ' + faltando.join(', '));
       return;
     }
 
@@ -640,7 +651,7 @@ function _reordenarColunasTarefas_() {
     aba.getRange(1, 1, nLinhas, CABECALHOS_TAREFAS.length).setValues(novos);
     aba.getRange(1, 1, 1, CABECALHOS_TAREFAS.length).setFontWeight('bold').setBackground('#f1f5f9');
     props.setProperty('ordem_tarefas_v1', 'ok');
-    registrarLog('Sistema', 'Tarefas', 'Colunas reordenadas para o layout atual: ' + CABECALHOS_TAREFAS.join(' | '));
+    registrarLog_('Sistema', 'Tarefas', 'Colunas reordenadas para o layout atual: ' + CABECALHOS_TAREFAS.join(' | '));
   });
 }
 
@@ -655,13 +666,13 @@ function setupDatabaseKanban() {
   // coluna) e CABECALHOS_TAREFAS (sem ela) estariam desalinhados.
   try { if (CacheService.getScriptCache().get('setup_kanban_ok_v2')) return; } catch (e) {}
   // PRIMEIRA coisa: alinhar a planilha ao layout atual. Tem de vir antes do
-  // conectarAba abaixo — com a coluna ainda presente, a aba tem 14 colunas e a
+  // conectarAba_ abaixo — com a coluna ainda presente, a aba tem 14 colunas e a
   // constante 13, e qualquer leitura/escrita de Arquivado, Etiquetas ou Última
   // Atualização cairia uma coluna adiante, sem erro nenhum.
   _migrarEremoverColunaAtividades_(); // 1) tira a coluna que saiu do layout
   _reordenarColunasTarefas_();        // 2) põe as que restaram na ordem certa
-  conectarAba(SHEET_TASKS, CABECALHOS_TAREFAS);
-  const abaMembros = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
+  conectarAba_(SHEET_TASKS, CABECALHOS_TAREFAS);
+  const abaMembros = conectarAba_(SHEET_MEMBERS, CABECALHOS_MEMBROS);
   try {
     const atualParaMig = abaMembros.getRange(1, 1, 1, abaMembros.getLastColumn()).getValues()[0];
     const idxP = atualParaMig.indexOf('Email_Pessoal');
@@ -677,7 +688,7 @@ function setupDatabaseKanban() {
     abaMembros.getRange(1, 1, 1, CABECALHOS_MEMBROS.length)
       .setValues([CABECALHOS_MEMBROS]).setFontWeight('bold').setBackground('#f1f5f9');
   }
-  conectarAba(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
+  conectarAba_(SHEET_ATIVIDADES, CABECALHOS_ATIVIDADES);
   try { CacheService.getScriptCache().put('setup_kanban_ok_v2', '1', 21600); } catch (e) {}
 }
 
@@ -688,14 +699,14 @@ function setupDatabaseResto() {
   // cada 6h; os dados seguem lidos frescos. Chave versionada (v2): mantida por
   // compatibilidade com o cache já distribuído — o "v3" garante a migração.
   try { if (CacheService.getScriptCache().get('setup_resto_ok_v4')) return; } catch (e) {}
-  conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
-  conectarAba(SHEET_DOCS,     CABECALHOS_DOCS);
-  conectarAba(SHEET_RISKS,    CABECALHOS_RISCOS);
-  conectarAba(SHEET_PLANS,    CABECALHOS_PLANOS);
-  conectarAba(SHEET_LOGS,     CABECALHOS_LOGS);
+  conectarAba_(SHEET_UNITS, CABECALHOS_UNIDADES);
+  conectarAba_(SHEET_DOCS,     CABECALHOS_DOCS);
+  conectarAba_(SHEET_RISKS,    CABECALHOS_RISCOS);
+  conectarAba_(SHEET_PLANS,    CABECALHOS_PLANOS);
+  conectarAba_(SHEET_LOGS,     CABECALHOS_LOGS);
   // Capacitações NÃO entra mais aqui (2026-07-23): passou a ser sob demanda,
   // igual Visitas Técnicas — ver getCapacitacoesData(). A aba é criada por
-  // conectarAba na 1ª leitura/gravação, fora deste setup eager.
+  // conectarAba_ na 1ª leitura/gravação, fora deste setup eager.
 
   try { CacheService.getScriptCache().put('setup_resto_ok_v4', '1', 21600); } catch (e) {}
 }
@@ -711,17 +722,17 @@ function setupDatabaseResto() {
 // Etapa 2 (getRestoData): as demais abas, buscadas em segundo plano
 // logo depois que o Kanban já está na tela.
 // ==========================================
-// Dias após a conclusão para um cartão ser arquivado automaticamente
-const DIAS_PARA_ARQUIVAR = 15;
-
 // Regra ÚNICA de "este cartão está arquivado?", compartilhada pelo quadro e
 // pela aba Arquivados — as duas telas precisam concordar, e duplicar a regra
 // era o caminho mais curto para elas divergirem.
-// Arquivamento automático: só entra em jogo quando a coluna está EM BRANCO
-// (nunca decidido). Se o valor for 'Não', o usuário restaurou o cartão
-// (nunca decidido). O arquivamento agora é estritamente manual e unidirecional.
+//
+// O arquivamento é 100% MANUAL e depende só da coluna `Arquivado` valer 'Sim'.
+// Houve um arquivamento automático por data (concluída há ≥ 15 dias, calculado
+// na leitura sem gravar nada). Foi removido — e com ele saíram, em 2026-07-29,
+// a constante `DIAS_PARA_ARQUIVAR` e o parâmetro `hoje` que esta função ainda
+// recebia dos 7 chamadores sem usar.
 // Cartões arquivados migram suas atividades para Atividades_Arquivadas.
-function _tarefaArquivada_(r, C, hoje) {
+function _tarefaArquivada_(r, C) {
   const arquivadoRaw = String(r[C('Arquivado')] || '').trim();
   return arquivadoRaw === 'Sim';
 }
@@ -729,9 +740,9 @@ function _tarefaArquivada_(r, C, hoje) {
 function _mapearTarefa_(r, C) {
   return {
     id: String(r[C('ID_Tarefas')]), status: String(r[C('Status')]), title: String(r[C('Titulo')]), description: String(r[C('Descricao')]),
-    assigneeId: String(r[C('ID_Membro')]), priority: String(r[C('Prioridade')]), creationDate: formatarDataParaUI(r[C('Data_Criacao')]),
-    startDate: formatarDataParaUI(r[C('Data_Inicio')]), deadline: formatarDataParaUI(r[C('Prazo')]),
-    completionDate: formatarDataParaUI(r[C('Data_Conclusao')]),
+    assigneeId: String(r[C('ID_Membro')]), priority: String(r[C('Prioridade')]), creationDate: formatarDataParaUI_(r[C('Data_Criacao')]),
+    startDate: formatarDataParaUI_(r[C('Data_Inicio')]), deadline: formatarDataParaUI_(r[C('Prazo')]),
+    completionDate: formatarDataParaUI_(r[C('Data_Conclusao')]),
     labels: String(r[C('Etiquetas')] || '[]'),
     updatedAt: String(r[C('Ultima_Atualizacao')] || '')
   };
@@ -749,18 +760,17 @@ function _mapearTarefa_(r, C) {
 function getKanbanData() {
   if (!isMembro_()) throw new Error('Acesso Negado.');
   setupDatabaseKanban();
-  const sheet = conectarAba(SHEET_TASKS);
+  const sheet = conectarAba_(SHEET_TASKS);
   const tData = sheet.getDataRange().getValues();
   const C = colIdx_(CABECALHOS_TAREFAS);
 
   if (tData.length <= 1) return { tasks: [], members: getKanbanData_members_(), currentUserEmail: usuarioAtual_() };
 
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
   const contagem = _contarComentariosPorTarefa_();
 
   const tasks = [];
   tData.slice(1).forEach(r => {
-    if (_tarefaArquivada_(r, C, hoje)) return;
+    if (_tarefaArquivada_(r, C)) return;
     const t = _mapearTarefa_(r, C);
     t.commentCount = contagem[t.id] || 0;
     tasks.push(t);
@@ -774,14 +784,13 @@ function getKanbanData() {
 // de arquivados não exibe comentários, então contar seria custo sem uso.
 function getTarefasArquivadas() {
   if (!isMembro_()) throw new Error('Acesso Negado.');
-  const sheet = conectarAba(SHEET_TASKS);
+  const sheet = conectarAba_(SHEET_TASKS);
   const tData = sheet.getDataRange().getValues();
   if (tData.length <= 1) return [];
   const C = colIdx_(CABECALHOS_TAREFAS);
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
   const arquivadas = [];
   tData.slice(1).forEach(r => {
-    if (!_tarefaArquivada_(r, C, hoje)) return;
+    if (!_tarefaArquivada_(r, C)) return;
     const t = _mapearTarefa_(r, C);
     t.archived = true;
     arquivadas.push(t);
@@ -795,7 +804,7 @@ function getKanbanData_members_() {
   // garantida (e cacheada por 6h) por setupDatabaseKanban() logo acima em
   // getKanbanData(). Repeti-la aqui só custaria um getLastColumn() extra
   // por carga, sem necessidade.
-  const mData = conectarAba(SHEET_MEMBERS).getDataRange().getValues();
+  const mData = conectarAba_(SHEET_MEMBERS).getDataRange().getValues();
 
   return mData.length > 1 ? mData.slice(1).map(r => {
     let rawDias = String(r[C('Dias_Semana')] || '').trim();
@@ -818,7 +827,7 @@ function getKanbanData_members_() {
     // filtrar quem aparece nas telas/seletores.
     const at = String(r[C('Ativo')] || '').trim().toLowerCase();
     return {
-      id: String(r[C('ID_Membro')]), name: String(r[C('Nome')]), role: String(r[C('Cargo')]), email: String(r[C('Email_Funcional')]||''), emailPessoal: String(r[C('Email_Pessoal')]||''),
+      id: String(r[C('ID_Membro')]), name: String(r[C('Nome')]), matricula: String(r[C('Matricula')]||''), role: String(r[C('Cargo')]), email: String(r[C('Email_Funcional')]||''), emailPessoal: String(r[C('Email_Pessoal')]||''),
       diasSemana: diasSemana, diaPresencial: String(r[C('Dia_Presencial')]||''),
       horarios: horarios, ativo: !(at === 'não' || at === 'nao')
     };
@@ -829,7 +838,7 @@ function getKanbanData_members_() {
 // getRestoData para poder ser reaproveitada pelo endpoint leve getDocsData().
 function _lerUnidades_(ss) {
   const CU = colIdx_(CABECALHOS_UNIDADES);
-  const uData = safeGetSheetData(ss, SHEET_UNITS);
+  const uData = safeGetSheetData_(ss, SHEET_UNITS);
   return uData.length > 1 ? uData.slice(1).map((r, i) => {
     const at = String(r[CU('Ativo')] || '').trim().toLowerCase();
     return {
@@ -844,13 +853,13 @@ function _lerUnidades_(ss) {
 // de documento, que evita reler as 7 abas do sistema inteiro.
 function _lerDocumentos_(ss) {
   const CD = colIdx_(CABECALHOS_DOCS);
-  const dData = safeGetSheetData(ss, SHEET_DOCS);
+  const dData = safeGetSheetData_(ss, SHEET_DOCS);
   const hoje  = new Date(); hoje.setHours(0,0,0,0);
   return dData.length > 1 ? dData.slice(1).map((r, i) => {
     const statusOrig = String(r[CD('Status')] || 'Vigente').trim();
     const isObsoleto = statusOrig.toUpperCase() === 'OBSOLETO';
-    let proxRevStr   = formatarDataParaUI(r[CD('Proxima_Revisao')]);
-    const dataAprovacaoStr = formatarDataParaUI(r[CD('Data_Aprovacao')]);
+    let proxRevStr   = formatarDataParaUI_(r[CD('Proxima_Revisao')]);
+    const dataAprovacaoStr = formatarDataParaUI_(r[CD('Data_Aprovacao')]);
     let statusCalc   = statusOrig;
     if (!isObsoleto && !dataAprovacaoStr) {
       // Documento cadastrado sem data de aprovação ainda — está em
@@ -909,8 +918,8 @@ function getUnitsData() {
 function _lerRiscosPlanosEntregas_(ss) {
   const CR = colIdx_(CABECALHOS_RISCOS);
   const CP = colIdx_(CABECALHOS_PLANOS);
-  const rData = safeGetSheetData(ss, SHEET_RISKS);
-  const pData = safeGetSheetData(ss, SHEET_PLANS);
+  const rData = safeGetSheetData_(ss, SHEET_RISKS);
+  const pData = safeGetSheetData_(ss, SHEET_PLANS);
   const planosRows = pData.length > 1 ? pData.slice(1) : [];
 
   // Mapa rápido de ID_Plano -> 'O Que', sem precisar adivinhar por status.
@@ -945,7 +954,7 @@ function _lerRiscosPlanosEntregas_(ss) {
 
     linhas.forEach(l => {
       historico.push({
-        id: ref, tipo: 'Risco', data: formatarDataParaUI(l.r[CR('Data_Avaliacao')]),
+        id: ref, tipo: 'Risco', data: formatarDataParaUI_(l.r[CR('Data_Avaliacao')]),
         prob: parseInt(l.r[CR('Probabilidade')], 10) || null, impacto: parseInt(l.r[CR('Impacto')], 10) || null,
         nivel: String(l.r[CR('Nivel')] || ''), tratamento: String(l.r[CR('Tipo_Tratamento')] || ''),
         responsavel: String(l.r[CR('Responsavel(ID_Unidade)')] || ''), justificativa: String(l.r[CR('Justificativa')] || ''),
@@ -974,10 +983,10 @@ function _lerRiscosPlanosEntregas_(ss) {
   // cliente por idPlano (chave estável), não mais por planoIdx (índice de
   // array, frágil).
   const CE = colIdx_(CABECALHOS_ENTREGAS_PLANOS);
-  const eData = safeGetSheetData(ss, SHEET_ENTREGAS_PLANOS);
+  const eData = safeGetSheetData_(ss, SHEET_ENTREGAS_PLANOS);
   const deliveries = eData.length > 1 ? eData.slice(1).map(e => ({
     idPlano: String(e[CE('ID_Plano')]||''), unidade: String(e[CE('Unidade')]||''),
-    entregue: String(e[CE('Status')]||''), dataEntrega: formatarDataParaUI(e[CE('Data')]),
+    entregue: String(e[CE('Status')]||''), dataEntrega: formatarDataParaUI_(e[CE('Data')]),
     processoSei: String(e[CE('Processo_SEI')]||'')
   })) : [];
 
@@ -991,16 +1000,16 @@ function _lerRiscosPlanosEntregas_(ss) {
   const plans = planosRows.map(r => {
     const ref = String(r[CP('ID_Risco')]||'');
     const idPlano = String(r[CP('ID_Plano')]||'');
-    const whenPrevisto = formatarDataParaUI(r[CP('Data_Prevista')]);
-    const whenFinalizado = formatarDataParaUI(r[CP('Data_Finalizacao')]);
+    const whenPrevisto = formatarDataParaUI_(r[CP('Data_Prevista')]);
+    const whenFinalizado = formatarDataParaUI_(r[CP('Data_Finalizacao')]);
     // Status gravado só é recalculado quando o plano é salvo/editado/alterado
-    // (ver _statusPlano) — um plano 'Em Andamento' que vence sem ninguém
+    // (ver _statusPlano_) — um plano 'Em Andamento' que vence sem ninguém
     // tocar nele ficaria preso nesse status para sempre. Recalcula aqui, na
     // leitura (sem gravar nada, mesmo padrão de _tarefaArquivada_ no Kanban),
     // só para o caso 'Em Andamento': estados terminais (Concluído/Cancelado/
     // Substituído) são decisões definitivas e não devem reabrir sozinhas.
     let status = String(r[CP('Status')]||'Em Andamento');
-    if (status === 'Em Andamento') status = _statusPlano(whenPrevisto, whenFinalizado);
+    if (status === 'Em Andamento') status = _statusPlano_(whenPrevisto, whenFinalizado);
     return {
       id: idPlano, riscoVinculado: ref, what: String(r[CP('O_Que')]||''), why: String(r[CP('Por_Que')]||''),
       who: String(r[CP('Quem(ID_Unidade)')]||''), where: String(r[CP('Onde')]||''),
@@ -1058,11 +1067,11 @@ function getRestoData() {
 // app), no mesmo padrão de getVisitasTecnicasData(): só é chamado pelo
 // cliente quando o usuário abre a aba "Capacitações" pela primeira vez
 // (garantirCapacitacoesData, em JS_Capacitacoes.html), ou pelo Painel de
-// Indicadores antes de desenhar os gráficos. conectarAba cria a planilha (com
+// Indicadores antes de desenhar os gráficos. conectarAba_ cria a planilha (com
 // cabeçalhos) na primeira chamada, se ainda não existir.
 function getCapacitacoesData() {
   if (!isMembro_()) throw new Error('Acesso Negado.');
-  const aba = conectarAba(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
+  const aba = conectarAba_(SHEET_CAPACITACOES, CABECALHOS_CAPACITACOES);
   const CCAP = colIdx_(CABECALHOS_CAPACITACOES);
   const capData = aba.getDataRange().getValues();
   return capData.length > 1 ? capData.slice(1).map((r, i) => ({
@@ -1072,9 +1081,9 @@ function getCapacitacoesData() {
     tema: String(r[CCAP('Tema')]||''),
     publico: String(r[CCAP('Publico_Alvo')]||''),
     modalidade: String(r[CCAP('Modalidade')]||''),
-    dataPrevista: formatarDataParaUI(r[CCAP('Data_Prevista')]),
+    dataPrevista: formatarDataParaUI_(r[CCAP('Data_Prevista')]),
     dataPrevistaRaw: r[CCAP('Data_Prevista')] instanceof Date ? r[CCAP('Data_Prevista')].getTime() : null,
-    dataRealizada: formatarDataParaUI(r[CCAP('Data_Realizada')]),
+    dataRealizada: formatarDataParaUI_(r[CCAP('Data_Realizada')]),
     status: String(r[CCAP('Status')]||'Planejada'),
     materiais: String(r[CCAP('Lista_De_Presenca')]||''),
     // Incluído para casar com o shape de getRestoData(): sem este campo,
@@ -1088,11 +1097,11 @@ function getCapacitacoesData() {
 // getRestoData()/getKanbanData() (que rodam sempre na abertura do app). Só é
 // chamado pelo cliente quando o usuário abre a aba "Visitas Técnicas" pela
 // primeira vez (garantirVisitasData), então o sistema não busca essa aba a
-// mais em toda abertura/atualização das outras telas. conectarAba cria a
+// mais em toda abertura/atualização das outras telas. conectarAba_ cria a
 // planilha (com cabeçalhos) na primeira chamada, se ainda não existir.
 function getVisitasTecnicasData() {
   if (!isMembro_()) throw new Error('Acesso Negado.');
-  const aba = conectarAba(SHEET_VISITAS, CABECALHOS_VISITAS);
+  const aba = conectarAba_(SHEET_VISITAS, CABECALHOS_VISITAS);
   const CV  = colIdx_(CABECALHOS_VISITAS);
   const dados = aba.getDataRange().getValues();
   return dados.length > 1 ? dados.slice(1).map((r, i) => ({
@@ -1100,7 +1109,11 @@ function getVisitasTecnicasData() {
     id: String(r[CV('ID_Visitas_Tecnicas')]||''),
     objetivo: String(r[CV('Objetivo_Da_Visita')]||''),
     local: String(r[CV('Local_Visitado')]||''),
-    data: formatarDataParaUI(r[CV('Data_Da_Visita')]),
+    dataPrevista: formatarDataParaUI_(r[CV('Data_Prevista')]),
+    // Campo renomeado de "data" para "dataRealizada" (vocabulário do cliente,
+    // igual Capacitações) — a coluna física na planilha continua chamada
+    // 'Data_Da_Visita' (colIdx_ não lê o texto do cabeçalho, só a posição).
+    dataRealizada: formatarDataParaUI_(r[CV('Data_Da_Visita')]),
     status: String(r[CV('Status')]||'Planejada'),
     participantes: String(r[CV('Responsaveis(ID_Membro)')]||''),
     relatorio: String(r[CV('Relatorio_Anexo')]||'')
@@ -1118,8 +1131,8 @@ function buscarLogs(filtros) {
   if (!isMembro_()) throw new Error('Acesso Negado.');
   const LIMITE_REGISTROS = 20;
   filtros = filtros || {};
-  const aba = conectarAba(SHEET_LOGS, CABECALHOS_LOGS);
-  if (aba.getLastRow() <= 1) return { logs: [], pagina: 1, totalPaginas: 1, total: 0, acoesUnicas: [] };
+  const aba = conectarAba_(SHEET_LOGS, CABECALHOS_LOGS);
+  if (aba.getLastRow() <= 1) return { logs: [], pagina: 1, totalPaginas: 1, total: 0 };
 
   const CL = colIdx_(CABECALHOS_LOGS);
   
@@ -1142,11 +1155,13 @@ function buscarLogs(filtros) {
     _ordenacao: r[CL('Data_Hora')] instanceof Date ? r[CL('Data_Hora')].getTime() : 0
   }));
 
-  // Extrai as ações únicas ANTES de filtrar (para popular o dropdown no frontend na primeira carga)
-  const acoesUnicas = Array.from(new Set(linhas.map(l => l.acao).filter(a => a))).sort();
+  // Não há filtro de "Ação" na tela de Monitoramento: o <select id="f-log-acao">
+  // nunca existiu, então `filtros.acao` chegava sempre vazio e o array
+  // `acoesUnicas` era calculado e trafegado a cada busca sem nenhum consumidor.
+  // Removidos os dois em 2026-07-29 (auditoria item B-03). Para reintroduzir o
+  // recurso, basta voltar o Set das ações e o filtro — e criar o <select>.
 
   // Filtros no servidor
-  if (filtros.acao) linhas = linhas.filter(l => l.acao === filtros.acao);
   if (filtros.usuario) linhas = linhas.filter(l => l.usuario === filtros.usuario);
   
   if (filtros.dataIni || filtros.dataFim) {
@@ -1179,8 +1194,7 @@ function buscarLogs(filtros) {
     })),
     pagina: pagina,
     totalPaginas: totalPaginas,
-    total: total,
-    acoesUnicas: acoesUnicas
+    total: total
   };
 }
 
@@ -1236,8 +1250,8 @@ function diagnosticoAbas_() {
 function arquivarLogsAntigos_(mesesRetencao) {
   if (!mesesRetencao || mesesRetencao < 1) mesesRetencao = 12;
   const MIN_MANTER = 2000; // nunca mexe na janela que buscarLogs mostra
-  return comBloqueio(() => {
-    const abaLogs = safeGetSheet(SpreadsheetApp.getActiveSpreadsheet(), SHEET_LOGS);
+  return comBloqueio_(() => {
+    const abaLogs = safeGetSheet_(SpreadsheetApp.getActiveSpreadsheet(), SHEET_LOGS);
     if (!abaLogs || abaLogs.getLastRow() <= 1) return { arquivadas: 0, mensagem: 'Sem logs para arquivar.' };
 
     const CL = colIdx_(CABECALHOS_LOGS);
@@ -1268,14 +1282,14 @@ function arquivarLogsAntigos_(mesesRetencao) {
       return { arquivadas: 0, mensagem: 'Nenhum log anterior a ' + _dataLocalISO_(cutoff) + ' fora da janela de retenção.' };
 
     // 1) grava no arquivo PRIMEIRO e força a persistência antes de qualquer remoção
-    const abaArq = conectarAba(SHEET_LOGS_ARQUIVO, CABECALHOS_LOGS);
+    const abaArq = conectarAba_(SHEET_LOGS_ARQUIVO, CABECALHOS_LOGS);
     abaArq.getRange(abaArq.getLastRow() + 1, 1, registrosParaArquivo.length, CABECALHOS_LOGS.length).setValues(registrosParaArquivo);
     SpreadsheetApp.flush();
     // 2) só então remove da aba Logs, em blocos contíguos
     _deleteRowsBatch_(abaLogs, linhasParaArquivar);
     SpreadsheetApp.flush();
 
-    registrarLog('Manutenção', 'Logs', 'Arquivados ' + linhasParaArquivar.length +
+    registrarLog_('Manutenção', 'Logs', 'Arquivados ' + linhasParaArquivar.length +
       ' registro(s) anteriores a ' + _dataLocalISO_(cutoff) + ' para ' + SHEET_LOGS_ARQUIVO + '.');
     return { arquivadas: linhasParaArquivar.length,
       mensagem: 'Arquivados ' + linhasParaArquivar.length + ' registro(s) para ' + SHEET_LOGS_ARQUIVO + '.' };
@@ -1303,21 +1317,21 @@ function runTests_() {
     detalhes.push((lancou ? 'OK    ' : 'FALHA ') + nome + (lancou ? '' : ' | esperava exceção'));
   }
 
-  // calcularNivelRisco (P×I -> Crítico>=15 / Alto>=10 / Médio>=5 / Baixo)
-  check('nivel 25', 'Crítico', calcularNivelRisco(5, 5));
-  check('nivel 15 (5x3)', 'Crítico', calcularNivelRisco(5, 3));
-  check('nivel 15 (3x5)', 'Crítico', calcularNivelRisco(3, 5));
-  check('nivel 10', 'Alto', calcularNivelRisco(2, 5));
-  check('nivel 9', 'Médio', calcularNivelRisco(3, 3));
-  check('nivel 5', 'Médio', calcularNivelRisco(1, 5));
-  check('nivel 4', 'Baixo', calcularNivelRisco(2, 2));
-  check('nivel 1', 'Baixo', calcularNivelRisco(1, 1));
+  // calcularNivelRisco_ (P×I -> Crítico>=15 / Alto>=10 / Médio>=5 / Baixo)
+  check('nivel 25', 'Crítico', calcularNivelRisco_(5, 5));
+  check('nivel 15 (5x3)', 'Crítico', calcularNivelRisco_(5, 3));
+  check('nivel 15 (3x5)', 'Crítico', calcularNivelRisco_(3, 5));
+  check('nivel 10', 'Alto', calcularNivelRisco_(2, 5));
+  check('nivel 9', 'Médio', calcularNivelRisco_(3, 3));
+  check('nivel 5', 'Médio', calcularNivelRisco_(1, 5));
+  check('nivel 4', 'Baixo', calcularNivelRisco_(2, 2));
+  check('nivel 1', 'Baixo', calcularNivelRisco_(1, 1));
 
-  // calcularProximaRevisao (+1 ano)
-  check('proxRev normal', '2027-07-16', calcularProximaRevisao('2026-07-16'));
-  check('proxRev vazio', '', calcularProximaRevisao(''));
-  check('proxRev inválido', '', calcularProximaRevisao('xx'));
-  check('proxRev bissexto', '2025-03-01', calcularProximaRevisao('2024-02-29'));
+  // calcularProximaRevisao_ (+1 ano)
+  check('proxRev normal', '2027-07-16', calcularProximaRevisao_('2026-07-16'));
+  check('proxRev vazio', '', calcularProximaRevisao_(''));
+  check('proxRev inválido', '', calcularProximaRevisao_('xx'));
+  check('proxRev bissexto', '2025-03-01', calcularProximaRevisao_('2024-02-29'));
 
   // _dataLocalISO_
   check('dataLocalISO', '2026-01-05', _dataLocalISO_(new Date(2026, 0, 5)));
@@ -1335,10 +1349,10 @@ function runTests_() {
   check('colIdx Status', 1, C('Status'));
   checkThrows('colIdx coluna inexistente lança', function () { C('Inexistente'); });
 
-  // _statusPlano
-  check('plano concluído', 'Concluído', _statusPlano('2020-01-01', '2020-02-02'));
-  check('plano atrasado', 'Atrasado', _statusPlano('2000-01-01', ''));
-  check('plano em andamento', 'Em Andamento', _statusPlano('2999-01-01', ''));
+  // _statusPlano_
+  check('plano concluído', 'Concluído', _statusPlano_('2020-01-01', '2020-02-02'));
+  check('plano atrasado', 'Atrasado', _statusPlano_('2000-01-01', ''));
+  check('plano em andamento', 'Em Andamento', _statusPlano_('2999-01-01', ''));
 
   // calcularStatusCapacitacao_
   check('cap concluída', 'Concluída', calcularStatusCapacitacao_('2026-01-01', '2026-02-02'));
@@ -1364,11 +1378,14 @@ function runTests_() {
     for (const k in over) r[C(k)] = over[k];
     return r;
   }
-  check('arquivada Sim', true, _tarefaArquivada_(linha({ 'Arquivado': 'Sim' }), C, hoje));
-  check('arquivada Não (restaurada)', false, _tarefaArquivada_(linha({ 'Arquivado': 'Não', 'Status': 'Concluído', 'Data_Conclusao':'2000-01-01' }), C, hoje));
-  check('arquivada não-concluída', false, _tarefaArquivada_(linha({ 'Status': 'Em Andamento' }), C, hoje));
-  check('arquivada concluída antiga', true, _tarefaArquivada_(linha({ 'Status': 'Concluído', 'Data_Conclusao':'2000-01-01' }), C, hoje));
-  check('arquivada concluída hoje', false, _tarefaArquivada_(linha({ 'Status': 'Concluído', 'Data_Conclusao':_dataLocalISO_(hoje) }), C, hoje));
+  check('arquivada Sim', true, _tarefaArquivada_(linha({ 'Arquivado': 'Sim' }), C));
+  check('arquivada Não (restaurada)', false, _tarefaArquivada_(linha({ 'Arquivado': 'Não', 'Status': 'Concluído', 'Data_Conclusao':'2000-01-01' }), C));
+  check('arquivada não-concluída', false, _tarefaArquivada_(linha({ 'Status': 'Em Andamento' }), C));
+  // O arquivamento é 100% manual: 'Concluído' + Data_Conclusao antiga com a
+  // coluna Arquivado em branco NÃO arquiva sozinho (o teste esperava `true`,
+  // de quando havia arquivamento automático por data).
+  check('concluída antiga não arquiva sozinha', false, _tarefaArquivada_(linha({ 'Status': 'Concluído', 'Data_Conclusao':'2000-01-01' }), C));
+  check('arquivada concluída hoje', false, _tarefaArquivada_(linha({ 'Status': 'Concluído', 'Data_Conclusao':_dataLocalISO_(hoje) }), C));
 
   const resumo = { total: ok + fail, ok: ok, falhas: fail };
   console.log('=== runTests_ === ' + resumo.ok + '/' + resumo.total + ' OK, ' + resumo.falhas + ' falha(s)');
@@ -1474,10 +1491,10 @@ function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
       body: 'Segue em anexo o relatório gerado pelo Sistema de Gestão da Qualidade.\n\nEnvio automático — não responda.',
       attachments: [pdf]
     });
-    // Único ponto do sistema em que registrarLog roda fora de um comBloqueio
+    // Único ponto do sistema em que registrarLog_ roda fora de um comBloqueio_
     // já existente — protegido aqui para não colidir com outra escrita
     // concorrente na aba Logs (ver auditoria H03).
-    comBloqueio(() => registrarLog('Envio de PDF', titulo || 'Relatório', 'Destinatário: ' + destinatario));
+    comBloqueio_(() => registrarLog_('Envio de PDF', titulo || 'Relatório', 'Destinatário: ' + destinatario));
     return { sucesso: true, mensagem: 'Relatório enviado com sucesso!' };
   } catch (e) { return erroInterno_(e, 'enviarPdfDeHtml'); }
 }

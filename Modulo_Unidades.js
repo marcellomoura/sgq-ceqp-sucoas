@@ -10,8 +10,8 @@ function salvarUnidade(dados) {
     // 'Não possui'). Por isso NÃO passa por linkPermitido_ — ao contrário dos
     // links de Documentos. A tela só transforma em link clicável o que for
     // http(s) de verdade (ver renderUnidades); o resto aparece como texto.
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_UNITS, CABECALHOS_UNIDADES);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_UNITS, CABECALHOS_UNIDADES);
       const C = colIdx_(CABECALHOS_UNIDADES);
       const rows = aba.getDataRange().getValues();
       const siglaNova = dados.sigla.toString().trim().toUpperCase();
@@ -21,7 +21,7 @@ function salvarUnidade(dados) {
       }
       const id = getNextId_(aba, 'UN-');
       aba.appendRow([id, dados.unidade.trim(), dados.sigla.trim(), dados.email.trim(), (dados.linkDrive||'').trim(), 'Sim'].map(neutralizarFormula_));
-      registrarLog('Cadastro de Unidade', dados.sigla, 'Unidade incluída: ' + dados.unidade);
+      registrarLog_('Cadastro de Unidade', dados.sigla, 'Unidade incluída: ' + dados.unidade);
       return { sucesso: true, mensagem: 'Unidade cadastrada com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -37,8 +37,8 @@ function atualizarUnidade(dados) {
     if (!dados || !String(dados.unidade||'').trim() || !String(dados.sigla||'').trim() || !String(dados.email||'').trim())
       return { sucesso: false, mensagem: 'Preencha todos os campos da Unidade.' };
     // 'Link do Drive' aceita texto livre — ver salvarUnidade.
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_UNITS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_UNITS);
       const C = colIdx_(CABECALHOS_UNIDADES);
       const linha = parseInt(dados.idRow, 10);
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
@@ -62,7 +62,7 @@ function atualizarUnidade(dados) {
           return { sucesso: false, mensagem: "Já existe uma unidade com a sigla '" + dados.sigla + "'." };
       }
       aba.getRange(linha, C('Nome_Da_Unidade')+1, 1, 4).setValues([[dados.unidade, dados.sigla, dados.email, (dados.linkDrive||'').trim()].map(neutralizarFormula_)]);
-      registrarLog('Edição de Unidade', dados.sigla, 'Dados atualizados.');
+      registrarLog_('Edição de Unidade', dados.sigla, 'Dados atualizados.');
       return { sucesso: true, mensagem: 'Unidade atualizada com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }
@@ -71,8 +71,8 @@ function atualizarUnidade(dados) {
 function _definirStatusUnidade_(idRow, siglaEsperada, statusAtivo) {
   if (!isMembro_()) return { sucesso: false, mensagem: 'Acesso Negado.' };
   try {
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_UNITS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_UNITS);
       const C = colIdx_(CABECALHOS_UNIDADES);
       const linha = parseInt(idRow, 10);
       if (isNaN(linha) || linha < 2 || linha > aba.getLastRow())
@@ -83,7 +83,7 @@ function _definirStatusUnidade_(idRow, siglaEsperada, statusAtivo) {
         return { sucesso: false, mensagem: 'Lista desatualizada. Recarregue e tente novamente.' };
         
       aba.getRange(linha, C('Ativo')+1).setValue(statusAtivo ? 'Sim' : 'Não');
-      registrarLog(statusAtivo ? 'Reativação de Unidade' : 'Inativação de Unidade', sigla, statusAtivo ? 'Unidade reativada.' : 'Unidade inativada.');
+      registrarLog_(statusAtivo ? 'Reativação de Unidade' : 'Inativação de Unidade', sigla, statusAtivo ? 'Unidade reativada.' : 'Unidade inativada.');
       return { sucesso: true, mensagem: statusAtivo ? 'Unidade reativada com sucesso!' : 'Unidade inativada com sucesso!' };
     });
   } catch(e) { return erroInterno_(e); }

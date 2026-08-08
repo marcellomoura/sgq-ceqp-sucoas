@@ -56,17 +56,21 @@ function renderVisitasTecnicas(resetPage = false) {
     visitas = visitas.filter(v => v.participantes && parseIdsResponsaveis(v.participantes).includes(String(filtroMembro)));
   }
 
+  // Mesma convenção de Capacitações: filtra pela data realizada, caindo para
+  // a prevista quando ainda não houve realização — assim uma visita
+  // planejada não some do filtro de ano/período só por não ter acontecido.
   const vtYear = ($id('vtYearFilter')||{value:''}).value;
-  if (vtYear) visitas = visitas.filter(v => v.data && String(v.data).substring(0,4) === vtYear);
+  if (vtYear) visitas = visitas.filter(v => { const d = v.dataRealizada || v.dataPrevista; return d && String(d).substring(0,4) === vtYear; });
 
   const ini = $id('f-vt-data-ini') ? $id('f-vt-data-ini').value : '';
   const fim = $id('f-vt-data-fim') ? $id('f-vt-data-fim').value : '';
 
   if (ini || fim) {
     visitas = visitas.filter(v => {
-      if (!v.data) return false;
-      if (ini && v.data < ini) return false;
-      if (fim && v.data > fim) return false;
+      const d = v.dataRealizada || v.dataPrevista;
+      if (!d) return false;
+      if (ini && d < ini) return false;
+      if (fim && d > fim) return false;
       return true;
     });
   }
@@ -98,7 +102,10 @@ function renderVisitasTecnicas(resetPage = false) {
   const fmtData = s => (s && s !== '-') ? s.split('-').reverse().join('/') : '-';
 
   tbody.innerHTML = exibidas.map(({v, i}) => {
-    const status = v.data ? 'Realizada' : 'Planejada';
+    // Recalculado no cliente (não confia em v.status vindo do servidor): o
+    // merge otimista pós-salvar (tratarRespostaVt) não recomputa status, e
+    // sem isto a tela mostraria o status antigo até a próxima sincronização.
+    const status = v.dataRealizada ? 'Realizada' : 'Planejada';
 
     const relF = prefixHttp(v.relatorio);
     const relatorioLink = relF ? linkA(relF, 'Acessar', null, true) : '<span class="value-empty-dash">-</span>';
@@ -109,9 +116,10 @@ function renderVisitasTecnicas(resetPage = false) {
     return `<div class="grid-row-hover vt-row">
       <div class="cap-c-titulo">${esc(v.objetivo)}</div>
       <div class="cap-c-sec">${esc(v.local || '-')}</div>
-      <div class="cap-c-sec">${fmtData(v.data)}</div>
+      <div class="cap-c-sec">${fmtData(v.dataPrevista)}</div>
+      <div class="cap-c-sec">${fmtData(v.dataRealizada)}</div>
       <div class="cap-c-center">${badge(status)}</div>
-      <div class="cap-c-center font-12 text-muted">${nomesLimit}</div>
+      <div class="font-12 text-muted">${nomesLimit}</div>
       <div class="cap-c-mat">${relatorioLink}</div>
       <div class="no-print cap-c-acoes">
         ${iconBtn('edit','edit-visita','Editar Visita Técnica',`data-idx="${i}"`)}${iconBtn('del','del-visita','Excluir Visita Técnica',`data-idx="${i}"`)}
@@ -136,7 +144,7 @@ function renderGraficosVisitas(fid) {
   }
   const yid = ($id('dashYearFilter')||{value:''}).value;
   if (yid) {
-    visitas = visitas.filter(v => v.data && String(v.data).substring(0,4) === String(yid));
+    visitas = visitas.filter(v => { const d = v.dataRealizada || v.dataPrevista; return d && String(d).substring(0,4) === String(yid); });
   }
 
   let pMes = {};
@@ -147,10 +155,13 @@ function renderGraficosVisitas(fid) {
   let qtdPlanejadas = 0, qtdRealizadas = 0;
 
   visitas.forEach(v => {
-    if (v.data) qtdRealizadas++; else qtdPlanejadas++;
+    if (v.dataRealizada) qtdRealizadas++; else qtdPlanejadas++;
 
-    if (v.data) {
-      const p = v.data.split('-');
+    // Mês — mesma queda para a prevista de renderVisitasTecnicas/KPIs: uma
+    // visita ainda não realizada entra no mês em que está planejada.
+    const dataRef = v.dataRealizada || v.dataPrevista;
+    if (dataRef) {
+      const p = dataRef.split('-');
       if (p.length === 3) {
         const mesAno = p[1] + '/' + p[0]; // MM/YYYY
         pMes[mesAno] = (pMes[mesAno] || 0) + 1;
@@ -266,10 +277,10 @@ function renderGraficosVisitas(fid) {
 function renderKpisVisitas() {
   let visitas = Array.isArray(state.visitas) ? state.visitas : [];
   const vtYear = ($id('vtYearFilter')||{value:''}).value;
-  if (vtYear) visitas = visitas.filter(v => v.data && String(v.data).substring(0,4) === vtYear);
+  if (vtYear) visitas = visitas.filter(v => { const d = v.dataRealizada || v.dataPrevista; return d && String(d).substring(0,4) === vtYear; });
 
   let planejadas = 0, realizadas = 0;
-  visitas.forEach(v => { v.data ? realizadas++ : planejadas++; });
+  visitas.forEach(v => { v.dataRealizada ? realizadas++ : planejadas++; });
 
   $id('kpi-vt-total').innerText      = visitas.length;
   $id('kpi-vt-planejadas').innerText = planejadas;
@@ -353,7 +364,8 @@ function abrirModalVisitaNova() {
   vtIdOriginal             = '';
   $id('vt-objetivo').value = '';
   $id('vt-local').value    = '';
-  $id('vt-data').value     = '';
+  $id('vt-data-prevista').value  = '';
+  $id('vt-data-realizada').value = '';
   $id('vt-relatorio').value = '';
   populateVtParticipantes([]);
 
@@ -366,7 +378,8 @@ function abrirEditarVisita(obj) {
   vtIdOriginal             = obj.id;
   $id('vt-objetivo').value = obj.objetivo;
   $id('vt-local').value    = obj.local || '';
-  $id('vt-data').value     = obj.data || '';
+  $id('vt-data-prevista').value  = obj.dataPrevista  || '';
+  $id('vt-data-realizada').value = obj.dataRealizada || '';
   $id('vt-relatorio').value = obj.relatorio || '';
   populateVtParticipantes(obj.participantes ? parseIdsResponsaveis(obj.participantes) : []);
 
@@ -383,7 +396,8 @@ function salvarFormVisita() {
     idEsperado:    vtIdOriginal,
     objetivo:      $id('vt-objetivo').value.trim(),
     local:         $id('vt-local').value.trim(),
-    data:          $id('vt-data').value,
+    dataPrevista:  $id('vt-data-prevista').value,
+    dataRealizada: $id('vt-data-realizada').value,
     relatorio:     $id('vt-relatorio').value.trim(),
     participantes: getIdsParticipantesSelecionadosVt()
   };

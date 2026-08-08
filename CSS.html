@@ -463,7 +463,6 @@
   .mt-15 { margin-top: 15px; }
   .mt-18 { margin-top: 18px; }
   .mt-24 { margin-top: 24px; }
-  .px-28 { padding: 0 28px !important; }
   .pb-28 { padding-bottom: 28px !important; }
   .w-100 { width: 100%; }
   .w-100px { width: 100px !important; }
@@ -484,6 +483,7 @@
   .overflow-hidden { overflow: hidden; }
   .min-w-1500 { min-width: 1500px; }
   .min-w-1400 { min-width: 1400px; }
+  .min-w-1250 { min-width: 1250px; }
   .min-w-1150 { min-width: 1150px; }
   .min-w-1100 { min-width: 1100px; }
   .min-w-1000 { min-width: 1000px; }
@@ -981,7 +981,7 @@
   /* Lista de Membros (Kanban) — migrado de inline (Tarefa 3, parte 5). #111827 e
      #f3f4f6 (borda) literais. Opacidade de inativo via classe modificadora (linha inteira). */
   .membro-row {
-    grid-template-columns: 2fr 1.5fr 2fr 2fr 100px;
+    grid-template-columns: 2fr 1fr 1.5fr 2fr 2fr 100px;
   }
   .membro-row--inativa { opacity: 0.6; }
   .member-c-name { font-weight: 600; display: flex; align-items: center; gap: 12px; }
@@ -1026,7 +1026,7 @@
      período (destaque "em andamento") seguem inline (condicionais/dinâmicas). #111827 literal.
      Reaproveita .membro-row e .escala-row (mesmo layout de grid da lista de Membros/Escala). */
   .vt-row {
-    grid-template-columns: minmax(0,2fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.8fr);
+    grid-template-columns: minmax(0,2fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,0.8fr);
   }
   .ferias-row {
     grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1.5fr 70px;
@@ -1035,17 +1035,20 @@
   .ferias-c-nome { font-weight: 600; font-size: 13px; color: var(--text-main); }
   .ferias-c-role { font-size: 11px; color: var(--text-secondary); }
   .ferias-c-acoes { display: flex; justify-content: flex-start; }
-  /* Kanban Arquivados (lista) — SÓ o container vira classe. As CÉLULAS ficam inline
-     de propósito: _gridRowsParaPdf copia o style inline de cada célula para o <td>
-     do PDF; convertê-las deixaria as células sem estilo no PDF. (Tarefa 3, parte 6.) */
+  /* Kanban Arquivados (lista) — SÓ o container vira classe. As CÉLULAS são
+     estilizadas por CLASSE (.text-center etc.), e _gridRowsParaPdf copia a
+     CLASSE de cada célula para o <td> do PDF — nenhuma usa style inline. */
   .arq-row {
     grid-template-columns: minmax(0,2fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 70px;
   }
   /* Matriz de Riscos (lista #lista-riscos) — SÓ o container vira classe. As CÉLULAS
-     ficam inline: _linhasMatrizParaPdf_ copia o style inline de cada célula para o
-     <td> do PDF. #111827 literal. renderAcompanhamento e renderRiscosArquivados NÃO
-     foram migrados de propósito (usam clone.innerHTML → tudo vai verbatim ao PDF).
-     (Tarefa 3, parte 7.) */
+     são estilizadas por CLASSE, e o PDF passa por _gridRowsParaPdf('lista-riscos'),
+     que copia a CLASSE de cada célula para o <td>. (Havia um
+     _linhasMatrizParaPdf_ duplicado que copiava style inline — sempre ausente —
+     e descartava as classes, o que zerava a formatação no PDF; removido em
+     2026-07-29, auditoria item M-04.) renderAcompanhamento e
+     renderRiscosArquivados NÃO foram migrados de propósito (usam
+     clone.innerHTML → tudo vai verbatim ao PDF). */
   .risco-row {
     grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 110px;
   }
@@ -1126,7 +1129,7 @@
   .msg-error { display: flex; justify-content: center; align-items: center; width: 100%; color: var(--danger); padding: 60px 20px 36px; font-weight: 600; font-size: var(--fs-base); text-align: center; position: sticky; left: 0; }
 
   /* ===== MEMBROS ===== */
-  .member-role-badge { background: var(--primary-light); color: var(--primary-text); padding: 3px 9px; border-radius: var(--radius-xs); font-size: var(--fs-xs); font-weight: 600; }
+  .member-role-badge { color: var(--primary-text); font-size: var(--fs-xs); font-weight: 600; }
 
   /* ===== KPIs ===== */
   .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
@@ -1226,9 +1229,6 @@
   .btn-pdf { display: flex; align-items: center; gap: 8px; padding: 0 18px; height: 36px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; background: var(--text-main); color: var(--text-inverse); cursor: pointer; transition: background var(--transition-fast), transform var(--transition-fast); white-space: nowrap; font-family: inherit; }
   .btn-pdf:hover { background: var(--primary-hover); }
   .btn-pdf:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-pdf-email { display: flex; align-items: center; gap: 8px; padding: 0 18px; height: 36px; border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; background: var(--success); color: var(--text-inverse); cursor: pointer; transition: background var(--transition-fast); white-space: nowrap; font-family: inherit; }
-  .btn-pdf-email:hover { background: var(--success-text); }
-  .btn-pdf-email:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-action-icon { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: none; border-radius: var(--radius-sm); background: var(--danger); color: var(--text-inverse); cursor: pointer; transition: background var(--transition-fast); flex-shrink: 0; outline: none; }
   .btn-action-icon:hover { background: var(--danger-text); }
   .btn-action-icon.email { background: var(--success); }
@@ -1450,7 +1450,6 @@
   .acomp-field-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
   .acomp-data { width: 130px !important; height: 32px; padding: 0 8px !important; }
   .acomp-sei { width: 150px !important; height: 32px; padding: 0 8px !important; }
-  .required-mark { color: var(--danger); }
 
   /* ===== RESPONSIVO ===== */
   @media (max-width: 768px) {

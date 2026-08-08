@@ -137,10 +137,13 @@
           
           <div class="flex-row items-center gap-16">
             <div class="flex-row items-center gap-8">
-              <select id="f-acomp-unidade" class="filter-select" onchange="renderAcompanhamento()">
+              <!-- Sem onchange inline: a delegação de 'change' em JS_Utilitarios
+                   já chama renderAcompanhamento() para estes dois filtros. Ter os
+                   dois fazia o render (o mais pesado do módulo) rodar 2x por filtro. -->
+              <select id="f-acomp-unidade" class="filter-select">
                 <option value="">Todas Unidades</option>
               </select>
-              <select id="f-acomp-status" class="filter-select" onchange="renderAcompanhamento()">
+              <select id="f-acomp-status" class="filter-select">
                 <option value="">Todos Status</option>
                 <option>Concluído</option>
                 <option>Em Andamento</option>
@@ -205,9 +208,17 @@
               </div>
             </div>
           </div>
-          <div class="list-scroll">
-            <div id="container-planos" class="list-body list-body--spaced">
-              <div class="msg-empty">A carregar...</div>
+          <!-- .list-scroll.x + .list-scroll-inner.min-w-* é o mesmo padrão das
+               outras 10 listas largas do sistema. Sem ele, os 9 campos do 5W2H
+               (mais o padding-right de 120px das ações) eram comprimidos a ~70px
+               cada em telas estreitas e os rótulos quebravam em 3 linhas.
+               O wrapper fica FORA de #container-planos de propósito: o PDF de
+               Acompanhamento clona esse id, então a árvore interna não muda. -->
+          <div class="list-scroll x">
+            <div class="list-scroll-inner min-w-1250">
+              <div id="container-planos" class="list-body list-body--spaced">
+                <div class="msg-empty">A carregar...</div>
+              </div>
             </div>
           </div>
         </div>
@@ -329,8 +340,6 @@
       <p id="label-risco-editar" class="modal-ref-label"></p>
       <input type="hidden" id="er-id">
       <input type="hidden" id="er-id-row">
-      <input type="hidden" id="er-prob-original">
-      <input type="hidden" id="er-imp-original">
       <div class="form-row">
         <div class="flex-1"><label class="field-label" for="er-macro">Macroetapa</label><select id="er-macro"
             class="field-select">

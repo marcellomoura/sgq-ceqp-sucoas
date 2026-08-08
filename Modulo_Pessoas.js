@@ -21,8 +21,8 @@ function salvarEscala(dados) {
           return { sucesso: false, mensagem: 'O horário não pode conter vírgula.' };
       }
     }
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_MEMBERS, CABECALHOS_MEMBROS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_MEMBERS, CABECALHOS_MEMBROS);
       const C = colIdx_(CABECALHOS_MEMBROS);
       const rows = aba.getDataRange().getValues();
       const membroId = String(dados.membroId || '');
@@ -38,7 +38,7 @@ function salvarEscala(dados) {
             comboStr.join(', '),
             dados.diaPresencial || ''
           ].map(neutralizarFormula_)]);
-          registrarLog('Edição de Escala', String(rows[i][C('Nome')]), 'Escala semanal atualizada.');
+          registrarLog_('Edição de Escala', String(rows[i][C('Nome')]), 'Escala semanal atualizada.');
           return { sucesso: true };
         }
       }
@@ -59,7 +59,7 @@ function salvarEscala(dados) {
 // segundo plano junto com 6 outras abas; qualquer uma das duas faria
 // Afastamentos pesar num caminho que não é o dela.
 function _lerAfastamentos_() {
-  const aba = conectarAba(SHEET_AFASTAMENTOS, CABECALHOS_AFASTAMENTOS);
+  const aba = conectarAba_(SHEET_AFASTAMENTOS, CABECALHOS_AFASTAMENTOS);
   const CA = colIdx_(CABECALHOS_AFASTAMENTOS);
   const rows = aba.getDataRange().getValues();
   if (rows.length <= 1) return [];
@@ -135,8 +135,8 @@ function salvarAfastamento(dados) {
   try {
     if (!dados.membroId || !dados.ano)
       return { sucesso: false, mensagem: 'Membro e ano são obrigatórios.' };
-    return comBloqueio(() => {
-      const aba = conectarAba(SHEET_AFASTAMENTOS, CABECALHOS_AFASTAMENTOS);
+    return comBloqueio_(() => {
+      const aba = conectarAba_(SHEET_AFASTAMENTOS, CABECALHOS_AFASTAMENTOS);
       const CA = colIdx_(CABECALHOS_AFASTAMENTOS);
       const rows = aba.getDataRange().getValues();
       const periodo = p => p ? p.inicio + ' a ' + p.fim : '';
@@ -154,14 +154,14 @@ function salvarAfastamento(dados) {
       for (let i = 1; i < rows.length; i++) {
         if (String(rows[i][CA('ID_Membro')]) === String(dados.membroId) && String(rows[i][CA('Ano')]) === String(dados.ano)) {
           aba.getRange(i + 1, CA('Ferias_1')+1, 1, 7).setValues([valores.map(neutralizarFormula_)]);
-          registrarLog('Edição de Afastamentos', dados.membroNome + ' (' + dados.ano + ')', 'Afastamentos atualizados.');
+          registrarLog_('Edição de Afastamentos', dados.membroNome + ' (' + dados.ano + ')', 'Afastamentos atualizados.');
           return { sucesso: true };
         }
       }
       // Não existia registro deste membro para este ano — cria um novo
       const id = getNextId_(aba, 'AF-');
       aba.appendRow([id, dados.ano, dados.membroId, dados.membroNome].concat(valores).map(neutralizarFormula_));
-      registrarLog('Cadastro de Afastamentos', dados.membroNome + ' (' + dados.ano + ')', 'Novo registro anual criado.');
+      registrarLog_('Cadastro de Afastamentos', dados.membroNome + ' (' + dados.ano + ')', 'Novo registro anual criado.');
       return { sucesso: true };
     });
   } catch(e) { return erroInterno_(e); }
