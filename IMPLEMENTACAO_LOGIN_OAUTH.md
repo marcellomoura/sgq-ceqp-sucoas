@@ -4,7 +4,9 @@
 >
 > Serve a dois usos: as **§§1–19** são o registro do que foi feito e **por quê** (motivação, arquitetura, decisões, segurança, limites); a **[§20](#20-guia-de-replicação-em-outro-projeto)** é o guia prático de **como refazer** isto em outro projeto Apps Script, na ordem certa e com o que precisa ser adaptado.
 >
-> **Data:** 2026-08-07. **Branch:** `auditoria/execucao-backlog-2026-07-27`.
+> **Origem:** escrito em 2026-08-07 durante a implementação no projeto de teste (script `1UkE2Oty…`).
+>
+> **Aplicado em produção em 2026-08-08** (script `1VHG3zsv…`, container-bound à planilha de produção), seguindo o roteiro da §20. Commits `2889222` + merge `c457629` no `master`. O que divergiu da receita está registrado na **[§21](#21-registro-da-aplicação-em-produção-2026-08-08)**.
 
 ---
 
@@ -30,6 +32,7 @@
 18. [Pendências conhecidas](#18-pendências-conhecidas)
 19. [Pós-migração: a autorização OAuth antiga e o compartilhamento da planilha](#19-pós-migração-a-autorização-oauth-antiga-e-o-compartilhamento-da-planilha)
 20. [**Guia de replicação em outro projeto**](#20-guia-de-replicação-em-outro-projeto)
+21. [Registro da aplicação em produção (2026-08-08)](#21-registro-da-aplicação-em-produção-2026-08-08)
 
 ---
 
@@ -590,7 +593,7 @@ Voltar, na mesma tela de "Gerenciar implantações", para a **versão anterior**
 ## 18. Pendências conhecidas
 
 1. **"Sair" para a conta-sistema (dono)** — avaliado e conscientemente não implementado: um logout real exigiria encerrar a sessão Google inteira do navegador (não só do SGQ), o que é uma ação mais pesada e com efeitos colaterais (desloga Gmail, Drive etc. na mesma aba). Recomendação atual: não usar a conta-sistema em computadores compartilhados; se necessário, tratar como decisão explícita do usuário antes de implementar.
-2. **Nenhuma das mudanças acima foi testada pelo assistente** (Apps Script não tem servidor local) — toda validação foi feita pelo usuário a cada publicação de nova versão.
+2. **Nenhuma das mudanças acima foi testada pelo assistente** (Apps Script não tem servidor local) — toda validação foi feita pelo usuário a cada publicação de nova versão. Em produção, a validação da §20.7 foi concluída em 2026-08-08 (ver §21).
 
 ### 18.1 Limites operacionais (não são bugs, mas convém conhecer)
 
@@ -843,3 +846,48 @@ Se o passo 2 falhar com `redirect_uri_mismatch`, é quase sempre divergência en
 | Login pede duas vezes | `state` expirado (TTL curto) — §8.2 |
 | Botão Sair não aparece | Está correto para a **conta-dona**: ela tem `Session` nativo, logo não há sessão OAuth a encerrar — §10.1 |
 | Membro legítimo vê "não cadastrado" | Falha transitória de leitura da fonte de membros — o contrato `indisponivel` da §20.6 existe para isso |
+
+---
+
+## 21. Registro da aplicação em produção (2026-08-08)
+
+A §20 foi seguida para migrar o sistema de produção (script `1VHG3zsv…`). Esta seção registra **o que a receita não previa** — o valor está no que divergiu, não no que funcionou como escrito.
+
+### 21.1 Correção nova: o rate-limit de PDF virava global
+
+Não veio da implementação de referência; foi encontrada auditando este projeto **antes** de portar o código, e a mesma falha existe no projeto de teste.
+
+`_limitePdfExcedido_` usava `CacheService.getUserCache()` para os limites de 3s (download) e 10s (envio por e-mail) de relatórios. Sob `USER_ACCESSING` isso era corretamente **por membro**. Sob `USER_DEPLOYING`, o "usuário" do cache passa a ser **sempre a conta-sistema**, para todos — o limite viraria **global**: um membro baixando um relatório bloquearia todos os demais durante a janela inteira.
+
+**Correção:** `CacheService.getScriptCache()` com chave derivada de `usuarioAtual_()` (`'gerar_pdf_rate_' + email`), preservando a semântica por usuário. Como `usuarioAtual_()` já enxerga a sessão OAuth (§8.4), a identidade certa chega sem nenhuma outra mudança.
+
+**Lição para replicações:** procure todo `getUserCache()`/`getUserProperties()` antes de virar o `executeAs` — qualquer coisa escopada "por usuário" pelo Google silenciosamente vira "por sistema". Este projeto tinha uma só ocorrência; outro pode ter várias.
+
+### 21.2 O que a §20.6 mandava adaptar e aqui não precisou
+
+O projeto de origem e o de produção são o mesmo sistema, então quatro dos cinco itens de adaptação saíram de graça: a fonte de membros (`membrosParaAuth_`) já devolvia o formato esperado, os textos de marca já eram os certos, os tokens de CSS existiam em claro e escuro, e a chave de tema já era `sgq-tema`. **Numa replicação de verdade, não conte com isso** — a §20.6 continua sendo onde a maioria das replicações quebra.
+
+### 21.3 Cuidado que a §20.3 não menciona: o projeto de origem pode estar desatualizado
+
+A §20.3 diz "copie os 2 arquivos novos na íntegra", o que valeu. Mas o projeto de teste tinha **também** `Código.js`, `Index.html` e os `JS_*.html`, e a tentação de copiá-los junto era real — o `Código.js` e o `Index.html` divergiam **só** em auth e puderam ser copiados, mas `JS_Kanban.html` (1.724 linhas), `JS_VisitasTecnicas.html` (904), `Modulo_Capacitacoes.js` e `Modulo_VisitasTecnicas.js` (~200 cada) divergiam por **evolução do produto**: o teste partira de um snapshot de 30/07 e o master seguira adiante.
+
+Copiá-los teria revertido funcionalidades em produção, e a regressão seria **silenciosa** — o app abriria normalmente. A verificação que evitou isso foi medir a divergência arquivo a arquivo antes de qualquer cópia, e conferir que o nº de linhas alteradas em cada `JS_*` era exatamente **o dobro** da contagem de `google.script.run` (uma removida + uma adicionada por ocorrência): qualquer excedente significaria mudança não relacionada.
+
+### 21.4 Ordem executada, com um desvio
+
+A §20.2 prevê publicar primeiro em `USER_ACCESSING` (regressão isolada) e só depois virar o `executeAs`. Na prática os dois passos foram feitos juntos: a implantação já foi criada com "Executar como: Eu". Consequência assumida: se um módulo falhasse, não haveria como distinguir de imediato se a causa foram as 49 substituições `srv()` ou a troca de identidade. Não houve falha, mas **a separação da §20.2 continua sendo a recomendação** — ela existe para tornar o diagnóstico trivial, não por formalismo.
+
+Um efeito colateral desse desvio: por um intervalo, a implantação rodava em `USER_DEPLOYING` enquanto o `appsscript.json` ainda declarava `USER_ACCESSING`. O app funcionava (vale o que está na implantação), mas uma "Nova versão" futura teria revertido o modelo de execução **sem aviso**, reabrindo o P1 em silêncio. Corrigido alinhando o manifesto antes da publicação final.
+
+### 21.5 Estado final
+
+| Item | Situação |
+|---|---|
+| `executeAs` no manifesto e na implantação | `USER_DEPLOYING` nos dois |
+| Tela de consentimento | Publicada ("Em produção") — sem o teto de 100 usuários da §5.3 |
+| Acesso do web app | "Qualquer pessoa com Conta do Google" (`access: ANYONE`) |
+| `redirect_uri` cadastrado no Client ID | Sim, conferido por `?page=auth_diag` |
+| Validação da §20.7 com conta de membro | Concluída |
+| **Compartilhamento da planilha no Drive (§19.2)** | **É o que fecha o P1 — confirmar que os membros foram removidos** |
+
+> ⚠️ O último item é o que dá sentido a tudo isto. A migração **habilita** a remoção do acesso à planilha (os membros não precisam mais dele); ela não a executa. Enquanto os membros continuarem com acesso de edição no Drive, o P1 permanece aberto exatamente como antes — o código passou a ser irrelevante para esse risco específico.

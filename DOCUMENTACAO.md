@@ -137,12 +137,14 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 │  JS_Utilitarios.html ← núcleo: state, navegação, delegação   │
 │  JS_Kanban / JS_Riscos / JS_Pessoas / JS_Documentos /        │
 │  JS_Unidades / JS_Capacitacoes  ← controladores por domínio  │
+│  JS_Auth_Cliente.html ← porteiro de sessão, srv(), overlay   │
 └───────────────▲───────────────────────────────┬─────────────┘
-                │ google.script.run (assíncrono) │
+                │ srv() → dispatch(sid, fn, args)│
 ┌───────────────┴───────────────────────────────▼─────────────┐
 │ SERVIDOR (Apps Script V8)                                    │
-│  Código.js  ← doGet, config, utils, AUTH, acesso a dados,    │
-│               endpoints de leitura, PDF, logs                 │
+│  Código.js  ← doGet, servirApp_, config, utils, AUTH,        │
+│               acesso a dados, endpoints de leitura, PDF, logs │
+│  Auth_OAuth.js ← login OAuth, sessão, dispatch (ver §9)      │
 │  Modulo_Kanban / _Pessoas / _Unidades / _Documentos /        │
 │  _Riscos / _Capacitacoes  ← serviços de escrita por domínio  │
 └───────────────────────────────┬─────────────────────────────┘
@@ -155,7 +157,8 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 
 ### 2.3 Fluxo de execução (inicialização)
 
-1. `doGet()` → `isMembro_()` (bloqueia não-membros com "Acesso Negado") → renderiza `Index` template, que faz `include_()` de CSS, das 8 `View_*` (telas+modais por módulo) e dos 7 JS. O servidor concatena tudo num único HTML antes de enviar ao navegador — a separação em arquivos não muda o DOM final nem adiciona round-trips (ver §8.8).
+0. **Login** (desde 2026-08-08, sob `executeAs: USER_DEPLOYING`): o `Session` nativo vem vazio para todo mundo que não seja a conta-sistema, então `doGet(e)` serve a **casca** do app e quem decide mostrar o login é o porteiro no cliente (`JS_Auth_Cliente.html`). Após o "Entrar com Google", o servidor cria uma sessão de 6h no `CacheService` e injeta o `sid` na página. Detalhes completos em [`IMPLEMENTACAO_LOGIN_OAUTH.md`](IMPLEMENTACAO_LOGIN_OAUTH.md).
+1. `doGet(e)` → rotas de auth (`?page=auth_diag`, retorno do OAuth) → `isMembro_()` → `servirApp_()` renderiza o `Index` template, que faz `include_()` de CSS, das 8 `View_*` (telas+modais por módulo) e dos 8 JS (`JS_Auth_Cliente` primeiro — é quem define `srv()`). O servidor concatena tudo num único HTML antes de enviar ao navegador — a separação em arquivos não muda o DOM final nem adiciona round-trips (ver §8.8).
 2. `DOMContentLoaded` (JS_Utilitarios): abre o grupo Tarefas e ativa o Kanban **imediatamente** (UI aparece sem esperar dados).
 3. **Duas chamadas paralelas** ao servidor:
    - `getKanbanData()` → Tarefas + Membros (etapa 1). No sucesso: `renderTasks()`, re-renderiza a aba ativa se necessário, e agenda (`setTimeout 400ms`) o pré-carregamento do "resto".
@@ -172,7 +175,9 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 
 ## 3. Mapa de Dependências
 
-### 3.1 Endpoints servidor ← chamadas do cliente (`google.script.run`)
+### 3.1 Endpoints servidor ← chamadas do cliente (`srv()`)
+
+> Desde 2026-08-08 o cliente chama `srv()`, não `google.script.run` diretamente. Em modo OAuth, `srv()` roteia tudo por `dispatch(sid, nomeDaFuncao, args)` — um endpoint único que valida a sessão, publica a identidade e executa a função-alvo. A tabela abaixo continua listando as funções de destino (o que `srv().minhaFuncao(...)` resolve), que não mudaram. O único arquivo que ainda usa `google.script.run` é o `JS_Auth_Cliente.html`, por dentro do próprio `srv()`.
 
 | Endpoint servidor | Arquivo | Chamado por (cliente) |
 |---|---|---|
@@ -210,7 +215,7 @@ Sistema de gestão da qualidade da **Comissão Especial de Qualidade e Padroniza
 ### 3.4 Funções órfãs / código morto
 - **Nenhum item aberto** (última varredura: 2026-07-29). Histórico: `histJson` e o endpoint latente `excluirUnidade`/`contarReferenciasUnidade_` removidos em 2026-07-22; em 2026-07-29 saíram `_indicePlanosPorRisco()`, `_linhasMatrizParaPdf_` (duplicata quebrada de `_gridRowsParaPdf`), a variável `planos` nunca lida, os hidden inputs `#er-prob-original`/`#er-imp-original`, as classes `.px-28`, `.btn-pdf-email` e `.required-mark`, e o `acoesUnicas` sem consumidor — ver §8.27.
 - Não há funções GS expostas sem chamador (todos os endpoints são invocados pelo cliente).
-- ⚠️ **Cuidado ao criar helpers de servidor:** no Apps Script, função cujo nome **não termina** em `_` é chamável por `google.script.run`. Prefixo não basta — `_reavaliarBaixa` e `_statusPlano` eram endpoints públicos sem guarda por causa disso (§8.27, M-02).
+- ⚠️ **Cuidado ao criar helpers de servidor:** no Apps Script, função cujo nome **não termina** em `_` é chamável por `google.script.run`. Prefixo não basta — `_reavaliarBaixa` e `_statusPlano` eram endpoints públicos sem guarda por causa disso (§8.27, M-02). O `dispatch` (2026-08-08) recusa nomes terminados em `_`, mas **isso não substitui a guarda**: `google.script.run` continua existindo no navegador e alcança qualquer função pública sem passar pelo `dispatch`. Toda função pública precisa começar com `isMembro_()`.
 
 ### 3.5 Índice de tags de auditoria (rastreabilidade nos comentários)
 Alguns comentários do código carregam tags curtas de auditorias anteriores. O prefixo indica a série de auditoria de origem; abaixo, o que cada tag ainda presente no código significa (índice criado em 2026-07-22):
