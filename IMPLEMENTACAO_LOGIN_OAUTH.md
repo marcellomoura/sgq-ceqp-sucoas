@@ -622,7 +622,9 @@ Nenhuma reautorização é necessária para o app continuar funcionando — a au
 
 A autorização antiga, por si só, **não é o que dava acesso irrestrito** à planilha — quem dava era o **compartilhamento da planilha no Google Drive** (necessário para o `USER_ACCESSING` funcionar). Se a planilha continuar compartilhada com os membros no Drive, eles continuam conseguindo abri-la direto — **independente** de qualquer autorização OAuth, antiga ou nova.
 
-**Ação decisiva, ainda pendente de confirmação, e que só o administrador consegue fazer:** revisar o compartilhamento da planilha no Drive e remover o acesso dos membros, deixando só a conta-sistema (e, se necessário, 1–2 administradores). Esta é uma configuração do Google Drive, fora do escopo do código — não verificável nem alterável por aqui.
+**Ação decisiva, que só o administrador consegue fazer:** revisar o compartilhamento da planilha no Drive e remover o acesso dos membros, deixando só a conta-sistema (e, se necessário, 1–2 administradores). Esta é uma configuração do Google Drive, fora do escopo do código — não verificável nem alterável por aqui.
+
+> ✅ **Executada em 2026-08-08.** Com isso o P1 está fechado de fato, e não apenas habilitado a ser fechado. Ver §21.5 e §21.6.
 
 ### 19.3 Autorização antiga: risco condicional, não ativo
 
@@ -888,6 +890,13 @@ Um efeito colateral desse desvio: por um intervalo, a implantação rodava em `U
 | Acesso do web app | "Qualquer pessoa com Conta do Google" (`access: ANYONE`) |
 | `redirect_uri` cadastrado no Client ID | Sim, conferido por `?page=auth_diag` |
 | Validação da §20.7 com conta de membro | Concluída |
-| **Compartilhamento da planilha no Drive (§19.2)** | **É o que fecha o P1 — confirmar que os membros foram removidos** |
+| **Compartilhamento da planilha no Drive (§19.2)** | **Removido em 2026-08-08 — P1 FECHADO** |
 
-> ⚠️ O último item é o que dá sentido a tudo isto. A migração **habilita** a remoção do acesso à planilha (os membros não precisam mais dele); ela não a executa. Enquanto os membros continuarem com acesso de edição no Drive, o P1 permanece aberto exatamente como antes — o código passou a ser irrelevante para esse risco específico.
+> O último item é o que dá sentido a tudo isto. A migração **habilita** a remoção do acesso à planilha (os membros não precisam mais dele); ela não a executa. Com a remoção feita, o P1 está efetivamente fechado: os membros passam a interagir com os dados **apenas** através do app, onde toda ação atravessa `isMembro_()` e fica registrada por `registrarLog_`. Não há mais caminho para editar a aba `Membros` direto no Sheets e contornar a autorização.
+
+### 21.6 Consequência operacional a não esquecer
+
+Com o compartilhamento removido, **a conta-sistema passa a ser o único caminho de acesso direto aos dados**. Duas implicações práticas:
+
+- **Manutenção da planilha** (corrigir um dado à mão, ajustar uma fórmula, inspecionar uma aba) agora exige entrar na conta-sistema. Vale manter 1–2 administradores com acesso de edição no Drive, para não depender de uma conta só — a §19.2 já previa isso.
+- **Backup/exportação** deixou de ser possível pela conta de cada membro. Se havia alguma rotina informal apoiada nisso, ela quebrou silenciosamente hoje.
