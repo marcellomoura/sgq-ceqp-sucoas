@@ -117,20 +117,22 @@ function doGet(e) {
   // resolvida) → serve o app. Comportamento IDÊNTICO ao de hoje sob USER_ACCESSING.
   if (isMembro_()) return servirApp_('');
 
-  // Não é membro. Dois casos:
-  //  • Ainda há identidade nativa (Session tem e-mail) → é o "Acesso Negado"
-  //    de sempre — alguém logado no Google que não está cadastrado.
-  //  • NÃO há identidade nativa (executeAs = "executar como o dono" → Session
-  //    vazio) → oferece o login OAuth.
+  // Não é membro. Dois casos, que hoje convergem para o mesmo tratamento:
+  //  • HÁ identidade nativa (Session tem e-mail): sob "executar como o dono",
+  //    isso só acontece para a PRÓPRIA conta-sistema. Antes, aqui vinha uma
+  //    tela de "Acesso Negado" sem saída — sem sequer a opção de entrar com
+  //    outra conta. Como a conta-sistema é infraestrutura e normalmente NÃO
+  //    está cadastrada em Membros, ela ficava permanentemente trancada para
+  //    fora do próprio sistema. Agora recebe o login (forcarLogin), podendo
+  //    autenticar-se com uma conta de membro: a sessão OAuth tem prioridade
+  //    sobre o Session nativo em usuarioAtual_(), então a identidade que vale
+  //    passa a ser a do membro que entrou.
+  //  • NÃO há identidade nativa (caso normal de um membro comum): serve a
+  //    casca do app; o porteiro no cliente reusa a sessão salva no
+  //    sessionStorage ou mostra o overlay de login. Ver JS_Auth_Cliente.html.
   let temEmailNativo = false;
   try { temEmailNativo = !!Session.getActiveUser().getEmail(); } catch (e2) {}
-  if (temEmailNativo) {
-    return HtmlService.createHtmlOutput('<div style="font-family:sans-serif;padding:2rem;text-align:center;color:#333;"><h2>Acesso Negado</h2><p>Você não possui acesso a este sistema.</p></div>');
-  }
-  // Modo "executar como o dono" (Session vazio): serve a casca do app. O porteiro
-  // no cliente valida a sessão salva (sessionStorage) por dentro do iframe e
-  // mostra o overlay de login quando não há sessão. Ver JS_Auth_Cliente.html.
-  return servirApp_('');
+  return servirApp_('', temEmailNativo);
 }
 
 // Renderiza o app (template Index). Injeta na página:
@@ -145,15 +147,27 @@ function doGet(e) {
 //    topo de volta para /exec é o mesmo mecanismo do botão "Entrar com
 //    Google" (target="_top") e sempre reinvoca doGet do zero.
 // Único ponto que evalua o template Index.
-function servirApp_(sid) {
+function servirApp_(sid, forcarLogin) {
   const t = HtmlService.createTemplateFromFile('Index');
   let nativo = false;
   try { nativo = !!Session.getActiveUser().getEmail(); } catch (e) {}
+  // O modo OAuth vale em três situações — as duas últimas importam só para
+  // quem TEM Session nativo (na prática, a conta-sistema):
+  //  • !nativo        → caso normal do membro sob "executar como o dono";
+  //  • sid            → acabou de fazer login. Sem esta condição, a conta-sistema
+  //                     autenticava com sucesso e mesmo assim o cliente ficava
+  //                     fora do modo OAuth: chamaria o servidor direto, o
+  //                     usuarioAtual_() cairia no Session dela de volta e todo
+  //                     endpoint responderia "Acesso Negado" — um login que
+  //                     parecia funcionar e não funcionava;
+  //  • forcarLogin    → tem Session nativo mas não é membro (ver doGet): recebe
+  //                     a tela de login em vez de um beco sem saída.
+  const oauth = !nativo || !!sid || forcarLogin === true;
   let appUrl = '';
   try { appUrl = ScriptApp.getService().getUrl() || ''; } catch (e) {}
   t.sid = sid || '';
-  t.authOAuth = nativo ? '' : 'oauth';
-  t.loginUrl = nativo ? '' : authUrlLoginApp_();
+  t.authOAuth = oauth ? 'oauth' : '';
+  t.loginUrl = oauth ? authUrlLoginApp_() : '';
   t.appUrl = appUrl;
   return t.evaluate()
     .setTitle('SGQ · CEQP')
