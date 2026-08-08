@@ -78,7 +78,7 @@ function salvarMembro() {
   const dados={ id:$id('memberId').value, name:($id('memberName').value||'').trim(), matricula:($id('memberMatricula').value||'').trim(), role:($id('memberRole').value||'').trim(), email:($id('memberEmail').value||'').trim(), emailPessoal:($id('memberEmailPessoal').value||'').trim() };
   if(!dados.name||!dados.role||!dados.email||!dados.emailPessoal){ showAlerta('Preencha todos os campos.'); return; }
   btn.disabled=true; btn.innerText='Salvando...';
-  google.script.run.withSuccessHandler(r=>{
+  srv().withSuccessHandler(r=>{
     if (r && r.sucesso === false) { btn.disabled=false; btn.innerText='Salvar Cadastro'; showAlerta(r.mensagem || 'Não foi possível salvar.'); return; }
     feedbackBtn(btn,'✅ Salvo!','Salvar Cadastro',()=>{ fecharModal('modal-member'); recarregarKanban(()=>{ renderMembers(); sincronizarDropdownMembros(); }); });
   }).withFailureHandler(falha(btn,'Salvar Cadastro',null)).saveMember(dados);
@@ -89,7 +89,7 @@ function inativarMembro(id) {
   const m = state.members.find(x => String(x.id) === String(id));
   if (m) m.ativo = false;
   renderMembers(); sincronizarDropdownMembros();
-  google.script.run.withSuccessHandler(r=>{
+  srv().withSuccessHandler(r=>{
     if (r && r.sucesso === false) { 
       if (m) m.ativo = true;
       renderMembers(); sincronizarDropdownMembros();
@@ -105,7 +105,7 @@ function reativarMembro(id) {
   const m = state.members.find(x => String(x.id) === String(id));
   if (m) m.ativo = true;
   renderMembers(); sincronizarDropdownMembros();
-  google.script.run.withSuccessHandler(r=>{
+  srv().withSuccessHandler(r=>{
     if (r && r.sucesso === false) { 
       if (m) m.ativo = false;
       renderMembers(); sincronizarDropdownMembros();
@@ -178,7 +178,7 @@ function drop(e, newStatus) {
   if(newStatus==='Concluído') state.tasks[idx].completionDate=dateNow; else state.tasks[idx].completionDate='';
   if(newStatus!=='Backlog'&&!state.tasks[idx].startDate) state.tasks[idx].startDate=dateNow;
   renderTasks();
-  google.script.run.withSuccessHandler(r=>{
+  srv().withSuccessHandler(r=>{
     // Em falha de negócio (ex.: cartão excluído por outro usuário), desfaz a
     // mudança otimista recarregando o estado real do servidor.
     if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível mover o cartão.'); recarregarKanban(renderTasks); }
@@ -292,7 +292,7 @@ function confirmarArquivarTarefa() {
   showConfirm('Arquivar este cartão? Ele sai do quadro e vai para "Arquivados", de onde pode ser restaurado a qualquer momento.', function() {
     const btn = $id('btn-archive-task');
     if (btn) { btn.disabled = true; btn.innerText = 'A arquivar...'; }
-    google.script.run.withSuccessHandler(function(r) {
+    srv().withSuccessHandler(function(r) {
       if (r.sucesso) {
         // O cartão sai do quadro (state.tasks) e a lista de arquivados passa a
         // estar desatualizada — invalidar faz a próxima visita à aba relê-la.
@@ -315,7 +315,7 @@ function abrirAtividadesArquivadas(id) {
   feed.innerHTML = '<div class="feed-msg-muted">A carregar atividades...</div>';
   abrirModal('modal-atividades-arquivadas');
   
-  google.script.run
+  srv()
     .withSuccessHandler(function(acts) {
       if (!acts || acts.length === 0) {
         feed.innerHTML = '<div class="feed-msg-muted">Nenhuma atividade registrada.</div>';
@@ -455,7 +455,7 @@ function abrirEditarTarefa(task) {
   atividadesTaskId = task.id || null;
   renderActividades('A carregar histórico...');
   if (task.id) {
-    google.script.run
+    srv()
       .withSuccessHandler(function(acts){
         if (atividadesTaskId !== task.id) return; // outro cartão já foi aberto
         currentActivities = Array.isArray(acts) ? acts : [];
@@ -541,7 +541,7 @@ function salvarTarefa() {
   btn.disabled=false; btn.innerText='Salvar Cartão';
   fecharModal('modal-task');
 
-  google.script.run.withSuccessHandler(r=>{
+  srv().withSuccessHandler(r=>{
     if (r && r.sucesso === false) {
       // Falha de negócio (ex.: cartão alterado por outra pessoa): avisa e relê o
       // estado real do servidor, desfazendo a alteração otimista.
@@ -577,7 +577,7 @@ function confirmarExcluirTarefa() {
     if (idx >= 0) state.tasks.splice(idx, 1);
     fecharModal('modal-task');
     renderTasks();
-    google.script.run.withSuccessHandler(r=>{
+    srv().withSuccessHandler(r=>{
       if (r && r.sucesso === false) { showAlerta(r.mensagem || 'Não foi possível excluir o cartão.'); recarregarKanban(renderTasks); }
     }).withFailureHandler(e=>{ showAlerta(String(e)); recarregarKanban(renderTasks); }).deleteTask(id);
   });
@@ -797,7 +797,7 @@ function garantirArquivados(cb) {
   if (cb) archivedFilaCallbacks.push(cb);
   if (archivedLoading) return;
   archivedLoading = true;
-  google.script.run
+  srv()
     .withFailureHandler(function(e) {
       archivedLoading = false;
       archivedFilaCallbacks = [];
@@ -821,7 +821,7 @@ function invalidarArquivados() { archivedLoaded = false; state.archivedTasks = [
 
 // Recarrega só Tarefas + Membros (usado após ações do Kanban/Membros)
 function recarregarKanban(cb) {
-  google.script.run.withSuccessHandler(data => {
+  srv().withSuccessHandler(data => {
     state.tasks = data.tasks; state.members = data.members;
     sincronizarDropdownMembros();
     if (cb) cb();
@@ -833,7 +833,7 @@ function recarregarKanban(cb) {
 // tela não usa. Mesma ideia de recarregarDocs()/recarregarUnidades(), só que
 // para o módulo de Riscos. Não mexe em restoDataLoaded/state.docs/state.trainings.
 function recarregarRiscosPlanos(cb) {
-  google.script.run.withSuccessHandler(data => {
+  srv().withSuccessHandler(data => {
     state.units = data.units; state.risks = data.risks;
     state.plans = data.plans; state.deliveries = data.deliveries;
     state.history = data.history || [];

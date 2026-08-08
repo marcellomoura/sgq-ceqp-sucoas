@@ -19,7 +19,7 @@ function garantirVisitasData(cb) {
   if (cb) visitasFilaCallbacks.push(cb);
   if (visitasLoading) return; // já tem uma busca em andamento, só entra na fila
   visitasLoading = true;
-  google.script.run
+  srv()
     .withFailureHandler(function(e) {
       visitasLoading = false;
       visitasFilaCallbacks = [];
@@ -428,20 +428,20 @@ function salvarFormVisita() {
   }
 
   if (idRow)
-    google.script.run.withSuccessHandler(tratarRespostaVt).withFailureHandler(falha(btn, 'Salvar', null)).atualizarVisitaTecnica(dados);
+    srv().withSuccessHandler(tratarRespostaVt).withFailureHandler(falha(btn, 'Salvar', null)).atualizarVisitaTecnica(dados);
   else
-    google.script.run.withSuccessHandler(tratarRespostaVt).withFailureHandler(falha(btn, 'Salvar', null)).salvarVisitaTecnica(dados);
+    srv().withSuccessHandler(tratarRespostaVt).withFailureHandler(falha(btn, 'Salvar', null)).salvarVisitaTecnica(dados);
 }
 
 function recarregarVisitas(cb) {
-  google.script.run
+  srv()
     .withSuccessHandler(visitas => { state.visitas = visitas; if (cb) cb(); })
     .withFailureHandler(e => showAlerta('Falha ao sincronizar visitas técnicas: ' + String(e)))
     .getVisitasTecnicasData();
 }
 
 function excluirVisitaConfirm(idRow, id) {
-  google.script.run
+  srv()
     .withSuccessHandler(r => {
       if (r && r.sucesso === false) { showAlerta(r.mensagem); return; }
       recarregarVisitas(() => { renderVisitasTecnicas(); renderKpisVisitas(); });

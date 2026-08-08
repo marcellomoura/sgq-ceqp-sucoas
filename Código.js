@@ -95,12 +95,67 @@ function colIdx_(cabecalhos) {
   };
 }
 
-function doGet() {
-  if (!isMembro_()) {
+function doGet(e) {
+  const p = (e && e.parameter) ? e.parameter : {};
+
+  // Diagnóstico de configuração (somente leitura). Igualdade EXATA de propósito:
+  // o casamento por prefixo que existia aqui capturaria qualquer ?page= futuro
+  // que por acaso começasse com "auth" (ex.: 'autorizacoes').
+  if (p.page === 'auth_diag') return authDiagnostico_();
+
+  // Retorno do OAuth do fluxo REAL (state começa com 'app:') → cria a sessão e
+  // serve o app (ou "Acesso Negado" se não for membro). Ver Auth_OAuth.js.
+  if ((p.code || p.error) && p.state && String(p.state).indexOf('app:') === 0) {
+    return authLoginRealRetorno_(e);
+  }
+  // Qualquer outro code/error é resíduo (link antigo, rota de teste removida):
+  // cai na casca do app, que reusa a sessão salva ou mostra o login.
+  if (p.code || p.error) return servirApp_('');
+
+  // ── Fluxo normal ──────────────────────────────────────────────────────
+  // Membro reconhecido (hoje via Session; após o flip, via sessão OAuth já
+  // resolvida) → serve o app. Comportamento IDÊNTICO ao de hoje sob USER_ACCESSING.
+  if (isMembro_()) return servirApp_('');
+
+  // Não é membro. Dois casos:
+  //  • Ainda há identidade nativa (Session tem e-mail) → é o "Acesso Negado"
+  //    de sempre — alguém logado no Google que não está cadastrado.
+  //  • NÃO há identidade nativa (executeAs = "executar como o dono" → Session
+  //    vazio) → oferece o login OAuth.
+  let temEmailNativo = false;
+  try { temEmailNativo = !!Session.getActiveUser().getEmail(); } catch (e2) {}
+  if (temEmailNativo) {
     return HtmlService.createHtmlOutput('<div style="font-family:sans-serif;padding:2rem;text-align:center;color:#333;"><h2>Acesso Negado</h2><p>Você não possui acesso a este sistema.</p></div>');
   }
-  return HtmlService.createTemplateFromFile('Index')
-    .evaluate()
+  // Modo "executar como o dono" (Session vazio): serve a casca do app. O porteiro
+  // no cliente valida a sessão salva (sessionStorage) por dentro do iframe e
+  // mostra o overlay de login quando não há sessão. Ver JS_Auth_Cliente.html.
+  return servirApp_('');
+}
+
+// Renderiza o app (template Index). Injeta na página:
+//  • window.SGQ_SID   — id da sessão OAuth (vazio no fluxo USER_ACCESSING);
+//  • window.SGQ_AUTH  — 'oauth' quando NÃO há identidade nativa (executar como o
+//    dono) → o cliente exige sessão e ativa o porteiro; vazio no modo atual;
+//  • window.SGQ_LOGIN_URL — URL de início do login (para o overlay/botão);
+//  • window.SGQ_APP_URL — a própria URL /exec deste deploy. Usada para
+//    navegar o TOPO da janela (fora do iframe) no logout: recarregar só o
+//    iframe (location.reload()) atinge uma URL de conteúdo interna do Google
+//    que não é servível isoladamente e resulta em tela branca — navegar o
+//    topo de volta para /exec é o mesmo mecanismo do botão "Entrar com
+//    Google" (target="_top") e sempre reinvoca doGet do zero.
+// Único ponto que evalua o template Index.
+function servirApp_(sid) {
+  const t = HtmlService.createTemplateFromFile('Index');
+  let nativo = false;
+  try { nativo = !!Session.getActiveUser().getEmail(); } catch (e) {}
+  let appUrl = '';
+  try { appUrl = ScriptApp.getService().getUrl() || ''; } catch (e) {}
+  t.sid = sid || '';
+  t.authOAuth = nativo ? '' : 'oauth';
+  t.loginUrl = nativo ? '' : authUrlLoginApp_();
+  t.appUrl = appUrl;
+  return t.evaluate()
     .setTitle('SGQ · CEQP')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -237,6 +292,10 @@ function _dataHoraParaUI_(val) {
 // E-mail do usuário ativo, com fallback seguro (contas sem permissão de
 // leitura do e-mail lançam exceção — nesses casos registra como 'Sistema').
 function usuarioAtual_() {
+  // Fase 3 (retrocompatível): se uma sessão OAuth foi resolvida por dispatch()
+  // NESTA execução, ela tem prioridade. Sem sessão (estado de hoje), cai no
+  // Session.getActiveUser() de sempre — comportamento idêntico ao anterior.
+  try { if (typeof __SESSAO_EMAIL__ !== 'undefined' && __SESSAO_EMAIL__) return __SESSAO_EMAIL__; } catch (e) {}
   try { return Session.getActiveUser().getEmail() || 'Sistema'; } catch (e) { return 'Sistema'; }
 }
 
@@ -1448,10 +1507,17 @@ const RATE_LIMIT_ENVIO_PDF_SEGUNDOS = 10;
 const RATE_LIMIT_GERAR_PDF_SEGUNDOS = 3;
 function _limitePdfExcedido_(chave, segundos) {
   try {
-    const cache = CacheService.getUserCache();
+    // ScriptCache com chave POR USUÁRIO, e não getUserCache(): sob
+    // executeAs USER_DEPLOYING o "usuário" do cache passa a ser sempre a
+    // conta-sistema, para todo mundo — o que transformaria este limite por
+    // pessoa num limite GLOBAL (um membro baixando um relatório bloquearia
+    // todos os outros pela janela inteira). A identidade real vem de
+    // usuarioAtual_(): a sessão OAuth quando há uma, o Session nativo quando não.
+    const cache = CacheService.getScriptCache();
     if (!cache) return false; // sem cache disponível: não bloqueia por segurança
-    if (cache.get(chave)) return true;
-    cache.put(chave, '1', segundos);
+    const chaveUsuario = chave + '_' + usuarioAtual_();
+    if (cache.get(chaveUsuario)) return true;
+    cache.put(chaveUsuario, '1', segundos);
     return false;
   } catch (e) { return false; }
 }

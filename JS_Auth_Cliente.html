@@ -1,0 +1,268 @@
+<script>
+  // ==========================================
+  // PONTE CLIENTE ↔ SERVIDOR + PORTEIRO DE SESSÃO (Fase 3)
+  // ==========================================
+  // srv() substitui google.script.run em todas as chamadas. Em modo "executar
+  // como o dono" (window.SGQ_AUTH === 'oauth'), roteia via dispatch(sid,...) e
+  // gerencia a sessão salva no navegador (sessionStorage): recarregar a página
+  // NÃO pede login enquanto a sessão de 6h estiver viva; ao expirar, mostra um
+  // overlay amigável "Sessão expirada". No fluxo atual (USER_ACCESSING,
+  // SGQ_AUTH vazio) nada disso ativa — chama google.script.run direto, idêntico
+  // ao de antes. sessionStorage: sobrevive ao reload, some ao fechar a aba.
+  (function () {
+    var KEY = 'sgq-sid';
+    if (typeof window.SGQ_SID === 'undefined') window.SGQ_SID = '';
+    if (typeof window.SGQ_AUTH === 'undefined') window.SGQ_AUTH = '';
+    if (typeof window.SGQ_LOGIN_URL === 'undefined') window.SGQ_LOGIN_URL = '';
+
+    // Botão "Sair" só existe (revelado) em modo OAuth: no fluxo antigo
+    // (USER_ACCESSING) a identidade é a própria sessão do Google no
+    // navegador — não há logout que o Apps Script possa oferecer.
+    if (window.SGQ_AUTH === 'oauth') authWireLogout_();
+
+    // 1) Servidor injetou um sid (acabou de logar): guarda na aba e limpa a URL.
+    if (window.SGQ_SID) {
+      try { sessionStorage.setItem(KEY, window.SGQ_SID); } catch (e) {}
+      try { if (location.search) history.replaceState(null, '', location.pathname); } catch (e) {}
+      return;
+    }
+    // 2) Modo OAuth sem sid do servidor (recarga da página): reusa o sid salvo.
+    if (window.SGQ_AUTH === 'oauth') {
+      var s = '';
+      try { s = sessionStorage.getItem(KEY) || ''; } catch (e) {}
+      if (s) {
+        window.SGQ_SID = s; // validação implícita na 1ª chamada; se cair, overlay
+      } else {
+        authMostrarLogin_(); // sem sessão → login
+      }
+    }
+  })();
+
+  // Revela o botão "Sair" no rodapé da sidebar e liga o clique. Idempotente
+  // (dataset.wired evita religar se chamado mais de uma vez).
+  function authWireLogout_() {
+    var btn = document.getElementById('btn-logout');
+    if (!btn || btn.dataset.wired) return;
+    btn.dataset.wired = '1';
+    btn.style.display = '';
+    btn.addEventListener('click', authSair_);
+  }
+
+  // Encerra a sessão e sai IMEDIATAMENTE — não espera resposta do servidor
+  // (a invalidação no servidor é "dispara e esquece"; mesmo sem ela, a sessão
+  // expira sozinha em até 6h, e o sid local já foi apagado). Navega o TOPO da
+  // janela (fora do iframe) de volta para a /exec: um location.reload() aqui
+  // dentro atingiria a URL de conteúdo interna do iframe do Google, que NÃO é
+  // servível isoladamente e resulta em tela branca — navegar o topo é o mesmo
+  // mecanismo do botão "Entrar com Google" (target="_top") e sempre reinvoca
+  // doGet do zero, mostrando o login na hora.
+  function authSair_() {
+    var btn = document.getElementById('btn-logout');
+    if (btn) btn.disabled = true;
+    var sidAtual = window.SGQ_SID;
+    try { sessionStorage.removeItem('sgq-sid'); } catch (e) {}
+    window.SGQ_SID = '';
+    if (sidAtual && typeof google !== 'undefined' && google.script && google.script.run) {
+      try { google.script.run.withFailureHandler(function () {}).dispatch(sidAtual, 'authLogout', []); } catch (e) {}
+    }
+    // Sem a URL do app não se navega para lugar nenhum: o fallback antigo ('/')
+    // levava para a RAIZ do domínio do topo (script.google.com) — ou seja, para
+    // fora do sistema, numa página do Google. Melhor ficar onde está e mostrar
+    // a tela de login, que é o estado pretendido de qualquer forma.
+    var destino = window.SGQ_APP_URL || '';
+    if (!destino) { authMostrarLogin_(); return; }
+    try {
+      if (window.top && window.top !== window) { window.top.location.href = destino; }
+      else { location.href = destino; }
+    } catch (e) { authMostrarLogin_(); }
+  }
+
+  function srv() {
+    // Modo OAuth sem sessão: não dispara nada — mostra o login.
+    if (window.SGQ_AUTH === 'oauth' && !window.SGQ_SID) {
+      authMostrarLogin_();
+      return authRunnerNoop_();
+    }
+    if (typeof Proxy === 'undefined') return google.script.run;
+
+    var sucesso = null, falha = null;
+    var api = {
+      withSuccessHandler: function (f) { sucesso = f; return proxy; },
+      withFailureHandler: function (f) { falha = f; return proxy; }
+    };
+    var proxy = new Proxy(api, {
+      get: function (alvo, prop) {
+        if (prop in alvo) return alvo[prop];
+        return function () {
+          var args = Array.prototype.slice.call(arguments);
+          var runner = google.script.run;
+          if (sucesso) runner = runner.withSuccessHandler(sucesso);
+          if (window.SGQ_SID) {
+            // Falha de sessão vira overlay amigável; outras falhas seguem o handler.
+            runner = runner.withFailureHandler(function (err) {
+              var msg = (err && err.message) ? err.message : String(err);
+              if (/sess[aã]o inv[aá]lida|expirad/i.test(msg)) { authSessaoExpirada_(); return; }
+              if (falha) falha(err);
+            });
+            runner.dispatch(window.SGQ_SID, String(prop), args);
+          } else {
+            if (falha) runner = runner.withFailureHandler(falha);
+            runner[prop].apply(runner, args);
+          }
+        };
+      }
+    });
+    return proxy;
+  }
+
+  // Runner "vazio" para chamadas curto-circuitadas (sem sessão): aceita o mesmo
+  // encadeamento sem executar nada — o overlay já cobre a tela.
+  function authRunnerNoop_() {
+    var api = { withSuccessHandler: function () { return proxy; },
+                withFailureHandler: function () { return proxy; } };
+    if (typeof Proxy === 'undefined') return { withSuccessHandler: function () { return this; }, withFailureHandler: function () { return this; } };
+    var proxy = new Proxy(api, { get: function (a, p) { return (p in a) ? a[p] : function () {}; } });
+    return proxy;
+  }
+
+  function authMostrarLogin_() {
+    authInjetarOverlay_('Acesse o sistema',
+      'Entre com sua conta Google para continuar. O acesso é liberado apenas para membros da comissão de qualidade.',
+      'Entrar com Google', window.SGQ_LOGIN_URL, false);
+  }
+
+  // O botão aponta para a PRÓPRIA /exec, não direto para o Google: a URL de
+  // login foi gerada quando esta página carregou — o que pode ter sido horas
+  // atrás, já que a sessão dura 6h. Recarregando o app primeiro, a tela de
+  // login vem com um `state` novo em folha, e o clique seguinte sempre
+  // funciona. (Ir direto ao Google com um state velho voltaria para a tela de
+  // login sem explicação, com cara de "cliquei e não fez nada".)
+  function authSessaoExpirada_() {
+    try { sessionStorage.removeItem('sgq-sid'); } catch (e) {}
+    window.SGQ_SID = '';
+    authInjetarOverlay_('Sessão expirada',
+      'Sua sessão terminou por segurança. Entre novamente para continuar.',
+      'Entrar novamente', window.SGQ_APP_URL || window.SGQ_LOGIN_URL, true);
+  }
+
+  function authInjetarOverlay_(titulo, msg, botao, url, perigo) {
+    if (document.getElementById('sgq-auth-overlay')) return; // um por vez
+    authInjetarEstiloOverlay_();
+    var esc = function (s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
+    var g = '<svg width="19" height="19" viewBox="0 0 48 48" aria-hidden="true">' +
+      '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>' +
+      '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>' +
+      '<path fill="#FBBC05" d="M10.53 28.59A14.5 14.5 0 0 1 9.77 24c0-1.6.28-3.14.76-4.59l-7.98-6.19A24 24 0 0 0 0 24c0 3.88.92 7.54 2.55 10.78l7.98-6.19z"/>' +
+      '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+    var shield = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>';
+    // O logo do Google só entra quando o botão leva MESMO ao Google (login). Na
+    // tela de sessão expirada (perigo) ele leva à própria /exec, então exibir a
+    // marca do Google ali seria impreciso.
+    var acao = url
+      ? '<a class="sgq-ov-btn" target="_top" rel="noopener" href="' + esc(url) + '">' +
+        (perigo ? '' : g) + '<span>' + esc(botao) + '</span></a>'
+      : '<p class="sgq-ov-sub" style="color:var(--danger-text,#791E15)">Login indisponível. Avise o administrador.</p>';
+    var eyebrow = perigo ? 'Sessão' : 'Acesso restrito';
+    var foot = perigo ? '' : '<p class="sgq-ov-foot">Ainda não está cadastrado? Solicite acesso ao gestor da qualidade.</p>';
+    var el = document.createElement('div');
+    el.id = 'sgq-auth-overlay';
+    el.innerHTML =
+      '<div class="sgq-ov-frame">' +
+        '<div class="sgq-ov-left">' +
+          '<div class="sgq-ov-brand"><div class="sgq-ov-logo">SGQ</div>' +
+            '<div class="sgq-ov-bt"><b>Sistema de Gestão da Qualidade</b><span>CEQP / SUCOAS · SES/DF</span></div></div>' +
+          '<div class="sgq-ov-body">' +
+            '<h1 class="sgq-ov-title' + (perigo ? ' perigo' : '') + '">' + esc(titulo) + '</h1>' +
+            '<p class="sgq-ov-sub">' + esc(msg) + '</p>' + acao +
+            '<div class="sgq-ov-divider">acesso seguro</div>' +
+            '<div class="sgq-ov-assur">' + shield + '<span>Sua identidade é confirmada pelo Google.</span></div>' +
+            foot +
+            '<p class="sgq-ov-eyebrow">' + esc(eyebrow) + '</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sgq-ov-right">' + authIlustracao_() + '<p class="sgq-ov-tag"><b>Qualidade sob controle.</b> Cuidar do processo é cuidar do resultado.</p></div>' +
+      '</div>';
+    (document.body || document.documentElement).appendChild(el);
+  }
+
+  // Ilustração SVG (painel de qualidade) — cores por tokens do tema (claro/escuro).
+  function authIlustracao_() {
+    return '<svg viewBox="0 0 460 460" role="img" aria-label="Painel de gestão da qualidade">' +
+      '<defs>' +
+      '<filter id="sgqov-soft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0b1f45" flood-opacity="0.12"/></filter>' +
+      '<linearGradient id="sgqov-bar" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="var(--ill-accent)" stop-opacity="0.55"/><stop offset="1" stop-color="var(--ill-accent)"/></linearGradient>' +
+      '</defs>' +
+      '<circle cx="352" cy="96" r="96" fill="var(--ill-accent)" opacity="0.10"/>' +
+      '<circle cx="86" cy="372" r="72" fill="var(--ill-accent)" opacity="0.09"/>' +
+      '<circle cx="392" cy="360" r="7" fill="var(--ill-accent)" opacity="0.5"/>' +
+      '<circle cx="70" cy="120" r="5" fill="var(--ill-accent)" opacity="0.5"/>' +
+      '<circle cx="410" cy="196" r="4" fill="var(--ill-accent)" opacity="0.4"/>' +
+      '<g filter="url(#sgqov-soft)"><rect x="96" y="118" width="240" height="196" rx="20" fill="var(--ill-card)" stroke="var(--ill-line)"/></g>' +
+      '<circle cx="120" cy="146" r="7" fill="var(--ill-accent)"/>' +
+      '<rect x="134" y="141" width="96" height="9" rx="4.5" fill="var(--ill-muted)"/>' +
+      '<rect x="286" y="140" width="30" height="12" rx="6" fill="var(--ill-soft)"/>' +
+      '<line x1="120" y1="278" x2="312" y2="278" stroke="var(--ill-line)" stroke-width="2"/>' +
+      '<rect x="128" y="230" width="26" height="48" rx="6" fill="url(#sgqov-bar)"/>' +
+      '<rect x="168" y="206" width="26" height="72" rx="6" fill="url(#sgqov-bar)"/>' +
+      '<rect x="208" y="246" width="26" height="32" rx="6" fill="var(--ill-soft)"/>' +
+      '<rect x="248" y="192" width="26" height="86" rx="6" fill="url(#sgqov-bar)"/>' +
+      '<rect x="288" y="220" width="26" height="58" rx="6" fill="var(--ill-soft)"/>' +
+      '<rect x="120" y="292" width="150" height="8" rx="4" fill="var(--ill-muted)"/>' +
+      '<g filter="url(#sgqov-soft)"><rect x="270" y="70" width="132" height="80" rx="16" fill="var(--ill-card)" stroke="var(--ill-line)"/></g>' +
+      '<rect x="286" y="86" width="52" height="8" rx="4" fill="var(--ill-muted)"/>' +
+      '<rect x="286" y="104" width="46" height="15" rx="7.5" fill="var(--ill-soft)"/>' +
+      '<polyline points="352,124 364,112 376,118 388,100" fill="none" stroke="var(--ill-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<g filter="url(#sgqov-soft)"><circle cx="120" cy="300" r="34" fill="var(--ill-accent)"/></g>' +
+      '<path d="M106 300 l9 9 l19 -20" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<g filter="url(#sgqov-soft)"><rect x="300" y="250" width="96" height="46" rx="13" fill="var(--ill-card)" stroke="var(--ill-line)"/></g>' +
+      '<circle cx="322" cy="273" r="9" fill="var(--ill-soft)"/>' +
+      '<path d="M318 273 l3 3 l6 -7" fill="none" stroke="var(--ill-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<rect x="338" y="264" width="44" height="7" rx="3.5" fill="var(--ill-muted)"/>' +
+      '<rect x="338" y="277" width="30" height="7" rx="3.5" fill="var(--ill-muted)"/>' +
+      '</svg>';
+  }
+
+  function authInjetarEstiloOverlay_() {
+    if (document.getElementById('sgq-ov-css')) return;
+    var st = document.createElement('style');
+    st.id = 'sgq-ov-css';
+    st.textContent =
+      '#sgq-auth-overlay{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;' +
+      'background:var(--bg-app,#f3f4f6);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;' +
+      '--ill-card:#fff;--ill-line:#e5e7eb;--ill-ink:#030712;--ill-accent:#2b7fff;--ill-soft:#dcebff;--ill-muted:#eef2f7;--art-1:#eaf2ff;--art-2:#f7faff}' +
+      ':root[data-theme="dark"] #sgq-auth-overlay{--ill-card:#232b37;--ill-line:#34414f;--ill-ink:#e6e8eb;--ill-accent:#4b93ff;--ill-soft:#2b3b52;--ill-muted:#28313d;--art-1:#1a2431;--art-2:#1e2836}' +
+      '#sgq-auth-overlay *{box-sizing:border-box}' +
+      '.sgq-ov-frame{width:100%;max-width:940px;min-height:min(560px,86vh);background:var(--bg-card,#fff);border:1px solid var(--border-color,#e5e7eb);' +
+      'border-radius:22px;box-shadow:var(--shadow-lg,0 18px 44px rgba(3,7,18,.14));overflow:hidden;display:grid;grid-template-columns:1fr}' +
+      '@media(min-width:820px){.sgq-ov-frame{grid-template-columns:0.95fr 1.05fr}}' +
+      '.sgq-ov-left{display:flex;flex-direction:column;padding:34px 32px 38px}' +
+      '@media(min-width:820px){.sgq-ov-left{padding:40px 46px}}' +
+      '.sgq-ov-brand{display:flex;align-items:center;gap:11px}' +
+      '.sgq-ov-logo{width:38px;height:38px;border-radius:11px;background:var(--primary,#030712);color:var(--text-inverse,#fff);' +
+      'display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;letter-spacing:.4px}' +
+      '.sgq-ov-bt{display:flex;flex-direction:column;line-height:1.2}' +
+      '.sgq-ov-bt b{font-size:13.5px;font-weight:700;color:var(--text-main,#030712)}' +
+      '.sgq-ov-bt span{font-size:11px;color:var(--text-muted,#6b7280);font-weight:500}' +
+      '.sgq-ov-body{margin:auto 0;max-width:360px;width:100%}' +
+      '.sgq-ov-eyebrow{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent,#2b7fff);margin:22px 0 0;text-align:center}' +
+      '.sgq-ov-title{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0 0 10px;color:var(--text-main,#030712)}' +
+      '.sgq-ov-title.perigo{color:var(--danger-text,#791E15)}' +
+      '.sgq-ov-sub{font-size:14px;line-height:1.6;color:var(--text-secondary,#4b5563);margin:0 0 24px}' +
+      '.sgq-ov-btn{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;padding:13px 18px;' +
+      'background:#fff;color:#1f1f1f;border:1px solid var(--border-strong,#d1d5db);border-radius:10px;font-size:14.5px;font-weight:600;' +
+      'text-decoration:none;cursor:pointer;transition:box-shadow .18s,transform .18s}' +
+      '.sgq-ov-btn:hover{box-shadow:0 4px 14px rgba(3,7,18,.12);transform:translateY(-1px)}' +
+      '.sgq-ov-divider{display:flex;align-items:center;gap:14px;margin:20px 0;color:var(--text-muted,#6b7280);font-size:11.5px}' +
+      '.sgq-ov-divider::before,.sgq-ov-divider::after{content:"";flex:1;height:1px;background:var(--border-color,#e5e7eb)}' +
+      '.sgq-ov-assur{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--text-muted,#6b7280);line-height:1.5}' +
+      '.sgq-ov-assur svg{flex:none;margin-top:1px;color:var(--accent,#2b7fff)}' +
+      '.sgq-ov-foot{margin:26px 0 0;font-size:11.5px;color:var(--text-muted,#6b7280)}' +
+      '.sgq-ov-right{display:none;position:relative;align-items:center;justify-content:center;padding:36px;' +
+      'background:linear-gradient(150deg,var(--art-1),var(--art-2));border-left:1px solid var(--border-color,#e5e7eb)}' +
+      '@media(min-width:820px){.sgq-ov-right{display:flex}}' +
+      '.sgq-ov-right svg{width:100%;max-width:400px;height:auto}' +
+      '.sgq-ov-tag{position:absolute;left:36px;right:36px;bottom:28px;font-size:13px;line-height:1.5;color:var(--text-secondary,#4b5563);margin:0;text-align:center}' +
+      '.sgq-ov-tag b{color:var(--text-main,#030712);font-weight:700}';
+    document.head.appendChild(st);
+  }
+</script>

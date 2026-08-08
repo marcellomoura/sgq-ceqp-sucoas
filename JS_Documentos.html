@@ -101,7 +101,7 @@ function salvarDocumento() {
   };
   if (!dados.tipo || !dados.titulo || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha todos os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A guardar...';
-  google.script.run.withSuccessHandler(r => {
+  srv().withSuccessHandler(r => {
     if (r.sucesso) { recarregarDocs(() => renderDocumentos('mestra')); feedbackBtn(btn, '✅ Salvo!', 'Salvar Documento', () => fecharModal('modal-doc-novo')); }
     else { btn.disabled=false; btn.innerText='Salvar Documento'; showAlerta(r.mensagem); }
   }).withFailureHandler(falha(btn,'Salvar Documento',null)).salvarDocumento(dados);
@@ -130,7 +130,7 @@ function confirmarEdicaoDoc() {
   };
   if (!dados.titulo || !dados.responsavel || !dados.linkDoc) return showAlerta('Preencha os campos obrigatórios.');
   btn.disabled = true; btn.innerText = 'A atualizar...';
-  google.script.run.withSuccessHandler(r => {
+  srv().withSuccessHandler(r => {
     if (r.sucesso) { recarregarDocs(()=>renderDocumentos('mestra')); feedbackBtn(btn,'✅ Salvo!','Salvar Documento',()=>fecharModal('modal-doc-editar')); }
     else { btn.disabled=false; btn.innerText='Salvar Documento'; showAlerta(r.mensagem); }
   }).withFailureHandler(falha(btn,'Salvar Documento',null)).atualizarDocumento(dados);
@@ -156,13 +156,13 @@ function publicarRevisaoDoc() {
   };
   if (!dados.dataAprovacao || !dados.motivo || !dados.linkDoc) return showAlerta('Informe a nova data de aprovação, a descrição e o link.');
   btn.disabled = true; btn.innerText = 'A publicar...';
-  google.script.run.withSuccessHandler(r => {
+  srv().withSuccessHandler(r => {
     if (r.sucesso) { recarregarDocs(()=>renderDocumentos('mestra')); feedbackBtn(btn,'✅ Publicado!','Publicar Revisão',()=>fecharModal('modal-doc-revisao')); }
     else { btn.disabled=false; btn.innerText='Publicar Revisão'; showAlerta(r.mensagem); }
   }).withFailureHandler(falha(btn,'Publicar Revisão',null)).salvarRevisaoDocumento(dados);
 }
 function excluirDoc(idRow, codigo, fechar) {
-  google.script.run.withSuccessHandler(r => {
+  srv().withSuccessHandler(r => {
     if(fechar) fechar();
     if(r.sucesso) {
       // Reflete a exclusão na tela na hora (o servidor já confirmou), sem
@@ -179,7 +179,7 @@ function excluirDoc(idRow, codigo, fechar) {
 // (getDocsData) em vez das 7 abas de getRestoData. Usada após cada ação
 // de documento para "efetivar" a mudança sem o custo da recarga total.
 function recarregarDocs(cb) {
-  google.script.run.withSuccessHandler(resto => {
+  srv().withSuccessHandler(resto => {
     state.units = resto.units;
     state.docs = resto.docs;
     sincronizarSelectsUnidade();

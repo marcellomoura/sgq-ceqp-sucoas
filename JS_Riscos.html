@@ -221,7 +221,7 @@
     if (!dados.macroetapa || !dados.categoria || !dados.nome || !dados.causa || !dados.consequencia || !dados.tipoTratamento || !dados.responsavel) return showAlerta('Preencha todos os campos do risco.');
     if (!dados.probabilidade || !dados.impacto) return showAlerta('Selecione a Probabilidade e o Impacto.');
     btn.disabled = true; btn.innerText = 'A guardar...';
-    google.script.run.withSuccessHandler(r => {
+    srv().withSuccessHandler(r => {
       if (r.sucesso) feedbackBtn(btn, '✅ Mapeado!', 'Salvar Risco', () => { fecharModal('modal-risco-novo'); recarregarRiscosPlanos(renderMatriz); });
       else { btn.disabled = false; btn.innerText = 'Salvar Risco'; showAlerta(r.mensagem); }
     }).withFailureHandler(falha(btn, 'Salvar Risco', null)).salvarRisco(dados);
@@ -266,7 +266,7 @@
     };
     if (!dados.nome || !dados.causa || !dados.consequencia || !dados.probabilidade || !dados.impacto) return showAlerta('Preencha os campos obrigatórios, incluindo Probabilidade e Impacto.');
     btn.disabled = true; btn.innerText = 'A atualizar...';
-    google.script.run.withSuccessHandler(r => {
+    srv().withSuccessHandler(r => {
       if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Risco', () => { fecharModal('modal-risco-editar'); recarregarRiscosPlanos(renderMatriz); });
       else { btn.disabled = false; btn.innerText = 'Salvar Risco'; showAlerta(r.mensagem); }
     }).withFailureHandler(falha(btn, 'Salvar Risco', null)).atualizarRisco(dados);
@@ -367,7 +367,7 @@
         const justificativa = $id('rev-justif').value.trim();
         if (!justificativa) return showAlerta('Descreva a justificativa para marcar este risco como superado.');
         btn.disabled = true; btn.innerText = 'A salvar...';
-        google.script.run.withSuccessHandler(r => {
+        srv().withSuccessHandler(r => {
           if (r && r.sucesso === false) { btn.disabled = false; btn.innerText = 'Salvar Ação'; showAlerta(r.mensagem); return; }
           feedbackBtn(btn, '✅ Superado!', 'Salvar Ação', () => { fecharModal('modal-reavaliar-risco'); recarregarRiscosPlanos(renderAbaRiscoAtual); });
         }).withFailureHandler(falha(btn, 'Salvar Ação', null)).excluirRisco(idRisco);
@@ -402,7 +402,7 @@
       if (!dados.probabilidade || !dados.impacto) return showAlerta('Probabilidade e Impacto são obrigatórios.');
       if (!dados.tipoTratamento || !dados.responsavel) return showAlerta('Tipo de Tratamento e Proprietário do Risco são obrigatórios.');
       btn.disabled = true; btn.innerText = 'A salvar...';
-      google.script.run.withSuccessHandler(r => {
+      srv().withSuccessHandler(r => {
         if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Ação', () => { fecharModal('modal-reavaliar-risco'); recarregarRiscosPlanos(renderMatriz); });
         else { btn.disabled = false; btn.innerText = 'Salvar Ação'; showAlerta(r.mensagem); }
       }).withFailureHandler(falha(btn, 'Salvar Ação', null)).reavaliarRisco(dados);
@@ -461,7 +461,7 @@
     };
     if (!dados.riscoVinculado || !dados.what || !dados.why || !dados.who || !dados.where || !dados.whenPrevisto || !dados.how) return showAlerta('Preencha todos os campos do plano.');
     btn.disabled = true; btn.innerText = 'A guardar...';
-    google.script.run.withSuccessHandler(r => {
+    srv().withSuccessHandler(r => {
       if (r.sucesso) feedbackBtn(btn, '✅ Registrado!', 'Salvar Plano de Ação', () => { fecharModal('modal-plano-novo'); recarregarRiscosPlanos(renderAcompanhamento); });
       else { btn.disabled = false; btn.innerText = 'Salvar Plano de Ação'; showAlerta(r.mensagem); }
     }).withFailureHandler(falha(btn, 'Salvar Plano de Ação', null)).salvarPlano(dados);
@@ -617,7 +617,7 @@
     };
     if (!dados.what || !dados.why || !dados.who || !dados.whenPrevisto) return showAlerta('Preencha os campos obrigatórios.');
     btn.disabled = true; btn.innerText = 'A atualizar...';
-    google.script.run.withSuccessHandler(r => {
+    srv().withSuccessHandler(r => {
       if (r.sucesso) feedbackBtn(btn, '✅ Salvo!', 'Salvar Plano de Ação', () => { fecharModal('modal-plano-editar'); recarregarRiscosPlanos(renderAcompanhamento); });
       else { btn.disabled = false; btn.innerText = 'Salvar Plano de Ação'; showAlerta(r.mensagem); }
     }).withFailureHandler(falha(btn, 'Salvar Plano de Ação', null)).atualizarPlano(dados);
@@ -667,7 +667,7 @@
       }
 
       btn.disabled = true; btn.innerText = 'A processar...';
-      google.script.run.withSuccessHandler(r => {
+      srv().withSuccessHandler(r => {
         btn.disabled = false; btn.innerText = 'Salvar Revisão';
         if (r.sucesso) {
           showAlerta(r.mensagem, 'success');
@@ -827,7 +827,7 @@
     if (!entregas.length) { fecharModal('modal-acomp-entregas'); return; }
 
     btn.disabled = true; btn.innerText = 'A gravar...';
-    google.script.run.withSuccessHandler(r => {
+    srv().withSuccessHandler(r => {
       btn.textContent = 'Salvar Registros'; btn.disabled = false;
       if (r.sucesso) {
         showAlerta('Entregas salvas com sucesso!', 'success');
@@ -1027,7 +1027,7 @@
 
   function confirmarRestaurarRisco(id) {
     showConfirm('Deseja restaurar este risco? Ele voltará a aparecer na Matriz de Risco como Ativo.', () => {
-      google.script.run.withSuccessHandler(r => {
+      srv().withSuccessHandler(r => {
         if (r.sucesso) { recarregarRiscosPlanos(renderRiscosArquivados); }
         else { showAlerta(r.mensagem); }
       }).withFailureHandler(e => showAlerta(String(e))).restaurarRisco(id);
