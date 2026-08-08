@@ -140,7 +140,7 @@ function confirmarEscala() {
   }
 
   btn.disabled = true; btn.innerText = 'A guardar...';
-  google.script.run
+  srv()
     .withSuccessHandler(function(r) {
       if (r.sucesso) {
         var m = state.members.find(function(x){ return String(x.id) === String(membroId); });
@@ -571,7 +571,7 @@ function confirmarFerias() {
   };
 
   btn.disabled = true; btn.innerText = 'A guardar...';
-  google.script.run
+  srv()
     .withSuccessHandler(function(r) {
       if (r.sucesso) {
         // Atualiza o cache local em memória em vez de reler a aba inteira do

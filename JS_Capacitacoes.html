@@ -16,7 +16,7 @@ function garantirCapacitacoesData(cb) {
   if (cb) capacitacoesFilaCallbacks.push(cb);
   if (capacitacoesLoading) return; // já tem uma busca em andamento, só entra na fila
   capacitacoesLoading = true;
-  google.script.run
+  srv()
     .withFailureHandler(function(e) {
       capacitacoesLoading = false;
       capacitacoesFilaCallbacks = [];
@@ -493,20 +493,20 @@ function salvarFormCapacitacao() {
   }
 
   if (idRow)
-    google.script.run.withSuccessHandler(tratarRespostaCap).withFailureHandler(falha(btn, 'Salvar', null)).atualizarCapacitacao(dados);
+    srv().withSuccessHandler(tratarRespostaCap).withFailureHandler(falha(btn, 'Salvar', null)).atualizarCapacitacao(dados);
   else
-    google.script.run.withSuccessHandler(tratarRespostaCap).withFailureHandler(falha(btn, 'Salvar', null)).salvarCapacitacao(dados);
+    srv().withSuccessHandler(tratarRespostaCap).withFailureHandler(falha(btn, 'Salvar', null)).salvarCapacitacao(dados);
 }
 
 function recarregarCapacitacoes(cb) {
-  google.script.run
+  srv()
     .withSuccessHandler(trainings => { state.trainings = trainings; if (cb) cb(); })
     .withFailureHandler(e => showAlerta('Falha ao sincronizar capacitações: ' + String(e)))
     .getCapacitacoesData();
 }
 
 function excluirCapacitacaoConfirm(idRow, id) {
-  google.script.run
+  srv()
     .withSuccessHandler(r => {
       if (r && r.sucesso === false) { showAlerta(r.mensagem); return; }
       recarregarCapacitacoes(() => { renderCapacitacoes(); renderKpisCapacitacoes(); if (currentTab === 'indicadores') renderIndicadores(); });

@@ -539,7 +539,7 @@ function garantirRestoData(callback) {
   if (restoDataLoading) return; // já tem uma busca em andamento, só entra na fila
 
   restoDataLoading = true;
-  google.script.run
+  srv()
     .withFailureHandler(function(e) {
       // Sem isso, uma falha do servidor deixava a tela travada em
       // "A carregar..." para sempre, sem nenhum aviso do que houve.
@@ -807,7 +807,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // O resto do sistema (Unidades, Documentos, Riscos, Planos, Entregas)
   // só é buscado quando o usuário efetivamente clica numa dessas abas —
   // ver garantirRestoData() em mudarTab().
-  google.script.run
+  srv()
     .withFailureHandler(function(e) { showAlerta('Falha ao carregar dados: ' + (e.message||String(e))); })
     .withSuccessHandler(function(data) {
       state.tasks = data.tasks;
@@ -855,7 +855,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // a cada ação de cartão (recarregarKanban) — colocar Afastamentos lá
   // pesaria em toda edição/movimentação de cartão. Ainda assim chega cedo o
   // bastante para a aba abrir na hora, como Membros/Escala.
-  google.script.run
+  srv()
     .withFailureHandler(function(e) { console.error('Falha ao pré-carregar Afastamentos: ' + (e.message||String(e))); })
     .withSuccessHandler(function(data) {
       state.afastamentos = data || [];
@@ -1581,7 +1581,7 @@ function _gerarPdfReal(tipo) {
 
   _montarCorpoPdfEmTemaClaro(tipo, window[cfg.montarFn]).then(function(corpoHtml) {
     const html = _envelopeHtml(cfg, corpoHtml);
-    google.script.run
+    srv()
       .withSuccessHandler(function(r) {
         if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
         if (!r.sucesso) { showAlerta('Erro ao gerar PDF: ' + r.mensagem); return; }
@@ -1714,7 +1714,7 @@ function _dispararEnvioPdfReal(email) {
 
   _montarCorpoPdfEmTemaClaro(tipoPdfAtual, window[cfg.montarFn]).then(function(corpoHtml) {
     const html = _envelopeHtml(cfg, corpoHtml);
-    google.script.run
+    srv()
       .withSuccessHandler(function(r) {
         if (r.sucesso) feedbackBtn(btn,'Enviado!','Enviar PDF',function(){ fecharModal('modal-pdf-email'); });
         else { btn.innerText='Enviar PDF'; btn.disabled=false; showAlerta(r.mensagem); }
@@ -1776,7 +1776,7 @@ function carregarLogs(pagina) {
   const filtros = getFiltrosLogs();
   filtros.pagina = pagina;
 
-  google.script.run
+  srv()
     .withFailureHandler(function(e) {
       msgTabela('lista-logs', 5, 'Falha ao carregar: ' + (e.message || String(e)), true);
       renderPaginacao('paginacao-logs', { totalRegistros: 0 });

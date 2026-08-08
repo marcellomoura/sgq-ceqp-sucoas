@@ -298,6 +298,19 @@
            paint, sem depender de JS e sem piscar. -->
       <div class="sidebar-foot">
         <div id="sidebar-user-container" class="sidebar-user"></div>
+        <!-- Oculto por padrão (display:none inline): só faz sentido quando o
+             app roda em modo de login OAuth ("executar como o dono"). No modo
+             antigo (USER_ACCESSING) a identidade é a própria sessão do Google
+             no navegador — não há "sair" que o Apps Script possa oferecer, e
+             o botão nunca é revelado. Revelado por JS_Auth_Cliente.html. -->
+        <button type="button" id="btn-logout" class="theme-toggle" style="display:none"
+                title="Sair" aria-label="Sair">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
         <button type="button" id="btn-tema" class="theme-toggle"
                 title="Mudar para o modo escuro" aria-label="Mudar para o modo escuro">
           <svg class="icone-lua" viewBox="0 0 24 24" aria-hidden="true">
@@ -348,6 +361,15 @@
 
   <?!= include_('View_Comum'); ?>
 
+  <!-- Sessão/porteiro OAuth (Fase 3): preenchidos só quando o app roda "como o
+       dono"; vazios no fluxo atual (USER_ACCESSING), onde nada disso ativa. -->
+  <script>
+    window.SGQ_SID = <?!= JSON.stringify(typeof sid !== 'undefined' ? sid : '') ?>;
+    window.SGQ_AUTH = <?!= JSON.stringify(typeof authOAuth !== 'undefined' ? authOAuth : '') ?>;
+    window.SGQ_LOGIN_URL = <?!= JSON.stringify(typeof loginUrl !== 'undefined' ? loginUrl : '') ?>;
+    window.SGQ_APP_URL = <?!= JSON.stringify(typeof appUrl !== 'undefined' ? appUrl : '') ?>;
+  </script>
+  <?!= include_('JS_Auth_Cliente'); ?>
   <?!= include_('JS_Utilitarios'); ?>
   <?!= include_('JS_Kanban'); ?>
   <?!= include_('JS_Unidades'); ?>

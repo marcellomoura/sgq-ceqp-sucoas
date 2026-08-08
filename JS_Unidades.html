@@ -81,8 +81,8 @@ function confirmarUnidade() {
   if (!dados.unidade || !dados.sigla || !dados.email) return showAlerta('Preencha todos os campos.');
   btn.disabled = true; btn.innerText = idRow ? 'A atualizar...' : 'A guardar...';
   const chamada = idRow
-    ? google.script.run.withSuccessHandler(tratarRespostaUnidade).withFailureHandler(falha(btn, 'Salvar Unidade', null)).atualizarUnidade(dados)
-    : google.script.run.withSuccessHandler(tratarRespostaUnidade).withFailureHandler(falha(btn, 'Salvar Unidade', null)).salvarUnidade(dados);
+    ? srv().withSuccessHandler(tratarRespostaUnidade).withFailureHandler(falha(btn, 'Salvar Unidade', null)).atualizarUnidade(dados)
+    : srv().withSuccessHandler(tratarRespostaUnidade).withFailureHandler(falha(btn, 'Salvar Unidade', null)).salvarUnidade(dados);
 
   function tratarRespostaUnidade(r) {
     if (r.sucesso) { recarregarUnidades(renderUnidades); feedbackBtn(btn, '✅ Salvo!', 'Salvar Unidade', () => fecharModal('modal-unidade')); }
@@ -95,7 +95,7 @@ function inativarUnidade(idRow, sigla) {
   const u = state.units.find(x => String(x.idRow) === String(idRow));
   if (u) u.ativo = false;
   renderUnidades(); sincronizarSelectsUnidade();
-  google.script.run.withSuccessHandler(r => {
+  srv().withSuccessHandler(r => {
     if (r && r.sucesso === false) {
       if (u) u.ativo = true;
       renderUnidades(); sincronizarSelectsUnidade();
@@ -112,7 +112,7 @@ function reativarUnidade(idRow, sigla) {
   const u = state.units.find(x => String(x.idRow) === String(idRow));
   if (u) u.ativo = true;
   renderUnidades(); sincronizarSelectsUnidade();
-  google.script.run.withSuccessHandler(r => {
+  srv().withSuccessHandler(r => {
     if (r && r.sucesso === false) {
       if (u) u.ativo = false;
       renderUnidades(); sincronizarSelectsUnidade();
@@ -128,7 +128,7 @@ function reativarUnidade(idRow, sigla) {
 // Recarga LEVE do módulo de Unidades: lê só a aba Unidades (getUnitsData) em
 // vez das 7 abas de getRestoData, e ressincroniza os selects de unidade.
 function recarregarUnidades(cb) {
-  google.script.run.withSuccessHandler(r => {
+  srv().withSuccessHandler(r => {
     state.units = r.units;
     sincronizarSelectsUnidade();
     if (cb) cb();
