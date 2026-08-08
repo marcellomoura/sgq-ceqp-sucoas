@@ -53,7 +53,8 @@ Ordem **do mais recente para o mais antigo**. "§10" indica entrada no log infor
 
 | Data | O que aconteceu | Registro |
 |---|---|---|
-| **2026-07-30** | Membros: remove a pílula visual do Cargo (sem borda real, era fundo+padding) | **§8.30** |
+| **2026-08-08** | Consolidação do histórico no `master` (merge da branch de auditoria) + coluna Status de Capacitações alargada | **§8.31** |
+| 2026-07-30 | Membros: remove a pílula visual do Cargo (sem borda real, era fundo+padding) | §8.30 |
 | 2026-07-30 | Membros: coluna Matrícula (migração manual de coluna, mesmo padrão do item anterior) | §8.29 |
 | 2026-07-30 | Visitas Técnicas: coluna Data Prevista + KPI de Planejadas redefinido | §8.28 |
 | 2026-07-29 | **Execução do backlog da auditoria de 27/07** — 22 itens em 4 fases: 2 bugs altos, 6 médios, 9 baixos, 8 de código morto | **§8.27** |
@@ -1490,6 +1491,28 @@ A auditoria de 27/07 constatou que **nenhum** item do backlog de 26/07 havia sid
 **Efeito colateral avisado e aceito:** `.member-role-badge`/`.member-role-badge--lg` é classe **compartilhada** entre a lista de Membros e o Kanban (comentário em `CSS.html` já apontava os dois usos). A mudança tira a pílula do Cargo nos dois lugares — não foi criada uma classe modificadora para isolar só uma tela, por pedido explícito do usuário ("altere somente essa classe").
 
 **Arquivo:** `CSS.html` (1 linha).
+
+---
+
+### 8.31 Consolidação do histórico no `master` + coluna Status de Capacitações (2026-08-08)
+
+**Contexto:** o repositório é **local, sem `git remote` configurado** — não existe origin para onde empurrar. O deploy real do sistema é feito por `clasp push` para o Apps Script, que o usuário executa direto no terminal. Isso significa que *o git aqui é só histórico*: código pode estar em produção sem estar mesclado, e estar mesclado sem ter ido para produção. As duas coisas precisam ser conferidas separadamente.
+
+**Estado encontrado:** o trabalho das últimas semanas estava dividido em duas pontas que haviam divergido —
+
+- `auditoria/execucao-backlog-2026-07-27` com 7 commits (backlog da auditoria fases 1–4, Data Prevista/KPI de Visitas, Matrícula em Membros, remoção da pílula de Cargo, reorganização da DOCUMENTACAO, remoção do `verificar-tema.cjs`);
+- `master` com 1 commit que a branch não tinha (`a421ea0`, refinamento das cores do modo escuro / §10 Décima rodada);
+- 1 alteração não commitada em `CSS.html`.
+
+**Merge:** `git merge --no-ff` da branch no `master` → commit `7291c2c`. **Sem conflitos.** 19 arquivos, +1051/−844. A branch foi apagada com `git branch -d` depois (o `-d` só remove se estiver integralmente mesclada — serviu de conferência).
+
+**Coluna Status de Capacitações:** a alteração pendente no `CSS.html` era a 7ª coluna do `grid-template-columns` de `.cap-row`, de `80px` para `110px` — commit `721c51e`. Essa coluna é o **Status** (badge gerado por `badge()` em `JS_Capacitacoes.html`); em 80px os rótulos mais longos quebravam em duas linhas. Vale lembrar que `.cap-row` é uma das 10 classes de linha de lista, mas o `grid-template-columns` é **próprio de cada uma** (§10, 3ª rodada) — o ajuste não vaza para as outras listas.
+
+**Não validado nesta sessão:** a largura de 110px foi definida diretamente pelo usuário no arquivo; não houve conferência visual da lista de Capacitações da minha parte, nem em modo claro nem escuro.
+
+**Publicação:** o `clasp push` deste conteúdo já havia sido feito pelo usuário antes do merge. O merge e os commits acima **não alteram o que está no ar** — só reorganizam o histórico local.
+
+**Branch remanescente:** `refatoracao/fases-1-2` (`6a23bc0`, "alinha cores do PDF exportado à nova paleta e corrige refresh pós-save") continua **não mesclada** no `master` e não foi avaliada.
 
 ---
 
