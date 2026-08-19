@@ -2,7 +2,7 @@
 
 > **Documento oficial e registro único do projeto.** Auditoria técnica + documentação de engenharia reversa produzida a partir da leitura integral do código-fonte. Toda afirmação foi extraída do código; onde há incerteza, está sinalizado explicitamente.
 >
-> **Data-base da auditoria original:** 2026-07-16 (§1–§7, congelada). **Última atualização:** 2026-07-29 (§8.27). Comece pela [linha do tempo](#linha-do-tempo-consolidada) se procura uma mudança específica.
+> **Data-base da auditoria original:** 2026-07-16 (§1–§7, congelada). **Última atualização:** 2026-08-19 (§8.32). Comece pela [linha do tempo](#linha-do-tempo-consolidada) se procura uma mudança específica.
 >
 > **Escopo:** 7 arquivos `.js` (backend Apps Script, ~2.478 linhas) + arquivos `.html` (cliente: 1 CSS, 7 módulos JS, e — desde 2026-07-23 — as telas separadas em 8 arquivos `View_*` por módulo; ver §8.8). Originalmente as views/modais viviam num único `Index.html`; o total de linhas de cliente é ~o mesmo (~5.900), só redistribuído.
 
@@ -53,7 +53,8 @@ Ordem **do mais recente para o mais antigo**. "§10" indica entrada no log infor
 
 | Data | O que aconteceu | Registro |
 |---|---|---|
-| **2026-08-08** | Consolidação do histórico no `master` (merge da branch de auditoria) + coluna Status de Capacitações alargada | **§8.31** |
+| **2026-08-19** | **Riscos:** filtro por unidade na Matriz, escalas de probabilidade/impacto/nível alinhadas ao padrão GDF (Decreto 37.302/2016) e correções nos PDFs (título, espaçamento, paginação, fonte da matriz) | **§8.32** |
+| 2026-08-08 | Consolidação do histórico no `master` (merge da branch de auditoria) + coluna Status de Capacitações alargada | §8.31 |
 | 2026-07-30 | Membros: remove a pílula visual do Cargo (sem borda real, era fundo+padding) | §8.30 |
 | 2026-07-30 | Membros: coluna Matrícula (migração manual de coluna, mesmo padrão do item anterior) | §8.29 |
 | 2026-07-30 | Visitas Técnicas: coluna Data Prevista + KPI de Planejadas redefinido | §8.28 |
@@ -372,7 +373,7 @@ Alguns comentários do código carregam tags curtas de auditorias anteriores. O 
 
 ### 8.3 Regras de negócio identificadas
 - **Autenticação/autorização:** membro = e-mail (funcional ou pessoal) presente e ativo na aba Membros. Não-membros são bloqueados em `doGet` e em cada endpoint.
-- **Nível de risco:** `P×I` → ≥15 Crítico, ≥10 Alto, ≥5 Médio, senão Baixo (`calcularNivelRisco_`, espelhado em `atualizarLegendaRisco`).
+- **Nível de risco:** `P×I` → ≥15 Extremo, ≥10 Alto, ≥5 Médio, senão Baixo (`calcularNivelRisco_`, espelhado em `atualizarLegendaRisco`). *(Até 2026-08-19 o topo da escala chamava-se "Crítico"; renomeado para "Extremo" ao alinhar as escalas ao padrão GDF — ver §8.32.)*
 - **Próxima revisão de documento:** data de aprovação + 1 ano (`calcularProximaRevisao_`). Status calculado: sem data de aprovação → "Em Elaboração"; ≤60 dias → "Próximo da Revisão"; vencido → "Vencido".
 - **Arquivamento de tarefa — 100% MANUAL:** `_tarefaArquivada_` considera arquivado **somente** quando a coluna `Arquivado` vale `'Sim'`. Não há arquivamento por data nem gatilho. *(Corrigido em 2026-07-29: até então esta linha descrevia o auto-arquivamento por `DIAS_PARA_ARQUIVAR` — concluída há ≥15 dias com a coluna em branco —, comportamento removido do código mas que sobreviveu aqui e no `runTests_`, onde deixou um teste falhando em permanência; ver §8.27, itens B-01 e B-02.)*
 - **Status de plano:** finalizado → "Concluído"; previsto no passado → "Atrasado"; senão "Em Andamento" (`_statusPlano_`).
@@ -1148,7 +1149,7 @@ Reportado na conferência visual: no modo escuro, as células de eixo da Matriz 
 
 | | Cor | L\* |
 |---|---|---|
-| Heatmap — Baixo / Médio / Alto / Crítico | `#72C9B7` `#E6CC8C` `#E6AD7A` `#E27E73` | **75 / 83 / 75 / 64** |
+| Heatmap — Baixo / Médio / Alto / Extremo | `#72C9B7` `#E6CC8C` `#E6AD7A` `#E27E73` | **75 / 83 / 75 / 64** |
 | `--bg-card` (1ª tentativa) | `#161a22` | 9 |
 | `--bg-subtle` (2ª tentativa) | `#1f242d` | 14 |
 | `--bg-hover` (topo da escada) | `#242a34` | 17 |
@@ -1270,7 +1271,7 @@ Dois defeitos no relatório `risco-arquivado` (`montarHtmlRiscoArquivadoPdf`, em
 
 **1) "Riscos Superados" impresso duas vezes.** O cabeçalho do PDF já imprime o `title` de `CFG_PDF['risco-arquivado']` ([JS_Utilitarios.html](JS_Utilitarios.html#L1291)), e a função ainda prefixava o corpo com `_pdfSecaoTitulo('Riscos Superados')` — mesmo texto, duas vezes seguidas. A chamada foi removida.
 
-Note a assimetria proposital com `montarHtmlMatrizPdf`: **lá** o `_pdfSecaoTitulo('Mapeamento de Riscos')` é legítimo, porque o corpo tem três blocos (matriz, legenda, tabela) e o título separa o terceiro dos anteriores. Superados tem um bloco só — o título do cabeçalho basta. `montarHtmlAcompanhamentoPdf` já seguia essa regra.
+Note a assimetria proposital com `montarHtmlMatrizPdf`: **lá** o `_pdfSecaoTitulo('Mapeamento de Riscos')` é legítimo, porque o corpo tem três blocos (matriz, legenda, tabela) e o título separa o terceiro dos anteriores. Superados tem um bloco só — o título do cabeçalho basta. `montarHtmlAcompanhamentoPdf` já seguia essa regra. *(Superada em 2026-08-19: o título do Mapeamento foi removido também da Matriz — a legenda encerra a grade e o cabeçalho das colunas identifica a tabela sozinho. Nenhum dos cinco PDFs usa `_pdfSecaoTitulo` para esse fim hoje; ver §8.32.)*
 
 **2) Meta do risco saía empilhada, uma linha por campo.** `.risk-title-row` e `.risk-meta` são `display:flex` na tela, e o conversor HTML→PDF do Apps Script não renderiza flex de forma confiável (mesmo problema já documentado para grid). Sem flex, cada filho `<div>` volta a ser bloco e quebra linha sozinho: Macroetapa / Categoria / Causa / Consequência saíam uma embaixo da outra com o separador `|` solto entre elas, e o selo `SUPERADO` descolado do título.
 
@@ -1518,6 +1519,108 @@ A auditoria de 27/07 constatou que **nenhum** item do backlog de 26/07 havia sid
 **Publicação:** o `clasp push` deste conteúdo já havia sido feito pelo usuário antes do merge. O merge e os commits acima **não alteram o que está no ar** — só reorganizam o histórico local.
 
 **Branch remanescente:** `refatoracao/fases-1-2` (`6a23bc0`, "alinha cores do PDF exportado à nova paleta e corrige refresh pós-save") continua **não mesclada** no `master` e não foi avaliada.
+
+---
+
+### 8.32 Riscos — filtro por unidade, escalas alinhadas ao padrão GDF e correções nos PDFs (2026-08-19)
+
+Sessão longa, disparada por pedidos independentes que convergiram para o mesmo módulo. Agrupados aqui por tema.
+
+#### 1) Filtro de Unidade na Matriz de Risco
+
+Espelha o filtro que a tela de Planos de Ação já tinha. `<select id="f-matriz-unidade">` no cabeçalho da seção, populado por `sincronizarSelectsUnidade()` e disparado pela delegação global de `change` em `JS_Utilitarios.html` — mesmo caminho de `f-acomp-unidade`, sem `onchange` inline.
+
+O filtro entra direto no `const ativos` de `renderMatriz()`, comparando `String(r.responsavel) === String(fU)`. Como a grade 5×5 e a tabela de Mapeamento são montadas a partir do mesmo array, as duas recortam juntas. PDF e e-mail acompanham sem código extra, porque `montarHtmlMatrizPdf` lê a grade e a lista já renderizadas.
+
+Dropdown próprio (`optsUnidFiltroProprietarios()`), e não o `optsUnidFiltro()` das outras telas: o Proprietário de um risco nunca pode ser comissão/subcomissão (`gerarOptsProprietariosRisco` as exclui), então listá-las criaria opções que sempre devolvem lista vazia. Unidades inativas continuam listadas com o sufixo "(Inativa)" — riscos antigos ainda apontam para elas.
+
+#### 2) Escalas de Probabilidade e Impacto — padrão GDF
+
+**Motivação:** o usuário notou que "Alto" significava duas coisas na mesma tela — grau de impacto e nível de risco. Um risco com Impacto 4 ("Alto") e Probabilidade 1 dá score 4, ou seja, Nível **Baixo**. O ponto pior não era a matriz, e sim o modal de cadastro, onde o select de Impacto exibia "4 - Alto" logo acima da legenda calculada "Alto (12)".
+
+**Pesquisa (registrada porque orientou a decisão):**
+
+- **TCU** ([Referencial Básico de Gestão de Riscos](https://portal.tcu.gov.br/data/files/21/96/61/6E/05A1F6107AD96FE6F18818A8/Referencial_basico_gestao_riscos.pdf)) tem exatamente a mesma colisão — Impacto "Muito baixo…Muito alto", Nível "RB/RM/RA/RE". Resolve **qualificando o nível** com a palavra "Risco" ("Risco Alto"), não renomeando o impacto.
+- **GDF** ([Manual da SEEC/DF](https://www.economia.df.gov.br/documents/d/seec/manual-gestao-de-riscos-seec-1-1-pdf-2-), sob o [Decreto nº 37.302/2016](https://www.sinj.df.gov.br/sinj/Norma/62b125e556c2408ba49802520e9f96e4/Decreto_37302_29_04_2016.html) + ABNT NBR ISO 31000:2018) aplica as duas defesas: escala de consequência com vocabulário próprio **e** nível prefixado com "Risco".
+- **TCDF** não publica escala P×I: o que tem é a Matriz de Priorização (gravidade, urgência, tendência, complexidade, relevância, materialidade), para decidir o que auditar primeiro. É controle *externo* — quem define metodologia para a SES/DF é a CGDF, via Decreto 37.302/2016.
+
+**Decisão:** adotar a escala do GDF, que é normativa para o órgão. O usuário optou pelos adjetivos no masculino (o campo continua chamando-se "Impacto") e **dispensou o prefixo "Risco"** no nível.
+
+| Peso | Probabilidade (antes → depois) | Impacto (antes → depois) |
+|:--:|---|---|
+| 1 | Raro → **Improvável** | Muito Baixo → **Desprezível** |
+| 2 | Pouco Provável → **Raro** | Baixo → **Menor** |
+| 3 | Provável → **Possível** | Médio → **Moderado** |
+| 4 | Muito Provável → **Provável** | Alto → **Maior** |
+| 5 | Praticamente Certo → **Quase Certo** | Muito Alto → **Catastrófico** |
+
+Custo zero em dados: probabilidade e impacto sempre foram gravados como **número** (1–5): os rótulos só existem nos 10 `<th>/<td>` dos eixos da matriz e nos 6 `<select>` (cadastro, edição e reavaliação).
+
+**Achado no caminho:** o modal de **reavaliação** usava uma escala de probabilidade *diferente* das outras duas telas — "Muito Baixa / Baixa / Média / Alta / Muito Alta" —, com o mesmo peso significando coisas diferentes conforme o modal, e colidindo de forma ainda mais direta com o nível. Padronizado junto.
+
+#### 3) Nível "Crítico" → "Extremo"
+
+O topo da escada (`P×I ≥ 15`) passou a se chamar **Extremo**, completando o alinhamento ao GDF. Diferente dos itens acima, este valor é **texto gravado** na coluna `Nivel`.
+
+Registro honesto do caminho tortuoso: a primeira decisão foi traduzir **só na exibição** (planilha grava `Crítico`, tela mostra `Extremo`), para evitar migração. O que **faltou dizer ao usuário** é que esse desenho pressupunha ninguém tocar na planilha. Ele editou a linha à mão para `Extremo`, e o sistema — que só conhecia `Crítico` — devolveu `CORES_STATUS['Extremo'] === undefined`, pintando o badge de cinza neutro; na edição seguinte, o servidor regravaria `Crítico` por cima. A tradução foi então **removida** (junto com as funções `rotuloNivel()`/`badgeNivel()`, que viraram código morto) e `Extremo` passou a ser o único valor conhecido, ponta a ponta: `calcularNivelRisco_`, `runTests_`, `CORES_STATUS`, `CORES_NIVEL_RISCO`, `atualizarLegendaRisco` e a legenda da matriz.
+
+Não houve migração porque, confirmado pelo usuário, **não havia nenhuma reavaliação registrada** — o único risco no nível era o que ele já corrigira à mão. Em uma base com histórico, seria necessário varrer a coluna `Nivel` (uma linha por versão).
+
+#### 4) PDFs — título, espaçamento, paginação e tamanho de fonte
+
+- **`CFG_PDF['acomp'].title`**: "Acompanhamento de Ações" → **"Planos de Ação"**, casando com o nome da tela. Alimenta o cabeçalho impresso e o assunto do e-mail. O nome do arquivo (`Acompanhamento_Acoes_SGQ.pdf`) foi mantido.
+- **Cabeçalho institucional**: "…E PADRONIZAÇÃO" → "…E PADRONIZAÇÃO **PROCESSUAL**" (`_cabecalhoPdfHtml`, vale para os 5 relatórios). O corpo HTML do e-mail em `Código.js` ainda traz a razão social antiga.
+- **Espaçamento do PDF de Planos**: a folha do PDF é isolada do `CSS.html` de propósito, e não declarava `line-height` — o texto saía no padrão do conversor (~1.15, linhas coladas) e os blocos, sem margem, grudavam. Adicionados `line-height` em `.pdf-td-generic`/`.pdf-th-generic` e espaçamento para `.risk-block`, `.risk-meta`, `.plans-title`, `.version-card`, `.version-header`, `.plan-card-empty-msg`, espelhando o `CSS.html`. Beneficia também o PDF de Riscos Superados.
+- **`.risco-c-id { white-space: nowrap }`** no envelope: "R-1" quebrava em "R-" / "1", porque a coluna é estreita e o hífen é ponto de quebra válido.
+- **Título "Mapeamento de Riscos" removido** (tela e PDF). Ele existia acima da tabela; no PDF ficava órfão no rodapé da página 1 (a matriz + legenda ocupam 152mm dos 186mm úteis), o que levou primeiro a uma quebra de página forçada e depois — a pedido — à remoção do título e da quebra. A tabela agora flui direto após a legenda e continua na folha seguinte. Para a leitura não se perder na virada, foi declarado `thead { display: table-header-group }` no envelope, pedindo ao conversor que **repita o cabeçalho das colunas** em cada página. Na tela, o respiro que a margem do título dava foi reposto com `mt-24` no container da tabela.
+- **Ordem das colunas**: Categoria movida para logo após Macroetapa, nos três lugares que precisam andar juntos (cabeçalho da tela, linha renderizada e os `<th>` do PDF — as células do PDF são copiadas do DOM na ordem em que estão).
+
+#### 5) Compensação de fonte na captura de imagem (o bug menos óbvio da sessão)
+
+**Sintoma relatado:** na tela, os rótulos dos eixos pareciam *maiores* que as colunas abaixo; no PDF, ficavam *muito menores*.
+
+**Duas causas distintas.**
+
+**(a) Especificidade morta no `CSS.html`.** `.matrix-table th, .matrix-table td { font-size: 13.5px }` (classe + elemento) é **mais específico** que `.cell-axis { font-size: var(--fs-xs) }` (só classe) e vence, mesmo estando escrito antes. Medido no navegador: eixos **13,5px**, colunas 13px, badges 11px, legenda 12px. Ou seja, **o `font-size` de `.cell-axis` nunca foi aplicado** — e isso invalidou retroativamente um ajuste anterior desta mesma sessão, em que "aumentar 1px a fonte da matriz" não surtiu efeito nos eixos (só em badges e legenda). O ajuste foi revertido a pedido antes de ser percebido; **a regra morta continua no código**, ver "pendências" abaixo.
+
+**(b) A matriz é foto, a tabela é redesenhada.** `_capturarElementoComoImg` (html2canvas) fotografa `.matrix-table` e `.legend-row` — o conversor não pinta `background-color` de forma confiável, daí a foto. A imagem entra com `width:100%`, sendo reduzida pelo fator `largura capturada / largura útil da página`. A tabela de Mapeamento, ao contrário, é remontada em HTML com `font-size: 10.5px` fixo, sem redução nenhuma.
+
+O agravante: **o fator dependia da largura da janela**, então o mesmo relatório saía diferente em cada monitor —
+
+| Tela | Eixos no papel (antes) | Eixos no papel (depois) |
+|---|:--:|:--:|
+| 1280px | 10,9px | **10,5px** |
+| 1600px | 8,7px | **10,5px** |
+| 1920px | 7,3px | **10,5px** |
+| 2560px | 5,4px | **10,5px** |
+
+**Correção:** `_capturarElementoComoImg(el, alvosPx)` ganhou um segundo parâmetro `{ seletor: tamanho_desejado_no_papel }`. O fator é medido na hora (`el.offsetWidth / PDF_LARGURA_UTIL_PX`, sendo 1032px = 273mm a 96dpi) e o `font-size` é multiplicado por ele, **no clone invisível do `onclone`** — a tela real não muda. Precisa de `!important` para vencer a especificidade descrita em (a). A Matriz pede `.cell-axis: 10.5` (igual à tabela ao lado), `.risk-badge: 9.5` e `.legend-item: 10`.
+
+**Alcance:** dos 5 relatórios, só **Matriz** e **Painel de Indicadores** fotografam elementos. Os outros três (Planos de Ação, Riscos Superados, Cartões Arquivados) remontam HTML com tamanhos fixos e são imunes por construção.
+
+#### 6) Larguras de colunas
+
+- **Tabela de Mapeamento** (`.risco-row`): Proprietário `1.2fr → 0.9fr`, Plano de Ação `1.5fr → 1.8fr`. A soma (10,8fr) não muda, então nenhuma outra coluna se desloca.
+- **Card 5W2H** (`.plan-single-line`): Quem e Onde `1fr → 0.7fr` cada, Ação e Justificativa `1.5fr → 1.8fr` cada. Total constante em 9,2fr. Guardam siglas curtas contra textos longos.
+  **Armadilha:** as proporções do 5W2H são duplicadas em **dois** arrays `widths` de `JS_Riscos.html` (`_planoGridsParaTabelaPdf_` e a cópia em `montarHtmlRiscoArquivadoPdf`), que o PDF usa como percentuais fixos. Recalculados para `19.6% · 19.6% · 7.6% · 7.6% · 8.7% · 8.7% · 10.8% · 8.7% · 8.7%` (soma exata 100%). Um comentário no `CSS.html` agora avisa que os lugares andam juntos.
+- **Coluna Risco** (`.risco-c-nome`): perdeu a caixa (borda, fundo, padding, `inline-block`) e passou a declarar `font-size: 13px`. Antes não declarava tamanho nenhum e herdava os 14px do `body` — era a única célula da linha maior que as demais, por omissão e não por decisão.
+
+#### Publicação — armadilha do editor do Apps Script aberto
+
+Dois pushes desta sessão "sumiram": o `clasp` reportava `Pushed 30 files`, mas o código no servidor continuava o anterior; o push seguinte respondia `Script is already up to date` sem estar. **Causa:** o editor do Apps Script aberto no navegador carrega o código para a memória ao abrir; ao salvar ou implantar, grava esse buffer por cima do que o `clasp` enviou. Só divergiam exatamente os arquivos que o push mais recente havia alterado — consistente com a explicação.
+
+Uma primeira hipótese (cache de `mtime` do clasp) foi registrada e está **errada**; mexer no `mtime` nunca foi a solução, o push sempre funcionou.
+
+**Procedimento adotado daí em diante, e recomendado:** fechar o editor do Apps Script antes do push (ou recarregar com F5 depois dele) e **conferir o resultado com `clasp pull` num diretório separado**, comparando os 30 arquivos — a saída do `push` não é evidência suficiente.
+
+#### Pendências e o que não foi validado
+
+- **Nenhum PDF real foi gerado nesta sessão.** Espaçamento, `nowrap` do ID, larguras e compensação de fonte foram conferidos renderizando o envelope do PDF no navegador com o CSS real do arquivo; o resultado final passa pelo conversor do Apps Script, que só o PDF real revela.
+- **`thead { display: table-header-group }` não foi confirmado** no conversor do Apps Script. Se ele não repetir o cabeçalho, o plano B é montar a tabela em blocos, repetindo o cabeçalho a cada N linhas.
+- **A regra morta `.cell-axis { font-size: var(--fs-xs) }` continua no `CSS.html`** — inofensiva hoje (a compensação do PDF usa `!important` e não depende dela), mas é uma armadilha para quem tentar mudar o tamanho dos eixos pelo caminho óbvio.
+- **O Painel de Indicadores mantém a dependência do monitor.** A parte HTML aceitaria a mesma compensação; os rótulos *dentro* dos gráficos, não — são `<canvas>`, bitmap já desenhado pelo Chart.js, que não obedece a CSS. Exigiria redesenhar o Chart.js com fonte maior antes da foto.
+- **Terminologia fora do sistema:** documentos, planilhas ou treinamentos da CEQP com os rótulos antigos passam a divergir da tela.
+- **`Código.js` traz "Comissão Especial de Qualidade e Padronização (CEQP)"** no corpo HTML do e-mail, sem "Processual".
 
 ---
 

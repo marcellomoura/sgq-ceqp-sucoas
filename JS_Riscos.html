@@ -66,10 +66,10 @@
       // O grid possui 9 divs filhas.
       const divs = Array.from(grid.children);
 
-      // Proporções do grid CSS para as larguras da tabela:
-      // minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr)
-      // Percentuais aproximados: 16%, 16%, 11%, 11%, 9%, 9%, 11%, 9%, 8%
-      const widths = ['16%', '16%', '11%', '11%', '9%', '9%', '11%', '9%', '8%'];
+      // Proporções do grid CSS (.plan-single-line em CSS.html) para as larguras
+      // da tabela — total 9.2fr, cada coluna vira sua fração desse total:
+      // 1.8 | 1.8 | 0.7 | 0.7 | 0.8 | 0.8 | 1 | 0.8 | 0.8
+      const widths = ['19.6%', '19.6%', '7.6%', '7.6%', '8.7%', '8.7%', '10.8%', '8.7%', '8.7%'];
 
       let theadCells = '';
       let tbodyCells = '';
@@ -115,7 +115,13 @@
     msgTabela('lista-riscos', 12, 'A carregar...');
     for (let p = 1; p <= 5; p++) for (let i = 1; i <= 5; i++) { const el = $id(`cell-${p}-${i}`); if (el) el.innerHTML = ''; }
 
-    const ativos = state.risks.filter(r => r.status !== 'Superado');
+    // Filtro de Unidade: recorta a Matriz pelo Proprietário do risco
+    // (r.responsavel guarda o id da unidade, mesmo formato de p.who nos planos).
+    // Vale para a grade 5×5 e para a tabela de Mapeamento ao mesmo tempo — as
+    // duas são montadas a partir de `ativos`. PDF e e-mail acompanham de graça,
+    // pois montarHtmlMatrizPdf lê a grade e a lista já renderizadas na tela.
+    const fU = ($id('f-matriz-unidade') || { value: '' }).value;
+    const ativos = state.risks.filter(r => r.status !== 'Superado' && (!fU || String(r.responsavel) === String(fU)));
 
     ativos.forEach((r, idx) => {
       // r.probabilidade/.impacto/.nivel já vêm do servidor como a versão mais
@@ -149,7 +155,12 @@
       }
     });
 
-    if (!ativos.length) { $id('lista-riscos').innerHTML = '<div class="msg-empty">Nenhum risco ativo mapeado.</div>'; return; }
+    if (!ativos.length) {
+      $id('lista-riscos').innerHTML = fU
+        ? '<div class="msg-empty">Nenhum risco ativo para a unidade selecionada.</div>'
+        : '<div class="msg-empty">Nenhum risco ativo mapeado.</div>';
+      return;
+    }
     // Índice id → posição em state.risks, montado uma vez. Antes era um
     // findIndex por linha DENTRO do map (O(n²)) — mesma correção já aplicada em
     // renderDocumentos.
@@ -177,10 +188,10 @@
     <div class="text-center font-bold text-secondary font-13">${i + 1}</div>
     <div class="risco-c-id">R-${r.id}</div>
     <div class="font-medium font-13">${esc(r.macroetapa)}</div>
+    <div class="font-13">${esc(r.categoria)}</div>
     <div><span class="risco-c-nome">${esc(r.nome)}</span></div>
     <div class="risco-c-text">${esc(r.causa)}</div>
     <div class="risco-c-text">${esc(r.consequencia)}</div>
-    <div class="font-13">${esc(r.categoria)}</div>
     <div class="text-center font-bold font-13">${r._curProb * r._curImp}</div>
     <div class="text-center font-13 risco-c-nivel">${badge(r._curNivel)}${r._trend}</div>
     <div class="font-13">${esc(r.tipoTratamento)}</div>
@@ -857,8 +868,11 @@
     const matrizEl = document.querySelector('#area-matriz .matrix-table');
     const legendaEl = document.querySelector('#area-matriz .legend-row');
     const [matrizImg, legendaImg] = await Promise.all([
-      _capturarElementoComoImg(matrizEl),
-      _capturarElementoComoImg(legendaEl)
+      // Tamanhos em px JÁ NO PAPEL (ver alvosPx em _capturarElementoComoImg):
+      // os eixos saem em 10.5px, igual ao texto da tabela de Mapeamento logo
+      // abaixo, e badges/legenda ficam um pouco menores, como na tela.
+      _capturarElementoComoImg(matrizEl, { '.cell-axis': 10.5, '.risk-badge': 9.5 }),
+      _capturarElementoComoImg(legendaEl, { '.legend-item': 10 })
     ]);
 
     const matrizHtml = matrizImg
@@ -866,10 +880,16 @@
     const legendaHtml = legendaImg
       ? `<img src="${legendaImg}" class="pdf-img-centered">` : '';
 
-    const riscosHtml = _pdfSecaoTitulo('Mapeamento de Riscos') +
+    // Sem título de seção e sem quebra de página: a tabela flui direto depois
+    // da legenda e continua na folha seguinte quando o papel acaba. O que
+    // sustenta a leitura na virada é o <thead> repetir o cabeçalho no topo de
+    // cada página — ver `thead { display: table-header-group }` no envelope
+    // (JS_Utilitarios). Antes havia uma quebra forçada aqui só para o título
+    // não ficar órfão no rodapé; sem título, ela perdeu a razão de existir.
+    const riscosHtml =
       `<table><thead><tr>
-      <th class="text-center">#</th><th class="text-center">ID</th><th>Macroetapa</th><th>Risco</th><th>Causa</th><th>Consequência</th>
-      <th>Categoria</th><th class="text-center">P×I</th><th class="text-center">Nível</th>
+      <th class="text-center">#</th><th class="text-center">ID</th><th>Macroetapa</th><th>Categoria</th><th>Risco</th><th>Causa</th>
+      <th>Consequência</th><th class="text-center">P×I</th><th class="text-center">Nível</th>
       <th>Tratamento</th><th>Proprietário</th><th>Plano de Ação</th>
     </tr></thead><tbody>${_gridRowsParaPdf('lista-riscos')}</tbody></table>`;
 
@@ -903,7 +923,7 @@
     'Baixo': ['var(--risk-low-bg)', 'var(--risk-low-border)', 'var(--risk-low-text)'],
     'Médio': ['var(--risk-med-bg)', 'var(--risk-med-border)', 'var(--risk-med-text)'],
     'Alto': ['var(--risk-high-bg)', 'var(--risk-high-border)', 'var(--risk-high-text)'],
-    'Crítico': ['var(--risk-crit-bg)', 'var(--risk-crit-border)', 'var(--risk-crit-text)']
+    'Extremo': ['var(--risk-crit-bg)', 'var(--risk-crit-border)', 'var(--risk-crit-text)']
   };
   function atualizarLegendaRisco(prefix) {
     const probVal = $id(prefix + '-prob').value;
@@ -925,8 +945,9 @@
     const i = Number(impVal);
     const s = p * i;
     // Nível a partir do score; as cores saem de CORES_NIVEL_RISCO (fonte única,
-    // ver variáveis --risk-* em CSS.html).
-    const nivel = s >= 15 ? 'Crítico' : s >= 10 ? 'Alto' : s >= 5 ? 'Médio' : 'Baixo';
+    // ver variáveis --risk-* em CSS.html). Espelha calcularNivelRisco_ do
+    // servidor, que agora grava 'Extremo'.
+    const nivel = s >= 15 ? 'Extremo' : s >= 10 ? 'Alto' : s >= 5 ? 'Médio' : 'Baixo';
     const [bg, borda, cor] = CORES_NIVEL_RISCO[nivel];
 
     if (leg && val) {
@@ -1058,7 +1079,8 @@
       // O grid possui 9 divs filhas.
       const divs = Array.from(grid.children);
       
-      const widths = ['16%', '16%', '11%', '11%', '9%', '9%', '11%', '9%', '8%'];
+      // Mesmas proporções de .plan-single-line (ver _planoGridsParaTabelaPdf_).
+      const widths = ['19.6%', '19.6%', '7.6%', '7.6%', '8.7%', '8.7%', '10.8%', '8.7%', '8.7%'];
       
       let theadCells = '';
       let tbodyCells = '';

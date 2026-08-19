@@ -147,7 +147,8 @@ const CORES_STATUS = {
   'Em Andamento':'tag-lavender', 'Em Elaboração':'tag-lavender',
   'Vencido':'badge-danger', 'Atrasado':'badge-danger',
   'Obsoleto':'badge-neutral', 'Arquivado':'badge-neutral',
-  'Crítico':'badge-danger', 'Alto':'tag-peach', 'Médio':'badge-warning', 'Baixo':'badge-success',
+  // Níveis de risco (padrão GDF — Decreto 37.302/2016 / ISO 31000).
+  'Extremo':'badge-danger', 'Alto':'tag-peach', 'Médio':'badge-warning', 'Baixo':'badge-success',
   'Alta':'badge-danger', 'Media':'badge-warning', 'Baixa':'badge-success'
 };
 // Tipo de Documento (Lista Mestra) — categórico, não status; usa só as cores
@@ -510,6 +511,25 @@ function optsUnidFiltro() {
   });
   return h;
 }
+// Filtro de unidade da Matriz de Risco. Difere de optsUnidFiltro() porque o
+// Proprietário de um risco nunca pode ser comissão/subcomissão (ver
+// gerarOptsProprietariosRisco) — listá-las aqui só criaria opções que sempre
+// devolvem lista vazia. Unidades inativas continuam listadas (com "(Inativa)"),
+// como nos demais filtros: riscos antigos ainda apontam para elas.
+function optsUnidFiltroProprietarios() {
+  let h='<option value="">Todas as Unidades</option>';
+  const ordenadas = [...state.units]
+    .filter(u => {
+      const n = u.unidade.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return !n.includes('comissao') && !n.includes('subcomissao');
+    })
+    .sort((a, b) => a.unidade.localeCompare(b.unidade, 'pt-BR', { sensitivity: 'base' }));
+  ordenadas.forEach(u=>{
+    const isInactive = u.ativo === false ? ' (Inativa)' : '';
+    h+=`<option value="${esc(u.id)}">${esc(u.sigla)}${isInactive}</option>`;
+  });
+  return h;
+}
 function sincronizarSelectsUnidade() {
   const resps = [['d-resp',false],['p-who',true],['ed-resp',false],['ep-who',true]];
   resps.forEach(([id, comTodas]) => { const el=$id(id); if(!el) return; const v=el.value; el.innerHTML=gerarOptsUnidades(comTodas); if(v) el.value=v; });
@@ -518,6 +538,9 @@ function sincronizarSelectsUnidade() {
   proprietarios.forEach(id => { const el=$id(id); if(!el) return; const v=el.value; el.innerHTML=gerarOptsProprietariosRisco(); if(v) el.value=v; });
   const filtros = ['f-doc-unidade','f-rev-unidade','f-acomp-unidade'];
   filtros.forEach(id => { const el=$id(id); if(!el) return; const v=el.value; el.innerHTML=optsUnidFiltro(); if(v) el.value=v; });
+
+  const filtroMatriz = $id('f-matriz-unidade');
+  if (filtroMatriz) { const v=filtroMatriz.value; filtroMatriz.innerHTML=optsUnidFiltroProprietarios(); if(v) filtroMatriz.value=v; }
 }
 
 // ==========================================
@@ -1335,6 +1358,7 @@ document.addEventListener('change', function(e) {
   if (id === 'f-doc-unidade' || id === 'f-doc-tipo' || id === 'f-doc-status') renderDocumentos('mestra');
   if (id === 'f-rev-unidade') renderDocumentos('revisoes');
   if (id === 'f-acomp-unidade' || id === 'f-acomp-status') renderAcompanhamento();
+  if (id === 'f-matriz-unidade') renderMatriz();
   if (id === 'f-archived-membro') renderArquivados(true);
   if (id === 'f-log-usuario' || id === 'f-log-data-ini' || id === 'f-log-data-fim') carregarLogs();
 });
@@ -1368,7 +1392,7 @@ const CFG_PDF = {
   'dashboard': { file: 'Painel_Indicadores_SGQ.pdf',   title: 'Painel de Indicadores',                ori: 'landscape', montarFn: 'montarHtmlIndicadoresPdf' },
   'archived' : { file: 'Cartoes_Arquivados_SGQ.pdf',   title: 'Cartões Arquivados',                  ori: 'portrait',  montarFn: 'montarHtmlArquivadosPdf' },
   'matriz'   : { file: 'Matriz_Risco_SGQ.pdf',         title: 'Matriz de Risco',                     ori: 'landscape', montarFn: 'montarHtmlMatrizPdf' },
-  'acomp'    : { file: 'Acompanhamento_Acoes_SGQ.pdf', title: 'Acompanhamento de Ações',             ori: 'landscape', montarFn: 'montarHtmlAcompanhamentoPdf' },
+  'acomp'    : { file: 'Acompanhamento_Acoes_SGQ.pdf', title: 'Planos de Ação',                      ori: 'landscape', montarFn: 'montarHtmlAcompanhamentoPdf' },
   'risco-arquivado': { file: 'Riscos_Superados_SGQ.pdf',  title: 'Riscos Superados',                  ori: 'landscape', montarFn: 'montarHtmlRiscoArquivadoPdf' }
 };
 
@@ -1431,7 +1455,7 @@ function _pdfSecaoTitulo(texto) {
 function _cabecalhoPdfHtml(cfg) {
   return `<table class="pdf-section-table">
     <tr><td class="pdf-section-line1">SISTEMA DE GESTÃO DA QUALIDADE</td></tr>
-    <tr><td class="pdf-section-line2">COMISSÃO ESPECIAL DE QUALIDADE E PADRONIZAÇÃO · CEQP | SUCOAS - SES/DF</td></tr>
+    <tr><td class="pdf-section-line2">COMISSÃO ESPECIAL DE QUALIDADE E PADRONIZAÇÃO PROCESSUAL · CEQP | SUCOAS - SES/DF</td></tr>
     <tr><td class="pdf-section-line3">${esc(cfg.title)}</td></tr>
   </table>`;
 }
@@ -1451,6 +1475,14 @@ function _envelopeHtml(cfg, corpoHtml) {
     th, td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: middle; font-size: 10.5px; }
     th { background: #f9fafb; color: #4b5563; font-size: 9.5px; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #e5e7eb; }
     tr { page-break-inside: avoid; }
+    /* Cabeçalho repetido no topo de cada página em tabelas que atravessam mais
+       de uma folha (Mapeamento de Riscos, que passou a fluir logo após a
+       legenda). display:table-header-group já é o padrão do <thead>, mas
+       declarar explicitamente é a forma reconhecida de pedir a repetição aos
+       conversores de PDF. Sem isso, a partir da 2ª página as linhas apareceriam
+       sem identificação de coluna. */
+    thead { display: table-header-group; }
+    tbody { display: table-row-group; }
     .msg-empty { text-align: center; color: #6b7280; padding: 16px; font-size: 11px; }
     .status-badge { padding: 3px 8px; border-radius: 5px; font-weight: 700; font-size: 9.5px; display: inline-block; white-space: nowrap; }
     .tag-badge { border-radius: 4px; padding: 2px 6px; font-size: 9px; font-weight: 700; color: white; display: inline-block; }
@@ -1483,10 +1515,25 @@ function _envelopeHtml(cfg, corpoHtml) {
     .pdf-img-spaced { display: block; width: 100%; margin-bottom: 14px; }
     .pdf-img-centered { display: block; width: 100%; margin: 0 auto 20px; }
     .pdf-page-break { page-break-before: always; }
+    /* "R-1" quebrava em duas linhas ("R-" / "1"): a coluna é estreita e o
+       hífen é ponto de quebra válido. O ID é atômico — nunca quebra. */
+    .risco-c-id { white-space: nowrap; }
     .pdf-avoid-break { page-break-inside: avoid; }
-    .pdf-th-generic { font-size: 9.5px; color: #6b7280; border-bottom: 1px solid #e5e7eb; padding: 6px 4px; text-align: left; text-transform: uppercase; font-weight: bold; }
-    .pdf-td-generic { font-size: 11px; color: #111827; padding: 8px 4px; vertical-align: top; }
+    .pdf-th-generic { font-size: 9.5px; color: #6b7280; border-bottom: 1px solid #e5e7eb; padding: 6px 4px; text-align: left; text-transform: uppercase; font-weight: bold; line-height: 1.35; }
+    .pdf-td-generic { font-size: 11px; color: #111827; padding: 8px 4px; vertical-align: top; line-height: 1.55; }
     .pdf-grid-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    /* Espaçamento dos relatórios de Planos de Ação e Riscos Superados.
+       Estas classes vêm do DOM clonado da tela, mas esta folha é isolada (não
+       enxerga o CSS.html) — sem elas o texto saía com o line-height DEFAULT do
+       conversor (~1.15, linhas coladas) e os blocos, sem nenhuma margem,
+       grudavam uns nos outros. Os valores espelham CSS.html: body 1.55,
+       .risk-meta 1.4, .plans-title e .version-header conforme a tela. */
+    .risk-block { margin-bottom: 22px; }
+    .risk-meta { line-height: 1.4; margin-top: 4px; }
+    .plans-title { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 6px; }
+    .version-card { margin-bottom: 16px; }
+    .version-header { line-height: 1.55; margin-bottom: 4px; }
+    .plan-card-empty-msg { font-size: 10.5px; color: #6b7280; font-style: italic; margin-top: 6px; }
     .pdf-section-table { margin-bottom: 20px; border-collapse: collapse; }
     .pdf-section-line1 { border: none; padding: 0 0 6px 0; font-size: 12px; font-weight: 800; color: #030712; }
     .pdf-section-line2 { border: none; padding: 0 0 16px 0; color: #6b7280; font-size: 9.5px; border-bottom: 1px solid #e5e7eb; }
@@ -1734,14 +1781,36 @@ function _dispararEnvioPdfReal(email) {
 // descartado em seguida, então a TELA REAL NUNCA MUDA DE TEMA.
 // (Isso não alcança <canvas>: o html2canvas copia o bitmap já desenhado, então
 // gráfico continua precisando ser redesenhado antes — ver _comGraficosNoTemaClaro.)
-function _capturarElementoComoImg(el) {
+// Largura útil de uma página paisagem do PDF, em px CSS: 297mm - 24mm de
+// margem = 273mm, e 1in = 96px => 273/25.4*96 ≈ 1032px.
+const PDF_LARGURA_UTIL_PX = 1032;
+
+// `alvosPx` (opcional): { seletor: tamanho_desejado_no_papel }. A imagem entra
+// no PDF com width:100%, ou seja, é reduzida pelo fator
+// (largura capturada / largura útil da página) — e o texto encolhe junto. Numa
+// tela de 1600px isso é uma redução para ~64%, o que fazia a matriz sair com
+// texto bem menor que a tabela ao lado (redesenhada em 10.5px fixos, sem
+// redução). Pior: o fator dependia da largura da JANELA, então o mesmo
+// relatório saía diferente em cada monitor.
+// Medindo o fator na hora e multiplicando por ele, cada seletor chega ao papel
+// no tamanho pedido, seja qual for a tela. Aplicado só no clone invisível do
+// html2canvas — a tela real não muda.
+function _capturarElementoComoImg(el, alvosPx) {
   if (!el || typeof html2canvas === 'undefined') return Promise.resolve('');
+  const fator = (el.offsetWidth || PDF_LARGURA_UTIL_PX) / PDF_LARGURA_UTIL_PX;
   return html2canvas(el, {
     scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
     onclone: function (docClone) {
       const raiz = docClone.documentElement;
       raiz.removeAttribute('data-theme');
       raiz.classList.add('tema-claro');
+      // !important porque `.matrix-table th` (classe + elemento) é mais
+      // específico que `.cell-axis`, e venceria um style inline sem ele.
+      if (alvosPx) Object.keys(alvosPx).forEach(function (sel) {
+        docClone.querySelectorAll(sel).forEach(function (n) {
+          n.style.setProperty('font-size', (alvosPx[sel] * fator).toFixed(1) + 'px', 'important');
+        });
+      });
     }
   })
     .then(function(canvas) { return canvas.toDataURL('image/png'); })

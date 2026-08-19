@@ -1049,8 +1049,12 @@
      2026-07-29, auditoria item M-04.) renderAcompanhamento e
      renderRiscosArquivados NÃO foram migrados de propósito (usam
      clone.innerHTML → tudo vai verbatim ao PDF). */
+  /* Ordem: # | ID | Macroetapa | Categoria | Risco | Causa | Consequência |
+     P×I | Nível | Tratamento | Proprietário | Plano de Ação | Ações.
+     Proprietário cedeu 0.3fr para Plano de Ação (1.2→0.9 e 1.5→1.8): a soma
+     das frações não muda, então nenhuma outra coluna se desloca. */
   .risco-row {
-    grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 55px 90px minmax(0,1.2fr) minmax(0,1.2fr) minmax(0,1.5fr) 110px;
+    grid-template-columns: 50px 50px minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1.5fr) 55px 90px minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,1.8fr) 110px;
   }
 
   /* ===== CLASSES DE GRID RESTANTES ===== */
@@ -1079,11 +1083,9 @@
     grid-template-columns: minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) 100px 90px 90px 110px minmax(0,1.2fr) 70px 70px;
     word-break: break-word;
   }
-  .risco-c-nome {
-    display: inline-block; font-weight: 600; color: var(--text-main);
-    border: 1px solid var(--border-strong); border-radius: 6px;
-    padding: 4px 10px; background: var(--bg-subtle);
-  }
+  /* Sem caixa (borda/fundo/padding): é texto puro, alinhado com as demais
+     colunas em 13px. O negrito é o que o distingue como o nome do risco. */
+  .risco-c-nome { font-weight: 600; color: var(--text-main); font-size: 13px; }
   .risco-c-id { text-align: center; font-weight: 700; color: var(--text-main); white-space: nowrap; font-size: 13px; }
   .risco-c-text { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
   .risco-c-nivel { white-space: nowrap; }
@@ -1266,7 +1268,7 @@
   .matrix-table th, .matrix-table td { height: 100px; text-align: center; font-weight: 700; border-radius: var(--radius-sm); font-size: 13.5px; width: 16%; vertical-align: middle; padding: 4px; }
   .matrix-table tr { break-inside: avoid; page-break-inside: avoid; }
   .cell-axis { background: var(--matrix-axis-bg); color: var(--text-main); font-size: var(--fs-xs); border: 1px solid var(--border-color); }
-  /* Heatmap alinhado à escada de nível: Baixo, Médio, Alto, Crítico. */
+  /* Heatmap alinhado à escada de nível: Baixo, Médio, Alto, Extremo. */
   .cell-green  { background: var(--risk-low-bg); color: var(--risk-low-text); border: 1px solid var(--risk-low-border); }
   .cell-yellow { background: var(--risk-med-bg); color: var(--risk-med-text); border: 1px solid var(--risk-med-border); }
   .cell-orange { background: var(--risk-high-bg); color: var(--risk-high-text); border: 1px solid var(--risk-high-border); }
@@ -1808,7 +1810,13 @@
   .version-date { color: var(--text-muted); font-size: 11px; }
   .plan-single-line {
     display: grid;
-    grid-template-columns: minmax(0,1.5fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr);
+    /* Ação | Justificativa | Quem | Onde | Prazo | Finalização | Como | Custo | Status.
+       Quem e Onde cederam 0.3fr cada (1→0.7) para Ação e Justificativa
+       (1.5→1.8): guardam siglas curtas, enquanto os dois primeiros campos são
+       textos longos. A soma (9.2fr) não muda, então as demais ficam onde estão.
+       Quem alterar aqui precisa alterar também o array `widths` de
+       _planoGridsParaTabelaPdf_ em JS_Riscos.html, que espelha estas proporções. */
+    grid-template-columns: minmax(0,1.8fr) minmax(0,1.8fr) minmax(0,0.7fr) minmax(0,0.7fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,0.8fr) minmax(0,0.8fr);
     gap: 16px;
     align-items: start;
     padding-right: 120px;

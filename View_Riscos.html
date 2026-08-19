@@ -12,6 +12,15 @@
           
           <div class="flex-row items-center gap-16">
             <div class="flex-row items-center gap-8">
+              <!-- Sem onchange inline: a delegação de 'change' em JS_Utilitarios
+                   já chama renderMatriz() para este filtro (mesmo padrão de
+                   f-acomp-unidade). -->
+              <select id="f-matriz-unidade" class="filter-select">
+                <option value="">Todas Unidades</option>
+              </select>
+            </div>
+
+            <div class="flex-row items-center gap-8">
               <button id="btn-pdf-matriz" class="btn-pdf-download btn-top-action" type="button" title="Baixar PDF">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -38,14 +47,14 @@
           <table class="matrix-table">
             <tr>
               <th class="cell-axis">P \ I</th>
-              <th class="cell-axis">1 (Muito Baixo)</th>
-              <th class="cell-axis">2 (Baixo)</th>
-              <th class="cell-axis">3 (Médio)</th>
-              <th class="cell-axis">4 (Alto)</th>
-              <th class="cell-axis">5 (Muito Alto)</th>
+              <th class="cell-axis">1 (Desprezível)</th>
+              <th class="cell-axis">2 (Menor)</th>
+              <th class="cell-axis">3 (Moderado)</th>
+              <th class="cell-axis">4 (Maior)</th>
+              <th class="cell-axis">5 (Catastrófico)</th>
             </tr>
             <tr>
-              <td class="cell-axis">5 (Praticamente Certo)</td>
+              <td class="cell-axis">5 (Quase Certo)</td>
               <td class="cell-yellow" id="cell-5-1"></td>
               <td class="cell-orange" id="cell-5-2"></td>
               <td class="cell-red" id="cell-5-3"></td>
@@ -53,7 +62,7 @@
               <td class="cell-red" id="cell-5-5"></td>
             </tr>
             <tr>
-              <td class="cell-axis">4 (Muito Provável)</td>
+              <td class="cell-axis">4 (Provável)</td>
               <td class="cell-green" id="cell-4-1"></td>
               <td class="cell-yellow" id="cell-4-2"></td>
               <td class="cell-orange" id="cell-4-3"></td>
@@ -61,7 +70,7 @@
               <td class="cell-red" id="cell-4-5"></td>
             </tr>
             <tr>
-              <td class="cell-axis">3 (Provável)</td>
+              <td class="cell-axis">3 (Possível)</td>
               <td class="cell-green" id="cell-3-1"></td>
               <td class="cell-yellow" id="cell-3-2"></td>
               <td class="cell-yellow" id="cell-3-3"></td>
@@ -69,7 +78,7 @@
               <td class="cell-red" id="cell-3-5"></td>
             </tr>
             <tr>
-              <td class="cell-axis">2 (Pouco Provável)</td>
+              <td class="cell-axis">2 (Raro)</td>
               <td class="cell-green" id="cell-2-1"></td>
               <td class="cell-green" id="cell-2-2"></td>
               <td class="cell-yellow" id="cell-2-3"></td>
@@ -77,7 +86,7 @@
               <td class="cell-orange" id="cell-2-5"></td>
             </tr>
             <tr>
-              <td class="cell-axis">1 (Raro)</td>
+              <td class="cell-axis">1 (Improvável)</td>
               <td class="cell-green" id="cell-1-1"></td>
               <td class="cell-green" id="cell-1-2"></td>
               <td class="cell-green" id="cell-1-3"></td>
@@ -96,23 +105,23 @@
               <div class="legend-dot high"></div>10–14 · Alto
             </div>
             <div class="legend-item">
-              <div class="legend-dot crit"></div>15–25 · Crítico
+              <div class="legend-dot crit"></div>15–25 · Extremo
             </div>
           </div>
-          <div class="section-title">
-            Mapeamento de Riscos
-          </div>
-          
-          <div class="overflow-x-auto pb-28">
+          <!-- Sem título "Mapeamento de Riscos": a legenda já encerra a grade e
+               o cabeçalho das colunas identifica a tabela sozinho. O mt-24
+               repõe o respiro que a margem do título dava — só na tela, já que
+               no PDF a tabela é remontada e a legenda é capturada à parte. -->
+          <div class="overflow-x-auto pb-28 mt-24">
             <div class="min-w-1400">
               <div class="list-head risco-row text-left">
                 <div class="text-center">#</div>
                 <div class="text-center">ID</div>
                 <div>Macroetapa</div>
+                <div>Categoria</div>
                 <div>Risco</div>
                 <div>Causa</div>
                 <div>Consequência</div>
-                <div>Categoria</div>
                 <div class="text-center">P×I</div>
                 <div class="text-center">Nível</div>
                 <div>Tratamento</div>
@@ -292,20 +301,20 @@
         <div class="flex-1"><label class="field-label" for="r-prob">Probabilidade</label><select id="r-prob"
             class="field-select" onchange="atualizarLegendaRisco('r')">
             <option value="" disabled selected>Selecione...</option>
-            <option value="1">1 - Raro</option>
-            <option value="2">2 - Pouco Provável</option>
-            <option value="3">3 - Provável</option>
-            <option value="4">4 - Muito Provável</option>
-            <option value="5">5 - Praticamente Certo</option>
+            <option value="1">1 - Improvável</option>
+            <option value="2">2 - Raro</option>
+            <option value="3">3 - Possível</option>
+            <option value="4">4 - Provável</option>
+            <option value="5">5 - Quase Certo</option>
           </select></div>
         <div class="flex-1"><label class="field-label" for="r-imp">Impacto</label><select id="r-imp"
             class="field-select" onchange="atualizarLegendaRisco('r')">
             <option value="" disabled selected>Selecione...</option>
-            <option value="1">1 - Muito Baixo</option>
-            <option value="2">2 - Baixo</option>
-            <option value="3">3 - Médio</option>
-            <option value="4">4 - Alto</option>
-            <option value="5">5 - Muito Alto</option>
+            <option value="1">1 - Desprezível</option>
+            <option value="2">2 - Menor</option>
+            <option value="3">3 - Moderado</option>
+            <option value="4">4 - Maior</option>
+            <option value="5">5 - Catastrófico</option>
           </select></div>
       </div>
       <div id="r-nivel-legenda"
@@ -368,20 +377,20 @@
         <div class="flex-1"><label class="field-label" for="er-prob">Probabilidade</label><select id="er-prob"
             class="field-select" onchange="atualizarLegendaRisco('er')">
             <option value="" disabled>Selecione...</option>
-            <option value="1">1 - Raro</option>
-            <option value="2">2 - Pouco Provável</option>
-            <option value="3">3 - Provável</option>
-            <option value="4">4 - Muito Provável</option>
-            <option value="5">5 - Praticamente Certo</option>
+            <option value="1">1 - Improvável</option>
+            <option value="2">2 - Raro</option>
+            <option value="3">3 - Possível</option>
+            <option value="4">4 - Provável</option>
+            <option value="5">5 - Quase Certo</option>
           </select></div>
         <div class="flex-1"><label class="field-label" for="er-imp">Impacto</label><select id="er-imp"
             class="field-select" onchange="atualizarLegendaRisco('er')">
             <option value="" disabled>Selecione...</option>
-            <option value="1">1 - Muito Baixo</option>
-            <option value="2">2 - Baixo</option>
-            <option value="3">3 - Médio</option>
-            <option value="4">4 - Alto</option>
-            <option value="5">5 - Muito Alto</option>
+            <option value="1">1 - Desprezível</option>
+            <option value="2">2 - Menor</option>
+            <option value="3">3 - Moderado</option>
+            <option value="4">4 - Maior</option>
+            <option value="5">5 - Catastrófico</option>
           </select></div>
       </div>
       <div id="er-nivel-legenda"
@@ -500,21 +509,21 @@
           <div class="flex-1">
             <label class="field-label" for="rev-prob">Nova Probabilidade (1-5)</label>
             <select id="rev-prob" class="field-select" onchange="atualizarLegendaRisco('rev')">
-              <option value="1">1 - Muito Baixa</option>
-              <option value="2">2 - Baixa</option>
-              <option value="3">3 - Média</option>
-              <option value="4">4 - Alta</option>
-              <option value="5">5 - Muito Alta</option>
+              <option value="1">1 - Improvável</option>
+              <option value="2">2 - Raro</option>
+              <option value="3">3 - Possível</option>
+              <option value="4">4 - Provável</option>
+              <option value="5">5 - Quase Certo</option>
             </select>
           </div>
           <div class="flex-1">
             <label class="field-label" for="rev-imp">Novo Impacto (1-5)</label>
             <select id="rev-imp" class="field-select" onchange="atualizarLegendaRisco('rev')">
-              <option value="1">1 - Muito Baixo</option>
-              <option value="2">2 - Baixo</option>
-              <option value="3">3 - Médio</option>
-              <option value="4">4 - Alto</option>
-              <option value="5">5 - Muito Alto</option>
+              <option value="1">1 - Desprezível</option>
+              <option value="2">2 - Menor</option>
+              <option value="3">3 - Moderado</option>
+              <option value="4">4 - Maior</option>
+              <option value="5">5 - Catastrófico</option>
             </select>
           </div>
         </div>

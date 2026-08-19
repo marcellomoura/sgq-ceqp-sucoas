@@ -446,7 +446,9 @@ function getNextId_(sheet, prefixo) {
 
 function calcularNivelRisco_(p, i) {
   const s = Number(p) * Number(i);
-  if (s >= 15) return 'Crítico';
+  // Níveis no padrão GDF (Decreto 37.302/2016 / ISO 31000), o mesmo das escalas
+  // de probabilidade e impacto: Baixo, Médio, Alto e Extremo.
+  if (s >= 15) return 'Extremo';
   if (s >= 10) return 'Alto';
   if (s >= 5)  return 'Médio';
   return 'Baixo';
@@ -1390,10 +1392,10 @@ function runTests_() {
     detalhes.push((lancou ? 'OK    ' : 'FALHA ') + nome + (lancou ? '' : ' | esperava exceção'));
   }
 
-  // calcularNivelRisco_ (P×I -> Crítico>=15 / Alto>=10 / Médio>=5 / Baixo)
-  check('nivel 25', 'Crítico', calcularNivelRisco_(5, 5));
-  check('nivel 15 (5x3)', 'Crítico', calcularNivelRisco_(5, 3));
-  check('nivel 15 (3x5)', 'Crítico', calcularNivelRisco_(3, 5));
+  // calcularNivelRisco_ (P×I -> Extremo>=15 / Alto>=10 / Médio>=5 / Baixo)
+  check('nivel 25', 'Extremo', calcularNivelRisco_(5, 5));
+  check('nivel 15 (5x3)', 'Extremo', calcularNivelRisco_(5, 3));
+  check('nivel 15 (3x5)', 'Extremo', calcularNivelRisco_(3, 5));
   check('nivel 10', 'Alto', calcularNivelRisco_(2, 5));
   check('nivel 9', 'Médio', calcularNivelRisco_(3, 3));
   check('nivel 5', 'Médio', calcularNivelRisco_(1, 5));
@@ -1565,10 +1567,39 @@ function enviarPdfDeHtml(destinatario, htmlContent, nomeArquivo, titulo) {
     const htmlSeguro = sanitizarHtml_(htmlContent);
     const blob = Utilities.newBlob(htmlSeguro, MimeType.HTML, 'relatorio.html');
     const pdf = blob.getAs(MimeType.PDF).setName(nomeArquivo);
+
+    const tituloEmail = titulo || 'Relatório';
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+        <div style="background-color: #030712; padding: 20px; text-align: center;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 20px;">Comissão Especial de Qualidade e Padronização (CEQP)</h2>
+        </div>
+        <div style="padding: 24px;">
+          <p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px;">Olá,</p>
+          <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px;">
+            Você está recebendo um documento emitido pelo <strong>Sistema de Gestão da Qualidade (SGQ)</strong>. O arquivo solicitado encontra-se em anexo a este e-mail.
+          </p>
+          <div style="background-color: #f8fafc; border-left: 4px solid #030712; padding: 12px 16px; margin-bottom: 24px;">
+            <p style="margin: 0; font-size: 14px; color: #475569;">
+              <strong>Documento:</strong> ${tituloEmail}
+            </p>
+          </div>
+          <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 32px;">
+            Este é um e-mail gerado automaticamente pelo sistema. Por favor, <strong>não responda</strong> a esta mensagem.
+          </p>
+        </div>
+        <div style="background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #94a3b8;">
+          CEQP / SUCOAS - SES/DF<br>
+          Governo do Distrito Federal
+        </div>
+      </div>
+    `;
+
     MailApp.sendEmail({
       to: destinatario.trim(),
-      subject: 'SGQ · ' + (titulo || 'Relatório') + ' | CEQP / SUCOAS - SES/DF',
-      body: 'Segue em anexo o relatório gerado pelo Sistema de Gestão da Qualidade.\n\nEnvio automático — não responda.',
+      subject: 'SGQ · ' + tituloEmail + ' | CEQP / SUCOAS - SES/DF',
+      body: 'O documento ' + tituloEmail + ' foi gerado pelo SGQ. O arquivo encontra-se em anexo. (Ative a visualização em HTML do seu e-mail para ver a mensagem formatada).',
+      htmlBody: emailHtml,
       attachments: [pdf]
     });
     // Único ponto do sistema em que registrarLog_ roda fora de um comBloqueio_
